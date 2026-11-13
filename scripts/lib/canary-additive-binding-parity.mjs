@@ -3,8 +3,15 @@ export const REVIEWABLE_ADDITIVE_SECRETS=Object.freeze([
   "GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
   "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
   "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64",
-  "RISK_STREAM_INDEX_LEAD_BEARER"
+  "RISK_STREAM_INDEX_LEAD_BEARER",
+  "PREDGE_PAID_RISK_GATE_TOKEN"
 ]);
+const PREDGE_TRIAL_VARS=Object.freeze({
+ PREDGE_PAID_TRAFFIC_ENABLED:"NO",
+ PREDGE_PAID_GO_LIVE_CROSSCHECK:"",
+ PREDGE_MUTUAL_TRIAL_STARTED_AT:""
+});
+const TRIAL_START=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|\+00:00)$/u;
 const deny=code=>{throw Error("CANARY_BINDINGS_"+code)};
 export function bindingInventory(version){
   const raw=version?.resources?.bindings;
@@ -52,19 +59,29 @@ export const REVIEWED_HOT50_RUNTIME_VARS=Object.freeze({
  RISK_STREAM_CANARY_HOLD_CLEARED:"0",
  RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:"0"
 });
-export function reviewedHot50CandidateVars(sha){
+export function reviewedHot50CandidateVars(sha,predgeRuntimeVars={}){
  if(!/^[a-f0-9]{40}$/.test(sha))deny("SOURCE_SHA_INVALID");
- return {...REVIEWED_HOT50_RUNTIME_VARS,GEOMACRO_SOURCE_SHA:sha};
+ const paid=predgeRuntimeVars.PREDGE_PAID_TRAFFIC_ENABLED??PREDGE_TRIAL_VARS.PREDGE_PAID_TRAFFIC_ENABLED;
+ const crosscheck=predgeRuntimeVars.PREDGE_PAID_GO_LIVE_CROSSCHECK??PREDGE_TRIAL_VARS.PREDGE_PAID_GO_LIVE_CROSSCHECK;
+ const trialStart=predgeRuntimeVars.PREDGE_MUTUAL_TRIAL_STARTED_AT??PREDGE_TRIAL_VARS.PREDGE_MUTUAL_TRIAL_STARTED_AT;
+ if(!["YES","NO"].includes(paid)||!["","PASS"].includes(crosscheck)||
+    typeof trialStart!=="string"||trialStart!==""&&
+    (!TRIAL_START.test(trialStart)||!Number.isFinite(Date.parse(trialStart))))
+  deny("PREDGE_TRIAL_RUNTIME_VAR_INVALID");
+ return {...REVIEWED_HOT50_RUNTIME_VARS,GEOMACRO_SOURCE_SHA:sha,
+  PREDGE_PAID_TRAFFIC_ENABLED:paid,
+  PREDGE_PAID_GO_LIVE_CROSSCHECK:crosscheck,
+  PREDGE_MUTUAL_TRIAL_STARTED_AT:trialStart};
 }
 const bindingText=row=>typeof row?.text==="string"?row.text:
  typeof row?.value==="string"?row.value:null;
 const canonical=x=>JSON.stringify(x,(_,v)=>
  v&&typeof v==="object"&&!Array.isArray(v)?
  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
-// Caller must explicitly provide the four source-controlled secret names when
+// Caller must explicitly provide the reviewed source-controlled secret names when
 // these are newly introduced. A version with hidden/unknown text is a HOLD.
-export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecrets=[]){
- const required=reviewedHot50CandidateVars(sha);
+export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecrets=[],predgeRuntimeVars={}){
+ const required=reviewedHot50CandidateVars(sha,predgeRuntimeVars);
  const a=bindingInventory(base),b=bindingInventory(candidate);
  if(!Array.isArray(reviewedSecrets)||reviewedSecrets.length!==new Set(reviewedSecrets).size||
     reviewedSecrets.some(n=>!REVIEWABLE_ADDITIVE_SECRETS.includes(n)))

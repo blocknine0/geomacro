@@ -14,7 +14,7 @@ import {REVIEWABLE_ADDITIVE_SECRETS,reviewedHot50CandidateVars,
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
-export function candidateConfig(version,sha,reviewedSecretNames=[]){
+export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntimeVars={}){
  const bindings=version?.resources?.bindings,runtime=version?.resources?.script_runtime;
  if(!SHA.test(sha)||!Array.isArray(bindings)||!bindings.length||
     !/^\d{4}-\d{2}-\d{2}$/.test(runtime?.compatibility_date??''))
@@ -33,7 +33,7 @@ export function candidateConfig(version,sha,reviewedSecretNames=[]){
      names.has(name)))
   throw Error('CANDIDATE_REVIEWED_SECRET_NOT_ADDITIVE');
  if(runtime.containers?.length)throw Error('CANDIDATE_CONTAINER_REVIEW_REQUIRED');
- const vars=reviewedHot50CandidateVars(sha);
+ const vars=reviewedHot50CandidateVars(sha,predgeRuntimeVars);
  for(const name of ['GEOMACRO_COMMERCIAL_STREAM_RELEASE',
   'RISK_STREAM_CANARY_HOLD_CLEARED','RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED']){
   const old=bindings.find(x=>x.name===name);
@@ -55,13 +55,13 @@ export function candidateConfig(version,sha,reviewedSecretNames=[]){
 }
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
-export function verifyCandidateBindings(baseline,candidate,sha,reviewedSecrets=[]){
+export function verifyCandidateBindings(baseline,candidate,sha,reviewedSecrets=[],predgeRuntimeVars={}){
  const before=baseline?.resources?.bindings,after=candidate?.resources?.bindings;
  if(!Array.isArray(before)||!Array.isArray(after))
   throw Error('CANDIDATE_BINDINGS_UNREADABLE');
  if(after.length!==new Set(after.map(x=>x.name)).size)
   throw Error('CANDIDATE_BINDING_COUNT_CHANGED');
- try{assessReviewedHot50BindingParity(baseline,candidate,sha,reviewedSecrets);}
+ try{assessReviewedHot50BindingParity(baseline,candidate,sha,reviewedSecrets,predgeRuntimeVars);}
  catch(error){throw Error('CANDIDATE_BINDING_RESOURCE_OR_VALUE_CHANGED_'+error.message);}
  if(canonical(baseline.resources.script_runtime)!==canonical(candidate.resources.script_runtime))
   throw Error('CANDIDATE_SCRIPT_RUNTIME_CHANGED');
@@ -136,17 +136,17 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   monthly_read_headroom:quota.remaining_rows_read,
   monthly_write_headroom:quota.remaining_rows_written,
   normal_budget_held:quota.status!=='PASS',provider_metrics_delayed:true};
- const missing=REVIEWABLE_ADDITIVE_SECRETS.filter(name=>
-  !baseline.resources.bindings.some(row=>row.name===name)).sort();
  const requested=String(env.CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES??"");
  const reviewedSecrets=requested===""?[]:requested.split(",");
  if(reviewedSecrets.some(name=>name!==name.trim())||
-    canonical([...reviewedSecrets].sort())!==canonical(missing))
-  throw Error('CANDIDATE_EXACT_ADDITIVE_SECRET_REVIEW_REQUIRED');
+    new Set(reviewedSecrets).size!==reviewedSecrets.length||
+    reviewedSecrets.some(name=>!REVIEWABLE_ADDITIVE_SECRETS.includes(name)||
+     baseline.resources.bindings.some(row=>row.name===name)))
+  throw Error('CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID');
  const secretValues=Object.fromEntries(reviewedSecrets.map(name=>[name,env[name]]));
  if(Object.values(secretValues).some(v=>typeof v!=='string'||!v.trim()))
   throw Error('CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED');
- const config=candidateConfig(baseline,env.GITHUB_SHA,reviewedSecrets);
+ const config=candidateConfig(baseline,env.GITHUB_SHA,reviewedSecrets,env);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
  // on Cloudflare. Wrangler's NDJSON receipt pins the version this invocation
@@ -196,7 +196,7 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
     'GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'].includes(x.name)).map(x=>[x.name,x.text??null])),
   changed_runtime_keys:changedRuntimeKeys,d1_sql_queries:0,traffic_promoted:false,payments:0
  },null,2)+'\n');
- verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA,reviewedSecrets);
+ verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA,reviewedSecrets,env);
  const final=await get('/deployments?per_page=1');
  if(canonical(final.deployments?.[0]?.versions)!==canonical(versions))
   throw Error('CANDIDATE_PRODUCTION_DEPLOYMENT_CHANGED');
@@ -210,7 +210,7 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  const result={schema:'geomacro.optimized-worker-candidate.v1',status:'CANDIDATE_UPLOADED_NOT_DEPLOYED',
   source_sha:env.GITHUB_SHA,baseline_id:baselineId,candidate_id:candidate.id,
   reviewed_additive_secret_names:reviewedSecrets,
-  reviewed_hot50_runtime_vars:reviewedHot50CandidateVars(env.GITHUB_SHA),
+  reviewed_hot50_runtime_vars:reviewedHot50CandidateVars(env.GITHUB_SHA,env),
   binding_resource_and_value_parity_verified:true,runtime_parity_verified:true,
   promotion_eligible:promotion.eligible,promotion_reason:promotion.reason,
   runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>knownFlags.includes(x.name))

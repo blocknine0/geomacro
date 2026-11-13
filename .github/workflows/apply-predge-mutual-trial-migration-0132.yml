@@ -1,0 +1,130 @@
+name: Apply Predge Mutual 72h trial D1 migration 0132 (single file)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: preflight is read-only; apply runs only migration 0132
+        required: true
+        type: choice
+        options: [preflight, apply]
+      expected_main_sha:
+        description: Exact reviewed main SHA; must equal the live main and dispatch SHA
+        required: true
+        type: string
+      approval:
+        description: Required literal APPROVE_PREDGE_MUTUAL_TRIAL_0132_PRODUCTION (apply only)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: predge-mutual-trial-migration-0132-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      MODE: ${{ inputs.mode }}
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+      APPROVAL: ${{ inputs.approval }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Install pinned Wrangler in an isolated prefix
+        shell: bash
+        run: |
+          set -euo pipefail
+          WRANGLER_PREFIX="$RUNNER_TEMP/wrangler-bin"
+          npm install --prefix "$WRANGLER_PREFIX" --no-save --ignore-scripts --no-audit --no-fund wrangler@4.136.3
+          echo "$WRANGLER_PREFIX/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Verify reviewed main, D1 identity, fresh paid headroom, and unapplied history
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$MODE" = preflight -o "$MODE" = apply
+          test "$EXPECTED_MAIN_SHA" = "$(git rev-parse HEAD)"
+          test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          test "$APPROVAL" = APPROVE_PREDGE_MUTUAL_TRIAL_0132_PRODUCTION
+          test -n "$CLOUDFLARE_ACCOUNT_ID" -a -n "$CLOUDFLARE_API_TOKEN" -a -n "$CLOUDFLARE_BILLING_READ_TOKEN"
+          if [ "$MODE" = apply ]; then test "${#SIGNING_JWK}" -ge 40; fi
+          mkdir -p "$RUNNER_TEMP/geomacro-0132"
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
+          import {assertD1DatabaseIdentity} from './scripts/ops/predge-addendum-v2-d1-identity.mjs';
+          const databaseId=process.env.D1_DATABASE_ID;
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${encodeURIComponent(databaseId)}`,{headers:{authorization:`Bearer ${token}`,accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('D1_DATABASE_IDENTITY_API_FAILED_HTTP_'+r.status);
+          const b=await r.json();
+          assertD1DatabaseIdentity(b,{databaseId,databaseName:'geomacro-control-plane'});
+          const cfg=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8').replace(/^\s*\/\/.*$/gm,''));
+          cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:databaseId}));
+          writeFileSync(process.env.RUNNER_TEMP+'/geomacro-0132/wrangler.json',JSON.stringify(cfg));
+          NODE
+          node --input-type=module <<'NODE'
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const result=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',estimatedMigrationRowsRead:1000000,estimatedMigrationRowsWritten:10000});
+          if(result.status!=='PASS')throw Error(result.provider_error??result.code);
+          console.log(JSON.stringify({schema:result.schema,status:result.status,code:result.code,observed_rows_read:result.observed_rows_read,observed_rows_written:result.observed_rows_written,remaining_rows_read:result.remaining_rows_read,remaining_rows_written:result.remaining_rows_written,checked_at_utc:result.checked_at_utc}));
+          NODE
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --json --command "SELECT name FROM d1_migrations WHERE name='0132_predge_mutual_72h_trial.sql' LIMIT 2" > "$RUNNER_TEMP/geomacro-0132/history-before.json"
+          node -e 'const d=require(process.argv[1]);const rows=d.flatMap(x=>x.results??[]);if(rows.length)throw Error("MIGRATION_0132_ALREADY_APPLIED");' "$RUNNER_TEMP/geomacro-0132/history-before.json"
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --json --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('predge_paid_risk_gate_usage_ledger','idx_predge_paid_risk_gate_usage_month','idx_predge_paid_risk_gate_collection','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_refund_terminal') ORDER BY type,name" > "$RUNNER_TEMP/geomacro-0132/objects-before.json"
+          node --input-type=module -e 'import {readFileSync} from "node:fs";const d=JSON.parse(readFileSync(process.argv[1],"utf8"));const rows=d.flatMap(x=>x.results??[]);const names=[...new Set(rows.map(x=>x.name))].sort();const expected=["idx_predge_paid_risk_gate_collection","idx_predge_paid_risk_gate_usage_month","predge_paid_risk_gate_monthly_usage_report","predge_paid_risk_gate_refund_terminal","predge_paid_risk_gate_usage_identity_immutable","predge_paid_risk_gate_usage_ledger"].sort();if(JSON.stringify(names)!==JSON.stringify(expected))throw Error("0131_PREDGE_LEDGER_SCHEMA_REQUIRED");const table=rows.find(x=>x.name==="predge_paid_risk_gate_usage_ledger")?.sql??"";if(!table.includes("PAID_ADDENDUM_V2")||table.includes("MUTUAL_72H_TRIAL"))throw Error("0131_LEDGER_SCHEMA_NOT_EXPECTED_PRESTATE");' "$RUNNER_TEMP/geomacro-0132/objects-before.json"
+      - name: Apply only migration 0132 and record native migration history
+        if: inputs.mode == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --file workers/control-plane/migrations/0132_predge_mutual_72h_trial.sql
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --command "INSERT INTO d1_migrations(name) SELECT '0132_predge_mutual_72h_trial.sql' WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name='0132_predge_mutual_72h_trial.sql')"
+      - name: Read back exact schema and sign production receipt
+        if: inputs.mode == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --json --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('predge_paid_risk_gate_usage_ledger','idx_predge_paid_risk_gate_usage_month','idx_predge_paid_risk_gate_collection','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_refund_terminal') ORDER BY type,name; SELECT name FROM d1_migrations WHERE name='0132_predge_mutual_72h_trial.sql'" > "$RUNNER_TEMP/geomacro-0132/readback.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';import {createPrivateKey,createPublicKey,sign,createHash} from 'node:crypto';
+          const result=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-0132/readback.json','utf8'));
+          const rows=result.flatMap(x=>x.results??[]), expected=['idx_predge_paid_risk_gate_collection','idx_predge_paid_risk_gate_usage_month','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_refund_terminal','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_usage_ledger'];
+          const names=[...new Set(rows.map(x=>x.name))].sort();if(JSON.stringify(names)!==JSON.stringify([...expected,'0132_predge_mutual_72h_trial.sql'].sort()))throw Error('MIGRATION_0132_SCHEMA_READBACK_FAILED');
+          const table=rows.find(x=>x.name==='predge_paid_risk_gate_usage_ledger')?.sql??'';
+          const view=rows.find(x=>x.name==='predge_paid_risk_gate_monthly_usage_report')?.sql??'';
+          const immutable=rows.find(x=>x.name==='predge_paid_risk_gate_usage_identity_immutable')?.sql??'';
+          const refund=rows.find(x=>x.name==='predge_paid_risk_gate_refund_terminal')?.sql??'';
+          if(!table.includes('MUTUAL_72H_TRIAL')||!table.includes('TRIAL_DELIVERED')||!view.includes("entry_status='DELIVERED'")||!immutable.includes('PREDGE_PAID_VERDICT_IDENTITY_IMMUTABLE')||!refund.includes('PREDGE_REFUND_STATUS_TERMINAL'))throw Error('MIGRATION_0132_TRIAL_SCHEMA_READBACK_FAILED');
+          const unsigned={schema:'geomacro.predge-mutual-trial-migration-receipt.v1',status:'PASS',migration:'0132_predge_mutual_72h_trial.sql',database_id:process.env.D1_DATABASE_ID,main_sha:process.env.EXPECTED_MAIN_SHA,applied_at_utc:new Date().toISOString(),objects:expected,history_recorded:true,sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0132_predge_mutual_72h_trial.sql')).digest('hex'),ledger_rebuilt:true,existing_paid_records_preserved:true,generic_migrations_apply_used:false};
+          const jwk=JSON.parse(process.env.SIGNING_JWK);const key=createPrivateKey({key:jwk,format:'jwk'});
+          if(key.asymmetricKeyType!=='ed25519')throw Error('MIGRATION_0132_RECEIPT_SIGNER_MUST_BE_ED25519');
+          const spki=createPublicKey(key).export({format:'der',type:'spki'});
+          const keyId=typeof jwk.kid==='string'&&jwk.kid?jwk.kid:'sha256:'+createHash('sha256').update(spki).digest('hex');
+          const bytes=Buffer.from(JSON.stringify(unsigned));
+          const receipt={...unsigned,signature_algorithm:'Ed25519',signature_key_id:keyId,signature_base64:sign(null,bytes,key).toString('base64')};
+          writeFileSync('artifacts/predge-mutual-trial-migration-0132-receipt.json',JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
+          NODE
+      - name: Upload signed production receipt
+        if: inputs.mode == 'apply' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: predge-mutual-trial-migration-0132-${{ github.run_id }}
+          path: artifacts/predge-mutual-trial-migration-0132-receipt.json
+          if-no-files-found: error
+          retention-days: 30

@@ -14,6 +14,7 @@
     "api-custom-domain-production-acceptance.yml",
     "apply-multi-source-registry-production.yml",
     "apply-predge-addendum-v2-migration-0131.yml",
+    "apply-predge-mutual-trial-migration-0132.yml",
     "apply-production-migrations.yml",
     "apply-risk-gate-production-migrations.yml",
     "apply-source-network-staging-migrations.yml",
@@ -451,6 +452,7 @@
   ],
   "criticalWorkflowFiles": [
     "apply-predge-addendum-v2-migration-0131.yml",
+    "apply-predge-mutual-trial-migration-0132.yml",
     "auto-ingest-news.yml",
     "b2-raw-storage-maintenance.yml",
     "canary-promotion.yml",
