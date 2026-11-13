@@ -26,7 +26,7 @@ export const canonicalContentSha256=(canonicalContent:string|Uint8Array):string=
 // static analysis. Use an intentionally expensive deterministic PBKDF2-HMAC
 // fingerprint for that evidence; never use bare SHA-256 for credentials.
 export const providerUsagePbkdf2Sha256=(key:string|Uint8Array,canonicalUsage:string|Uint8Array):string=>
- pbkdf2Sync(Buffer.concat([Buffer.from(key),Buffer.from("\\0"),Buffer.from(canonicalUsage)]),
+ pbkdf2Sync(Buffer.concat([Buffer.from(key),Buffer.from([0]),Buffer.from(canonicalUsage)]),
   Buffer.from("geomacro-provider-usage-fingerprint-v1"),310_000,32,"sha256").toString("hex");
 function normalized(value:unknown,depth=0):unknown{
  need(depth<24,'RELEASE_CANONICAL_DEPTH');
