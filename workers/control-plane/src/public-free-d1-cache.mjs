@@ -54,14 +54,17 @@ const HIGH_READ_DERIVED_PATHS=new Set([
   "/v1/public/website-derived-news-html",
   "/v1/public/derived-structural-72h",
 ]);
-const ttlForPath=pathname=>
-  pathname.startsWith("/api/v1/feed/")?60:
-  pathname==="/v1/public/website-derived-news-bundle"||
-  pathname==="/v1/public/website-derived-news-immediate"||
-  pathname==="/v1/public/geomacro-certified-news-severity-gri"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
-  pathname==="/v1/public/geomacro-news-severity-risk-indices"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
-  HIGH_READ_DERIVED_PATHS.has(pathname)?PUBLIC_FREE_D1_DERIVED_TTL_SECONDS:
-  PUBLIC_FREE_D1_TTL_SECONDS;
+const BUNDLE_TTL_PATHS=new Set([
+  "/v1/public/website-derived-news-bundle",
+  "/v1/public/geomacro-certified-news-severity-gri",
+  "/v1/public/geomacro-news-severity-risk-indices",
+]);
+const ttlForPath=pathname=>{
+  if(pathname.startsWith("/api/v1/feed/"))return 60;
+  if(BUNDLE_TTL_PATHS.has(pathname))return PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS;
+  if(HIGH_READ_DERIVED_PATHS.has(pathname))return PUBLIC_FREE_D1_DERIVED_TTL_SECONDS;
+  return PUBLIC_FREE_D1_TTL_SECONDS;
+};
 const UNIFIED_EVENT_QUERY=/^category=(conflict|macro_economics|commodities|sanctions|macro|geopolitics|critical_minerals|rare_earth)&min_credibility=(0\.1|0\.5|0\.7|1)$/u;
 // Per-isolate single-flight avoids the D1 read stampede between a cache miss
 // and the cache PUT. Cache API remains authoritative across requests/POPs.

@@ -64,14 +64,17 @@ export function reviewedHot50CandidateVars(sha,predgeRuntimeVars={}){
  const paid=predgeRuntimeVars.PREDGE_PAID_TRAFFIC_ENABLED??PREDGE_TRIAL_VARS.PREDGE_PAID_TRAFFIC_ENABLED;
  const crosscheck=predgeRuntimeVars.PREDGE_PAID_GO_LIVE_CROSSCHECK??PREDGE_TRIAL_VARS.PREDGE_PAID_GO_LIVE_CROSSCHECK;
  const trialStart=predgeRuntimeVars.PREDGE_MUTUAL_TRIAL_STARTED_AT??PREDGE_TRIAL_VARS.PREDGE_MUTUAL_TRIAL_STARTED_AT;
+ const storeCheckout=predgeRuntimeVars.GEOMACRO_STORE_CHECKOUT_ENABLED??"";
  if(!["YES","NO"].includes(paid)||!["","PASS"].includes(crosscheck)||
     typeof trialStart!=="string"||trialStart!==""&&
     (!TRIAL_START.test(trialStart)||!Number.isFinite(Date.parse(trialStart))))
   deny("PREDGE_TRIAL_RUNTIME_VAR_INVALID");
+ if(storeCheckout!==""&&!["YES","NO"].includes(storeCheckout))deny("STORE_CHECKOUT_RUNTIME_VAR_INVALID");
  return {...REVIEWED_HOT50_RUNTIME_VARS,GEOMACRO_SOURCE_SHA:sha,
   PREDGE_PAID_TRAFFIC_ENABLED:paid,
   PREDGE_PAID_GO_LIVE_CROSSCHECK:crosscheck,
-  PREDGE_MUTUAL_TRIAL_STARTED_AT:trialStart};
+  PREDGE_MUTUAL_TRIAL_STARTED_AT:trialStart,
+  ...(storeCheckout?{GEOMACRO_STORE_CHECKOUT_ENABLED:storeCheckout}:{})};
 }
 const bindingText=row=>typeof row?.text==="string"?row.text:
  typeof row?.value==="string"?row.value:null;

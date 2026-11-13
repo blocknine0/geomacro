@@ -90,6 +90,39 @@ test("country category filters isolate all three Hot50 facts lanes",async()=>{
   await assert.rejects(()=>readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW,"unknown"),/PROGRESSIVE_CATEGORY_INVALID/u);
  }finally{sqlite.close()}
 });
+
+test("progressive Basic and Standard decisions expose category, confidence, drivers and policy ladder",()=>{
+ const parsed={request_id:"policy-ladder-test",subject:{type:"country",id:"IND"},
+  category:"rare_earth",policy:{policy_id:"policy-v1",policy_version:"1",
+   continue_max_score:10,reduce_limit_max_score:30,require_approval_max_score:70,
+   minimum_confidence_for_auto_continue:0.5,
+   require_commercial_verification_for_continue:false}};
+ const basic=provisionalRiskGate(parsed,{distinct_events:1,
+  corroboration_sources_count:1,corroborated_events:0,standard_ready:false},NOW);
+ assert.equal(basic.affected_domain,"critical_minerals");
+ assert.equal(basic.risk.confidence,0.35);
+ assert.ok(basic.top_drivers.length>0);
+ assert.equal(basic.top_drivers[0].driver,"critical_minerals");
+ assert.equal(typeof basic.top_drivers[0].score_contribution,"number");
+ assert.equal(basic.primary_driver,"critical_minerals");
+ assert.equal(basic.decision,"REDUCE_LIMIT");
+ assert.equal(basic.recommended_action,"REDUCE_EXPOSURE");
+ assert.equal(basic.risk_metric_semantics,"OBSERVATION_DENSITY_PROXY");
+ assert.equal(basic.execution_authorized,false);
+ const standard=provisionalRiskGate({...parsed,category:"macro"},{distinct_events:2,
+  corroboration_sources_count:2,corroborated_events:1,standard_ready:true},NOW);
+ assert.equal(standard.affected_domain,"macro_fx");
+ assert.equal(standard.risk.confidence,0.72);
+ assert.ok(standard.top_drivers.length>0);
+ assert.equal(standard.primary_driver,"monetary_policy");
+ assert.equal(standard.decision,"REQUIRE_APPROVAL");
+ assert.equal(standard.risk_metric_semantics,"CORROBORATED_OBSERVATION_PROXY");
+ assert.equal(standard.execution_authorized,false);
+ const noData=provisionalRiskGate(parsed,{distinct_events:0,corroboration_sources_count:0},NOW);
+ assert.equal(noData.risk.confidence,0);
+ assert.deepEqual(noData.top_drivers,[]);
+ assert.equal(noData.decision,"PAUSE");
+});
 test("native publisher pairs split across categories cannot satisfy the same-cell Standard gate",async()=>{
  const {sqlite,env}=fixture();
  try{

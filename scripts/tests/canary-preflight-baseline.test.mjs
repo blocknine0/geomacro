@@ -40,7 +40,7 @@ test('0-100% safety still checks candidate exact SHA and retains rollback',()=>{
  const source=readFileSync('scripts/canary-promoter.ts','utf8');
  const workflow=readFileSync('.github/workflows/canary-promotion.yml','utf8');
  assert.match(source,/CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED/u);
- assert.match(source,/b\?\.deployed_source_sha===expectedSha/u);
+ assert.match(source,/health\.body\?\.deployed_source_sha===expectedSha/u);
  assert.match(source,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/u);
  assert.match(source,/const STAGES=\[0,1,5,25,50,100\]/u);
  assert.match(source,/config\/d1-hotspot-v2-canary\.hold/u);

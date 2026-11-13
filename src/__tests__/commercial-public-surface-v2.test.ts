@@ -124,9 +124,9 @@ describe("commercial public surface v2", () => {
 
     expect(availability).toContain("a previously verified reading stays visible if a later refresh fails");
     expect(availability).toContain("does not receive a synthetic or zero-risk substitute");
-    expect(workspace).toContain("Checking genuine reviewer-signed GRI v1.2 inputs");
-    expect(workspace).toContain("Current independently reviewed signed GRI values unavailable");
-    expect(workspace).toContain("No triage, cached historic or artificial zero score is substituted.");
+    expect(workspace).toContain("Refreshing GeoMacro-certified news readings");
+    expect(workspace).toContain("GeoMacro-certified news indices temporarily unavailable");
+    expect(workspace).toContain("No unrelated GRI or invented severity fallback is being displayed.");
   });
 
   it("keeps machine discovery aligned with the same three-domain commercial identity", () => {

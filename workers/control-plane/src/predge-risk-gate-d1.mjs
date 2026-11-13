@@ -428,9 +428,15 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
       WHERE client_id=? AND request_id=? AND state='PENDING'
       RETURNING request_id`).bind(client,parsed.request_id).first();
    if(!owned)return paidEndpoint?singleEndBuyerLimitExceeded():fail("RISK_GATE_REQUEST_IN_PROGRESS",409);
-   const quota=await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
-     VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
-     WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
+   // v1 remains a bounded pilot. Addendum v2 records the same counter as
+   // telemetry only; paid delivery is bounded by its single-use license lock.
+   const quota=paidEndpoint
+     ?await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
+        VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
+        RETURNING used`).bind(client,day).first()
+     :await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
+        VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
+        WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
    let result;

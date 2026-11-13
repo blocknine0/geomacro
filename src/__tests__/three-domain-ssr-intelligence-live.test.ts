@@ -93,11 +93,11 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     const route=readFileSync("src/routes/intelligence.tsx","utf8");
     const desk=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     expect(route).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
-    expect(route).toContain("const statelessResults = await Promise.allSettled(domains.map");
+    expect(route).toContain("const [geopolitics, macro, minerals, history] = await Promise.allSettled([");
     expect(route).toContain("statelessFeeds:");
     expect(route).toContain("initialFeeds={loader.statelessFeeds}");
-    expect(route).toContain("getWebsiteDerivedNews()");
-    expect(route).toContain("history.value?.signals");
+    expect(route).toContain("fetchDirectDerivedNews()");
+    expect(route).toContain("history.value");
     expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
     expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");
     expect(desk).toContain("const EMPTY_FEEDS: FeedState = Object.freeze({})");

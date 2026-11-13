@@ -14,7 +14,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain('import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";');
     expect(desk).toContain("getStatelessIntelligence({ data: { category } }),\n            9_000");
     expect(desk).toContain("fetchPermanentDerivedNews()");
-    expect(desk).toContain("fetchAllDerivedNews(fetch,Date.now(),{fresh:false})");
+    expect(desk).toContain("fetchDirectDerivedNews()");
     expect(desk).not.toContain("fetchAllDerivedNews()");
     expect(desk).not.toContain("getWebsiteDerivedNews");
     expect(desk).not.toContain("@/lib/website-derived-news.functions");
@@ -27,11 +27,13 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
     expect(desk).not.toContain("website-derived-news-html");
-    // Static archive plus a separately published R2-only JSON snapshot, neither
-    // of which requires a browser D1 read, an RPC or a website-code rebuild.
-    expect(desk).toContain("Historical findings come from the static archive");
-    expect(desk).toContain("fetchAllDerivedNews(fetch,Date.now(),{fresh:false})");
-    expect(desk).toContain("without a website rebuild or D1 browser reads");
+    // The locked presentation uses the library readers for its permanent and rolling feeds.
+    expect(desk).toContain("const historical = await fetchPermanentDerivedNews()");
+    expect(desk).toContain("const recent = await fetchDirectDerivedNews()");
+    expect(desk).toContain("fetchDirectDerivedNews()");
+    const reader = readFileSync("src/lib/public-derived-news-client.ts", "utf8");
+    expect(reader).toContain("GEOMACRO_PERMANENT_LATEST_URL");
+    expect(reader).toContain("fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
     expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");

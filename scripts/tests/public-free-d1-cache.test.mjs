@@ -149,7 +149,7 @@ test("Worker keeps public-only cache and original strict private access intact",
   const code=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
   assert.match(code,/return publicReadCache\(\(\)=>threeDomainEvidenceContinuity\(env\)\)/);
   assert.ok(code.includes("return publicReadCache(()=>renderDerivedStoriesHtml(env,Date.now(),"));
-  assert.match(code,/if\(q.size===0\)return publicReadCache/);
+  assert.match(code,/if\(q.size===0\)return withPublicEtag\(request,await publicReadCache/);
   assert.match(code,/return handlePrivateOsint15m\(request,env\)/);
   assert.match(code,/return publicReadCache\(\(\)=>publicReusableSourceNews\(env,url.searchParams\)\)/);
 });
@@ -305,6 +305,8 @@ test("five-minute derived and 60-second bundle public caches preserve authentica
   ["https://geomacro-control-plane.example/v1/public/website-derived-news-html",300],
   ["https://geomacro-control-plane.example/v1/public/derived-structural-72h",300],
   ["https://geomacro-control-plane.example/v1/public/website-derived-news-bundle",60],
+  ["https://geomacro-control-plane.example/v1/public/geomacro-certified-news-severity-gri",60],
+  ["https://geomacro-control-plane.example/v1/public/geomacro-news-severity-risk-indices",60],
  ];
  let origin=0;
  const objects=new Map();
@@ -323,8 +325,8 @@ test("five-minute derived and 60-second bundle public caches preserve authentica
    compute,{cache});
   assert.equal(privateFetch.headers.get("cache-control"),null);
  }
- assert.equal(origin,8);
- assert.equal(objects.size,4);
+ assert.equal(origin,12);
+ assert.equal(objects.size,6);
 });
 
 test("no-cache public journal reads bypass POP cache but retain materialized D1 eligibility",()=>{

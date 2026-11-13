@@ -14,13 +14,16 @@ describe("public Intelligence freshness cache contract", () => {
     expect(route).toContain("publicResponseCache");
   });
 
-  it("SSR and browser hydration reuse the derived journal snapshot without an immediate duplicate read", () => {
+  it("SSR and browser hydration read the checked immediate-feed snapshot through the shared client", () => {
     const page=readFileSync("src/routes/intelligence.tsx","utf8");
     const desk=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
-    expect(page).toContain("getWebsiteDerivedNews()");
-    expect(page).toContain("history.value.signals");
-    expect(desk).toContain('fetchAllDerivedNews(fetch,Date.now(),{fresh:false})');
-    expect(desk).toContain("let skipHydratedRead = initialJournal.length > 0");
+    expect(page).toContain("fetchDirectDerivedNews()");
+    expect(page).toContain("history.value");
+    expect(desk).toContain('fetchDirectDerivedNews()');
+    expect(desk).toContain("const [journal, setJournal] = useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
+    const client=readFileSync("src/lib/public-derived-news-client.ts","utf8");
+    expect(client).toContain("GEOMACRO_PERMANENT_LATEST_URL");
+    expect(client).toContain("fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL");
   });
 
   it("uses a 60 second public response cache, ETags, and a 304 without caching errors", () => {
@@ -53,6 +56,6 @@ describe("public Intelligence freshness cache contract", () => {
     const view=readFileSync("src/components/risk-indices/risk-indices-workspace.tsx","utf8");
     expect(api).toContain("readGeoMacroNewsSeverityRiskIndices");
     expect(hook).toContain("GEOMACRO_NEWS_GRI_ED25519_SIGNATURE_INVALID");
-    expect(view).toContain("Self-certified 72h news-severity proxy");
+    expect(view).toContain("GeoMacro self-certified calculation");
   });
 });
