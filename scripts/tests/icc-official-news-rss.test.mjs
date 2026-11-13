@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
- ICC_OFFICIAL_NEWS_RSS,pinnedIccOriginalNewsLink,parseIccOfficialNewsRss
+ ICC_OFFICIAL_NEWS_RSS,pinnedIccOriginalNewsLink,parseIccOfficialNewsRss,parseIccOfficialNewsItems
 } from "../lib/icc-official-news-rss.mjs";
 import {observeExistingPrivateP0Sources} from "../ops/observe-p0-private-source-runtime.mjs";
 import {parseIccArticleHtml,discoverIccArticleUrls,ICC_NEWS_REQUEST_HEADERS} from "../../global-intelligence/adapters/icc-news.mjs";
@@ -12,7 +12,7 @@ const item='<item><title><![CDATA[High Representative visits the International C
 const rss=(items=item)=>'<?xml version="1.0"?><rss version="2.0"><channel>'+
  '<title>International Criminal Court - News</title>'+items+'</channel></rss>';
 test("court-affiliated official media page pins exact RSS and original article paths",()=>{
- assert.equal(ICC_OFFICIAL_NEWS_RSS,"https://www.icc-cpi.int/rss/news/all");
+ assert.equal(ICC_OFFICIAL_NEWS_RSS,"https://www.icc-cpi.int/rss.xml");
  assert.equal(pinnedIccOriginalNewsLink(url),url);
  for(const bad of [
   "https://evil.example/news/kaja-kallas-visits-court",
@@ -50,6 +50,20 @@ test("RSS feed dates never verify original publication or grant licensing",()=>{
  assert.equal(x.commercial_eligible,false);
  assert.equal(x.payments,0);
  assert.doesNotMatch(JSON.stringify(x),/kaja-kallas|icc-cpi\.int|High Representative/);
+});
+
+test("ICC official RSS native pubDate and dc:date become dated first-party items only",()=>{
+ const dated='<item><title><![CDATA[ICC statement dated by publisher]]></title>'+
+  '<link>'+url+'</link><pubDate>Fri, 23 Oct 2026 08:00:00 GMT</pubDate></item>'+
+  '<item><title><![CDATA[ICC decision with Dublin Core date]]></title>'+
+  '<link>https://www.icc-cpi.int/node/241778</link><dc:date>2026-10-22T09:30:00Z</dc:date></item>';
+ const receipt=parseIccOfficialNewsRss(rss(dated));
+ const items=parseIccOfficialNewsItems(rss(dated));
+ assert.equal(receipt.publisher_native_feed_clock_verified,true);
+ assert.equal(receipt.feed_date_assertion_count,2);
+ assert.deepEqual(items.map(x=>x.publishedAt),
+  ["2026-10-23T08:00:00.000Z","2026-10-22T09:30:00.000Z"]);
+ assert.ok(items.every(x=>x.url.startsWith("https://www.icc-cpi.int/")));
 });
 test("ICC native publication clock comes from article metadata, not retrieval or RSS time",()=>{
  const page='<html><head><title>ICC official announcement</title><meta property="article:published_time" content="2026-11-12T15:17:17+01:00"></head><body>International Criminal Court</body></html>';
@@ -115,6 +129,30 @@ test("ICC listing discovers a first-party story then verifies its article-native
   assert.equal(arr.length,10);assert.equal(y.http_requests,10);
   assert.equal(y.results.find(r=>r.source_id==="icc_news").reason,"HTTP_"+status);
  }
+});
+test("Gcore HTML challenge falls back to the verified RSS without claiming rights",async()=>{
+ let n=0;
+ const y=await observeExistingPrivateP0Sources({now,fetchImpl:async(url)=>{
+  n++;
+  if(url==="https://www.icc-cpi.int/news")
+   return new Response('<!doctype html><html><head><title>Gcore</title></head><body>challenge</body></html>',
+    {headers:{"content-type":"text/html"}});
+  if(url===ICC_OFFICIAL_NEWS_RSS)
+   return new Response(rss(item),{headers:{"content-type":"application/rss+xml"}});
+  return new Response("Denied",{status:403});
+ }});
+ const row=y.results.find(z=>z.source_id==="icc_news");
+ assert.equal(n,11);
+ assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
+ assert.equal(row.reason,null);
+ assert.equal(row.parsed_candidate_count,1);
+ assert.equal(row.publisher_native_feed_clock_verified,true);
+ assert.equal(row.native_publication_at_utc,"2026-10-23T08:00:00.000Z");
+ assert.equal(row.current_original_publication_verified,false);
+ assert.equal(row.original_article_html_readback_verified,false);
+ assert.equal(row.commercial_eligible,false);
+ assert.equal(y.signed_intelligence_published,false);
+ assert.equal(y.payments,0);
 });
 test("invalid ICC RSS response remains failed without a third retry or entitlement",async()=>{
  let n=0;

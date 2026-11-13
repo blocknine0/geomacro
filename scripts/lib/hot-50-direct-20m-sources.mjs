@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 /**
  * Dedicated 20-minute private Hot-50 DIRECT publisher selection.
  * Existing pinned HTTP/Atom/RSS/JSON sources only, not Telegram, not Google
@@ -8,7 +9,7 @@
  * Every run independently checks source HTTP/native item clocks; unknown,
  * denied or stale feeds return honest checks and never fabricated news.
  */
-import {hot50FourLaneSourceCrosswalk} from "./hot-50-four-lane-source-crosswalk.mjs";
+import {hot50FourLaneSourceCrosswalk,hot50CellFeedFailoverPlan} from "./hot-50-four-lane-source-crosswalk.mjs";
 import {HOT50_COUNTRY_ISO3,HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 export const HOT50_DIRECT_20M_FREQUENCY_MINUTES=20;
@@ -21,6 +22,25 @@ const safeUrl=link=>{
    !u.hostname.endsWith(".internal")&&!u.hostname.endsWith(".local")&&
    u.hostname.includes(".")&&u.href.length<=2000;
 };
+export function hot50Direct20mFailoverCategories(cellPlan,registry,checks){
+ if(!Array.isArray(cellPlan)||cellPlan.length!==150||
+    !Array.isArray(registry)||!Array.isArray(checks))
+  throw Error("HOT50_DIRECT20M_FAILOVER_INPUT_INVALID");
+ const checkByRef=new Map(checks.map(check=>[check.source_ref,check.state]));
+ const needed=new Set();
+ for(const cell of cellPlan){
+  if(cell.primary_scope==="GLOBAL_TITLE_MATCH"){needed.add(cell.category);continue;}
+  const primary=registry.find(source=>source.id===cell.primary_source_id);
+  if(!primary){needed.add(cell.category);continue;}
+  const ref=createHash("sha256").update([
+   primary.id,primary.url,cell.category
+  ].join("\n")).digest("hex");
+  // Only a nonempty successful primary poll suppresses its backup. Empty,
+  // denied, malformed or transport-failed primaries all take the failover.
+  if(checkByRef.get(ref)!=="OBSERVED")needed.add(cell.category);
+ }
+ return Object.freeze([...needed].sort());
+}
 export function hot50Direct20mPublisherRegistry(now=new Date()){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
   throw Error("HOT50_DIRECT20M_REPROBE_CLOCK_INVALID");
@@ -65,6 +85,16 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
    }else merged.set(pin.url,source);
   }
  }
+ const cellPlan=hot50CellFeedFailoverPlan();
+ const globalFallbackRegistry=Object.freeze(snapshot.global_category_failover_candidates.map(feed=>
+  Object.freeze({
+   id:feed.id,url:feed.url,type:"rss",categories:[...feed.categories],
+   continent:"global",supported:true,private_hot50_backup:true,
+   private_hot50_direct_20m:false,private_discovery_index_only:false,
+   private_hub_overlay:true,publisher_native_dates_required:true,
+   transport_verified_at_registration:false,original_article_verified:false,
+   rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
+  })));
  // Permanently removed feeds have no production re-probe lane. Preserve
  // catalogue provenance and expose exclusion counts for operator visibility.
  const nonretiredCount=merged.size;
@@ -76,6 +106,8 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
   throw Error("HOT50_DIRECT20M_SOURCE_COUNT_DRIFT");
  return Object.freeze({
   registry:Object.freeze([...merged.values()]),
+  fallback_registry:globalFallbackRegistry,
+  cell_failover_plan:cellPlan,
   summary:Object.freeze({
    hot50_countries_configured:HOT50_COUNTRY_ISO3.length,
    categories_configured:CATEGORIES,

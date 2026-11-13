@@ -6,7 +6,7 @@ import {HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {hot50GoogleCategorySource,hot50CountryCategoryDiscoveryUnits,
  hot50GoogleSourceCadence} from "./hot-50-google-news-category.mjs";
 import {hot50NewOfficialOriginalFeeds} from "./hot-50-new-official-original-feeds.mjs";
-import {hot50FourLaneSourceCrosswalk,observedHot50FourLaneSourceState}
+import {hot50FourLaneSourceCrosswalk,hot50CellFeedFailoverPlan,observedHot50FourLaneSourceState}
  from "./hot-50-four-lane-source-crosswalk.mjs";
 import {orderHot50PrivateFetchJobs} from "./hot-50-private-fetch-priority.mjs";
 import {privateOsintRuntimeSources,rotatingPrivateCountryDiscoverySources}
@@ -26,6 +26,21 @@ test("full Hot-50 crosswalk reflects 50 local source countries, disabled Telegra
  assert.ok(snapshot.countries.every(x=>x.direct_news_osint_feeds.length>0));
  assert.ok(snapshot.countries.flatMap(x=>x.telegram_discovery_candidates)
    .every(x=>!x.publisher_authorized&&x.activation_status==="DISABLED"));
+});
+test("all 150 country-category cells have registry-pinned primary and backup candidates",()=>{
+ const plan=hot50CellFeedFailoverPlan();
+ assert.equal(plan.length,150);
+ assert.equal(new Set(plan.map(x=>x.country_iso3+":"+x.category)).size,150);
+ assert.equal(plan.filter(x=>!x.primary_source_id).length,0);
+ assert.equal(plan.filter(x=>!x.backup_source_ids.length).length,0);
+ assert.ok(plan.every(x=>x.rights_verified===false&&
+  x.commercial_eligible===false&&x.primary_transport_verified===false&&
+  x.backup_transport_verified===false));
+ for(const key of ["RUS:geopolitics","RUS:rare_earth","CHE:geopolitics",
+  "CHE:rare_earth","THA:rare_earth"]){
+  const [country,category]=key.split(":");
+  assert.ok(plan.some(x=>x.country_iso3===country&&x.category===category));
+ }
 });
 test("all 150 exact Google country/category URLs are unique and non-original indexes",()=>{
  const u=new Set();

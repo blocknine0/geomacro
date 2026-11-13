@@ -421,3 +421,32 @@ test("Phase2I burst must fall back to 5 on critical denial or unreliable provide
  assert.equal(q.critical,false);
  assert.equal(q.source_intake_max_new_rows,0);
 });
+
+test("owner-paid envelope admits bounded intake when optional billing read is denied",async()=>{
+ const written=296_438,read=1_000_000;
+ const env={CLOUDFLARE_API_TOKEN:"x".repeat(32),
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"123e4567-e89b-42d3-a456-426614174000"};
+ let subscriptions=0;
+ const result=await checkD1BundledWork({env,now,fetchImpl:async(url)=>{
+  if(url==="https://api.cloudflare.com/client/v4/graphql")
+   return {ok:true,status:200,json:async()=>({data:{viewer:{accounts:[{
+    d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:"db1234567890",date:"2026-10-27"},
+     sum:{rowsRead:read,rowsWritten:written}}]}]}}})};
+  if(url.endsWith("/subscriptions")){subscriptions++;return {ok:false,status:403};}
+  throw Error("unexpected provider URL");
+ }});
+ assert.equal(subscriptions,1);
+ assert.equal(result.owner_d1_normal_envelope.held,false);
+ assert.equal(result.owner_d1_normal_headroom_rows_written,803_562);
+ assert.equal(result.owner_d1_paid_envelope_admission,true);
+ assert.equal(result.workers_paid_subscription_verified,false);
+ assert.equal(result.source_intake,true);
+ assert.equal(result.paid_derived_news_source_lane,true);
+ assert.equal(result.paid_capacity_verified_by_provider,false);
+ assert.equal(result.paid_calls,0);
+ const diagnostic=phase2fQuotaDiagnostic(result);
+ assert.equal(diagnostic.bounded_original_intake_admitted,true);
+ assert.equal(diagnostic.derived_three_category_d1_publisher_admitted,true);
+ assert.equal(diagnostic.billing_or_quota_change_performed,false);
+});

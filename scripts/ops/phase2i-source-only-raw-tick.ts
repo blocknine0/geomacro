@@ -16,7 +16,7 @@ import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
-import {hot50Direct20mPublisherRegistry} from "../lib/hot-50-direct-20m-sources.mjs";
+import {hot50Direct20mPublisherRegistry,hot50Direct20mFailoverCategories} from "../lib/hot-50-direct-20m-sources.mjs";
 import {threeDomainGlobal20mPublisherRegistry} from "../lib/three-domain-global-direct-20m-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
@@ -28,6 +28,7 @@ import {mergePrivatePhase2iSourceBacklog,sealPrivatePhase2iSourceBacklog}
 import {appendAndLeasePhase2i,acknowledgePhase2i,phase2iDurableStatus,
  durableCandidateId} from "../lib/phase2i-durable-queue-client.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+import {HOT50_COUNTRY_SET} from "../lib/hot-50-country-watch.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 
@@ -65,15 +66,51 @@ const direct20m=hot50Direct20m?hot50Direct20mPublisherRegistry():
  threeDomainDirect20m?threeDomainGlobal20mPublisherRegistry(now):null;
 const registry=direct20m?.registry??privateOsintRuntimeSources(now,privateOsintGlobalSources(),
  COUNTRIES_195,{includeLocalGapLane:true});
+const fallbackRegistry=hot50Direct20m?(direct20m?.fallback_registry??[]):[];
+const fallbackPlan=hot50Direct20m?(direct20m?.cell_failover_plan??[]):[];
 const pinnedCategories=new Map(registry.map(source=>[source.url,source.categories]));
+for(const source of fallbackRegistry){
+ const categories=new Set([...(pinnedCategories.get(source.url)??[]),...source.categories]);
+ pinnedCategories.set(source.url,[...categories]);
+}
 const singleSweep=createPhase2iSingleSweepOriginalIndex({
  pinnedCategories,topics:PRIVATE_OSINT_TOPICS,
 });
-const result=await collectPrivateOsint15m({
+let result=await collectPrivateOsint15m({
  now,registry,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
  onOriginalCandidate:singleSweep.observe,
 });
+let globalFailoverCategories=[];
+if(hot50Direct20m&&fallbackRegistry.length){
+ globalFailoverCategories=hot50Direct20mFailoverCategories(
+  fallbackPlan,registry,result.checks);
+ const alreadyFetched=new Set(registry.map(source=>source.url));
+ const backupBatch=fallbackRegistry.filter(source=>
+  source.categories.some(category=>globalFailoverCategories.includes(category))&&
+  !alreadyFetched.has(source.url));
+ if(backupBatch.length){
+  const fallback=await collectPrivateOsint15m({
+   now,registry:backupBatch,normalize:normalizeReusableNewsJson,
+   resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
+   onOriginalCandidate:singleSweep.observe,
+  });
+  const attempted=result.summary.source_endpoints_attempted+
+   fallback.summary.source_endpoints_attempted;
+  const sourceStates={...result.summary.source_states};
+  for(const [state,count] of Object.entries(fallback.summary.source_states))
+   sourceStates[state]=(sourceStates[state]??0)+count;
+  result={...result,items:[...result.items,...fallback.items],
+   checks:[...result.checks,...fallback.checks],
+   summary:{...result.summary,source_endpoints_attempted:attempted,
+    registered_source_endpoints:attempted,source_states,
+    global_hub_failover_attempted:true,
+    global_hub_failover_categories:globalFailoverCategories,
+    global_hub_failover_endpoints:backupBatch.length,
+    global_hub_failover_rights_verified:false,
+    global_hub_failover_commercial_eligible:false}};
+ }
+}
 if(result.summary.configured_country_routes!==195||
  result.summary.configured_country_category_routes!==585||
  result.summary.configured_categories!==3||
@@ -155,6 +192,71 @@ const stage=await stagePhase2iOsintFairRaw({
 });
 if(stage.selected_count>0&&stage.d1_readback_verified!==true)
  throw Error("PHASE2I_SOURCE_ONLY_RAW_D1_RECEIPT_UNVERIFIED");
+const verifiedStageIds=new Set(stage.verified_record_ids??[]);
+const newlyAcknowledged=queue.candidates.filter(candidate=>{
+ if(candidate.d1Acknowledged===true)return false;
+ const native=candidate.datePrecision==="day"?
+  candidate.publishedAt.slice(0,10):candidate.publishedAt;
+ const id=createHash("sha256").update(
+  candidate.category+"\n+candidate.articleUrl+"\n+native).digest("hex");
+ return verifiedStageIds.has(id);
+});
+const projectedByKey=new Map();
+for(const candidate of newlyAcknowledged){
+ const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
+ if(!countryIso3||!HOT50_COUNTRY_SET.has(countryIso3))continue;
+ let article,source;
+ try{article=new URL(candidate.articleUrl);source=new URL(candidate.sourceUrl)}catch{continue}
+ if(article.protocol!=="https:"||source.protocol!=="https:"||
+    article.username||article.password||article.port||article.hash||
+    source.username||source.password||source.port)continue;
+ const eventClock=candidate.datePrecision==="day"?
+  candidate.publishedAt.slice(0,10)+"T00:00:00.000Z":candidate.publishedAt;
+ const time=Date.parse(eventClock);
+ if(!Number.isFinite(time)||time>now.getTime()+60000||
+    time<now.getTime()-72*3600000)continue;
+ const normalizedTitle=String(candidate.title??"").normalize("NFKC")
+  .toLocaleLowerCase("en").replace(/\s+/gu," ").trim();
+ if(normalizedTitle.length<8||normalizedTitle.length>1200)continue;
+ const domain=article.hostname.toLowerCase().replace(/^www\./u,"");
+ const fingerprint=createHash("sha256").update([
+  countryIso3,candidate.category,eventClock,normalizedTitle
+ ].join("|")).digest("hex");
+ const title_sha256=createHash("sha256").update(candidate.title).digest("hex");
+ const key=[countryIso3,candidate.category,fingerprint,domain].join("|");
+ if(projectedByKey.has(key))continue;
+ projectedByKey.set(key,{
+  country_iso3:countryIso3,derived_category:candidate.category,
+  event_fingerprint:fingerprint,publisher_domain:domain,
+  canonical_source_url:article.href,event_clock:new Date(time).toISOString(),
+  clock_basis:"INDEX_OBSERVED",extracted_entities:[],
+  source_id:source.hostname.toLowerCase().replace(/^www\./u,""),
+  title_sha256,fact_basis:"SEARCH_TITLE_ONLY",original_page_fetched:false,
+  rights_verified:false,commercial_eligible:false,
+ });
+}
+const progressiveProjection=[...projectedByKey.values()];
+let progressiveProjectionAccepted=0;
+for(let offset=0;offset<progressiveProjection.length;offset+=25){
+ const observations=progressiveProjection.slice(offset,offset+25);
+ const response=await fetch("https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-observations",{
+  method:"POST",redirect:"error",cache:"no-store",
+  headers:{"Authorization":"Bearer "+controlToken,"Accept":"application/json",
+   "Content-Type":"application/json","Cache-Control":"no-store"},
+  body:JSON.stringify({schema:"geomacro.progressive-observation-projection-request.v1",observations}),
+  signal:AbortSignal.timeout(12000),
+ });
+ if(!response.ok)throw Error("PROGRESSIVE_OBSERVATION_PROJECTION_HTTP_"+response.status);
+ const receipt=await response.json();
+ if(receipt?.ok!==true||receipt.schema!=="geomacro.progressive-observation-projection.v1"||
+    receipt.accepted!==observations.length||
+    receipt.unverified_observations!==observations.length||
+    receipt.rights_verified!==false||receipt.commercial_eligible!==false||
+    receipt.standard_corroboration_admitted!==false||receipt.raw_news_text_stored!==false)
+  throw Error("PROGRESSIVE_OBSERVATION_PROJECTION_RECEIPT_INVALID");
+ progressiveProjectionAccepted+=receipt.accepted;
+}
+
 // A healthy, genuinely checked feed is a check heartbeat even with zero
 // new native-dated stories. Persist three sanitized category checks in D1
 // and independently read them back; never create an article or renew clocks

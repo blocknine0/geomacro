@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync,webcrypto,verify as verifyEd25519,createHash,createHmac} from "node:crypto";
-import {admitProgressiveRiskFacts} from "../../workers/control-plane/src/news-intake-policy.mjs";
+import {admitProgressiveRiskFacts,projectUnverifiedProgressiveObservations} from "../../workers/control-plane/src/news-intake-policy.mjs";
 import {
   readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,
   signProgressiveDecision,canonicalProgressiveJson,sevenDayRollupIsReady,
@@ -17,9 +17,19 @@ function fixture(){
  const sqlite=new DatabaseSync(":memory:");
  sqlite.exec(readFileSync(new URL("../../workers/control-plane/migrations/0201_progressive_risk_gate_facts.sql",import.meta.url),"utf8"));
  sqlite.exec(`CREATE TABLE unverified_observations (
-   event_id TEXT, entity_type TEXT, entity_id TEXT, event_at TEXT,
-   status TEXT, fact_basis TEXT, original_page_fetched INTEGER,
-   independent_source_count INTEGER, source_host TEXT
+   observation_id TEXT PRIMARY KEY CHECK(length(observation_id)=64),
+   event_id TEXT NOT NULL CHECK(length(event_id)=64),
+   entity_type TEXT NOT NULL CHECK(entity_type IN ('COUNTRY','CORRIDOR')),
+   entity_id TEXT NOT NULL,
+   category TEXT NOT NULL DEFAULT 'GEOPOLITICS' CHECK(category IN ('GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS')),
+   event_at TEXT NOT NULL,source_id TEXT NOT NULL,source_host TEXT NOT NULL,
+   title_sha256 TEXT NOT NULL CHECK(length(title_sha256)=64),
+   impact_factor REAL CHECK(impact_factor IS NULL OR impact_factor BETWEEN 0 AND 100),
+   fact_basis TEXT NOT NULL CHECK(fact_basis IN ('ARTICLE_FULL_TEXT','SEARCH_TITLE_ONLY')),
+   original_page_fetched INTEGER NOT NULL CHECK(original_page_fetched IN (0,1)),
+   status TEXT NOT NULL DEFAULT 'OBSERVED' CHECK(status IN ('OBSERVED','CORROBORATED')),
+   independent_source_count INTEGER NOT NULL DEFAULT 1 CHECK(independent_source_count BETWEEN 1 AND 40),
+   discovered_at TEXT NOT NULL,UNIQUE(event_id,source_host)
  )`);
  return {sqlite,env:{DB:{prepare(query){return {bind(...args){const stmt=sqlite.prepare(query);return {
    run:async()=>stmt.run(...args),first:async()=>stmt.get(...args),
@@ -85,8 +95,8 @@ test("Google-index attribution never becomes verified source corroboration",asyn
 test("existing continuously polled news index produces Basic without a signed GRO",async()=>{
  const {sqlite,env}=fixture();
  try{
-   sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?)")
-     .run("index-event-1","COUNTRY","IND",at,"OBSERVED","SEARCH_TITLE_ONLY",0,1,"reuters.com");
+   sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,source_id,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?,?)")
+     .run("index-event-1","COUNTRY","IND",at,"reuters.com","OBSERVED","SEARCH_TITLE_ONLY",0,1,"reuters.com");
    const observed=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
    assert.equal(observed.distinct_events,1);
    const provisional=provisionalRiskGate({
@@ -101,9 +111,9 @@ test("existing continuously polled news index produces Basic without a signed GR
 test("native original-page corroboration from the existing 20m collector auto-promotes Standard",async()=>{
  const {sqlite,env}=fixture();
  try{
-   const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?)");
-   add.run("native-event-1","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
-   add.run("native-event-1","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"aninews.in");
+   const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,source_id,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?,?)");
+   add.run("native-event-1","COUNTRY","IND",at,"reuters.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
+   add.run("native-event-1","COUNTRY","IND",at,"aninews.in","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"aninews.in");
    const observed=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
    assert.equal(observed.corroboration_sources_count,2);
    assert.equal(observed.standard_ready,true);
@@ -113,23 +123,23 @@ test("native original-page corroboration from the existing 20m collector auto-pr
 test("a single claimed two-publisher counter never promotes Standard without two true page rows for the same event",async()=>{
  const {sqlite,env}=fixture();
  try{
-  const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?)");
+  const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,source_id,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?,?)");
   // One real original page with a forged or stale second-publisher count.
-  add.run("shared-event","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
+  add.run("shared-event","COUNTRY","IND",at,"reuters.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
   let r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.distinct_events,1);
   assert.equal(r.standard_ready,false);
   assert.equal(r.corroboration_sources_count,0);
   // An index-only repost from another host is not an original-page proof.
-  add.run("shared-event","COUNTRY","IND",at,"CORROBORATED","SEARCH_TITLE_ONLY",0,2,"index.example");
+  add.run("shared-event","COUNTRY","IND",at,"index.example","CORROBORATED","SEARCH_TITLE_ONLY",0,2,"index.example");
   r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.standard_ready,false);
   // A real page from a different event still cannot corroborate this event.
-  add.run("other-event","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"bbc.com");
+  add.run("other-event","COUNTRY","IND",at,"bbc.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"bbc.com");
   r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.standard_ready,false);
   // Only a second genuine page FROM ANOTHER publisher for the SAME event.
-  add.run("shared-event","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"apnews.com");
+  add.run("shared-event","COUNTRY","IND",at,"apnews.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"apnews.com");
   r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.standard_ready,true);
   assert.equal(r.corroboration_sources_count,2);
@@ -232,4 +242,32 @@ test("Ed25519 signature binds complete canonical progressive decision payload",a
    Buffer.from(signed.decision_signature_b64,"base64")),true);
  assert.equal(verifyEd25519(null,Buffer.from(canonical.replace("PAUSE","CONTINUE")),publicKey,
    Buffer.from(signed.decision_signature_b64,"base64")),false);
+});
+
+test("D1 projection persists unverified metadata but cannot satisfy Standard rights/corroboration gates",async()=>{
+ const {sqlite,env}=fixture();
+ try{
+  const candidate={
+   country_iso3:"IND",derived_category:"geopolitics",
+   event_fingerprint:"b".repeat(64),publisher_domain:"example.gov.in",
+   canonical_source_url:"https://example.gov.in/news/release-1",
+   event_clock:at,clock_basis:"INDEX_OBSERVED",
+   extracted_entities:["IND"],source_id:"example.gov.in",
+   title_sha256:"c".repeat(64),fact_basis:"SEARCH_TITLE_ONLY",
+   original_page_fetched:false,rights_verified:false,commercial_eligible:false,
+  };
+  const receipt=await projectUnverifiedProgressiveObservations(env,[candidate],NOW);
+  assert.equal(receipt.accepted,1);
+  assert.equal(receipt.unverified_observations,1);
+  assert.equal(receipt.rights_verified,false);
+  assert.equal(receipt.commercial_eligible,false);
+  assert.equal(receipt.standard_corroboration_admitted,false);
+  const row=sqlite.prepare("SELECT status,fact_basis,original_page_fetched,independent_source_count FROM unverified_observations").get();
+  assert.deepEqual({...row},{status:"OBSERVED",fact_basis:"SEARCH_TITLE_ONLY",
+   original_page_fetched:0,independent_source_count:1});
+  const facts=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+  assert.equal(facts.distinct_events,1);
+  assert.equal(facts.standard_ready,false);
+  assert.equal(progressiveTierMatrix(facts,false,false).standard.status,"PENDING");
+ }finally{sqlite.close()}
 });

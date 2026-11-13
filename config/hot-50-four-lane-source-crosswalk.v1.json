@@ -3298,5 +3298,79 @@
       "on_demand_gdelt_shared": true,
       "no_event_or_rights_certification": true
     }
+  ],
+  "global_category_failover_candidates": [
+    {
+      "id": "private_global_hub_un_all_documents",
+      "registry_name": "un_all_documents_rss",
+      "url": "https://docs.un.org/rss/allundocs.xml",
+      "categories": [
+        "geopolitics"
+      ],
+      "kind": "official_global_hub_candidate",
+      "transport_verified": false,
+      "rights_verified": false,
+      "commercial_eligible": false
+    },
+    {
+      "id": "private_global_hub_un_hq_press",
+      "registry_name": "un_hq_official_press_rss",
+      "url": "https://press.un.org/en/rss.xml",
+      "categories": [
+        "geopolitics"
+      ],
+      "kind": "official_global_hub_candidate",
+      "transport_verified": false,
+      "rights_verified": false,
+      "commercial_eligible": false
+    },
+    {
+      "id": "private_global_hub_federal_reserve",
+      "registry_name": "federal_reserve_press_rss",
+      "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "categories": [
+        "macro"
+      ],
+      "kind": "official_global_hub_candidate",
+      "transport_verified": false,
+      "rights_verified": false,
+      "commercial_eligible": false
+    },
+    {
+      "id": "private_global_hub_ecb_press",
+      "registry_name": "ecb_press_rss",
+      "url": "https://www.ecb.europa.eu/rss/press.html",
+      "categories": [
+        "macro"
+      ],
+      "kind": "official_global_hub_candidate",
+      "transport_verified": false,
+      "rights_verified": false,
+      "commercial_eligible": false
+    },
+    {
+      "id": "private_global_hub_usgs_minerals",
+      "registry_name": "usgs_minerals_news_rss",
+      "url": "https://www.usgs.gov/news/minerals/feed",
+      "categories": [
+        "rare_earth"
+      ],
+      "kind": "official_global_hub_candidate",
+      "transport_verified": false,
+      "rights_verified": false,
+      "commercial_eligible": false
+    },
+    {
+      "id": "private_global_hub_doe_critical_materials",
+      "registry_name": "doe_critical_materials_rss",
+      "url": "https://www.energy.gov/rss/energygov/2193718",
+      "categories": [
+        "rare_earth"
+      ],
+      "kind": "official_global_hub_candidate",
+      "transport_verified": false,
+      "rights_verified": false,
+      "commercial_eligible": false
+    }
   ]
 }
