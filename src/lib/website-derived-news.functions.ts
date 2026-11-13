@@ -5,7 +5,7 @@ export type {WebsiteDerivedNewsResult} from "./website-derived-news-reader.serve
 export const getWebsiteDerivedNews = createServerFn({method:"GET"})
  .handler(async():Promise<WebsiteDerivedNewsResult>=>{
   const {setResponseHeaders}=await import("@tanstack/react-start/server");
-  setResponseHeaders(new Headers({"Cache-Control":"no-store","CDN-Cache-Control":"no-store"}));
+  setResponseHeaders(new Headers({"Cache-Control":"public, max-age=60, stale-while-revalidate=300"}));
   const {readWebsiteDerivedNews}=await import("./website-derived-news-reader.server");
   return readWebsiteDerivedNews();
  });

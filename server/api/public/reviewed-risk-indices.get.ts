@@ -1,8 +1,9 @@
 import {createHash,createPublicKey,verify as edVerify} from "node:crypto";
-import {defineEventHandler,setResponseHeaders,setResponseStatus,type H3Event} from "h3";
+import {defineEventHandler,setResponseStatus,type H3Event} from "h3";
 import {fetchWithoutRedirect} from "../../../src/lib/fetch-without-redirect";
 import {canonicalRiskObjectJson} from "../../../src/lib/risk-object-signing.server";
 import type {PublicRiskIndices} from "../../../src/lib/risk-indices.types";
+import {publicResponseCache} from "./public-response-cache.server";
 
 /** Same-origin verified bridge; never echoes an unsigned numeric package. */
 const WORKER="https://geomacro-control-plane.daspallab202391.workers.dev";
@@ -11,10 +12,8 @@ const fail=(event:H3Event)=>{
   return {ok:false,code:"CURRENT_REVIEWED_SIGNED_THREE_INDICES_UNAVAILABLE",
     message:"Awaiting current genuine reviewed GRI input and three signed readings."};
 };
-export default defineEventHandler(async event=>{
- setResponseHeaders(event,{"Cache-Control":"public, max-age=20",
-  "Content-Type":"application/json; charset=utf-8","X-Content-Type-Options":"nosniff",
-  "X-Robots-Tag":"noindex,nofollow"});
+export default defineEventHandler(async event=>publicResponseCache(event,
+ "public-reviewed-risk-indices-v1",async()=>{
  try{
   const [response,keyResponse]=await Promise.all([
    fetchWithoutRedirect(WORKER+"/v1/public/reviewed-risk-indices",{
@@ -78,4 +77,4 @@ export default defineEventHandler(async event=>{
     source_as_of:payload.source_as_of,
     payload_sha256:doc.payload_sha256}};
  }catch{return fail(event)}
-});
+}));

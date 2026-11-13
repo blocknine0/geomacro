@@ -41,6 +41,12 @@ type RiskIndicesReadTarget =
 const REQUEST_TIMEOUT_MS = RISK_INDICES_REQUEST_TIMEOUT_MS;
 const VERIFIED_READ_CACHE_MS = RISK_INDICES_VERIFIED_CACHE_MS;
 const REVIEWED_SIGNED_RISK_INDICES_APP_URL="/api/public/reviewed-risk-indices";
+function canonicalPublicJson(value:unknown):string{
+ if(value===null||typeof value!=="object")return JSON.stringify(value);
+ if(Array.isArray(value))return "["+value.map(canonicalPublicJson).join(",")+"]";
+ return "{"+Object.keys(value as Record<string,unknown>).sort().map(key=>
+  JSON.stringify(key)+":"+canonicalPublicJson((value as Record<string,unknown>)[key])).join(",")+"}";
+}
 type SignedReviewedIndicesResponse={
   ok:boolean;data?:PublicRiskIndices;
   meta?:{authority?:string;signature_verified?:boolean;signature_scheme?:string;
@@ -74,11 +80,10 @@ async function readCurrentReviewedSignedIndices():Promise<PublicRiskIndices>{
 
 let lastCertifiedRead: { loadedAt: number; data: PublicRiskIndices } | null = null;
 // One in-flight read per browser JS context even when both Risk Indices and
-// Intelligence panels mount concurrently. No failure response is cached as a
-// certified reading, and no immediate 503 retry burst is permitted.
+// Intelligence panels mount concurrently. No failure response is cached.
 let inFlightCertifiedRead: Promise<PublicRiskIndices> | null = null;
 
-/** Cache only fully validated Ed25519-reviewed current data. */
+/** Cache a validated reviewed index or the distinct self-certified 72h proxy. */
 async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<PublicRiskIndices> {
   if (!forceRefresh && lastCertifiedRead &&
       Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS &&
@@ -88,8 +93,13 @@ async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<Publi
     return lastCertifiedRead.data;
   }
   if (inFlightCertifiedRead) return inFlightCertifiedRead;
-  // Genuine reviewed GRI v1.2 only, never self-certified news severity.
-  const pending = readCurrentReviewedSignedIndices().then(data => {
+  // The live view consumes the shared self-certified journal projection first.
+  // Genuine reviewed GRI remains an unchanged, separate fallback with its own
+  // reviewer and 7D/30D acceptance requirements.
+  const pending = (async()=>{
+   try{return await readGeoMacroCertifiedNewsRisk()}
+   catch{return await readCurrentReviewedSignedIndices()}
+  })().then(data => {
     lastCertifiedRead = { loadedAt: Date.now(), data };
     return data;
   });
@@ -107,7 +117,7 @@ const METHODOLOGY = "gri-v1.2.0";
 export const RISK_INDICES_EDGE_URL =
   "https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices";
 export const GEOMACRO_CERTIFIED_NEWS_GRI_URL =
-  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/geomacro-certified-news-severity-gri";
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/geomacro-news-severity-risk-indices";
 const RISK_INDICES_APP_URL = "/api/public/risk-indices";
 
 const READ_TARGETS: RiskIndicesReadTarget[] = [
@@ -190,45 +200,74 @@ async function readWithFailover(): Promise<PublicRiskIndices> {
 
 /**
  * Dedicated GeoMacro-issued (NOT independently reviewed) news severity GRI.
- * Browser relies on the pinned GeoMacro HTTPS authority and checks the exact
- * public payload hash, issuer metadata and self-certification scope.
- * The HMAC signature itself is verifiable only by the issuer holding its key.
+ * Browser verifies GeoMacro's Ed25519 delivery signature and preserves the
+ * separate self-certified 72h methodology scope.
  */
 export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices> {
-  const response = await fetch(GEOMACRO_CERTIFIED_NEWS_GRI_URL, {
-    method:"GET",redirect:"error",cache:"no-store",credentials:"omit",
+  const [response,keyResponse] = await Promise.all([fetch(GEOMACRO_CERTIFIED_NEWS_GRI_URL, {
+    method:"GET",redirect:"error",cache:"default",credentials:"omit",
     headers:{Accept:"application/json"},
     signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+  }),fetch("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/risk-gate-decision-key",{
+    method:"GET",redirect:"error",cache:"default",credentials:"omit",
+    headers:{Accept:"application/json"},signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)})]);
   if(!response.ok||response.redirected ||
      response.headers.get("x-geomacro-certification")!=="geomacro-self-certified-news-severity-v1"||
      response.headers.get("x-geomacro-methodology")!=="geomacro-news-severity-v1.1.0")
     throw Error("GEOMACRO_NEWS_GRI_AUTHORITY_UNAVAILABLE");
   const doc=await response.json() as {
     schema?:string;issuer?:string;scope?:string;independent_third_party_certified?:boolean;
-    generated_at?:string;data?:PublicRiskIndices;
-    certification?:{issuer?:string;scheme?:string;signed_payload_sha256?:string;
-      signature_hex?:string;independent_external_audit?:boolean};
+    generated_at?:string;data?:PublicRiskIndices & {source_snapshot?:{checked_at?:string;payload_sha256?:string}};
+    ed25519_delivery?:{schema?:string;signature_scheme?:string;signature_key_id?:string;
+      signature_b64?:string;payload_sha256?:string;proof_scope?:string;
+      independent_third_party_certified?:boolean;source_event_facts_independently_verified?:boolean;
+      source_checked_at?:string;source_payload_sha256?:string};
   };
-  const cert=doc.certification;
+  const delivery=doc.ed25519_delivery;
   const indices=doc.data?.indices;
   const stamp=Date.parse(doc.generated_at??"");
   if(doc.schema!=="geomacro.self-certified-news-severity-gri.v1"||
      doc.issuer!=="GeoMacro"||
      doc.scope!=="GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_CALCULATION_ONLY"||
      doc.independent_third_party_certified!==false||
-     cert?.issuer!=="GeoMacro"||cert.scheme!=="HMAC-SHA256"||
-     cert.independent_external_audit!==false||
-     !/^[a-f0-9]{64}$/u.test(cert.signature_hex??"")||
-     !/^[a-f0-9]{64}$/u.test(cert.signed_payload_sha256??"")||
      !Number.isFinite(stamp)||stamp>Date.now()+60_000||Date.now()-stamp>5*60_000||
      doc.data?.snapshotAsOf!==doc.generated_at||
      doc.data?.parentMethodologyVersion!=="geomacro-news-severity-v1.1.0"||
      doc.data.proofScope!=="geomacro-news-severity"||
      doc.data.verificationStatus!=="verified"||
      doc.data.contractVersion!==PUBLIC_RISK_INDICES_CONTRACT_VERSION||
-     !Array.isArray(indices)||indices.length!==3)
+     !Array.isArray(indices)||indices.length!==3||
+     !keyResponse.ok||keyResponse.redirected)
    throw Error("GEOMACRO_NEWS_GRI_CERTIFICATION_INVALID");
+  const keyInfo=await keyResponse.json() as {ok?:boolean;scheme?:string;key_id?:string;public_key_spki_b64?:string};
+  const signedReport={...doc};delete signedReport.ed25519_delivery;
+  const canonical=canonicalPublicJson(signedReport);
+  const bytes=new TextEncoder().encode(canonical);
+  const hashBytes=new Uint8Array(await crypto.subtle.digest("SHA-256",bytes));
+  const payloadHash=Array.from(hashBytes,b=>b.toString(16).padStart(2,"0")).join("");
+  if(delivery?.schema!=="geomacro.news-severity-ed25519-delivery.v1"||
+     delivery.signature_scheme!=="Ed25519"||
+     delivery.proof_scope!=="GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_CALCULATION_ONLY"||
+     delivery.independent_third_party_certified!==false||
+     delivery.source_event_facts_independently_verified!==false||
+     !Number.isFinite(Date.parse(delivery.source_checked_at??""))||
+     !/^[a-f0-9]{64}$/u.test(delivery.source_payload_sha256??"")||
+     doc.data?.source_snapshot?.checked_at!==delivery.source_checked_at||
+     doc.data?.source_snapshot?.payload_sha256!==delivery.source_payload_sha256||
+     keyInfo.ok!==true||keyInfo.scheme!=="Ed25519"||
+     keyInfo.key_id!==delivery.signature_key_id||
+     response.headers.get("x-geomacro-signature")!==delivery.signature_b64||
+     response.headers.get("x-geomacro-signing-key-id")!==delivery.signature_key_id||
+     response.headers.get("x-geomacro-payload-sha256")!==delivery.payload_sha256||
+     payloadHash!==delivery.payload_sha256||typeof keyInfo.public_key_spki_b64!=="string"||
+     !/^[A-Za-z0-9+/]{55,120}={0,2}$/u.test(keyInfo.public_key_spki_b64))
+    throw Error("GEOMACRO_NEWS_GRI_ED25519_ENVELOPE_INVALID");
+  const key=await crypto.subtle.importKey("spki",Uint8Array.from(atob(keyInfo.public_key_spki_b64),x=>x.charCodeAt(0)),
+    {name:"Ed25519"},false,["verify"]);
+  const signature=Uint8Array.from(atob(delivery.signature_b64),x=>x.charCodeAt(0));
+  if(key.algorithm.name!=="Ed25519"||signature.length!==64||
+     !await crypto.subtle.verify("Ed25519",key,signature,bytes))
+    throw Error("GEOMACRO_NEWS_GRI_ED25519_SIGNATURE_INVALID");
   const domain=new Set(["geopolitics","macro","critical_minerals"]);
   for(const index of indices){
     if(!domain.delete(index.key)||!["available","unavailable"].includes(index.status)||
@@ -279,11 +318,11 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
     }
   }
 
-  const {certification:_,...signed}=doc;
+  const signed={...doc};delete signed.certification;delete signed.ed25519_delivery;
   const signedBytes=new TextEncoder().encode(JSON.stringify(signed));
   const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",signedBytes));
-  const hash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
-  if(hash!==cert.signed_payload_sha256)
+  const hmacPayloadHash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
+  if(hmacPayloadHash!==cert.signed_payload_sha256)
     throw Error("GEOMACRO_NEWS_GRI_SIGNED_PAYLOAD_MISMATCH");
   return doc.data;
 }

@@ -315,25 +315,24 @@ export async function fetchPermanentDerivedNews(
  */
 /** Backward-compatible page reader used only while an older Worker rolls out. */
 async function fetchAllDerivedNewsLegacy(
-  fetchImpl:typeof fetch,now:number,
+  fetchImpl:typeof fetch,now:number,{fresh=true}:{fresh?:boolean}={},
 ):Promise<StatelessIntelligenceSignal[]> {
   const collected:StatelessIntelligenceSignal[]=[];
   const seen=new Set<string>();
   for(const offset of [0,250,500]){
     const url=GEOMACRO_DERIVED_JOURNAL_URL+(offset===0?"":"?offset="+offset);
-    // The page fallback is used only for a rolling deployment; request
-    // exact fresh pages because the old Worker may serve a longer public TTL.
-    const response=await fetchPublicReadWithRetry(fetchImpl,url,{
-      method:"GET",redirect:"error",cache:"no-store",
-      headers:{Accept:"application/json","Cache-Control":"no-cache"},
-    },8_000);
+    const headers:Record<string,string>={Accept:"application/json"};
+    if(fresh)headers["Cache-Control"]="no-cache";
+    const init:RequestInit={method:"GET",redirect:"error",headers};
+    if(fresh)init.cache="no-store";
+    const response=await fetchPublicReadWithRetry(fetchImpl,url,init,8_000);
     if(!response.ok||Number(response.headers.get("content-length")??0)>512_000)
       throw Error("DERIVED_NEWS_PAGE_UNAVAILABLE");
     const body=await response.text();
     if(body.length>512_000)throw Error("DERIVED_NEWS_PAGE_TOO_LARGE");
     const doc=JSON.parse(body) as Record<string,unknown>;
     const checkedAt=Date.parse(String(doc.checked_at??""));
-    if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>30_000)
+    if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>(fresh?30_000:360_000))
       throw Error("DERIVED_NEWS_PAGE_STALE_READBACK");
     if(doc.page_offset!==offset||doc.page_size!==250||typeof doc.has_more!=="boolean")
       throw Error("DERIVED_NEWS_PAGE_CONTRACT_INVALID");
@@ -366,6 +365,10 @@ export async function fetchAllDerivedNews(
   if(canonical&&!/^[a-f0-9]{64}$/u.test(options.canonicalOriginToken??""))
     throw Error("DERIVED_NEWS_CANONICAL_AUTH_INVALID");
   const fresh=canonical||options.fresh!==false;
+  // Browser/SSR intelligence and the Worker GRI projection consume these
+  // exact same cacheable immediate-feed pages, so a later risk read does not
+  // issue a second D1 query for an already-cached page.
+  if(!canonical)return fetchAllDerivedNewsLegacy(fetchImpl,now,{fresh});
   // Ordinary website/Ask reads may use the Worker’s short 15s per-POP cache.
   // Exact publication/acceptance callers explicitly set fresh:true, which
   // bypasses that cache without turning every user read into a D1 query.
@@ -401,7 +404,8 @@ export async function fetchAllDerivedNews(
   if(!canonical&&doc.schema==="geomacro.website-derived-news-feed.v1")
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
   const checkedAt=Date.parse(String(doc.checked_at??""));
-  if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>30_000)
+  const maxBundleAgeMs=options.fresh===false?360_000:30_000;
+  if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>maxBundleAgeMs)
     throw Error("DERIVED_NEWS_BUNDLE_STALE_READBACK");
   if(doc.ok!==true||doc.schema!=="geomacro.website-derived-news-bundle.v1"||
      doc.original_release_delay_minutes!==0||doc.retention_days!==3||

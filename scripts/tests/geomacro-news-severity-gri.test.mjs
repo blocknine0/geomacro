@@ -1,11 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createHmac,createHash} from "node:crypto";
+import {createHmac,createHash,generateKeyPairSync,verify as verifySignature} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {
  NEWS_GRI_SCHEMA,NEWS_GRI_METHOD,certifiedNewsSeverityGriFromSignals,
- serveSelfCertifiedNewsSeverityGri,
+ serveSelfCertifiedNewsSeverityGri,serveSnapshotNewsSeverityGri,
 } from "../../workers/control-plane/src/geomacro-news-severity-gri.mjs";
+import {canonicalProgressiveJson} from "../../workers/control-plane/src/progressive-risk-gate.mjs";
+import {withPublicEtag} from "../../workers/control-plane/src/public-http-etag.mjs";
 
 const NOW=Date.parse("2026-10-28T16:30:00.000Z");
 const SECRET="geo-macro-news-grading-test-secret-".repeat(2);
@@ -141,11 +143,11 @@ test("source failure and absent server-held issuer credential fail closed",async
  assert.equal(absent.status,503);
 });
 test("public endpoint returns only self-certified, source-neutral report, no raw providers",async()=>{
- const db=testLastQualifiedDb();
+ const db=new Proxy({}, {get(){throw Error("unexpected D1 read")}});
  const out=await serveSelfCertifiedNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:db},{
   now:NOW,source:async()=>Response.json({
-   ok:true,schema:"geomacro.website-derived-news-bundle.v1",complete:true,
-   retention_hours:72,returned_rows:SOURCE.length,signals:SOURCE
+   ok:true,schema:"geomacro.website-derived-news-feed.v1",checked_at:new Date(NOW).toISOString(),
+   retention_hours:72,signals:SOURCE
   })
  });
  assert.equal(out.status,200);
@@ -155,15 +157,65 @@ test("public endpoint returns only self-certified, source-neutral report, no raw
  assert.equal(body.certification.issuer,"GeoMacro");
  assert.doesNotMatch(JSON.stringify(body),/source_url|articleUrl|raw_upstream|private_key/);
 });
+test("read-only snapshot projection signs the shared 72h journal without touching D1",async()=>{
+ const {privateKey,publicKey}=generateKeyPairSync("ed25519");
+ const privateB64=privateKey.export({format:"der",type:"pkcs8"}).toString("base64");
+ const publicB64=publicKey.export({format:"der",type:"spki"}).toString("base64");
+ let reads=0;
+ let d1Queries=0;
+ const db=new Proxy({}, {get(){throw Error("unexpected D1 access")}});
+ let cachedSource;
+ const readCachedSource=async()=>{
+  reads++;
+  if(!cachedSource){d1Queries++;cachedSource=Response.json({ok:true,
+   schema:"geomacro.website-derived-news-feed.v1",checked_at:new Date(NOW).toISOString(),
+   retention_hours:72,signals:SOURCE});}
+  return cachedSource.clone();
+ };
+ const out=await serveSnapshotNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:db,
+  RISK_GATE_DECISION_ED25519_KEY_ID:"test-news-key",
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateB64,
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicB64},{now:NOW,
+  source:readCachedSource});
+ assert.equal(out.status,200);assert.equal(reads,1);
+ const firstDoc=await out.json();
+ const {ed25519_delivery:delivery,...payload}=firstDoc;
+ assert.equal(payload.data.indices.length,3);
+ assert.equal(payload.data.proofScope,"geomacro-news-severity");
+ assert.equal(payload.data.parentMethodologyVersion,"geomacro-news-severity-v1.1.0");
+ assert.ok(payload.data.indices.every(index=>index.sourceMix.osint_event_facts_verified===false));
+ assert.equal(delivery.independent_third_party_certified,false);
+ assert.equal(delivery.source_checked_at,new Date(NOW).toISOString());
+ assert.match(delivery.source_payload_sha256,/^[a-f0-9]{64}$/u);
+ assert.deepEqual(payload.source_snapshot,{checked_at:delivery.source_checked_at,
+  payload_sha256:delivery.source_payload_sha256});
+ assert.equal(d1Queries,1,"the source cache is filled once; the projection performs no D1 access");
+ assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(payload)),
+  publicKey,Buffer.from(delivery.signature_b64,"base64")),true);
+ const again=await serveSnapshotNewsSeverityGri({RISK_GATE_DECISION_ED25519_KEY_ID:"test-news-key",
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateB64,
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicB64},{now:NOW+1_000,
+  source:readCachedSource});
+ assert.equal(again.status,200);assert.equal(reads,2);assert.equal(d1Queries,1);
+ const same=await again.json();assert.deepEqual(same,firstDoc);
+ const firstEtagResponse=await withPublicEtag(new Request("https://worker.test/gri"),
+  Response.json(firstDoc,{headers:{"Cache-Control":"public, max-age=60, stale-while-revalidate=300"}}));
+ const etag=firstEtagResponse.headers.get("ETag");
+ const notModified=await withPublicEtag(new Request("https://worker.test/gri",{
+  headers:{"If-None-Match":etag}}),Response.json(same));
+ assert.equal(notModified.status,304);assert.equal(await notModified.text(),"");
+});
 test("self-certified news severity remains separate; public Risk Indices require genuine reviewed GRI",()=>{
  const worker=readFileSync("workers/control-plane/src/index.mjs","utf8");
  const hook=readFileSync("src/lib/use-risk-indices.ts","utf8");
  const view=readFileSync("src/components/risk-indices/risk-indices-workspace.tsx","utf8");
  assert.match(worker,/serveSelfCertifiedNewsSeverityGri/u);
  assert.match(worker,/\/v1\/public\/geomacro-certified-news-severity-gri/u);
+ assert.match(worker,/\/v1\/public\/geomacro-news-severity-risk-indices/u);
  assert.match(worker,/\/v1\/public\/reviewed-risk-indices/u);
  assert.match(hook,/async function readCurrentReviewedSignedIndices\(\)/u);
- assert.match(hook,/const pending = readCurrentReviewedSignedIndices\(\)\.then\(data =>/u);
+ assert.match(hook,/readCurrentReviewedSignedIndices\(\)/u);
+ assert.match(hook,/readGeoMacroCertifiedNewsRisk\(\)/u);
  assert.match(hook,/readCachedCertifiedNewsRisk\(forceRefresh\)/u);
  assert.match(hook,/body\.meta\.signature_verified!==true/u);
  assert.match(view,/Reviewer-gated GRI v1.2/u);
@@ -210,135 +262,26 @@ test("GeoMacro OSINT stays low-weight and historical bins never increase source 
  assert.equal(out.independent_third_party_certified,false);
 });
 
-function testLastQualifiedDb(){
- const rows=new Map();
- const queries={reads:0,writes:0};
- return {rows,queries,
-  prepare(sql){
-   let args=[];
-   return {
-    bind(...next){args=next;return this},
-    async all(){
-     assert.match(sql,/SELECT category,methodology_version,index_json/u);
-     queries.reads++;
-     return {results:[...rows.values()].map(x=>({...x}))};
-    },
-    async run(){
-     assert.match(sql,/INSERT INTO geomacro_news_gri_last_verified/u);
-     const [category,methodology_version,index_json,index_sha256,
-      evidence_sha256,fingerprints_json,expected]=args;
-     const old=rows.get(category);
-     if(old && old.revision!==expected)return {success:true,meta:{changes:0}};
-     if(!old&&expected!==0)return {success:true,meta:{changes:0}};
-     rows.set(category,{category,methodology_version,index_json,index_sha256,
-      evidence_sha256,fingerprints_json,revision:(old?.revision??0)+1});
-     queries.writes++;
-     return {success:true,meta:{changes:1}};
-    },
-   };
-  },
- };
-}
-const NEWS_BUNDLE=signals=>async()=>Response.json({
- ok:true,schema:"geomacro.website-derived-news-bundle.v1",complete:true,
- retention_hours:72,returned_rows:signals.length,signals,
-});
-const served=async(db,signals,now=NOW)=>{
- const response=await serveSelfCertifiedNewsSeverityGri(
-  {CONTROL_PLANE_TOKEN:SECRET,DB:db},{now,source:NEWS_BUNDLE(signals)});
- assert.equal(response.status,200);
- return response.json();
-};
-test("durable GRI: identical journal does NOT rewrite or recalculate score when five hours pass",async()=>{
- const db=testLastQualifiedDb();
- const original=await served(db,SOURCE,NOW);
- const baseline=original.data.indices.map(x=>x.score);
- const time=NOW+5*3600000;
- const next=await served(db,SOURCE,time);
- assert.deepEqual(next.data.indices.map(x=>x.score),baseline);
- assert.deepEqual(next.data.indices.map(x=>x.readingAsOf),
-  original.data.indices.map(x=>x.readingAsOf));
- assert.deepEqual(next.data.indices.map(x=>x.readingSnapshotId),
-  original.data.indices.map(x=>x.readingSnapshotId));
- assert.equal(next.data.indices[0].readingStatus,"last_verified");
- assert.deepEqual(next.continuity.retained_categories,
-  ["geopolitics","macro","critical_minerals"]);
- assert.deepEqual(next.continuity.updated_categories,[]);
- assert.equal(db.queries.writes,3);
- assert.equal(next.data.proofHash,original.data.proofHash);
-});
-test("durable GRI: a new real macro signal updates ONLY macro; quiet geopolitics/minerals remain pinned",async()=>{
- const db=testLastQualifiedDb();
- const original=await served(db,SOURCE,NOW);
- const later=NOW+7*60000;
- const extra=example("macro","00abcdef","inflation and prices",2);
- extra.published_at=new Date(later-60000).toISOString();
- const changed=await served(db,[...SOURCE,extra],later);
- assert.deepEqual(changed.continuity.updated_categories,["macro"]);
- assert.deepEqual(changed.continuity.retained_categories,["geopolitics","critical_minerals"]);
- assert.equal(changed.data.indices[0].score,original.data.indices[0].score);
- assert.equal(changed.data.indices[2].score,original.data.indices[2].score);
- assert.equal(changed.data.indices[0].readingAsOf,original.data.indices[0].readingAsOf);
- assert.equal(changed.data.indices[2].readingAsOf,original.data.indices[2].readingAsOf);
- assert.equal(db.queries.writes,4);
- await served(db,[...SOURCE,extra],later+60000);
- assert.equal(db.queries.writes,4,"unchanged source identities must not write D1");
-});
-test("durable GRI: rolling expiry and empty qualified journal NEVER erase last three signed readings",async()=>{
- const db=testLastQualifiedDb();
- const original=await served(db,SOURCE,NOW);
- const noRows=await served(db,[],NOW+80*3600000);
- assert.equal(db.queries.writes,3);
- assert.deepEqual(noRows.data.indices.map(x=>x.score),
-  original.data.indices.map(x=>x.score));
- assert.deepEqual(noRows.data.indices.map(x=>x.readingStatus),
-  ["last_verified","last_verified","last_verified"]);
- assert.ok(noRows.data.indices.every(x=>x.observedSeverity["72H"].buckets===null));
- assert.ok(noRows.data.indices.every(x=>x.readingAsOf!==null));
- assert.equal(noRows.data.snapshotAsOf,new Date(NOW+80*3600000).toISOString());
-});
-test("durable GRI: D1 outage/corruption or missing durable binding FAIL CLOSED, never fabricate success",async()=>{
- const db=testLastQualifiedDb();
- const before=await served(db,SOURCE,NOW);
- assert.equal(before.data.indices[0].status,"available");
- db.rows.get("geopolitics").index_sha256="0".repeat(64);
- let response=await serveSelfCertifiedNewsSeverityGri({
-  CONTROL_PLANE_TOKEN:SECRET,DB:db},{now:NOW+60000,source:NEWS_BUNDLE(SOURCE)});
- assert.equal(response.status,503);
- response=await serveSelfCertifiedNewsSeverityGri({
-  CONTROL_PLANE_TOKEN:SECRET},{now:NOW,source:NEWS_BUNDLE(SOURCE)});
- assert.equal(response.status,503);
-});
-test("durable GRI: a genuine source revision triggers update; a failed optimistic write never greenwashes",async()=>{
- const db=testLastQualifiedDb();
- await served(db,SOURCE,NOW);
- const revised=SOURCE.map(x=>x.id==="macro-00000003"?{...x,topic:"inflation and prices"}:x);
- const later=NOW+60000;
- const updated=await served(db,revised,later);
- assert.deepEqual(updated.continuity.updated_categories,["macro"]);
- assert.equal(db.queries.writes,4);
- const broken={prepare(sql){
-  const prepared=db.prepare(sql);
-  if(sql.startsWith("INSERT"))prepared.run=async()=>({success:true,meta:{changes:0}});
-  return prepared;
- }};
- const newest=example("macro","0000badd","official economic statistics",1);
- newest.published_at=new Date(later+60000).toISOString();
- const result=await serveSelfCertifiedNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:broken},
-  {now:later+120000,source:NEWS_BUNDLE([...revised,newest])});
- assert.equal(result.status,503);
+test("public self-certified projection computes from cached feed without retained D1 authority",async()=>{
+ let reads=0;
+ const db=new Proxy({}, {get(){throw Error("unexpected D1 retained-score query")}});
+ const out=await serveSelfCertifiedNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:db},{
+  now:NOW,source:async()=>{reads++;return Response.json({ok:true,
+   schema:"geomacro.website-derived-news-feed.v1",checked_at:new Date(NOW).toISOString(),
+   retention_hours:72,signals:SOURCE})}});
+ assert.equal(out.status,200);assert.equal(reads,1);
+ const body=await out.json();
+ assert.equal(body.data.indices.length,3);
+ assert.equal(body.continuity,undefined);
+ assert.equal(body.data.indices[0].status,"available");
 });
 
-test("live production acceptance stays locked to D1-backed no-new-news continuity",()=>{
+test("live production acceptance asserts the no-D1 self-certified source boundary",()=>{
  const verifier=readFileSync("scripts/ops/verify-live-geomacro-news-gri.mjs","utf8");
  const worker=readFileSync("workers/control-plane/src/geomacro-news-severity-gri.mjs","utf8");
- const migration=readFileSync("workers/control-plane/migrations/0034_news_gri_last_verified.sql","utf8");
- assert.match(verifier,/hold-last-qualified-until-new-input-v1/u);
- assert.match(verifier,/PUBLIC_CERTIFIED_GRI_DURABLE_CONTINUITY_INVALID/u);
- assert.match(verifier,/durable_last_qualified_per_domain_verified:true/u);
- assert.match(worker,/retainLastQualifiedGriByDomain/u);
- assert.match(worker,/GEOMACRO_GRI_RETAINED_HASH_MISMATCH/u);
- assert.match(worker,/ON CONFLICT\(category\) DO UPDATE/u);
- assert.match(migration,/CREATE TABLE IF NOT EXISTS geomacro_news_gri_last_verified/u);
- assert.doesNotMatch(migration.split("\n").filter(line=>!line.trimStart().startsWith("--")).join("\n"),/\b(?:raw_article|source_url|private_key|payment)\b/iu);
+ assert.match(verifier,/d1_reads:0,d1_writes:0/u);
+ assert.doesNotMatch(worker,/retainLastQualifiedGriByDomain/u);
+ assert.doesNotMatch(worker,/geomacro_news_gri_last_verified/u);
+ assert.match(worker,/signedSnapshotCache/u);
+ assert.match(worker,/source_snapshot/);
 });

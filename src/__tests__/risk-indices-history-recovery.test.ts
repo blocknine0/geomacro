@@ -59,7 +59,8 @@ describe("historical GRI display is separate from current certified publication"
   expect(api).toContain("customer_chargeable:false");
   expect(view).toContain("Last verified historical snapshot — not live");
   expect(view).toContain("Current certification is unavailable.");
-  expect(original).toContain("const pending = readCurrentReviewedSignedIndices().then(data => {");
+  expect(original).toContain("readCurrentReviewedSignedIndices()");
+  expect(original).toContain("readGeoMacroCertifiedNewsRisk()");
   expect(original).not.toContain("VERIFIED_HISTORICAL_RISK_INDICES_APP_URL");
  });
 });
