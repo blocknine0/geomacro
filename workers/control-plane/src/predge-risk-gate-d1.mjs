@@ -10,7 +10,8 @@ import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
 import {readProgressiveFacts,generateProgressiveRiskGateDecision,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
 import {predgePaidRiskGateTerms,predgeSingleEndBuyerBinding,
- PREDGE_SINGLE_END_BUYER_LICENSE,usdcFromCents} from "./predge-paid-risk-gate-contract.mjs";
+ PREDGE_SINGLE_END_BUYER_LICENSE,predgePaidTrafficMode,usdcFromCents}
+ from "./predge-paid-risk-gate-contract.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -191,10 +192,8 @@ export function parseRequest(obj,now=Date.now()){
  }
  return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context,tier:obj.tier,category};
 }
-export function predgePaidTrafficEnabled(env,policy){
- return env?.PREDGE_PAID_TRAFFIC_ENABLED==="YES"&&
-   env?.PREDGE_PAID_GO_LIVE_CROSSCHECK==="PASS"&&
-   policy?.policy_id==="predge-paid-traffic-addendum-v2";
+export function predgePaidTrafficEnabled(env,policy,now=Date.now()){
+ return predgePaidTrafficMode(env,policy,now)!==null;
 }
 async function deterministicVerdictId(requestHash){
  const digestBytes=new Uint8Array(await crypto.subtle.digest("SHA-256",
@@ -227,7 +226,8 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
    ON CONFLICT(request_id) DO NOTHING`)
     .bind(ledger_id,verdict_id,request_id,"predge_b2b",tier,terms.structure_type,
-      terms.customer_price_usdc_cents,terms.geomacro_fee_usdc_cents,
+      billing_mode==="MUTUAL_72H_TRIAL"?0:terms.customer_price_usdc_cents,
+      terms.geomacro_fee_usdc_cents,
       terms.predge_share_usdc_cents,billable?terms.geomacro_fee_usdc_cents:0,
       billable?terms.predge_share_usdc_cents:0,billable?1:0,billing_mode,entry_status,
       request_hash,response_sha256,created_at,created_at.slice(0,7),
@@ -354,9 +354,9 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  // determines billability; it may never change the requested tier.
  const lockedTier=parsed.tier;
  const lockedTerms=predgePaidRiskGateTerms(lockedTier);
- const paidTrafficEnabled=paidEndpoint&&predgePaidTrafficEnabled(env,parsed.policy);
+ const billingMode=paidEndpoint?predgePaidTrafficMode(env,parsed.policy,now):"PILOT_FREE";
+ const paidTrafficEnabled=paidEndpoint&&billingMode!==null;
  if(paidEndpoint&&!paidTrafficEnabled)return fail("PAID_TRAFFIC_NOT_ENABLED",403);
- const billingMode=paidEndpoint?"PAID_ADDENDUM_V2":"PILOT_FREE";
  const requestHash=await digest(canonical(body));
  const verdictId=await deterministicVerdictId(requestHash);
  const nowIso=new Date(now).toISOString();
@@ -393,7 +393,8 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  const tierReady=sharedDecision.tierReady;
  const channel="predge_b2b";
  const structureType=lockedTerms.structure_type;
- const customerPriceUsdc=usdcFromCents(lockedTerms.customer_price_usdc_cents);
+ const customerPriceUsdc=billingMode==="MUTUAL_72H_TRIAL"?"0.00":
+   usdcFromCents(lockedTerms.customer_price_usdc_cents);
  const contractGeomacroFeeUsdc=usdcFromCents(lockedTerms.geomacro_fee_usdc_cents);
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
  try{
@@ -452,14 +453,17 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
       latest_observation_clock:facts.latest_event_clock
    };
    const evidenceSufficient=tierReady&&result.reason_codes?.includes("INSUFFICIENT_EVIDENCE")!==true;
-   const billable=paidTrafficEnabled&&evidenceSufficient;
+   const billable=billingMode==="PAID_ADDENDUM_V2"&&evidenceSufficient;
    const entryStatus=!evidenceSufficient?"INSUFFICIENT_EVIDENCE":
+     billingMode==="MUTUAL_72H_TRIAL"?"TRIAL_DELIVERED":
      paidTrafficEnabled?"DELIVERED":"PILOT_FREE";
    const geomacroFeeUsdc=billable?contractGeomacroFeeUsdc:"0.00";
    // Ed25519 signs the immutable decision and tier matrix. HMAC audit
    // receipts remain separate and are never mislabeled as Ed25519.
    const signedPayload={
      schema:"geomacro.progressive-risk-gate-decision.v1",
+     issuer:"Geomacro",commercial_signatory:"Geomacro",
+     source_origin_agnostic_commercial_seal:true,
      request_hash:requestHash,risk_gate:result,context,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
      ...(paidEndpoint?{license_scope:{licensee:"predge",...PREDGE_SINGLE_END_BUYER_LICENSE,

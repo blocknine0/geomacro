@@ -71,6 +71,26 @@ export function predgeSingleEndBuyerBinding(metadata) {
   return { ok: true, end_buyer_id: endBuyerId };
 }
 
+/**
+ * Return the enabled paid endpoint mode, or null while it must remain closed.
+ * A configured trial start holds traffic in no-charge mode until its exact
+ * 72-hour window expires; only the completed go-live cross-check can then
+ * switch it to paid delivery.
+ */
+export function predgePaidTrafficMode(env, policy, now = Date.now()) {
+  if (env?.PREDGE_PAID_TRAFFIC_ENABLED !== "YES" ||
+      policy?.policy_id !== "predge-paid-traffic-addendum-v2" ||
+      !Number.isSafeInteger(now) || now < 0) return null;
+  const trialStart = String(env?.PREDGE_MUTUAL_TRIAL_STARTED_AT ?? "").trim();
+  if (trialStart) {
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|\+00:00)$/u.test(trialStart)) return null;
+    const startedAt = Date.parse(trialStart);
+    if (!Number.isFinite(startedAt) || startedAt > now) return null;
+    if (now - startedAt < 72 * 3600 * 1000) return "MUTUAL_72H_TRIAL";
+  }
+  return env?.PREDGE_PAID_GO_LIVE_CROSSCHECK === "PASS" ? "PAID_ADDENDUM_V2" : null;
+}
+
 export function predgePaidRiskGateTerms(tier) {
   const terms = PREDGE_PAID_RISK_GATE_V2.tiers[tier];
   if (!terms) throw new Error("PREDGE_RISK_GATE_TIER_INVALID");

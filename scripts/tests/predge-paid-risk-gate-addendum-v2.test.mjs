@@ -4,9 +4,14 @@ import {readFileSync} from "node:fs";
 import {generateKeyPairSync,verify as verifySignature} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {PREDGE_PAID_RISK_GATE_V2,PREDGE_SINGLE_END_BUYER_LICENSE,
- predgeSingleEndBuyerBinding,predgePaidRiskGateTerms,usdcFromCents}
+ predgeSingleEndBuyerBinding,predgePaidTrafficMode,predgePaidRiskGateTerms,usdcFromCents}
  from "../../workers/control-plane/src/predge-paid-risk-gate-contract.mjs";
 import {canonicalProgressiveJson} from "../../workers/control-plane/src/progressive-risk-gate.mjs";
+
+function applyPaidLedgerMigrations(db){
+ db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ db.exec(readFileSync("workers/control-plane/migrations/0132_predge_mutual_72h_trial.sql","utf8"));
+}
 import {parseRequest,predgePaidTrafficEnabled,predgePaidRiskGateD1,predgeRiskGateD1,verifyPredgePaidVerdictD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
 test("Predge Addendum v2 fee split and Arc settlement are explicit",()=>{
@@ -47,6 +52,23 @@ test("Predge license contract requires exactly one bounded end-buyer identifier"
   assert.equal(predgeSingleEndBuyerBinding(metadata).error,"MULTIPLE_END_BUYERS_FORBIDDEN");
 });
 
+test("paid trial mode is time bounded and falls into cross-checked paid mode",()=>{
+ const policy={policy_id:"predge-paid-traffic-addendum-v2"};
+ const start=Date.parse("2026-11-10T12:00:00Z");
+ const env={PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_MUTUAL_TRIAL_STARTED_AT:new Date(start).toISOString()};
+ assert.equal(predgePaidTrafficMode(env,policy,start),"MUTUAL_72H_TRIAL");
+ assert.equal(predgePaidTrafficMode(env,policy,start+72*3600_000-1),"MUTUAL_72H_TRIAL");
+ assert.equal(predgePaidTrafficMode(env,policy,start+72*3600_000),null);
+ assert.equal(predgePaidTrafficMode({...env,PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},
+  policy,start+72*3600_000),"PAID_ADDENDUM_V2");
+ assert.equal(predgePaidTrafficMode({PREDGE_PAID_TRAFFIC_ENABLED:"YES",
+  PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},policy,start),"PAID_ADDENDUM_V2");
+ assert.equal(predgePaidTrafficMode({...env,PREDGE_MUTUAL_TRIAL_STARTED_AT:"not-a-time",
+  PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},policy,start),null);
+ assert.equal(predgePaidTrafficMode({...env,PREDGE_MUTUAL_TRIAL_STARTED_AT:
+  "2026-11-10T13:00:00Z",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},policy,start),null);
+});
+
 test("Predge request parser requires an explicit pre-processing tier",()=>{
  const request=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  const paidRequest=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
@@ -77,7 +99,7 @@ test("paid billing stays off until protected go-live cross-check and paid policy
 
 test("D1 usage ledger rejects charges on insufficient, undelivered, and refunded outcomes",()=>{
  const db=new DatabaseSync(":memory:");
- db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ applyPaidLedgerMigrations(db);
  const put=db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
   (ledger_id,verdict_id,request_id,channel,tier,structure_type,
    customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
@@ -99,7 +121,7 @@ test("D1 usage ledger rejects charges on insufficient, undelivered, and refunded
 
 test("paid D1 ledger rejects all free-pilot rows",()=>{
  const db=new DatabaseSync(":memory:");
- db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ applyPaidLedgerMigrations(db);
  const put=db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
   (ledger_id,verdict_id,request_id,channel,tier,structure_type,
    customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
@@ -139,7 +161,7 @@ test("paid and legacy free routes are distinct and free traffic cannot touch pai
 
 test("D1 refund transition zeroes all fees and cannot be reopened",()=>{
  const db=new DatabaseSync(":memory:");
- db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ applyPaidLedgerMigrations(db);
  db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
   (ledger_id,verdict_id,request_id,channel,tier,structure_type,
    customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
@@ -195,6 +217,11 @@ function paidRiskGateFixtureDb(){
     if(sql.includes("FROM risk_gate_d1_requests")&&sql.includes("client_id=? AND request_id=?")){
      const row=requests.get(key(values[0],values[1]));return row?{...row}:null;
     }
+    if(sql.includes("FROM progressive_risk_gate_facts"))return {unique_events:1,
+      max_publisher_count:1,corroborated_events:0,corroborated_countries:0,
+      latest_event_clock:"2026-11-11T12:00:00.000Z",categories:"geopolitics"};
+    if(sql.includes("FROM native_events"))return {index_events:0,latest_index_clock:null,
+      native_corroborated_publisher_count:0};
     if(sql.includes("INSERT OR IGNORE INTO risk_gate_d1_requests")&&sql.includes("predge-paid-license-scope-v1")){
      const [id,hash,subjectType,subjectId,createdAt]=values;
      const k=key("predge-paid-license-scope-v1",id);
@@ -259,7 +286,7 @@ function paidRiskGateFixtureDb(){
     }
     return {success:true};
    }};
- }};
+ },testLedger:ledger};
 }
 
 test("paid Risk Gate verdict is signed for one use and rejects replay or resale",async()=>{
@@ -280,12 +307,17 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  assert.equal(first.status,200,JSON.stringify(firstBody));
  assert.equal(firstBody.ok,true);
  assert.equal(Object.hasOwn(firstBody,"error"),false);
+ assert.equal(firstBody.decision_signed_payload.issuer,"Geomacro");
+ assert.equal(firstBody.decision_signed_payload.commercial_signatory,"Geomacro");
+ assert.equal(firstBody.decision_signed_payload.source_origin_agnostic_commercial_seal,true);
  assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
   licensee:"predge",single_end_buyer_only:true,max_end_buyers:1,max_uses:1,
   bound_end_buyer_id:"customer-001",bound_subject_id:"USA",bound_category:"geopolitics",
   bound_market_id:"123456789",
   bound_condition_id:"0x0000000000000000000000000000000000000000000000000000000000000000",
   further_resale_permitted:false});
+ assert.equal(firstBody.billing_mode,"PAID_ADDENDUM_V2");
+ assert.equal(firstBody.billable,true);
  assert.equal(firstBody.decision_signature_scheme,"Ed25519");
  assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(firstBody.decision_signed_payload)),
   publicKey,Buffer.from(firstBody.decision_signature_b64,"base64")),true);
@@ -322,6 +354,68 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  assert.equal(verifyBody.message,expectedMessage);
 });
 
+test("active mutual trial delivers a signed one-buyer decision with zero fees and records trial usage",async()=>{
+ const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
+ fixture.request_id="paid-mutual-trial-integration-001";
+ const {publicKey,privateKey}=generateKeyPairSync("ed25519"),db=paidRiskGateFixtureDb();
+ const token="b".repeat(64),env={PREDGE_PAID_RISK_GATE_TOKEN:token,
+  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-11T00:00:00Z",
+  RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:db};
+ const response=await predgePaidRiskGateD1(new Request("https://worker.example/v2/partner/predge/paid-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},
+  body:JSON.stringify(fixture)}),env,Date.parse("2026-11-12T00:00:00Z"));
+ const body=await response.json();
+ assert.equal(response.status,200,JSON.stringify(body));
+ assert.equal(body.billing_mode,"MUTUAL_72H_TRIAL");
+ assert.equal(body.entry_status,"TRIAL_DELIVERED");
+ assert.equal(body.billable,false);
+ assert.equal(body.customer_price_usdc,"0.00");
+ assert.equal(body.geomacro_fee_usdc,"0.00");
+ assert.equal(body.predge_share_usdc,"0.00");
+ assert.equal(body.decision_signed_payload.issuer,"Geomacro");
+ assert.equal(body.decision_signed_payload.license_scope.bound_end_buyer_id,"customer-001");
+ assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(body.decision_signed_payload)),
+  publicKey,Buffer.from(body.decision_signature_b64,"base64")),true);
+ const ledger=db.testLedger.get(fixture.request_id);
+ assert.equal(ledger.billing_mode,"MUTUAL_72H_TRIAL");
+ assert.equal(ledger.entry_status,"TRIAL_DELIVERED");
+ assert.equal(ledger.billable,0);
+});
+
+test("0132 preserves prior Predge rows and admits only zero-fee trial ledger entries",()=>{
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
+  (ledger_id,verdict_id,request_id,channel,tier,structure_type,customer_price_usdc_cents,
+   contract_geomacro_fee_usdc_cents,geomacro_fee_usdc_cents,predge_share_usdc_cents,
+   billable,billing_mode,entry_status,request_hash,response_sha256,created_at,usage_month,
+   usage_report_due_date,settlement_due_date)
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run("a".repeat(64),"123e4567-e89b-52d3-a456-426614174010",
+  "prior-paid-ledger-row","predge_b2b","basic_focused","BASIC_FOCUSED_FACTS_DERIVED_V1",15,10,0,0,0,
+  "PAID_ADDENDUM_V2","INSUFFICIENT_EVIDENCE","b".repeat(64),"c".repeat(64),
+  "2026-11-12T00:00:00Z","2026-11","2026-12-05","2026-12-10");
+ db.exec(readFileSync("workers/control-plane/migrations/0132_predge_mutual_72h_trial.sql","utf8"));
+ assert.equal(db.prepare("SELECT count(*) AS n FROM predge_paid_risk_gate_usage_ledger WHERE request_id='prior-paid-ledger-row'").get().n,1);
+ const insert=db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
+  (ledger_id,verdict_id,request_id,channel,tier,structure_type,customer_price_usdc_cents,
+   contract_geomacro_fee_usdc_cents,geomacro_fee_usdc_cents,predge_share_usdc_cents,
+   billable,billing_mode,entry_status,request_hash,response_sha256,created_at,usage_month,
+   usage_report_due_date,settlement_due_date)
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+ const values=["d".repeat(64),"123e4567-e89b-52d3-a456-426614174011","trial-ledger-row","predge_b2b",
+  "basic_focused","BASIC_FOCUSED_FACTS_DERIVED_V1",0,10,0,0,0,"MUTUAL_72H_TRIAL","TRIAL_DELIVERED",
+  "e".repeat(64),"f".repeat(64),"2026-11-12T00:00:00Z","2026-11","2026-12-05","2026-12-10"];
+ insert.run(...values);
+ assert.equal(db.prepare("SELECT count(*) AS n FROM predge_paid_risk_gate_monthly_usage_report WHERE request_id='trial-ledger-row'").get().n,0);
+ assert.throws(()=>insert.run("1".repeat(64),"123e4567-e89b-52d3-a456-426614174012","invalid-trial-row","predge_b2b",
+  "basic_focused","BASIC_FOCUSED_FACTS_DERIVED_V1",0,10,10,5,1,"MUTUAL_72H_TRIAL","TRIAL_DELIVERED",
+  "e".repeat(64),"f".repeat(64),"2026-11-12T00:00:00Z","2026-11","2026-12-05","2026-12-10"));
+ db.close();
+});
+
 test("paid endpoint rejects missing and multi-buyer IDs before touching D1",async()=>{
  const token="b".repeat(64),fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  const env={PREDGE_PAID_RISK_GATE_TOKEN:token,PREDGE_PAID_TRAFFIC_ENABLED:"YES",
@@ -345,6 +439,9 @@ test("paid deployment bindings default to the fail-closed 403 path",()=>{
  const rollout=readFileSync(".github/workflows/geomacro-protected-hot50-worker-rollout.yml","utf8");
  assert.match(deploy,/PREDGE_PAID_TRAFFIC_ENABLED:\s*\$\{\{\s*vars\.PREDGE_PAID_TRAFFIC_ENABLED\s*\|\|\s*'NO'\s*\}\}/u);
  assert.match(deploy,/PREDGE_PAID_GO_LIVE_CROSSCHECK:\s*\$\{\{\s*vars\.PREDGE_PAID_GO_LIVE_CROSSCHECK\s*\|\|\s*''\s*\}\}/u);
+ assert.match(deploy,/PREDGE_MUTUAL_TRIAL_STARTED_AT:\s*\$\{\{\s*vars\.PREDGE_MUTUAL_TRIAL_STARTED_AT\s*\|\|\s*''\s*\}\}/u);
+ assert.match(deploy,/config\.vars\.PREDGE_MUTUAL_TRIAL_STARTED_AT\s*=\s*mutualTrialStartedAt/u);
+ assert.match(deploy,/delete config\.vars\.PREDGE_MUTUAL_TRIAL_STARTED_AT/u);
  assert.match(deploy,/config\.vars\.PREDGE_PAID_TRAFFIC_ENABLED\s*=\s*paidTrafficEnabled/u);
  assert.match(deploy,/delete config\.vars\.PREDGE_PAID_GO_LIVE_CROSSCHECK/u);
  assert.match(deploy,/PREDGE_PAID_RISK_GATE_TOKEN:\s*\$\{\{\s*secrets\.PREDGE_PAID_RISK_GATE_TOKEN\s*\}\}/u);
