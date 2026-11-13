@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-13T16:50:01.490Z",
+  "checked_at": "2026-11-13T19:31:12.060Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 46,
   "counts": {
-    "geopolitics": 6,
+    "geopolitics": 5,
     "macro": 17,
-    "rare_earth": 23
+    "rare_earth": 24
   },
-  "source_native_ids_sha256": "1f41b8de21d965fd5963b4653c2eda64222bb13bb346c0ed46f02ebe3ced1e5e",
+  "source_native_ids_sha256": "3df7e2c0ee29acedd0c5807b9ed3779e128ca2026d706a3c51c8b5a98f6984d8",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -58,6 +58,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-13T15:25:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-f172c41e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nickel held Above $16,000 as the LME Curve Signals a Changing Supply Picture - kalkine.ca",
+      "what_changed": "A monitored source feed reports: Nickel held Above $16,000 as the LME Curve Signals a Changing Supply Picture - kalkine.ca. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T15:10:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -877,25 +896,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ea497c95",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning South Sudan's authorities must allow UNMISS to operate without obstruction · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning South Sudan's authorities must allow UNMISS to operate without obstruction. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-10T17:04:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
