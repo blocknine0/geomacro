@@ -37,10 +37,12 @@ export function loadPredge0131ReceiptSigner({
   throw Error("PREDGE_0131_RECEIPT_SIGNER_SELF_TEST_FAILED");
  return Object.freeze({privateKey,keyId:id,publicSpkiB64});
 }
-export function signPredge0131Receipt(unsigned,{keySource,keyId}={}){
+export function signPredge0131Receipt(unsigned,{keySource,keyId,
+ trustedPublicSpkiB64=PREDGE_0131_RECEIPT_PUBLIC_SPKI_B64,
+ expectedKeyId=PREDGE_0131_RECEIPT_KEY_ID}={}){
  if(!unsigned||typeof unsigned!=="object"||Array.isArray(unsigned))
   throw Error("PREDGE_0131_RECEIPT_PAYLOAD_INVALID");
- const signer=loadPredge0131ReceiptSigner({keySource,keyId});
+ const signer=loadPredge0131ReceiptSigner({keySource,keyId,trustedPublicSpkiB64,expectedKeyId});
  const bytes=Buffer.from(JSON.stringify(unsigned),"utf8");
  return Object.freeze({...unsigned,signature_algorithm:"Ed25519",
   signature_key_id:signer.keyId,
