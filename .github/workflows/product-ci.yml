@@ -33,6 +33,11 @@ jobs:
       - name: Verify permanent workflow inventory and frozen Predge definitions
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
+      - name: Setup Node 24 for D1-backed runtime contracts
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+
       - name: Predge D1 identity, paid single-use license, and ICC P0 parser contracts (offline)
         run: node --test scripts/tests/predge-addendum-v2-d1-identity.test.mjs scripts/tests/existing-source-runtime-activation.test.mjs scripts/tests/predge-paid-risk-gate-addendum-v2.test.mjs scripts/tests/icc-official-news-rss.test.mjs
 
