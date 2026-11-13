@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 /**
  * Dedicated 20-minute private Hot-50 DIRECT publisher selection.
  * Existing pinned HTTP/Atom/RSS/JSON sources only, not Telegram, not Google
@@ -21,6 +22,25 @@ const safeUrl=link=>{
    !u.hostname.endsWith(".internal")&&!u.hostname.endsWith(".local")&&
    u.hostname.includes(".")&&u.href.length<=2000;
 };
+export function hot50Direct20mFailoverCategories(cellPlan,registry,checks){
+ if(!Array.isArray(cellPlan)||cellPlan.length!==150||
+    !Array.isArray(registry)||!Array.isArray(checks))
+  throw Error("HOT50_DIRECT20M_FAILOVER_INPUT_INVALID");
+ const checkByRef=new Map(checks.map(check=>[check.source_ref,check.state]));
+ const needed=new Set();
+ for(const cell of cellPlan){
+  if(cell.primary_scope==="GLOBAL_TITLE_MATCH"){needed.add(cell.category);continue;}
+  const primary=registry.find(source=>source.id===cell.primary_source_id);
+  if(!primary){needed.add(cell.category);continue;}
+  const ref=createHash("sha256").update([
+   primary.id,primary.url,cell.category
+  ].join("\\n")).digest("hex");
+  // Only a nonempty successful primary poll suppresses its backup. Empty,
+  // denied, malformed or transport-failed primaries all take the failover.
+  if(checkByRef.get(ref)!=="OBSERVED")needed.add(cell.category);
+ }
+ return Object.freeze([...needed].sort());
+}
 export function hot50Direct20mPublisherRegistry(now=new Date()){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
   throw Error("HOT50_DIRECT20M_REPROBE_CLOCK_INVALID");
