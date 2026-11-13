@@ -37,7 +37,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
-      D1_DATABASE_ID: db057ca9-6f9e-4957-ac28-144f3b798f9b
+      D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
     steps:
@@ -72,11 +72,11 @@ jobs:
           import {assertD1DatabaseIdentity} from './scripts/ops/predge-addendum-v2-d1-identity.mjs';
           const databaseId=process.env.D1_DATABASE_ID;
           const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${encodeURIComponent(databaseId)}`,{headers:{authorization:`Bearer ${token}`,accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
-          if(!r.ok)throw Error('D1_DATABASE_IDENTITY_API_FAILED');
+          if(!r.ok)throw Error('D1_DATABASE_IDENTITY_API_FAILED_HTTP_'+r.status);
           const b=await r.json();
           assertD1DatabaseIdentity(b,{databaseId,databaseName:'geomacro-control-plane'});
           const cfg=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8').replace(/^\s*\/\/.*$/gm,''));
-          cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:'db057ca9-6f9e-4957-ac28-144f3b798f9b'}));
+          cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:databaseId}));
           writeFileSync(process.env.RUNNER_TEMP+'/geomacro-0131/wrangler.json',JSON.stringify(cfg));
           NODE
           node --input-type=module <<'NODE'
