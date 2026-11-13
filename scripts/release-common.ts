@@ -22,8 +22,6 @@ export function envString(name:string,min=1):string {const value=process.env[nam
 // Secret credentials must use a keyed HMAC/KDF, never this content digest.
 export const canonicalContentSha256=(canonicalContent:string|Uint8Array):string=>
  createHash('sha256').update(canonicalContent).digest('hex');
-// Backwards-compatible name for existing non-credential content digest call sites.
-export const sha256=canonicalContentSha256;
 function normalized(value:unknown,depth=0):unknown{
  need(depth<24,'RELEASE_CANONICAL_DEPTH');
  if(value===null||typeof value==='string'||typeof value==='boolean')return value;
@@ -45,12 +43,12 @@ export function signEnvelope(payload:Record<string,unknown>){
  need(alg!==null,'RELEASE_SIGNING_ALG_UNSUPPORTED');
  const bytes=Buffer.from(canonical(payload));const signature=alg==='Ed25519'?nodeSign(null,bytes,key):nodeSign('sha256',bytes,{key,dsaEncoding:'ieee-p1363'});
  const publicSpki=createPublicKey(key).export({format:'der',type:'spki'});
- return {payload,attestation:{alg,key_spki_sha256:sha256(publicSpki),payload_sha256:sha256(bytes),signature_b64u:signature.toString('base64url'),created_at:new Date().toISOString(),scope:'INTEGRITY_ONLY_NOT_EXTERNAL_FACT_CERTIFICATION'}};
+ return {payload,attestation:{alg,key_spki_sha256:canonicalContentSha256(publicSpki),payload_sha256:canonicalContentSha256(bytes),signature_b64u:signature.toString('base64url'),created_at:new Date().toISOString(),scope:'INTEGRITY_ONLY_NOT_EXTERNAL_FACT_CERTIFICATION'}};
 }
 export function verifySignedEnvelopeFile(path:string):Record<string,unknown>{
  const wrapped=JSON.parse(readFileSync(path,'utf8'));
  const body=wrapped?.payload,sig=wrapped?.attestation;
- need(body?.status==='PASS'&&sig?.payload_sha256===sha256(canonical(body))&&
+ need(body?.status==='PASS'&&sig?.payload_sha256===canonicalContentSha256(canonical(body))&&
    typeof sig.signature_b64u==='string','RELEASE_SIGNED_RECEIPT_UNVERIFIED');
  const raw=envString('SIGNING_JWK',40);
  let secret:ReturnType<typeof createPrivateKey>;
@@ -58,7 +56,7 @@ export function verifySignedEnvelopeFile(path:string):Record<string,unknown>{
  const pub=createPublicKey(secret),spki=pub.export({format:'der',type:'spki'});
  const algorithm=pub.asymmetricKeyType==='ed25519'?'Ed25519':
   pub.asymmetricKeyType==='ec'&&pub.asymmetricKeyDetails?.namedCurve==='prime256v1'?'ES256':null;
- need(algorithm!==null&&sig.alg===algorithm&&sig.key_spki_sha256===sha256(spki),
+ need(algorithm!==null&&sig.alg===algorithm&&sig.key_spki_sha256===canonicalContentSha256(spki),
   'RELEASE_RECEIPT_ISSUER_MISMATCH');
  const bytes=Buffer.from(canonical(body)),signature=Buffer.from(sig.signature_b64u,'base64url');
  const valid=algorithm==='Ed25519'?nodeVerify(null,bytes,pub,signature):
