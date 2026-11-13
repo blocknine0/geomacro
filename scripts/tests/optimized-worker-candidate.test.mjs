@@ -29,6 +29,7 @@ test('candidate inherits all production secrets/resources/flags without copying 
  assert.equal(config.vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE,'0');
  assert.equal(config.vars.RISK_STREAM_CANARY_HOLD_CLEARED,'0');
  assert.equal(config.vars.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED,'0');
+ assert.equal(config.vars.GEOMACRO_STORE_CHECKOUT_ENABLED,'NO');
  assert.equal(verifyCandidateBindings(baseline,candidate(),sha),true);
 });
 test('same binding names cannot conceal resource changes or payment activation',()=>{

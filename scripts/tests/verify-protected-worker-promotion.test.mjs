@@ -22,6 +22,7 @@ const bindings=[
  {name:"PREDGE_PAID_TRAFFIC_ENABLED",type:"plain_text",text:"NO"},
  {name:"PREDGE_PAID_GO_LIVE_CROSSCHECK",type:"plain_text",text:""},
  {name:"PREDGE_MUTUAL_TRIAL_STARTED_AT",type:"plain_text",text:""},
+ {name:"GEOMACRO_STORE_CHECKOUT_ENABLED",type:"plain_text",text:"NO"},
  {name:"RISK_GATE_COUNTRY_SCOPE",type:"plain_text",text:"HOT50"},
  {name:"GEOMACRO_P0B_ADMISSION_ACTIVE",type:"plain_text",text:"1"},
  {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"},

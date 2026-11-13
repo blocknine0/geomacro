@@ -3,7 +3,11 @@ import {GEOMACRO_SUBSCRIPTIONS} from "./low-barrier-pricing";
 export const GEOMACRO_CREDIT_CONTRACT_VERSION=CONTRACT_VERSION;
 export const GEOMACRO_CREDIT_COSTS=CREDIT_COSTS;
 
-export type GeomacroCreditCapability = keyof typeof GEOMACRO_CREDIT_COSTS;
+// The three direct customer Store Risk Gate debit keys share the prepaid
+// credit table, but are route-scoped to `/v1/store/risk-gate`; they do not
+// become structured-output or public checkout capabilities.
+export type GeomacroCreditCapability = Exclude<keyof typeof GEOMACRO_CREDIT_COSTS,
+  "risk_gate_basic_focused" | "risk_gate_standard" | "risk_gate_complex_full">;
 
 export const GEOMACRO_ACCESS_TIERS = {
   free: {

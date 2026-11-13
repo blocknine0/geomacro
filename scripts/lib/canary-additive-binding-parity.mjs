@@ -9,7 +9,8 @@ export const REVIEWABLE_ADDITIVE_SECRETS=Object.freeze([
 const PREDGE_TRIAL_VARS=Object.freeze({
  PREDGE_PAID_TRAFFIC_ENABLED:"NO",
  PREDGE_PAID_GO_LIVE_CROSSCHECK:"",
- PREDGE_MUTUAL_TRIAL_STARTED_AT:""
+ PREDGE_MUTUAL_TRIAL_STARTED_AT:"",
+ GEOMACRO_STORE_CHECKOUT_ENABLED:"NO"
 });
 const TRIAL_START=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|\+00:00)$/u;
 const deny=code=>{throw Error("CANARY_BINDINGS_"+code)};
@@ -64,14 +65,17 @@ export function reviewedHot50CandidateVars(sha,predgeRuntimeVars={}){
  const paid=predgeRuntimeVars.PREDGE_PAID_TRAFFIC_ENABLED??PREDGE_TRIAL_VARS.PREDGE_PAID_TRAFFIC_ENABLED;
  const crosscheck=predgeRuntimeVars.PREDGE_PAID_GO_LIVE_CROSSCHECK??PREDGE_TRIAL_VARS.PREDGE_PAID_GO_LIVE_CROSSCHECK;
  const trialStart=predgeRuntimeVars.PREDGE_MUTUAL_TRIAL_STARTED_AT??PREDGE_TRIAL_VARS.PREDGE_MUTUAL_TRIAL_STARTED_AT;
+ const storeCheckout=predgeRuntimeVars.GEOMACRO_STORE_CHECKOUT_ENABLED??PREDGE_TRIAL_VARS.GEOMACRO_STORE_CHECKOUT_ENABLED;
  if(!["YES","NO"].includes(paid)||!["","PASS"].includes(crosscheck)||
+    !["YES","NO"].includes(storeCheckout)||
     typeof trialStart!=="string"||trialStart!==""&&
     (!TRIAL_START.test(trialStart)||!Number.isFinite(Date.parse(trialStart))))
   deny("PREDGE_TRIAL_RUNTIME_VAR_INVALID");
  return {...REVIEWED_HOT50_RUNTIME_VARS,GEOMACRO_SOURCE_SHA:sha,
   PREDGE_PAID_TRAFFIC_ENABLED:paid,
   PREDGE_PAID_GO_LIVE_CROSSCHECK:crosscheck,
-  PREDGE_MUTUAL_TRIAL_STARTED_AT:trialStart};
+  PREDGE_MUTUAL_TRIAL_STARTED_AT:trialStart,
+  GEOMACRO_STORE_CHECKOUT_ENABLED:storeCheckout};
 }
 const bindingText=row=>typeof row?.text==="string"?row.text:
  typeof row?.value==="string"?row.value:null;

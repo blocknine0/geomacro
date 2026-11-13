@@ -160,47 +160,100 @@ export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady
     }
   };
 }
+const DOMAIN_BY_CATEGORY=Object.freeze({
+ geopolitics:"geopolitics",macro:"macro_fx",macro_fx:"macro_fx",
+ critical_minerals:"critical_minerals",rare_earth:"critical_minerals"
+});
+const DRIVER_BY_CATEGORY=Object.freeze({
+ geopolitics:"conflict",macro:"macro_stress",macro_fx:"macro_stress",
+ critical_minerals:"critical_minerals",rare_earth:"critical_minerals"
+});
+const DRIVER_DOMAIN=Object.freeze({
+ conflict:"geopolitics",sanctions:"geopolitics",political_instability:"geopolitics",
+ trade_policy:"geopolitics",monetary_policy:"macro_fx",inflation:"macro_fx",
+ labor_market:"macro_fx",currency_fx:"macro_fx",macro_stress:"macro_fx",
+ rare_earth_supply:"critical_minerals",critical_minerals:"critical_minerals",
+ shipping_logistics:"critical_minerals"
+});
+const actionFor=decision=>({CONTINUE:"CONTINUE",REDUCE_LIMIT:"REDUCE_EXPOSURE",
+ REQUIRE_APPROVAL:"REQUIRE_HUMAN_APPROVAL",PAUSE:"BLOCK"})[decision];
+function decisionForProxy(parsed,score,confidence,drivers){
+ const p=parsed.policy;let decision;
+ if(score<=p.continue_max_score)decision="CONTINUE";
+ else if(score<=p.reduce_limit_max_score)decision="REDUCE_LIMIT";
+ else if(score<=p.require_approval_max_score)decision="REQUIRE_APPROVAL";
+ else decision="PAUSE";
+ const reasons=["observation_proxy_policy_evaluated"];
+ if(decision==="CONTINUE"&&confidence<p.minimum_confidence_for_auto_continue){
+  decision="REQUIRE_APPROVAL";reasons.push("confidence_below_auto_continue_threshold");
+ }
+ if(decision==="CONTINUE"&&p.require_commercial_verification_for_continue){
+  decision="REQUIRE_APPROVAL";reasons.push("commercial_verification_required");
+ }
+ if(decision==="CONTINUE"&&typeof p.max_positive_delta_for_auto_continue==="number"){
+  // Observation proxies intentionally carry no historical score delta.
+ }
+ const hardStops=p.hard_stop_driver_contributions??{};
+ if(drivers.some(x=>typeof hardStops[x.driver]==="number"&&
+    x.score_contribution>=hardStops[x.driver])){
+  decision="PAUSE";reasons.push("hard_stop_driver_triggered");
+ }
+ return {decision,recommended_action:actionFor(decision),reason_codes:reasons};
+}
 export function provisionalRiskGate(parsed,facts,now=Date.now()) {
-  const hasFacts = facts.distinct_events>0;
-  // The 0-100 result is EXPLICITLY an observed news-activity proxy. 100
-  // with zero observations is a conservative policy sentinel, not incident severity.
-  const proxyScore = hasFacts ?
-    Math.min(100,Math.round(100 * (1-Math.exp(-0.20*facts.distinct_events)))):100;
-  const decision = hasFacts?"REQUIRE_APPROVAL":"PAUSE";
-  const action = hasFacts?"REQUIRE_HUMAN_APPROVAL":"BLOCK";
-  const reason = hasFacts?"discovery_only_provisional":"no_current_evidence";
-  const at = new Date(now).toISOString();
-  return {
-    schema_version:"risk-gate-1.0",request_id:parsed.request_id,
-    decision,recommended_action:action,reason_codes:[reason],
-    counterfactual:{
-      version:"risk-gate-counterfactual-v1.0.0",current_action:action,
-      next_less_restrictive_action:hasFacts?"REDUCE_EXPOSURE":"REQUIRE_HUMAN_APPROVAL",
-      blockers:[{type:"verification",reason_code:"verified_signed_gro_required_for_executable_policy",
-        current_value:"DISCOVERY_ONLY",required_value:"VERIFIED",
-        delta_required:null}],
-      note:"Counterfactual context only; it never authorizes execution."
-    },
-    subject:{...parsed.subject,name:null},
-    risk:{
-      object_id:"derived-observation:"+parsed.subject.id+":"+at,
-      score:proxyScore,label:hasFacts?"WATCH":"CRITICAL",
-      previous_score:null,delta:null,confidence:0,
-      verification_status:"INCOMPLETE",commercial_eligibility_status:"UNVERIFIED",
-      generated_at:at,expires_at:new Date(now+3*3600000).toISOString(),
-      methodology_version:"discovery-activity-proxy-v1"
-    },
-    top_drivers:[],
-    policy:{policy_id:parsed.policy.policy_id,policy_version:parsed.policy.policy_version},
-    primary_driver:"INSUFFICIENT_VERIFIED_CAUSAL_EVIDENCE",
-    affected_domain:"geopolitics",severity_score:proxyScore,
-    intraday_override:false,flash_check_available:false,
-    suggested_mitigation:{exposure_cap_ratio:0,settlement_delay_hours:24},
-    risk_metric_semantics:hasFacts?"OBSERVATION_DENSITY_PROXY":"NO_DATA_POLICY_SENTINEL",
-    observation_count:facts.distinct_events,
-    corroboration_sources_count:facts.corroboration_sources_count,
-    execution_authorized:false
-  };
+ const distinct=Math.max(0,Number(facts?.distinct_events)||0);
+ const sources=Math.max(0,Number(facts?.corroboration_sources_count)||0);
+ const corroborated=Math.max(0,Number(facts?.corroborated_events)||0);
+ const standardReady=facts?.standard_ready===true&&sources>=2;
+ const hasFacts=distinct>0;
+ // The 0-100 result remains an observation-activity proxy, never a 7-day GRO.
+ const proxyScore=hasFacts?Math.min(100,Math.round(100*(1-Math.exp(-0.20*distinct)))):100;
+ const confidence=!hasFacts?0:standardReady?
+  Math.min(0.85,Number((0.60+0.05*sources+0.02*corroborated).toFixed(2))):
+  Math.min(0.55,Number((0.30+0.05*distinct).toFixed(2)));
+ const requested=typeof parsed.category==="string"?parsed.category.toLowerCase():null;
+ const categories=[...new Set((facts?.category_coverage??[]).map(x=>String(x).toLowerCase()))];
+ if(requested)categories.unshift(requested);
+ const selected=categories.find(x=>DOMAIN_BY_CATEGORY[x])??requested??"geopolitics";
+ const affectedDomain=DOMAIN_BY_CATEGORY[selected]??"geopolitics";
+ const drivers=[...new Set([...categories,selected].map(x=>DRIVER_BY_CATEGORY[x]).filter(Boolean))];
+ const topDrivers=hasFacts?drivers.map(driver=>({driver,
+  score_contribution:Number((proxyScore/Math.max(1,drivers.length)).toFixed(2)),
+  delta_contribution:null})):[];
+ const policyDecision=decisionForProxy(parsed,proxyScore,confidence,topDrivers);
+ const at=new Date(now).toISOString();
+ const reason=!hasFacts?"no_current_evidence":standardReady?"corroborated_observation_proxy":"discovery_only_provisional";
+ return {
+  schema_version:"risk-gate-1.0",request_id:parsed.request_id,
+  decision:policyDecision.decision,recommended_action:policyDecision.recommended_action,
+  reason_codes:[reason,...policyDecision.reason_codes],
+  counterfactual:{version:"risk-gate-counterfactual-v1.0.0",current_action:policyDecision.recommended_action,
+   next_less_restrictive_action:policyDecision.decision==="PAUSE"?"REQUIRE_HUMAN_APPROVAL":
+    policyDecision.decision==="REQUIRE_APPROVAL"?"REDUCE_EXPOSURE":
+    policyDecision.decision==="REDUCE_LIMIT"?"CONTINUE":"CONTINUE",
+   blockers:[{type:"verification",reason_code:"verified_signed_gro_required_for_executable_policy",
+    current_value:standardReady?"CORROBORATED_OBSERVATION_PROXY":"DISCOVERY_ONLY",
+    required_value:"VERIFIED",delta_required:null}],
+   note:"Counterfactual context only; it never authorizes execution."},
+  subject:{...parsed.subject,name:null},
+  risk:{object_id:"derived-observation:"+parsed.subject.id+":"+at,score:proxyScore,
+   label:hasFacts?"WATCH":"CRITICAL",previous_score:null,delta:null,confidence,
+   verification_status:"INCOMPLETE",commercial_eligibility_status:"UNVERIFIED",
+   generated_at:at,expires_at:new Date(now+3*3600000).toISOString(),
+   methodology_version:"discovery-activity-proxy-v1"},
+  top_drivers:topDrivers,
+  policy:{policy_id:parsed.policy.policy_id,policy_version:parsed.policy.policy_version},
+  primary_driver:topDrivers[0]?.driver.toUpperCase()??"INSUFFICIENT_VERIFIED_CAUSAL_EVIDENCE",
+  affected_domain:topDrivers[0]?DRIVER_DOMAIN[topDrivers[0].driver]??affectedDomain:affectedDomain,
+  severity_score:proxyScore,intraday_override:false,flash_check_available:false,
+  suggested_mitigation:policyDecision.decision==="CONTINUE"?{exposure_cap_ratio:1,settlement_delay_hours:0}:
+   policyDecision.decision==="REDUCE_LIMIT"?{exposure_cap_ratio:0.5,settlement_delay_hours:24}:
+   policyDecision.decision==="REQUIRE_APPROVAL"?{exposure_cap_ratio:0,settlement_delay_hours:24}:
+   {exposure_cap_ratio:0,settlement_delay_hours:0},
+  risk_metric_semantics:standardReady?"CORROBORATED_OBSERVATION_PROXY":
+   hasFacts?"OBSERVATION_DENSITY_PROXY":"NO_DATA_POLICY_SENTINEL",
+  observation_count:distinct,corroboration_sources_count:sources,execution_authorized:false
+ };
 }
 /** Shared Basic/Standard decision builder used by partner and Store adapters.
  * It consumes only admitted fact counts; it never promotes raw source rights. */

@@ -14,6 +14,28 @@ function applyPaidLedgerMigrations(db){
 }
 import {parseRequest,predgePaidTrafficEnabled,predgePaidRiskGateD1,predgeRiskGateD1,verifyPredgePaidVerdictD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
+test("v1 pilot keeps its 100/day cap while v2 quota is telemetry-only and uncapped",()=>{
+ const source=readFileSync("workers/control-plane/src/predge-risk-gate-d1.mjs","utf8");
+ assert.match(source,/const DAY_LIMIT=100;/u);
+ assert.match(source,/const HARD_CEILING=500;/u);
+ assert.match(source,/WHERE used < \? RETURNING used/u);
+ assert.match(source,/if\(!quota&&!paidEndpoint\)return fail\("RISK_GATE_DAILY_LIMIT",429/u);
+ assert.match(source,/ON CONFLICT\(client_id,usage_day\) DO UPDATE SET used=used\+1\s+RETURNING used/u);
+ assert.match(source,/const quota=paidEndpoint\s+\?await[\s\S]*?:await/u);
+});
+
+test("v1 pilot returns 429 at its 100/day ceiling",async()=>{
+ const body=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
+ body.request_id="pilot-quota-cap-contract-01";body.tier="basic_focused";body.category="geopolitics";
+ const token="c".repeat(64),response=await predgeRiskGateD1(new Request(
+  "https://worker.example/v1/partner/predge/risk-gate",{method:"POST",
+   headers:{authorization:"Bearer "+token,"content-type":"application/json"},
+   body:JSON.stringify(body)}),
+  {PREDGE_RISK_GATE_TOKEN:token,DB:paidRiskGateFixtureDb({pilotQuotaExceeded:true})},
+  Date.parse("2026-11-12T00:00:00Z"));
+ assert.equal(response.status,429);assert.equal((await response.json()).error,"RISK_GATE_DAILY_LIMIT");
+});
+
 test("Predge Addendum v2 fee split and Arc settlement are explicit",()=>{
  assert.equal(PREDGE_PAID_RISK_GATE_V2.channel,"predge_b2b");
  assert.equal(PREDGE_PAID_RISK_GATE_V2.settlement_rail,"circle_arc");
@@ -207,7 +229,7 @@ test("Stage 3 rehearsal reads account billing through its dedicated token bindin
 });
 
 
-function paidRiskGateFixtureDb(){
+function paidRiskGateFixtureDb({pilotQuotaExceeded=false}={}){
  const requests=new Map(),ledger=new Map(),receipts=new Map();
  const key=(client,id)=>client+"|"+id;
  return {prepare(sql){
@@ -243,7 +265,10 @@ function paidRiskGateFixtureDb(){
      if(!row||row.state!=="CLAIMED")return null;
      row.state="DONE";row.response_json=values[0];row.finished_at=values[1];return {request_id:values[5]};
     }
-    if(sql.includes("INSERT INTO risk_gate_d1_quota"))return {used:1};
+    if(sql.includes("INSERT INTO risk_gate_d1_quota")){
+     if(pilotQuotaExceeded&&sql.includes("WHERE used < ?"))return null;
+     return {used:pilotQuotaExceeded?101:1};
+    }
     if(sql.includes("FROM predge_paid_risk_gate_usage_ledger")){
      const row=ledger.get(values[0])||[...ledger.values()].find(item=>
       values.includes(item.request_id)||values.includes(item.verdict_id));

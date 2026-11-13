@@ -44,6 +44,7 @@ const streamBaseline=[db,
  {name:"PREDGE_PAID_TRAFFIC_ENABLED",type:"plain_text",text:"NO"},
  {name:"PREDGE_PAID_GO_LIVE_CROSSCHECK",type:"plain_text",text:""},
  {name:"PREDGE_MUTUAL_TRIAL_STARTED_AT",type:"plain_text",text:""},
+ {name:"GEOMACRO_STORE_CHECKOUT_ENABLED",type:"plain_text",text:"NO"},
  {name:"RISK_STREAM_ACTIVE",type:"plain_text",text:"0"},
  {name:"STREAM_INGESTION_ENABLED",type:"plain_text",text:"false"},
  {name:"RISK_STREAM_HOT50_AUTONOMOUS_ENABLED",type:"plain_text",text:"0"},
@@ -70,14 +71,19 @@ test("Predge vars default fail-closed and explicitly reviewed trial vars are val
  assert.equal(defaults.PREDGE_PAID_TRAFFIC_ENABLED,"NO");
  assert.equal(defaults.PREDGE_PAID_GO_LIVE_CROSSCHECK,"");
  assert.equal(defaults.PREDGE_MUTUAL_TRIAL_STARTED_AT,"");
+ assert.equal(defaults.GEOMACRO_STORE_CHECKOUT_ENABLED,"NO");
  const explicit=reviewedHot50CandidateVars(sha,{
   PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
   PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-13T10:00:00Z"});
  assert.equal(explicit.PREDGE_PAID_TRAFFIC_ENABLED,"YES");
  assert.equal(explicit.PREDGE_PAID_GO_LIVE_CROSSCHECK,"PASS");
+ assert.equal(reviewedHot50CandidateVars(sha,{GEOMACRO_STORE_CHECKOUT_ENABLED:"YES"})
+  .GEOMACRO_STORE_CHECKOUT_ENABLED,"YES");
  assert.throws(()=>reviewedHot50CandidateVars(sha,{PREDGE_PAID_TRAFFIC_ENABLED:"true"}),
   /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
  assert.throws(()=>reviewedHot50CandidateVars(sha,{PREDGE_MUTUAL_TRIAL_STARTED_AT:"yesterday"}),
+  /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
+ assert.throws(()=>reviewedHot50CandidateVars(sha,{GEOMACRO_STORE_CHECKOUT_ENABLED:"true"}),
   /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
 });
 test("Predge paid token is additive only when named for review; it remains optional otherwise",()=>{

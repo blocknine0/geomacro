@@ -4,6 +4,13 @@
 import {GEOMACRO_CREDIT_CONTRACT_VERSION,GEOMACRO_CREDIT_COSTS,GEOMACRO_NEW_SALE_TIER_CAPABILITIES,GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES} from '../../../src/lib/credit-metering-policy.mjs';
 export const CUSTOMER_CREDIT_CONTRACT=GEOMACRO_CREDIT_CONTRACT_VERSION;
 export const CUSTOMER_CREDIT_COSTS=GEOMACRO_CREDIT_COSTS;
+export const CUSTOMER_RISK_GATE_PRICE_USD_CENTS=Object.freeze({
+  basic_focused:15,standard:20,complex_full:30,
+});
+// Existing prepaid packs are sold at 100 credits for $5: 5 cents per credit.
+export const CUSTOMER_RISK_GATE_USAGE_CREDITS=Object.freeze({
+  basic_focused:3,standard:4,complex_full:6,
+});
 export const CUSTOMER_RISK_GATE_USAGE_USD_CENTS=Object.freeze({
   risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25,
 });
@@ -125,6 +132,15 @@ async function chooseGrant(db,key,capability,now){
   const grant=eligible.find(g=>Number.isInteger(g.remaining)&&g.remaining>=CUSTOMER_ENTITLEMENT_UNITS[capability]);
   if(!grant)fail(402,'CUSTOMER_PAID_INSUFFICIENT_CREDITS');
   return grant;
+}
+/** Verify a live customer key/scope without requiring a balance. Used only for
+ * evidence-insufficient Store checks, which are explicitly non-billable. */
+export async function authenticateCanonicalCustomerPaid(db,env,apiKey,capability,now=nowIso()){
+ capability=validCapability(capability);
+ const key=await scopedKey(db,env,apiKey,now);
+ if(!key.scopes.includes(scopeFor(capability)))fail(403,'CUSTOMER_PAID_SCOPE_DENIED');
+ return {ok:true,principal_id:key.user_id,key_id:key.key_id,
+  principal_type:'api_client',scopes:key.scopes};
 }
 /** Read-only verified grant/account proof; no credits are allocated here. */
 export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,now=nowIso()){

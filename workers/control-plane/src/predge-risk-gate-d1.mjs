@@ -303,6 +303,29 @@ async function hotRow(db,subject,now){
  return db.prepare("SELECT * FROM corridor_gro_verified_hot WHERE corridor_id=? AND generated_at<=? AND expires_at>? LIMIT 1")
    .bind(subject.id,new Date(now).toISOString(),new Date(now).toISOString()).first();
 }
+/** Common verified evidence read used by Predge and the gated direct Store. */
+export async function readRiskGateEvidence(env,parsed,now=Date.now(),authority=DEFAULT_AUTHORITY){
+ const [gro,facts,sevenDayRollupReady]=await Promise.all([
+  readCachedSignedGro(env,parsed.subject,now,
+   ()=>hotRow(env.DB,parsed.subject,now),
+   row=>row?verifyHotGRO(row,env,parsed.subject,now,authority):null),
+  readProgressiveFacts(env.DB,parsed.subject,now,parsed.category),
+  sevenDayRollupIsReady(env,parsed.subject,now)
+ ]);
+ return {gro,facts,sevenDayRollupReady,db:env.DB};
+}
+export async function generateRequestRiskGateDecision(parsed,evidence,now=Date.now()){
+ const shared=generateProgressiveRiskGateDecision(parsed,evidence.facts,parsed.tier,
+  Boolean(evidence.gro),evidence.sevenDayRollupReady,now);
+ let result=shared.result;
+ if(parsed.tier==="complex_full"&&shared.tierReady){
+  const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
+  result=evaluateRiskGate(parsed,evidence.gro,new Date(now));
+  const flash=await readIntradayFlashOverride(evidence.db,evidence.gro,parsed.subject,now);
+  applyIntradayFlashDecision(result,flash);
+ }
+ return {...shared,result};
+}
 function serviceCredential(request,env,paidEndpoint=false){
  const expected=String((paidEndpoint?env?.PREDGE_PAID_RISK_GATE_TOKEN:env?.PREDGE_RISK_GATE_TOKEN)??"");
  if(!HASH.test(expected)||constantEqual(expected,env?.CONTROL_PLANE_TOKEN)||
@@ -378,13 +401,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  // D1 schema or transport failure is an infrastructure error, not missing proof.
  let gro,facts,sevenDayRollupReady;
  try{
-   [gro,facts,sevenDayRollupReady]=await Promise.all([
-     readCachedSignedGro(env,parsed.subject,now,
-        ()=>hotRow(env.DB,parsed.subject,now),
-        row=>row?verifyHotGRO(row,env,parsed.subject,now,authority):null),
-     readProgressiveFacts(env.DB,parsed.subject,now,parsed.category),
-     sevenDayRollupIsReady(env,parsed.subject,now),
-   ]);
+   ({gro,facts,sevenDayRollupReady}=await readRiskGateEvidence(env,parsed,now,authority));
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
  const sharedDecision=generateProgressiveRiskGateDecision(parsed,facts,lockedTier,
    Boolean(gro),sevenDayRollupReady,now);
@@ -428,10 +445,17 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
       WHERE client_id=? AND request_id=? AND state='PENDING'
       RETURNING request_id`).bind(client,parsed.request_id).first();
    if(!owned)return paidEndpoint?singleEndBuyerLimitExceeded():fail("RISK_GATE_REQUEST_IN_PROGRESS",409);
-   const quota=await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
-     VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
-     WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
-   if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
+   // Paid Addendum v2 records an uncapped operational counter. The legacy v1
+   // pilot remains strictly limited to min(DAY_LIMIT,HARD_CEILING) per UTC day.
+   const quota=paidEndpoint
+     ?await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
+        VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
+        RETURNING used`).bind(client,day).first()
+     :await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
+        VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
+        WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
+   if(!quota&&!paidEndpoint)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
+   if(!quota)return fail("RISK_GATE_LEDGER_UNAVAILABLE",503);
 
    let result;
    if(lockedTier==="complex_full"&&tierReady){
