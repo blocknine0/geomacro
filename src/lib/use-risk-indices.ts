@@ -245,11 +245,11 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
      !keyResponse.ok||keyResponse.redirected)
    throw Error("GEOMACRO_NEWS_GRI_CERTIFICATION_INVALID");
   const keyInfo=await keyResponse.json() as {ok?:boolean;scheme?:string;key_id?:string;public_key_spki_b64?:string};
-  const {ed25519_delivery:_,...signedReport}=doc;
+  const signedReport={...doc};delete signedReport.ed25519_delivery;
   const canonical=canonicalPublicJson(signedReport);
   const bytes=new TextEncoder().encode(canonical);
   const hashBytes=new Uint8Array(await crypto.subtle.digest("SHA-256",bytes));
-  const hash=Array.from(hashBytes,b=>b.toString(16).padStart(2,"0")).join("");
+  const payloadHash=Array.from(hashBytes,b=>b.toString(16).padStart(2,"0")).join("");
   if(delivery?.schema!=="geomacro.news-severity-ed25519-delivery.v1"||
      delivery.signature_scheme!=="Ed25519"||
      delivery.proof_scope!=="GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_CALCULATION_ONLY"||
@@ -260,7 +260,7 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
      response.headers.get("x-geomacro-signature")!==delivery.signature_b64||
      response.headers.get("x-geomacro-signing-key-id")!==delivery.signature_key_id||
      response.headers.get("x-geomacro-payload-sha256")!==delivery.payload_sha256||
-     hash!==delivery.payload_sha256||typeof keyInfo.public_key_spki_b64!=="string"||
+     payloadHash!==delivery.payload_sha256||typeof keyInfo.public_key_spki_b64!=="string"||
      !/^[A-Za-z0-9+/]{55,120}={0,2}$/u.test(keyInfo.public_key_spki_b64))
     throw Error("GEOMACRO_NEWS_GRI_ED25519_ENVELOPE_INVALID");
   const key=await crypto.subtle.importKey("spki",Uint8Array.from(atob(keyInfo.public_key_spki_b64),x=>x.charCodeAt(0)),
@@ -319,11 +319,11 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
     }
   }
 
-  const {certification:_,ed25519_delivery:__,...signed}=doc;
+  const signed={...doc};delete signed.certification;delete signed.ed25519_delivery;
   const signedBytes=new TextEncoder().encode(JSON.stringify(signed));
   const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",signedBytes));
-  const hash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
-  if(hash!==cert.signed_payload_sha256)
+  const hmacPayloadHash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
+  if(hmacPayloadHash!==cert.signed_payload_sha256)
     throw Error("GEOMACRO_NEWS_GRI_SIGNED_PAYLOAD_MISMATCH");
   return doc.data;
 }

@@ -17,6 +17,8 @@ import {
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
+import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
+import type { WebsiteDerivedNewsResult } from "@/lib/website-derived-news-reader.server";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -51,22 +53,23 @@ export const Route = createFileRoute("/intelligence")({
     // The three category checks are independent: one timeout must never hide
     // another category's valid original-dated releases.
     const domains = ["geopolitics", "macro", "rare_earth"] as const;
-    const [geopolitics, macro, minerals, history] = await Promise.allSettled([
-      ...domains.map(category => withPublicRuntimeTimeout(
+    const statelessResults = await Promise.allSettled(domains.map(category => withPublicRuntimeTimeout(
         getStatelessIntelligence({ data: { category } }),
         8_000,
         "Original publisher Intelligence source check timed out.",
-      )),
+      )));
+    const [history] = await Promise.allSettled([
       withPublicRuntimeTimeout(
-        getWebsiteDerivedNews(),
+        getWebsiteDerivedNews() as Promise<WebsiteDerivedNewsResult>,
         9_000,
         "Derived Intelligence journal read timed out.",
       ),
     ]);
-    const accepted = [geopolitics, macro, minerals].map((entry, i) =>
-      entry.status === "fulfilled" && !Array.isArray(entry.value) &&
-       entry.value.category === domains[i] &&
-      entry.value.healthy_feed_count > 0 ? entry.value : null);
+    const accepted = statelessResults.map((entry, i):StatelessIntelligenceResult|null => {
+      if(entry.status!=="fulfilled"||Array.isArray(entry.value))return null;
+      const value=entry.value as StatelessIntelligenceResult;
+      return value.category===domains[i]&&value.healthy_feed_count>0?value:null;
+    });
     return {
       rows: [],
       now,
