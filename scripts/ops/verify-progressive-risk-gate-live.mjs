@@ -1,6 +1,6 @@
 /**
  * Exact deployment no-funds acceptance: one real authenticated risk decision,
- * decision Ed25519 cryptographic readback, tier matrix and idempotent replay.
+ * decision Ed25519 cryptographic readback, tier matrix and single-use replay denial.
  * Emits ONLY stable booleans and symbolic errors; never response body or bearer.
  */
 import {readFileSync} from "node:fs";
@@ -14,14 +14,14 @@ const req=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json",
 req.request_id="progressive-no-funds-"+String(process.env.GITHUB_SHA??"").slice(0,40);
 delete req.evaluated_at;
 const payload=JSON.stringify(req);
-const call=async()=>{
+const call=async(expectedStatus=200)=>{
  const response=await fetch(root+"/v1/partner/predge/risk-gate",{
    method:"POST",headers:{"Authorization":"Bearer "+token,
       "Content-Type":"application/json"},body:payload,redirect:"manual",
    signal:AbortSignal.timeout(15000)
  });
- if(response.status!==200)throw Error("PROGRESSIVE_LIVE_HTTP_"+response.status);
- return response.json();
+ if(response.status!==expectedStatus)throw Error("PROGRESSIVE_LIVE_HTTP_"+response.status);
+ return {status:response.status,json:await response.json()};
 };
 const keyResp=await fetch(root+"/v1/public/risk-gate-decision-key",{
   redirect:"manual",signal:AbortSignal.timeout(7000)});
@@ -59,17 +59,21 @@ function accepted(out){
    throw Error("PROGRESSIVE_LIVE_ED25519_INVALID");
  return out;
 }
-const first=accepted(await call());
-const replay=accepted(await call());
-if(replay.idempotent_replay!==true||
-  first.decision_payload_sha256!==replay.decision_payload_sha256||
-  first.decision_signature_b64!==replay.decision_signature_b64)
-  throw Error("PROGRESSIVE_LIVE_REPLAY_NOT_IDENTICAL");
+const firstResult=await call(200),first=accepted(firstResult.json);
+if(firstResult.json.error!==undefined||firstResult.json.message!==undefined||
+   first.redistribution_lock?.max_commercial_uses!==1||
+   first.redistribution_lock?.resale_permitted!==false)
+  throw Error("PROGRESSIVE_LIVE_SINGLE_USE_LICENSE_INVALID");
+const replay=await call(403);
+if(replay.json?.error!=="REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED"||
+   replay.json?.execution_authorized!==false||
+   replay.json?.message!=="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Permission from Geomacro's end is required. Contact: contact@geomacro.live")
+  throw Error("PROGRESSIVE_LIVE_REPLAY_NOT_DENIED");
 console.log(JSON.stringify({schema:"geomacro.progressive-risk-gate-live-acceptance.v1",
  ok:true,no_funds:true,source_sha:String(process.env.GITHUB_SHA??"").slice(0,40),
  tier:first.tier,basic_active:true,
  standard_active:first.tier_activation_matrix.standard.active,
  complex_active:first.tier_activation_matrix.complex.active,
- ed25519_verified:true,idempotency_verified:true,
+ ed25519_verified:true,single_use_replay_denied:true,
  score_nonnull:true,execution_authorized:false,
  payment_authorized:false}));
