@@ -31,7 +31,7 @@ export function pinnedIccOriginalNewsLink(value){
 function nativeFeedDate(item){
  for(const tag of ["pubDate","dc:date"]){
   const value=xmlValue(item,tag);
-  if(!value||!/(?:Z|[+-]\\d{2}:?\\d{2}|\\bGMT\\b|\\bUTC\\b)$/iu.test(value))continue;
+  if(!value||!/(?:Z|[+-]\d{2}:?\d{2}|\bGMT\b|\bUTC\b)$/iu.test(value))continue;
   const ms=Date.parse(value);
   if(Number.isFinite(ms))return new Date(ms).toISOString();
  }
@@ -55,11 +55,11 @@ export function extractIccOfficialNewsLinks(xml,{limit=5}={}){
 export function parseIccOfficialNewsItems(xml){
  if(typeof xml!=="string"||Buffer.byteLength(xml)>MAX_BYTES ||
     /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
-    !/<rss(?:\\s|>)/iu.test(xml) ||
-    !/<channel(?:\\s|>)/iu.test(xml) ||
+    !/<rss(?:\s|>)/iu.test(xml) ||
+    !/<channel(?:\s|>)/iu.test(xml) ||
     !/International Criminal Court|ICC/iu.test(xml.slice(0,10000)))
    throw Error("ICC_OFFICIAL_RSS_SHAPE_INVALID");
- const matches=[...xml.matchAll(/<item(?:\\s[^>]*)?>([\\s\\S]*?)<\\/item>/giu)];
+ const matches=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
  if(matches.length<1)throw Error("ICC_OFFICIAL_RSS_NO_ITEMS");
  if(matches.length>MAX_ITEMS)throw Error("ICC_OFFICIAL_RSS_ITEM_BUDGET");
  const seen=new Set(),records=[];
@@ -78,11 +78,11 @@ export function parseIccOfficialNewsItems(xml){
 export function parseIccOfficialNewsRss(xml){
  if(typeof xml!=="string"||Buffer.byteLength(xml)>MAX_BYTES ||
     /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
-    !/<rss(?:\\s|>)/iu.test(xml) ||
-    !/<channel(?:\\s|>)/iu.test(xml) ||
+    !/<rss(?:\s|>)/iu.test(xml) ||
+    !/<channel(?:\s|>)/iu.test(xml) ||
     !/International Criminal Court|ICC/iu.test(xml.slice(0,10000)))
    throw Error("ICC_OFFICIAL_RSS_SHAPE_INVALID");
- const matches=[...xml.matchAll(/<item(?:\\s[^>]*)?>([\\s\\S]*?)<\\/item>/giu)];
+ const matches=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
  if(matches.length<1)throw Error("ICC_OFFICIAL_RSS_NO_ITEMS");
  if(matches.length>MAX_ITEMS)throw Error("ICC_OFFICIAL_RSS_ITEM_BUDGET");
  let official=0,dated=0;
