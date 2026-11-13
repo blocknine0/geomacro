@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-13T19:31:12.060Z",
+  "updated_at": "2026-11-13T22:32:51.110Z",
   "signals": [
+    {
+      "id": "geopolitics-7a809d63",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The United Kingdom stands in solidarity with our Gulf partners · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The United Kingdom stands in solidarity with our Gulf partners. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-13T21:42:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-2bf68f19",
       "category": "geopolitics",
