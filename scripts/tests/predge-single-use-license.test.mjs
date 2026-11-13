@@ -145,6 +145,13 @@ for(const paid of [false,true]){
    assert.equal(denied.execution_authorized,false);
    assert.equal(denied.message,MESSAGE);
   }
+  const crossEndpoint={...fixture,policy:{...fixture.policy,
+   policy_id:paid?"predge-free-pilot-review-only":"predge-paid-traffic-addendum-v2"}};
+  const cross=await call(crossEndpoint,!paid,db),crossDenied=await cross.json();
+  assert.equal(cross.status,403);
+  assert.equal(crossDenied.error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
+  assert.equal(crossDenied.execution_authorized,false);
+  assert.equal(crossDenied.message,MESSAGE);
  });
 }
 test("request parser requires immutable market and condition binding",()=>{
