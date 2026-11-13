@@ -28,7 +28,7 @@ test("127 owner-removed source entries are retired from private production inges
   assert.ok(registry.every(s=>!isRetiredPrivateOsintSource(s)));
   const indexCount=registry.filter(s=>s.private_discovery_index_only&&s.discovery_country_iso3).length;
   assert.ok(indexCount>=1&&indexCount<=25);
-  assert.equal(registry.filter(s=>s.private_country_local_candidate).length,70);
+  assert.equal(registry.filter(s=>s.private_country_local_candidate).length,69);
   assert.equal(registry.filter(s=>s.private_hub_overlay).length,3);
  }
 });
