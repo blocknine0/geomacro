@@ -28,7 +28,7 @@ describe("Predge 0131 migration receipt signer",()=>{
   expect(()=>loadPredge0131ReceiptSigner({privateKeyPkcs8B64:"",publicKeySpkiB64}))
    .toThrow("PREDGE_0131_RECEIPT_PRIVATE_KEY_REQUIRED");
   expect(()=>loadPredge0131ReceiptSigner({privateKeyPkcs8B64,publicKeySpkiB64:"!"}))
-   .toThrow("PREDGE_0131_RECEIPT_PUBLIC_KEY_REQUIRED");
+   .toThrow("PREDGE_0131_RECEIPT_KEY_ENCODING_INVALID");
   const other=generateKeyPairSync("ed25519").publicKey.export({format:"der",type:"spki"}).toString("base64");
   expect(()=>loadPredge0131ReceiptSigner({privateKeyPkcs8B64,publicKeySpkiB64:other}))
    .toThrow("PREDGE_0131_RECEIPT_KEY_PAIR_MISMATCH");
