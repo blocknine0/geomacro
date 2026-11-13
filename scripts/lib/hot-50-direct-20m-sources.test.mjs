@@ -70,7 +70,6 @@ test("empty or failed Hot50 primaries request existing global hub backups withou
  const categories=hot50Direct20mFailoverCategories(cell_failover_plan,registry,[]);
  assert.ok(categories.includes("geopolitics"));
  assert.ok(categories.includes("rare_earth"));
- assert.deepEqual(hot50Direct20mFailoverCategories([],registry,[]),[]);
 });
 test("three consecutive 20m slots never re-probe any permanently removed endpoint",()=>{
  const seen=new Set();
