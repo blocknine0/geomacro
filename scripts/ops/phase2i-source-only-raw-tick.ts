@@ -16,7 +16,7 @@ import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
-import {hot50Direct20mPublisherRegistry} from "../lib/hot-50-direct-20m-sources.mjs";
+import {hot50Direct20mPublisherRegistry,hot50Direct20mFailoverCategories} from "../lib/hot-50-direct-20m-sources.mjs";
 import {threeDomainGlobal20mPublisherRegistry} from "../lib/three-domain-global-direct-20m-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
@@ -66,15 +66,51 @@ const direct20m=hot50Direct20m?hot50Direct20mPublisherRegistry():
  threeDomainDirect20m?threeDomainGlobal20mPublisherRegistry(now):null;
 const registry=direct20m?.registry??privateOsintRuntimeSources(now,privateOsintGlobalSources(),
  COUNTRIES_195,{includeLocalGapLane:true});
+const fallbackRegistry=hot50Direct20m?(direct20m?.fallback_registry??[]):[];
+const fallbackPlan=hot50Direct20m?(direct20m?.cell_failover_plan??[]):[];
 const pinnedCategories=new Map(registry.map(source=>[source.url,source.categories]));
+for(const source of fallbackRegistry){
+ const categories=new Set([...(pinnedCategories.get(source.url)??[]),...source.categories]);
+ pinnedCategories.set(source.url,[...categories]);
+}
 const singleSweep=createPhase2iSingleSweepOriginalIndex({
  pinnedCategories,topics:PRIVATE_OSINT_TOPICS,
 });
-const result=await collectPrivateOsint15m({
+let result=await collectPrivateOsint15m({
  now,registry,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
  onOriginalCandidate:singleSweep.observe,
 });
+let globalFailoverCategories=[];
+if(hot50Direct20m&&fallbackRegistry.length){
+ globalFailoverCategories=hot50Direct20mFailoverCategories(
+  fallbackPlan,registry,result.checks);
+ const alreadyFetched=new Set(registry.map(source=>source.url));
+ const backupBatch=fallbackRegistry.filter(source=>
+  source.categories.some(category=>globalFailoverCategories.includes(category))&&
+  !alreadyFetched.has(source.url));
+ if(backupBatch.length){
+  const fallback=await collectPrivateOsint15m({
+   now,registry:backupBatch,normalize:normalizeReusableNewsJson,
+   resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
+   onOriginalCandidate:singleSweep.observe,
+  });
+  const attempted=result.summary.source_endpoints_attempted+
+   fallback.summary.source_endpoints_attempted;
+  const sourceStates={...result.summary.source_states};
+  for(const [state,count] of Object.entries(fallback.summary.source_states))
+   sourceStates[state]=(sourceStates[state]??0)+count;
+  result={...result,items:[...result.items,...fallback.items],
+   checks:[...result.checks,...fallback.checks],
+   summary:{...result.summary,source_endpoints_attempted:attempted,
+    registered_source_endpoints:attempted,source_states,
+    global_hub_failover_attempted:true,
+    global_hub_failover_categories:globalFailoverCategories,
+    global_hub_failover_endpoints:backupBatch.length,
+    global_hub_failover_rights_verified:false,
+    global_hub_failover_commercial_eligible:false}};
+ }
+}
 if(result.summary.configured_country_routes!==195||
  result.summary.configured_country_category_routes!==585||
  result.summary.configured_categories!==3||
