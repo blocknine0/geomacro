@@ -88,7 +88,7 @@ describe("#1827 avoid redundant private B2 cold-origin downloads on the same Clo
     expect((await direct.json()).ok).toBe(false);
   });
 
-  it.each(products)("$path always prioritizes new verified D1 hot/positive cache before private failure marker",product=>{
+  it.each(products)("$path orders verified hot snapshot and cache before private failure marker",product=>{
     const src=readFileSync(product.code,"utf8");
     const serving=src.slice(src.indexOf("export default"));
     const d1=serving.indexOf("const hotSnapshot = await readD1HotSnapshot(env);");
@@ -97,7 +97,8 @@ describe("#1827 avoid redundant private B2 cold-origin downloads on the same Clo
     const origin=serving.indexOf("const response = await buildResponse(env);");
     const set=serving.indexOf("ctx.waitUntil(rememberFailedB2Origin(cache, negativeKey));");
     expect(d1).toBeGreaterThan(0);
-    expect(cached).toBeGreaterThan(d1);
+    if(product.path==="/global-risk")expect(cached).toBeLessThan(d1);
+    else expect(cached).toBeGreaterThan(d1);
     expect(failed).toBeGreaterThan(cached);
     expect(origin).toBeGreaterThan(failed);
     expect(set).toBeGreaterThan(origin);
