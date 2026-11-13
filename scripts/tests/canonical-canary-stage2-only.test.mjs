@@ -4,6 +4,8 @@ import {readFileSync} from "node:fs";
 
 const workflow=readFileSync(new URL("../../.github/workflows/geomacro-protected-hot50-worker-rollout.yml",import.meta.url),"utf8");
 const canonical=readFileSync(new URL("../canary-promoter.ts",import.meta.url),"utf8");
+const deploy=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+const uploader=readFileSync(new URL("../ops/prepare-optimized-worker-candidate.mjs",import.meta.url),"utf8");
 
 test("every manual Hot50 canary requires real signed 0204/0211/0212/0213 Stage2",()=>{
   assert.match(workflow,/stage2_run_id:\s*\n\s*description:[^\n]*Stage2[^\n]*\n\s*required: true/);
@@ -43,4 +45,24 @@ test("Hot50 promotion derives and authenticates existing production bearer befor
  const promoter=workflow.indexOf("scripts/canary-promoter.ts --promote",signed);
  assert(auth>0&&root>auth&&derived>root&&billing>derived&&signed>billing&&promoter>signed);
  assert.doesNotMatch(workflow.slice(auth,billing),/wrangler.*secret put|gh secret set|continue-on-error/u);
+});
+
+test("held deployment uses the pinned candidate uploader and canonical signed promoter",()=>{
+ assert.match(deploy,/d1-v2-canary-release-hold:/);
+ assert.match(deploy,/allow_deploy=false/);
+ assert.match(deploy,/held-versioned-canary-rollout:/);
+ assert.match(deploy,/outputs\.hold_present == 'true'/);
+ assert.match(deploy,/prepare-optimized-worker-candidate\.mjs/);
+ assert.match(uploader,/\['-y','wrangler@4\.136\.3','versions','upload'/);
+ assert.match(uploader,/--secrets-file/);
+ assert.match(deploy,/uses: actions\/download-artifact@/);
+ assert.match(deploy,/admitSignedStep3ProductionFile\(\)/);
+ assert.match(deploy,/scripts\/canary-promoter\.ts --promote/);
+ assert.match(deploy,/allow_deploy == 'true'/);
+ assert.match(deploy,/test -f config\/d1-hotspot-v2-canary\.hold/);
+ assert.match(canonical,/CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED/);
+ assert.match(canonical,/CANARY_DIRECTED_D1_READINESS_UNVERIFIED/);
+ assert.match(canonical,/progressive_decision_ed25519_signer_configured===true/);
+ assert.match(canonical,/paid_launch_approved===false/);
+ assert.match(canonical,/execution_authorized===false/);
 });
