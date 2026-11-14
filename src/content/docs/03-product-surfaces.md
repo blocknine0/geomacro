@@ -8,7 +8,6 @@ Every public Geomacro capability carries a stage label so current availability i
 
 Structured geopolitical, macroeconomic and critical-mineral event intelligence with severity, confidence, evidence and timestamps.
 
-## 3.2 Risk Indices
 
 **Status: LIVE**
 
@@ -20,9 +19,6 @@ The current public risk-index product presents three domains independently:
 
 Each index is a risk-intelligence signal with its own current reading, history and change context. Missing or unverifiable domain evidence is not converted into a synthetic zero-risk reading.
 
-The three public indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records and are not a second current headline product.
-
-The Risk Indices are risk-intelligence signals, not investment recommendations or transaction authorization signals.
 
 ## 3.3 Ask Geomacro
 
@@ -59,7 +55,6 @@ Geomacro does not autonomously execute or authorize the customer's transaction. 
 
 **Status: PUBLIC DATA SURFACES + PRIVATE PILOT MACHINE ACCESS**
 
-Public intelligence, Risk Indices and proof surfaces are available today. Governed machine-readable delivery, signed Risk Objects and Risk Gate remain controlled Private Pilot capabilities rather than generally available production APIs.
 
 Free Explorer is the public website/dashboard experience, not an anonymous free structured API.
 

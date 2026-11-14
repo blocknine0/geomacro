@@ -8,7 +8,6 @@ It converts fragmented real-world events and structured evidence into explainabl
 flowchart TD
     EVIDENCE["Real-world evidence and data"] --> NORMALIZE["Normalize, classify and preserve provenance"]
     NORMALIZE --> STATE["Structured intelligence state"]
-    STATE --> INDICES["Separate Risk Indices - Live"]
     STATE --> ASK["Ask Geomacro - Live"]
     STATE --> COUNTRY["Country Risk Object - Private Pilot"]
     STATE --> CORRIDOR["Corridor Risk Object - Private Pilot"]
@@ -18,7 +17,6 @@ flowchart TD
     POLICY --> ACTION["Customer-controlled action"]
 ```
 
-The current public product is Risk Intelligence, the separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro. The indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage without presenting the historical combined GRI as a second live headline score.
 
 Country and directional corridor Risk Objects plus Risk Gate are Private Pilot capabilities. Geomacro supplies external risk context; the customer retains identity, permissions, policy, funds and final execution control, and the current Risk Gate boundary remains `execution_authorized=false`.
 

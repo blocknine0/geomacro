@@ -2,7 +2,6 @@
 
 A high volume of repeated reporting is not the same as independent evidence.
 
-Geomacro's current GRI v1.2 methodology addresses concentration at two levels:
 
 1. **Source concentration:** evidence from one source has a capped weight budget.
 2. **Story concentration:** multiple publisher reports describing the same underlying development share one independent-story budget.
@@ -22,4 +21,3 @@ flowchart TD
     E --> F[One bounded story evidence budget]
 ```
 
-The public GRI proof package exposes both evidence-record count and independent-story count so readers can judge concentration instead of relying on URL volume alone.

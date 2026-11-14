@@ -2,7 +2,6 @@
 
 Current Geomacro event intelligence stores more than a headline. Risk-relevant events can carry severity, confidence, category, timestamps, source information and classification provenance.
 
-For GRI v1.2, an observation is eligible only when it satisfies the current category, severity, confidence, time-window, classification-provenance and story-assignment contracts.
 
 Reliability controls include:
 

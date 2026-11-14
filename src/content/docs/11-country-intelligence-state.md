@@ -4,7 +4,6 @@
 
 Geomacro separates the public global index from subject-specific country risk.
 
-A country view is the machine-readable risk context for one ISO3 subject at a specific evaluation time. In the current Private Pilot, country risk is delivered through a signed Geomacro Risk Object (GRO) and is used by Risk Gate rather than by applying the global GRI as a universal rule.
 
 A country Risk Object can carry:
 
