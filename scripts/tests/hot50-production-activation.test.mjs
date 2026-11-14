@@ -22,14 +22,15 @@ function mockDb({outbox=0,queue=[],bundles=[],r2=[],historical=0,events=[]}={}){
     async first(){
       if(query.includes("FROM p0b_archive_outbox"))
         return {total:outbox,pending:outbox,replaying:0,expired_leases:0,
+          active_leases:0,future_due:0,due_now:outbox,
           archived:0,journal_mismatch:0};
       if(query.includes("FROM phase2h_archive_totals"))
         return {categories:3,total:historical,unarchived:historical};
       throw Error("UNEXPECTED_SINGLE_QUERY");
     },
     async all(){
-      if(query.includes("FROM ingestion_spool_queue GROUP"))return result(queue);
-      if(query.includes("FROM ingestion_spool_bundles GROUP"))return result(bundles);
+      if(query.includes("FROM ingestion_spool_queue"))return result(queue);
+      if(query.includes("FROM ingestion_spool_bundles"))return result(bundles);
       if(query.includes("FROM p0b_private_r2_fallback"))return result(r2);
       if(query.includes("WITH hot(iso3)"))return result(coverage);
       if(query.includes("FROM p0b_archive_outbox"))return result([]);
@@ -56,6 +57,29 @@ test("queue and historical D1 pending always block exact zero-backlog proof",asy
      async()=>({backlogCount:1})),now));
  assert.equal(census.backlog.total_unhandled,16);
  assert.equal(census.backlog.zero_unhandled_proven,false);
+});
+test("activation census classifies due, future-due, cooldown, leases, terminal and mismatch states",async()=>{
+ const c=await json(await readHot50ActivationCensus(env(mockDb({
+  outbox:5,
+  queue:[
+   {state:"RETRY",n:2,due_now:1,recent_cooldown:1},
+   {state:"PROCESSING",n:2,active_leases:1,expired_leases:1},
+   {state:"QUARANTINED",n:3},
+   {state:"DEAD_LETTER",n:4}
+  ],
+  bundles:[{state:"PROCESSING",n:2,active_leases:1,expired_leases:1}],
+  r2:[{state:"PENDING_B2",n:3,due_now:1,future_due:2}],
+  historical:7
+ }),async()=>({backlogCount:0})),now));
+ const r=c.backlog.recovery_state_classification;
+ assert.deepEqual(r.queue.RETRY,{due_now:1,future_due:0,recent_cooldown:1,active_leases:0,expired_leases:0});
+ assert.deepEqual(r.queue.PROCESSING,{due_now:0,future_due:0,recent_cooldown:0,active_leases:1,expired_leases:1});
+ assert.equal(c.backlog.queue_states.QUARANTINED,3);
+ assert.equal(c.backlog.queue_states.DEAD_LETTER,4);
+ assert.equal(r.outbox.pending_archive_due_now,5);
+ assert.equal(r.r2.PENDING_B2.future_due,2);
+ assert.equal(r.historical_raw.unarchived,7);
+ assert.equal(r.historical_raw.eligibility_window_resolved,false);
 });
 test("unknown queue provider metric never certifies zero even when all tables empty",async()=>{
  const census=await json(await readHot50ActivationCensus(
@@ -133,11 +157,14 @@ test("real SQLite activation views reject future evidence and count unknown debt
  const {readFileSync}=await import("node:fs");
  const db=new DatabaseSync(":memory:");
  try{
- db.exec(`CREATE TABLE p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count,locked_until);
- CREATE TABLE ingestion_spool_queue(state,b2_spool_uri,d1_committed_at,acked_at,candidate_sha256,source_id);
+ db.exec(`CREATE TABLE p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count,locked_until,next_retry_at);
+ CREATE TABLE ingestion_spool_queue(state,b2_spool_uri,d1_committed_at,acked_at,candidate_sha256,source_id,locked_until,spooled_at);
  CREATE TABLE normalized_articles(candidate_sha256,source_id,b2_archive_uri);
- CREATE TABLE ingestion_spool_bundles(state,b2_spool_uri,bundle_sha256,item_count,acked_at);
- CREATE TABLE p0b_private_r2_fallback(state);
+ CREATE TABLE ingestion_spool_bundles(state,b2_spool_uri,bundle_sha256,item_count,acked_at,locked_until,created_at);
+ CREATE INDEX idx_spool_state_locked ON ingestion_spool_queue(state,locked_until,spooled_at);
+ CREATE INDEX idx_p0b_bundle_pending ON ingestion_spool_bundles(state,locked_until,created_at);
+ CREATE TABLE p0b_private_r2_fallback(state,next_retry_at,locked_until,created_at);
+ CREATE INDEX idx_p0b_r2_pending ON p0b_private_r2_fallback(state,next_retry_at,created_at);
  CREATE TABLE phase2h_private_raw_news(b2_object_sha256);
  CREATE TABLE phase2h_archive_totals(category,staged_count,archived_count);
  INSERT INTO phase2h_archive_totals VALUES
@@ -151,7 +178,7 @@ test("real SQLite activation views reject future evidence and count unknown debt
  assert.ok(hot50ViewPlan.some(x=>/idx_progressive_risk_gate_facts_country_time/.test(x.detail)),
   JSON.stringify(hot50ViewPlan));
  assert.ok(!hot50ViewPlan.some(x=>/SCAN f(?:\\b|$)/u.test(x.detail)),JSON.stringify(hot50ViewPlan));
- db.exec("INSERT INTO ingestion_spool_queue(state) VALUES('UNKNOWN_DEBT'); INSERT INTO p0b_private_r2_fallback VALUES('B2_VERIFIED');");
+ db.exec("INSERT INTO ingestion_spool_queue(state) VALUES('UNKNOWN_DEBT'); INSERT INTO p0b_private_r2_fallback(state) VALUES('B2_VERIFIED');");
  assert.equal(db.prepare("SELECT queue_unhandled,r2_pending FROM v_p0b_unhandled_activation").get().queue_unhandled,1);
  assert.equal(db.prepare("SELECT r2_pending FROM v_p0b_unhandled_activation").get().r2_pending,0);
  db.prepare("INSERT INTO progressive_risk_gate_facts VALUES('USA','macro','event','ORIGINAL_PUBLICATION','example.org',?)").run(new Date(Date.now()+86400000).toISOString());
