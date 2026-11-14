@@ -106,7 +106,7 @@ function validateCandidate(e,now){
   fail("INDEX_CANNOT_CLAIM_ORIGINAL");
  return e;
 }
-async function checkMachineProof(e,env,factsKey,rightsKey){
+export async function checkMachineProof(e,env,factsKey,rightsKey){
  if(e.kind==="INDEX_ONLY")return false;
  const claim=encode(riskStreamOriginalClaims(e));
  const facts=await crypto.subtle.verify("Ed25519",factsKey,

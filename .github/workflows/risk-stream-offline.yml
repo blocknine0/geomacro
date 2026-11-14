@@ -9,12 +9,24 @@ on:
       - 'scripts/ops/push-risk-stream-shadow-jsonl.mjs'
       - 'scripts/ops/verify-risk-stream-b2-live-governor.mjs'
       - 'scripts/ops/run-risk-stream-shadow-provider-audit.mjs'
+      - 'scripts/lib/risk-stream-source-rights-manifest.mjs'
+      - 'scripts/lib/risk-stream-event-fingerprint.mjs'
+      - 'scripts/lib/risk-stream-candidate-builder.mjs'
+      - 'scripts/lib/risk-stream-pairing.mjs'
+      - 'scripts/ops/emit-risk-stream-candidates.mjs'
+      - 'scripts/ops/register-risk-stream-source.mjs'
+      - 'scripts/ops/hot50-standard-feasibility.mjs'
+      - 'config/risk-stream-source-rights-reviewed.v1.json'
+      - '.github/workflows/apply-risk-stream-source-registry.yml'
       - '.github/workflows/risk-stream-shadow-provider-audit.yml'
       - 'workers/control-plane/migrations/0214_risk_stream_event_driven.sql'
       - 'workers/control-plane/migrations/0216_risk_stream_commercial_derived_outbox.sql'
       - 'workers/control-plane/migrations/0217_risk_stream_commercial_issuer_jobs.sql'
       - 'workers/risk-stream-shadow-ack/**'
+      - 'workers/risk-stream-facts-attester/**'
+      - 'workers/risk-stream-rights-attester/**'
       - 'scripts/tests/risk-stream-shadow-ack-handshake.test.mjs'
+      - 'scripts/tests/risk-stream-attesters.test.mjs'
       - 'scripts/tests/risk-stream-*.test.mjs'
       - '.github/workflows/risk-stream-offline.yml'
   workflow_dispatch:
@@ -35,12 +47,15 @@ jobs:
         run: |
           node --check workers/control-plane/src/risk-stream-autonomous-hot50.mjs
           node --check workers/control-plane/src/risk-stream-pipeline.mjs
+          node --check workers/control-plane/src/risk-stream-attester-bridge.mjs
           node --check workers/control-plane/src/risk-stream-seven-day-chain.mjs
           node --check workers/control-plane/src/risk-stream-commercial-license.mjs
           node --check workers/control-plane/src/risk-stream-commercial-outbox.mjs
           node --check workers/control-plane/src/risk-stream-commercial-issuer.mjs
           node --check workers/risk-stream-shadow/src/commercial-e2e.mjs
           node --check workers/risk-stream-shadow-ack/src/index.mjs
+          node --check workers/risk-stream-facts-attester/src/index.mjs
+          node --check workers/risk-stream-rights-attester/src/index.mjs
           node --check workers/control-plane/src/risk-stream-index-listener.mjs
           node --check scripts/tests/risk-stream-seven-day-chain.test.mjs
           node --check scripts/tests/risk-stream-commercial-migration.test.mjs
@@ -63,6 +78,22 @@ jobs:
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check scripts/ops/verify-risk-stream-b2-d1-shadow-readonly.mjs
           node --check scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs
+          node --check scripts/lib/risk-stream-source-rights-manifest.mjs
+          node --check scripts/ops/register-risk-stream-source.mjs
+          node --check scripts/ops/hot50-standard-feasibility.mjs
+          node --check scripts/tests/risk-stream-source-rights-manifest.test.mjs
+          node --check scripts/lib/risk-stream-event-fingerprint.mjs
+          node --check scripts/lib/risk-stream-candidate-builder.mjs
+          node --check scripts/lib/risk-stream-pairing.mjs
+          node --check scripts/ops/emit-risk-stream-candidates.mjs
+          node --check scripts/tests/risk-stream-event-fingerprint.test.mjs
+          node --check scripts/tests/risk-stream-candidate-builder.test.mjs
+          node --check scripts/tests/risk-stream-pairing.test.mjs
+          node --check scripts/tests/risk-stream-emitter.test.mjs
+          node --check scripts/tests/risk-stream-feed-export.test.mjs
+          node --check scripts/tests/risk-stream-attesters.test.mjs
+          node --check scripts/tests/risk-stream-attester-bridge.test.mjs
+          node --check scripts/ops/ingest-direct-global-corridors.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
-        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs scripts/tests/risk-stream-source-rights-manifest.test.mjs scripts/tests/risk-stream-event-fingerprint.test.mjs scripts/tests/risk-stream-candidate-builder.test.mjs scripts/tests/risk-stream-pairing.test.mjs scripts/tests/risk-stream-emitter.test.mjs scripts/tests/risk-stream-feed-export.test.mjs scripts/tests/risk-stream-attesters.test.mjs scripts/tests/risk-stream-attester-bridge.test.mjs

@@ -45,6 +45,16 @@
       "bucket_name": "geomacro-risk-stream-private"
     }
   ],
+  "services": [
+    {
+      "binding": "RISK_STREAM_FACTS_ATTESTER",
+      "service": "geomacro-risk-stream-facts-attester"
+    },
+    {
+      "binding": "RISK_STREAM_RIGHTS_ATTESTER",
+      "service": "geomacro-risk-stream-rights-attester"
+    }
+  ],
   "routes": [
     {
       "pattern": "api.geomacro.live",

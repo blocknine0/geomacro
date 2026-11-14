@@ -1,0 +1,104 @@
+name: Protected Risk Stream Source Rights Registry
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preflight reads provider schema; apply registers approved manifest entries only
+        type: choice
+        options: [preflight, apply]
+        required: true
+      expected_main_sha:
+        description: Exact reviewed current-main SHA
+        type: string
+        required: true
+      approval:
+        description: APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION required for apply
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-risk-stream-source-registry-production
+  cancel-in-progress: false
+jobs:
+  protected-register:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      MODE: ${{ inputs.mode }}
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+      APPROVAL: ${{ inputs.approval }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify exact protected main revision and requested mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$MODE" = preflight -o "$MODE" = apply
+          test "$EXPECTED_MAIN_SHA" = "$(git rev-parse HEAD)"
+          test "$EXPECTED_MAIN_SHA" = "${GITHUB_SHA}"
+          test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          test -n "$CLOUDFLARE_ACCOUNT_ID" -a -n "$CLOUDFLARE_API_TOKEN" -a -n "$CLOUDFLARE_BILLING_READ_TOKEN"
+          if [ "$MODE" = apply ]; then
+            test "$APPROVAL" = APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION
+          fi
+          node --input-type=module <<'NODE'
+          const databaseId=process.env.D1_DATABASE_ID;
+          if(!/^[a-f0-9-]{36}$/iu.test(databaseId??''))
+            throw Error('RISK_STREAM_SOURCE_REGISTRY_D1_ID_INVALID');
+          const response=await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${databaseId}`,
+            {headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},
+             redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!response.ok)throw Error('RISK_STREAM_SOURCE_REGISTRY_D1_IDENTITY_HTTP_'+response.status);
+          const body=await response.json();
+          if(body?.success!==true||body?.result?.id!==databaseId||
+             body?.result?.name!=='geomacro-control-plane')
+            throw Error('RISK_STREAM_SOURCE_REGISTRY_D1_TARGET_UNVERIFIED');
+          console.log(JSON.stringify({schema:'geomacro.risk-stream-source-registry-preflight.v1',
+            provider_database_identity_verified:true,provider_write_performed:false}));
+          NODE
+      - name: Read-only provider schema preflight and manifest dry run
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/register-risk-stream-source.mjs --dry-run
+          node scripts/ops/register-risk-stream-source.mjs --preflight
+      - name: Verify paid D1 headroom before source registration
+        if: inputs.mode == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const manifest=JSON.parse(readFileSync('config/risk-stream-source-rights-reviewed.v1.json','utf8'));
+          const approved=manifest.entries.filter(x=>x.status==='APPROVED').length;
+          const proof=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
+            estimatedMigrationRowsRead:approved*10+100,
+            estimatedMigrationRowsWritten:approved*2+100});
+          if(proof.status!=='PASS')throw Error(proof.code??'RISK_STREAM_SOURCE_REGISTRY_D1_HEADROOM_UNVERIFIED');
+          console.log(JSON.stringify({schema:'geomacro.risk-stream-source-registry-quota-preflight.v1',
+            status:proof.status,remaining_rows_read:proof.remaining_rows_read,
+            remaining_rows_written:proof.remaining_rows_written,provider_write_performed:false}));
+          NODE
+      - name: Apply owner-approved source entries only
+        if: inputs.mode == 'apply'
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.approval }}
+        run: |
+          set -euo pipefail
+          node scripts/ops/register-risk-stream-source.mjs --apply

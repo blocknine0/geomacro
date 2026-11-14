@@ -38,6 +38,7 @@ import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
 import {enqueueRiskStreamEvents,consumeRiskStreamQueue} from "./risk-stream-pipeline.mjs";
+import {attestRiskStreamOriginal} from "./risk-stream-attester-bridge.mjs";
 import {dispatchRiskStreamOutbox,consumeRiskStreamDelivery} from "./risk-stream-delivery.mjs";
 import {dispatchLicensedCommercialOutbox} from "./risk-stream-commercial-outbox.mjs";
 import {runCommercialIssuerTick} from "./risk-stream-commercial-issuer.mjs";
@@ -1893,6 +1894,8 @@ export default {
     // research and cannot authorize a paid delivery or execution.
     if(url.pathname==="/v1/internal/risk-stream/unsigned-news-gros"&&
        request.method==="GET")return readUnsignedDailyNewsGros(request,env);
+    if(url.pathname==='/v1/internal/risk-stream/attest'&&request.method==='POST'&&!url.search)
+      return attestRiskStreamOriginal(request,env);
     // Private event stream producer; root-admin authenticates BEFORE Queue
     // send. Only the independently signed originals may reach GRO signing.
     if(url.pathname==='/v1/internal/risk-stream/events'&&

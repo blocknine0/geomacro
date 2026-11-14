@@ -210,6 +210,7 @@ jobs:
           GEOMACRO_RELIEFWEB_APPNAME: ${{ secrets.GEOMACRO_RELIEFWEB_APPNAME }}
           GEOMACRO_CRYPTOCOMPARE_API_KEY: ${{ secrets.GEOMACRO_CRYPTOCOMPARE_API_KEY }}
           GEOMACRO_CRYPTO_HOURLY_TICK: ${{ github.event_name == 'schedule' && github.event.schedule == '6 * * * *' }}
+          GEOMACRO_RISK_STREAM_NORMALIZED_EXPORT_ENABLED: "false"
         run: |
           set -euo pipefail
           node scripts/ops/ingest-direct-global-corridors.mjs
