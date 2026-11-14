@@ -35,3 +35,5 @@ CREATE INDEX IF NOT EXISTS idx_risk_stream_unsigned_news_country_day
  ON risk_stream_unsigned_news_gro(country_iso3,category,day_utc DESC,tier);
 CREATE INDEX IF NOT EXISTS idx_risk_stream_unsigned_news_event
  ON risk_stream_unsigned_news_gro(event_fingerprint,day_utc DESC);
+CREATE INDEX IF NOT EXISTS idx_risk_stream_unsigned_news_generated
+ ON risk_stream_unsigned_news_gro(generated_at,gro_id);
