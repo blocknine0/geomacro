@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {DatabaseSync,webcrypto} from "node:crypto";
+import {webcrypto} from "node:crypto";
+import {DatabaseSync} from "node:sqlite";
 import {issueUnsignedDailyNewsBatch,makeUnsignedDailyNewsGro,
  readUnsignedDailyNewsGros} from "../../workers/control-plane/src/risk-stream-unsigned-gro.mjs";
 globalThis.crypto??=webcrypto;
