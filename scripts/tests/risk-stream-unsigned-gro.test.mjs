@@ -53,6 +53,10 @@ test("news event creates one immutable unsigned object for each tier with no raw
   assert.equal(payload.product_type,"NEWS_ANALYSIS_RISK_GATE");
   assert.equal(payload.analysis_basis,"NEWS_SIGNAL_NOT_MARKET_PRICE_OR_VERIFIED_COUNTRY_RISK");
   assert.equal(payload.news_analysis_only,true);
+  assert.equal(payload.news_analysis.what,signal.derived.what);
+  assert.equal(payload.news_analysis.evidence.status,payload.evidence_status);
+  assert.equal(payload.news_analysis.evidence.publisher_content_included,false);
+  assert.equal(payload.news_analysis.evidence.verified_country_risk,false);
   assert.equal(payload.signed,false);
   assert.equal(payload.signature_status,"UNSIGNED");
   assert.equal(payload.evidence_status,"UNVERIFIED_SIGNAL");
@@ -81,6 +85,8 @@ test("global-search lead remains unverified and cannot promote Standard or Compl
  for(const row of rows){
   const p=JSON.parse(row.payload_json);
   assert.equal(p.evidence_status,"UNVERIFIED_SIGNAL");
+  assert.match(p.news_analysis.what,/IND/u);
+  assert.equal(p.news_analysis.evidence.verified_country_risk,false);
   assert.equal(p.tier_status,row.tier==="basic_focused"?
    "NEWS_ANALYSIS_AVAILABLE":row.tier==="standard"?
    "EVIDENCE_RECOVERY_REQUIRED":"CONTRACTUAL_COMPLEX_HISTORY_REVIEW_REQUIRED");
