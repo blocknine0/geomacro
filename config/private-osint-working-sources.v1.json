@@ -3196,7 +3196,16 @@
         "http_status": 200,
         "feed_parsed": true,
         "native_publication_clock_present": true,
-        "bounded_feed_bytes": 25323
+        "bounded_feed_bytes": 25323,
+        "live_probe": {
+          "verified_at": "2026-11-14T21:58:17.086Z",
+          "redirect_mode": "error",
+          "redirected": false,
+          "content_type": "application/rss+xml; charset=utf-8",
+          "parsed_items": 19,
+          "native_time_items": 19,
+          "parser": "RSS_2"
+        }
       }
     },
     {

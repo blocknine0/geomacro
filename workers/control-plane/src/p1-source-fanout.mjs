@@ -36,7 +36,7 @@ export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}
  const storage=await admitP0bSourceStorage(env,now);
  if(!storage.admitted)return {status:storage.reason,selected:0,queued:0,
   ...(storage.retry_at?{retry_at:storage.retry_at}:{}),storage_held:true};
- // Existing 1077-source fanout stays enabled, but one bundled lease row
+ // Existing 1091-source fanout stays enabled, but one bundled lease row
  // replaces up to 108 physical per-source dispatcher lease writes.
  if(env.GEOMACRO_P1_BUNDLED_LEASES_ENABLED==="1")
   return dispatchP1BundledDueSources(env,{now,limit,shardOf:p1Shard});

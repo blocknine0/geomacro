@@ -2,7 +2,6 @@
 // These links route search only; they do not assert source-country attribution.
 export const P1_HOT50_VERIFIED_ALTERNATIVE_LINKS=new Set([
  "private_un_news_security_original_rss_review.geopolitics|RUS|GEOPOLITICS",
- "private_bis_press_global.macro_fx|RUS|MACRO_FX",
  "private_us_doe_minerals_global.critical_minerals|RUS|CRITICAL_MINERALS",
  "private_un_news_security_original_rss_review.geopolitics|BEL|GEOPOLITICS",
  "private_bis_press_global.macro_fx|BEL|MACRO_FX",
@@ -29,8 +28,6 @@ export const P1_HOT50_VERIFIED_ALTERNATIVE_LINKS=new Set([
  "private_bis_press_global.macro_fx|ZMB|MACRO_FX",
  "private_us_doe_minerals_global.critical_minerals|ZMB|CRITICAL_MINERALS",
  "private_un_news_security_original_rss_review.geopolitics|CHL|GEOPOLITICS",
- "private_bis_press_global.macro_fx|CHL|MACRO_FX",
- "private_us_doe_minerals_global.critical_minerals|CHL|CRITICAL_MINERALS",
  "private_un_news_security_original_rss_review.geopolitics|PER|GEOPOLITICS",
  "private_bis_press_global.macro_fx|PER|MACRO_FX",
  "private_us_doe_minerals_global.critical_minerals|PER|CRITICAL_MINERALS",
@@ -54,5 +51,32 @@ export const P1_HOT50_VERIFIED_ALTERNATIVE_LINKS=new Set([
  "private_us_doe_minerals_global.critical_minerals|MNG|CRITICAL_MINERALS",
  "private_un_news_security_original_rss_review.geopolitics|MMR|GEOPOLITICS",
  "private_bis_press_global.macro_fx|MMR|MACRO_FX",
- "private_us_doe_minerals_global.critical_minerals|MMR|CRITICAL_MINERALS"
+ "private_us_doe_minerals_global.critical_minerals|MMR|CRITICAL_MINERALS",
+ ...["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
+  "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
+  "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
+  "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
+  "VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]
+  .map(country=>"private_eu_sanctions_guidance_official_rss_review.geopolitics|"+
+   country+"|GEOPOLITICS"),
+ ...["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
+  "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
+  "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
+  "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
+  "VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]
+  .map(country=>"private_global_hub_un_hq_press.geopolitics|"+
+   country+"|GEOPOLITICS"),
+ ...["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
+  "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
+  "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
+  "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
+  "VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]
+  .flatMap(country=>[
+   "private_priority_gdacs_24h.geopolitics|"+country+"|GEOPOLITICS",
+   "private_priority_gdacs_24h.macro_fx|"+country+"|MACRO_FX"
+  ]),
+ ...["BEL","DEU","FRA","ITA","ESP","NLD","POL"].flatMap(country=>[
+  "private_expansion_eurostat_economy_atom.macro_fx|"+country+"|MACRO_FX",
+  "private_expansion_eurostat_trade_atom.macro_fx|"+country+"|MACRO_FX"
+ ])
 ]);
