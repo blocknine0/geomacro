@@ -1,25 +1,27 @@
 #!/usr/bin/env node
 /**
- * Feed-side adapter for GDELT, RSS and website_intelligence.
- * Accepts pre-normalized source events as JSONL on stdin. Facts and commercial
- * reuse MUST be verified and signed by independent upstream machine attest-
- * ers; this adapter NEVER fabricates a signature or upgrades GDELT index hints.
+ * Feed-side adapter for direct risk-stream candidates and privately reviewed
+ * same-event source candidates. Facts and reuse rights MUST be signed by
+ * independent upstream machine attesters; this adapter never signs evidence.
  *
- * Usage: GEOMACRO_STREAM_ADMIN_BEARER=<existing protected bearer> \
- *   node scripts/ops/push-risk-stream-jsonl.mjs < signed-originals.jsonl
- *
- * The source poll/transformer process can pipe live observations into this
- * adapter continuously. Each 10 items become one durable Queue ingress call.
+ * Private source records must be piped directly from a protected source
+ * transformer. Do not capture this process's input or candidate payloads in
+ * public logs/artifacts. Only aggregate counts are printed.
  */
 import {createInterface} from "node:readline";
 import {setTimeout as delay} from "node:timers/promises";
+import {producePrivateIndependentRiskStreamCandidates}
+ from "../lib/private-independent-risk-stream-producer.mjs";
 
 const ENDPOINT="https://api.geomacro.live/v1/internal/risk-stream/events";
 const token=String(process.env.GEOMACRO_STREAM_ADMIN_BEARER??"").trim();
 if(token.length<32)throw Error("RISK_STREAM_PRODUCER_AUTH_MISSING");
-const MAX=10;
+const MAX=10,MAX_PRIVATE=96,MAX_LINE=32*1024;
 const ALLOWED=new Set(["GDELT_INDEX","RSS","WEBSITE_INTELLIGENCE","OFFICIAL_API"]);
-let total=0,flushes=0,queue=[];
+const PRIVATE_SCHEMA="geomacro.private-independent-event-source-candidate.v1";
+let total=0,flushes=0,privateCount=0,privatePairs=0,privateClaims=0;
+const privateCandidates=[];
+let queue=[];
 async function flush(){
  if(queue.length===0)return;
  const items=queue;queue=[];
@@ -47,8 +49,13 @@ async function flush(){
 }
 for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
  if(!line.trim())continue;
- if(line.length>12000)throw Error("RISK_STREAM_PRODUCER_LINE_OVERSIZE");
+ if(line.length>MAX_LINE)throw Error("RISK_STREAM_PRODUCER_LINE_OVERSIZE");
  let x;try{x=JSON.parse(line)}catch{throw Error("RISK_STREAM_PRODUCER_JSON_INVALID")}
+ if(x?.schema===PRIVATE_SCHEMA){
+  if(privateCandidates.length>=MAX_PRIVATE)
+   throw Error("RISK_STREAM_PRODUCER_PRIVATE_BATCH_LIMIT");
+  privateCandidates.push(x);continue;
+ }
  if(!x||x.schema!=="geomacro.risk-stream-candidate.v1"||
     !ALLOWED.has(x.feed_origin))throw Error("RISK_STREAM_PRODUCER_FEED_INVALID");
  if(x.feed_origin==="GDELT_INDEX"&&x.kind!=="INDEX_ONLY")
@@ -59,8 +66,25 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
  queue.push(x);
  if(queue.length===MAX)await flush();
 }
+if(privateCandidates.length){
+ const result=producePrivateIndependentRiskStreamCandidates({
+  candidates:privateCandidates,now:new Date()
+ });
+ privateCount=privateCandidates.length;
+ privatePairs=result.qualifying_event_pairs;
+ privateClaims=result.event_claims_examined;
+ for(const candidate of result.candidates){
+  queue.push(candidate);
+  if(queue.length===MAX)await flush();
+ }
+}
 await flush();
 console.log(JSON.stringify({schema:"geomacro.risk-stream-producer.v1",
- status:"DURABLY_QUEUED_NOT_YET_VERIFIED",
- queued:total,flushes,
- commercial_delivery_certified:false,provider_503_guaranteed_zero:false}));
+ status:privateCount&&privatePairs===0?"NO_QUALIFIED_TWO_ORIGINAL_PAIRS":
+  "DURABLY_QUEUED_NOT_YET_VERIFIED",
+ queued:total,flushes,private_source_candidates:privateCount,
+ canonical_event_claims_examined:privateClaims,
+ qualifying_independent_pairs:privatePairs,
+ proof_signatures_created:false,
+ commercial_delivery_certified:false,execution_authorized:false,payments:0,
+ provider_503_guaranteed_zero:false}));
