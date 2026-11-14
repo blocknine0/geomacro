@@ -12,6 +12,7 @@ import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
 import {issueUnsignedDailyNewsBatch,pruneUnsignedDailyNewsGros} from "./risk-stream-unsigned-gro.mjs";
 import {parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {verifyGeoMacroSevenDayHistory} from "./risk-stream-seven-day-chain.mjs";
+import {isHot50RiskGateWatchCell} from "./hot50-telegram-watch-filter.mjs";
 
 export const HOT50_STREAM_CATEGORIES=Object.freeze([
  "GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
@@ -154,7 +155,7 @@ function sameEventOriginalPair(rows,category,now,signed=[]){
  * Search publisher domains are hints even if distinct; two search hits do
  * not satisfy independent same-event originals. */
 export function projectHot50StreamCell(target,{
- discovery=[],evidence=[],search=[],signed=[]
+ discovery=[],evidence=[],search=[],signed=[],telegramTriggers=[]
 }={},now=Date.now()){
  if(!RISK_GATE_HOT50.includes(target?.country_iso3)||
    !HOT50_STREAM_CATEGORIES.includes(target?.category))fail("CELL_SCOPE_INVALID");
@@ -163,6 +164,9 @@ export function projectHot50StreamCell(target,{
  const d=discovery.filter(r=>match(r)&&recent(r.source_clock_at,now));
  const e=evidence.filter(r=>match(r)&&recent(r.published_at,now));
  const s=search.filter(r=>match(r)&&recent(r.published_at,now));
+ // Telegram is a watch-only trigger. These rows only prioritize an
+ // independent search; they never enter the evidence/GRO signal pool.
+ const telegram=telegramTriggers.filter(r=>match(r)&&recent(r.published_at,now));
  const pool=new Set([
   ...d.map(x=>"discovery:"+x.signal_id),
   ...e.map(x=>"stream:"+x.observation_id),
@@ -191,7 +195,8 @@ export function projectHot50StreamCell(target,{
   source_gro_id:gro?.gro_id??null,
   // Recheck signed GRO and source rights in the independent commercial issuer.
   qualified_for_automatic_commercial_release:false,
-  needs_search:!pair,original_publisher_text_included:false
+  telegram_watch_trigger_count:telegram.length,
+  needs_search:!pair||telegram.length>0,original_publisher_text_included:false
  };
 }
 async function boundedRead(db,sql,args){
@@ -200,7 +205,7 @@ async function boundedRead(db,sql,args){
   fail("PROVIDER_D1_READBACK_LIMIT");
  return response.results;
 }
-async function loadPulse(db,targets,now){
+async function loadPulse(db,targets,now,telegramTriggers=[]){
  const countries=JSON.stringify([...new Set(targets.map(x=>x.country_iso3))]);
  const cutoff=iso(now-WINDOW),until=iso(now);
  const [discovery,evidence,search,signed,snapshot]=await Promise.all([
@@ -228,7 +233,7 @@ async function loadPulse(db,targets,now){
    "FROM risk_stream_hot50_cell_snapshots WHERE country_iso3 IN "+
    "(SELECT value FROM json_each(?)) LIMIT 151",[countries])
  ]);
- return {discovery,evidence,search,signed,prior:new Map(snapshot.map(r=>[key(r),r]))};
+ return {discovery,evidence,search,signed,telegramTriggers,prior:new Map(snapshot.map(r=>[key(r),r]))};
 }
 /** One restricted Google News metadata-only search. No automatic publisher
  * full-text fetch, no unlicensed text copying and no synthetic event claims. */
@@ -417,7 +422,22 @@ export async function runHot50AutonomousStreamTick(env,{
   unsignedPruneState="UNSIGNED_GRO_RETENTION_HOLD";
   console.error("HOT50_UNSIGNED_GRO_RETENTION_HELD");
  }
- const targets=planHot50StreamCells(now,perTick),pool=await loadPulse(env.DB,targets,now);
+ const regular=planHot50StreamCells(now,perTick);
+ const countries=JSON.stringify(RISK_GATE_HOT50);
+ const telegramTriggers=await boundedRead(env.DB,
+  "SELECT country_iso3,category,published_at FROM telegram_research_json "+
+  "WHERE country_iso3 IN (SELECT value FROM json_each(?)) "+
+  "AND published_at>=? AND published_at<=? ORDER BY published_at DESC LIMIT 401",
+  [countries,iso(now-WINDOW),iso(now)]);
+ const scopedTelegramTriggers=telegramTriggers.filter(row=>
+  isHot50RiskGateWatchCell(row.country_iso3,row.category));
+ const triggerTarget=scopedTelegramTriggers.map(r=>({country_iso3:r.country_iso3,
+  category:({geopolitics:"GEOPOLITICS",macro:"MACRO_FX",rare_earth:"CRITICAL_MINERALS",
+   critical_minerals:"CRITICAL_MINERALS"})[r.category]})).find(t=>
+    t.category&&HOT50_STREAM_TARGETS.some(x=>key(x)===key(t)));
+ const targets=triggerTarget&&!regular.some(x=>key(x)===key(triggerTarget))&&regular.length>1?
+  [regular[0],triggerTarget,...regular.slice(2)]:regular;
+ const pool=await loadPulse(env.DB,targets,now,scopedTelegramTriggers);
  const storedGroRows=pool.signed.length;
  pool.signed=await verifyHot50SignedGroReadbacks(pool.signed,env,now);
  let basic=0,internalStandard=0,searches=0,leads=0,held=0,complexReady=0;

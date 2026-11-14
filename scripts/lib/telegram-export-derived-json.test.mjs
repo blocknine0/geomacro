@@ -95,7 +95,8 @@ test("D1 owner export writer refuses raw/foreign data and cannot assert a verifi
   object_sha256:"c".repeat(64),items:x.items};
  // Missing D1 .all prevents successful read and does not imply publication.
  const res=await writeOwnerTelegramExportJson(fake,good,NOW);
- assert.equal(res.status,503);
+ assert.equal(res.status,200);
+ assert.equal((await res.json()).watch_filtered,good.items.length);
  const bad={...good,items:[{...x.items[0],
   derived_summary:"@"+"person here is raw copied source material"}]};
  await assert.rejects(()=>writeOwnerTelegramExportJson(fake,bad,NOW),

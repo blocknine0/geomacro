@@ -9,7 +9,7 @@ import {readFileSync} from "node:fs";
 const manifest=JSON.parse(readFileSync(
   new URL("../../config/hot-50-three-domain-watch.v1.json",import.meta.url),"utf8"));
 const ISO=/^[A-Z]{3}$/u;
-const EXPECTED_CATEGORIES=["geopolitics","macro","rare_earth"];
+const EXPECTED_CATEGORIES=["geopolitics","macro","critical_minerals"];
 if(manifest.schema!=="geomacro.hot50-three-domain-watch.v1"||
  manifest.scope!=="PRIVATE_NEWS_DISCOVERY_ONLY_NO_COMMERCIAL_ACTIVATION"||
  manifest.nominal_freshness_target_minutes!==180||
