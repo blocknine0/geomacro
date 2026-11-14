@@ -1,0 +1,14 @@
+{
+  "name": "geomacro-risk-stream-rights-attester",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-14",
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "SOURCE_REGISTRY_READONLY",
+      "database_name": "geomacro-control-plane",
+      "database_id": "REPLACE_WITH_GEOMACRO_CONTROL_PLANE_D1_ID"
+    }
+  ]
+}

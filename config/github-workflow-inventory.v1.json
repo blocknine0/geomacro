@@ -21,6 +21,7 @@
     "apply-production-migrations.yml",
     "apply-risk-gate-production-migrations.yml",
     "apply-risk-stream-migration-0214.yml",
+    "apply-risk-stream-source-registry.yml",
     "apply-source-network-staging-migrations.yml",
     "apply-ucdp-production-migrations.yml",
     "ask-free-groq-live-proof.yml",

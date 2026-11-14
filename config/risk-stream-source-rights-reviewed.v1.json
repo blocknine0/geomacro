@@ -1,0 +1,53 @@
+{
+  "schema": "geomacro.risk-stream-source-rights-reviewed.v1",
+  "entries": [
+    {
+      "source_id": "example_gov_wire",
+      "publisher_root_domain": "example.invalid",
+      "parent_media_entity": "example-government-publisher",
+      "source_role": "GOVERNMENT_WIRE",
+      "categories": ["GEOPOLITICS"],
+      "status": "PENDING",
+      "rights_evidence": {
+        "licence_url": null,
+        "terms_url": null,
+        "reviewed_at": null,
+        "reviewer": null,
+        "notes": "EXAMPLE - NOT REVIEWED"
+      },
+      "rights_expire_at": null
+    },
+    {
+      "source_id": "example_market_data",
+      "publisher_root_domain": "example.invalid",
+      "parent_media_entity": "example-market-publisher",
+      "source_role": "MARKET_PRICE",
+      "categories": ["MACRO_FX"],
+      "status": "PENDING",
+      "rights_evidence": {
+        "licence_url": null,
+        "terms_url": null,
+        "reviewed_at": null,
+        "reviewer": null,
+        "notes": "EXAMPLE - NOT REVIEWED"
+      },
+      "rights_expire_at": null
+    },
+    {
+      "source_id": "example_trade_data",
+      "publisher_root_domain": "example.invalid",
+      "parent_media_entity": "example-trade-publisher",
+      "source_role": "TRADE_CUSTOMS",
+      "categories": ["CRITICAL_MINERALS"],
+      "status": "PENDING",
+      "rights_evidence": {
+        "licence_url": null,
+        "terms_url": null,
+        "reviewed_at": null,
+        "reviewer": null,
+        "notes": "EXAMPLE - NOT REVIEWED"
+      },
+      "rights_expire_at": null
+    }
+  ]
+}

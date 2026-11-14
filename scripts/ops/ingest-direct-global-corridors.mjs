@@ -7,6 +7,25 @@ import {cryptoIndividualRecord,validCryptoIndividual,CRYPTO_NEWS_SCHEMA}
  from "../../lib/crypto-news-individual-structured.mjs";
 import {collectDirectCorridorSourceIntake} from "../lib/direct-global-corridor-ingestion.mjs";
 import {buildPrivateCorridorStructuredResearch} from "../lib/corridor-derived-structured-research.mjs";
+export function writeOptionalRiskStreamNormalizedOriginals(receipt,{
+ enabled=process.env.GEOMACRO_RISK_STREAM_NORMALIZED_EXPORT_ENABLED,
+ directory="artifacts/direct-corridor-intake"
+}={}){
+ if(enabled!=="true")return null;
+ const records=receipt?.normalized_originals;
+ if(!Array.isArray(records)||records.length<1||records.length>100)
+  throw Error("RISK_STREAM_NORMALIZED_EXPORT_INPUT_MISSING");
+ if(records.some(record=>!record||typeof record!=="object"||
+   record.feed_origin==="GDELT_INDEX"||typeof record.raw_payload!=="string"||
+   !record.event_identity||!record.source_id||!record.source_url||
+   !["confirms","disputes","retracts"].includes(record.reporting_position)))
+  throw Error("RISK_STREAM_NORMALIZED_EXPORT_INVALID");
+ mkdirSync(directory,{recursive:true,mode:0o700});
+ const output=directory+"/risk-stream-normalized-originals.jsonl";
+ writeFileSync(output,records.map(record=>JSON.stringify(record)).join("\n")+"\n",
+  {mode:0o600,flag:"wx"});
+ return output;
+}
 export async function runDirectCorridorIntake({
  observe=collectDirectCorridorSourceIntake
 }={}){
@@ -77,7 +96,8 @@ export async function runDirectCorridorIntake({
    checked_at:receipt.checked_at,items:cryptoRecords,
    website_intelligence_enabled:false,commercial_rights_verified:false
  },null,2)+"\n",{mode:0o600});
- writeFileSync(dir+"/receipt.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
+ const safeReceipt={...receipt};delete safeReceipt.normalized_originals;
+ writeFileSync(dir+"/receipt.json",JSON.stringify(safeReceipt,null,2)+"\n",{mode:0o600});
  writeFileSync(dir+"/news-candidates.json",JSON.stringify({
    schema:"geomacro.corridor-native-news-candidates.v1",
    channel:"CORRIDOR_ONLY",checked_at:receipt.checked_at,
@@ -101,6 +121,10 @@ export async function runDirectCorridorIntake({
  },null,2)+"\n",{mode:0o600});
  writeFileSync(dir+"/structured-research.json",JSON.stringify(structured,null,2)+"\n",
    {mode:0o600});
+ // Optional handoff for the private Risk Stream emitter. This lane currently
+ // supplies discovery metadata only; it must never synthesize event claims
+ // from headlines or treat them as first-party originals.
+ writeOptionalRiskStreamNormalizedOriginals(receipt,{directory:dir});
  const summary={
    schema:receipt.schema,channel:receipt.channel,checked_at:receipt.checked_at,
    source_count:receipt.source_count,source_link_occurrences:receipt.source_link_occurrences,

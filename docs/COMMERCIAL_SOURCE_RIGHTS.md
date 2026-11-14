@@ -245,6 +245,34 @@ A source/adapter may be promoted to `VERIFIED` only when the review evidence rec
 
 A code comment, public URL, free download, working API call or `quality_status=VERIFIED` is **not** sufficient evidence for commercial eligibility.
 
+## Risk Stream source-rights review manifest
+
+`config/risk-stream-source-rights-reviewed.v1.json` records owner-reviewed
+commercial source-rights decisions for the Risk Stream registry. Each entry
+pins the source ID, publisher root domain, parent media entity, category role,
+allowed categories, review evidence, and rights expiry. New entries should
+start as `PENDING` with `rights_expire_at: null`. The three example entries in
+the shipped manifest are placeholders marked `EXAMPLE - NOT REVIEWED`; they
+do not identify real publishers and cannot be registered.
+
+To add a source, first verify the exact publisher, dataset or service terms,
+commercial derived-use permission, attribution, raw redistribution boundary,
+and any third-party-content exceptions. Record the official licence and terms
+URLs, UTC review time, responsible reviewer, concise review notes, and the
+rights expiry. Only the owner should change an entry to `APPROVED` after that
+review is complete. For each category, an eligible role pair must use different
+publisher root domains and different parent media entities. Discovery
+crosswalks and working feeds are not rights evidence.
+
+The registry validator checks the manifest contract and expiry. The default
+`node scripts/ops/register-risk-stream-source.mjs` command is a dry run and
+prints SQL only for approved entries. The protected workflow's preflight is
+read-only; its apply mode requires the exact production approval string and
+reads back every written column. A manifest entry records the owner's legal
+review; it is not an automatic legal approval, proof that a source is
+operational, proof of an original publication, or authorization to enable a
+commercial release.
+
 ## Separate questions: rights vs operational readiness
 
 A licence review does not prove the ingestion is production-ready, and a working ingestion does not prove commercial rights. Track these separately:
