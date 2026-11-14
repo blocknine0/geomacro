@@ -1,5 +1,11 @@
 name: Protected Hot50 Worker Binding Delta (read-only)
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/hot50-binding-delta-readonly.yml'
+      - 'scripts/ops/inspect-hot50-binding-delta.mjs'
+      - 'scripts/lib/canary-additive-binding-parity.mjs'
+      - 'scripts/tests/hot50-binding-readonly-inspector.test.mjs'
   workflow_dispatch:
     inputs:
       expected_main_sha:
@@ -24,8 +30,24 @@ concurrency:
   group: geomacro-hot50-binding-provider-readonly
   cancel-in-progress: false
 jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Verify read-only protected audit and strict binding parity
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/inspect-hot50-binding-delta.mjs
+          node --test scripts/tests/hot50-binding-readonly-inspector.test.mjs scripts/tests/canary-additive-binding-parity.test.mjs
   binding-diff:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    needs: offline-contract
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -45,11 +67,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
-      - name: Verify redacted diagnostics and no provider mutations
-        run: |
-          set -euo pipefail
-          node --check scripts/ops/inspect-hot50-binding-delta.mjs
-          node --test scripts/tests/hot50-binding-readonly-inspector.test.mjs scripts/tests/canary-additive-binding-parity.test.mjs
       - name: Compare existing Cloudflare Worker versions without uploading or deploying
         run: node scripts/ops/inspect-hot50-binding-delta.mjs
       - name: Upload secret-free binding-delta receipt even on HOLD
