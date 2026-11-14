@@ -24,7 +24,9 @@ const parseWorkflow=filename=>{
    'WORKFLOW_JOBS_REQUIRED');
   return result;
  }catch(error){
-  throw Error('INVALID_GITHUB_WORKFLOW_YAML '+filename+': '+String(error?.reason??error?.message??error));
+  const position=error?.mark?
+   ` at line ${error.mark.line+1}, column ${error.mark.column+1}`:"";
+  throw Error('INVALID_GITHUB_WORKFLOW_YAML '+filename+position+': '+String(error?.reason??error?.message??error));
  }
 };
 
