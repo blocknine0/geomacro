@@ -151,7 +151,12 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  const missingRiskSigningSecrets=requiredRiskSigningSecrets.filter(name=>
   baselineBindingByName.get(name)?.type!=='secret_text');
  const reviewerService=env.GEOMACRO_RELEASE_REVIEWER_SERVICE??'';
- const commercialRelease=env.GEOMACRO_COMMERCIAL_STREAM_RELEASE==='1';
+ const issuerSecretNames=['GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64',
+  'GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64',
+  'GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64','RISK_STREAM_GRO_SIGN_PKCS8_B64',
+  'RISK_STREAM_GRO_VERIFY_SPKI_B64','RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256'];
+ const missingIssuerSecretNames=issuerSecretNames.filter(name=>
+  baselineBindingByName.get(name)?.type!=='secret_text');
  mkdirSync('artifacts/protected-canary',{recursive:true});
  writeFileSync('artifacts/protected-canary/release-dependency-readiness.json',
   JSON.stringify({schema:'geomacro.held-canary-release-dependencies.v1',
@@ -159,13 +164,22 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
    signed_gro_signing_bindings_present:missingRiskSigningSecrets.length===0,
    missing_signed_gro_binding_names:missingRiskSigningSecrets,
    signed_gro_runtime_signature_checks_remain_required:true,
-   commercial_issuer_enabled:commercialRelease&&Boolean(reviewerService),
-   commercial_release_flag_enabled:commercialRelease,
+   commercial_issuer_readiness:'HELD_NO_FUNDS_CANDIDATE',
+   candidate_commercial_release_enabled:false,
+   candidate_commercial_canary_hold_cleared:false,
    reviewer_service_binding_configured:Boolean(reviewerService),
+   missing_issuer_secret_binding_names:missingIssuerSecretNames,
    reviewer_service_name_logged:false,
-   commercial_license_prerequisite:commercialRelease?
-    'SIGNED_RELEASE_APPROVAL_AND_GEOMACRO_RELEASE_REVIEWER_SERVICE_REQUIRED':
-    'COMMERCIAL_RELEASE_FLAG_IS_HELD_AT_ZERO',
+   license_issuance_prerequisites:[
+    'RISK_STREAM_ACTIVE=1_AND_STREAM_INGESTION_ENABLED=true',
+    'GEOMACRO_COMMERCIAL_STREAM_RELEASE=1',
+    'RISK_STREAM_CANARY_HOLD_CLEARED=1',
+    'VALID_SIGNED_COMMERCIAL_RELEASE_RECEIPT',
+    'GEOMACRO_RELEASE_REVIEWER_SERVICE_BINDING',
+    'LICENSE_AND_GRO_ED25519_BINDINGS',
+    'CURRENT_DUAL_SOURCE_RIGHTS_AND_CUSTOMER_ENTITLEMENT'],
+   commercial_license_prerequisite:
+    'CANDIDATE_RELEASE_FLAG_IS_HELD_AT_ZERO',
    traffic_promoted:false,payments:0},null,2)+'\n');
  // Signed Risk Gates require an independent machine attestation pair and the
  // stream signer pair. Secret values remain hidden; runtime verification is
