@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-14T18:07:07.067Z",
+  "checked_at": "2026-11-14T20:39:30.774Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 41,
+  "item_count": 40,
   "counts": {
     "geopolitics": 6,
-    "macro": 13,
+    "macro": 12,
     "rare_earth": 22
   },
-  "source_native_ids_sha256": "cc6aa344ccb5bd9a40a53e4ab4f1e66124381179ed6c611fbaf7859486fa64c5",
+  "source_native_ids_sha256": "017552dfd0b2c713f63b5440d45d1bff16ce7473f1dca4ff2833d393b3c200ec",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -784,25 +784,6 @@
         "United Nations"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d8e2bf71",
-      "category": "macro",
-      "title": "Geomacro finds BMO said silver’s solar boom is fading, investment demand unlikely to compensate - Kitco",
-      "what_changed": "A monitored source feed reports: BMO said silver’s solar boom is fading, investment demand unlikely to compensate - Kitco. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "silver industrial demand and supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-11T20:10:34.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
