@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
  reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS,diagnoseReviewedHot50BindingDelta}
  from "../lib/canary-additive-binding-parity.mjs";
+import {candidateConfig} from "../ops/prepare-optimized-worker-candidate.mjs";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
 const added={name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"};
@@ -80,6 +81,25 @@ test("missing STREAM_MODE is reported as a missing reviewed candidate binding",(
  assert.throws(()=>assessReviewedHot50BindingParity(version(streamBaseline),
   version(missing),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),
   /REVIEWED_FLAG_NOT_VERIFIED_STREAM_MODE/);
+});
+
+test("Wrangler raw plain_text binding config satisfies uploaded-version parity",()=>{
+ const baseline={resources:{script_runtime:{compatibility_date:"2026-10-03"},bindings:[
+  ...streamBaseline,{name:"CONTROL_PLANE_TOKEN",type:"secret_text"}
+ ]}};
+ const config=candidateConfig(baseline,sha,[],researchRuntime);
+ const uploaded={resources:{script_runtime:structuredClone(baseline.resources.script_runtime),
+  bindings:[
+   ...Object.entries(config.vars).map(([name,text])=>({name,type:"plain_text",text})),
+   ...config.unsafe.bindings.map(x=>x.type==="inherit"?
+    structuredClone(baseline.resources.bindings.find(row=>row.name===x.name)):
+    ({name:x.name,type:x.type,text:x.text}))
+  ]}};
+ assert.equal(uploaded.resources.bindings.filter(x=>x.name==="STREAM_MODE").length,1);
+ assert.equal(uploaded.resources.bindings.find(x=>x.name==="STREAM_MODE").text,"PRODUCTION");
+ assert.equal(assessReviewedHot50BindingParity(version(baseline.resources.bindings),
+  version(uploaded.resources.bindings),sha,[],researchRuntime).status,
+  "PASS_REVIEWED_HOT50_PARITY");
 });
 test("Predge vars default fail-closed and explicitly reviewed trial vars are validated",()=>{
  const defaults=reviewedHot50CandidateVars(sha);

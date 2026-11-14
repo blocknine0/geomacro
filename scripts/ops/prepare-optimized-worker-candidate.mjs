@@ -55,9 +55,15 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   throw Error('CANDIDATE_REVIEWER_SERVICE_BINDING_MISMATCH');
  if(vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE==='1'&&!reviewerService)
   throw Error('CANDIDATE_REVIEWER_SERVICE_REQUIRED');
+ const {STREAM_MODE,...wranglerVars}=vars;
  const inheritedBindings=bindings.filter(x=>
   !Object.hasOwn(vars,x.name)&&!reviewedSecretNames.includes(x.name))
   .map(x=>({name:x.name,type:'inherit'}));
+ // Wrangler 4.136.3's normal vars serialization omitted STREAM_MODE from the
+ // real uploaded version despite it being present in `vars`. Its unsafe
+ // bindings are passed to upload metadata verbatim, so encode this one
+ // plain-text binding there and keep it out of vars to avoid duplicate names.
+ inheritedBindings.push({name:'STREAM_MODE',type:'plain_text',text:STREAM_MODE});
  if(reviewerService&&!oldReviewer)
   inheritedBindings.push({name:'GEOMACRO_RELEASE_REVIEWER',type:'service',
    service:reviewerService});
@@ -66,7 +72,7 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   compatibility_flags:runtime.compatibility_flags??[],
   ...(runtime.limits?{limits:runtime.limits}:{}),
   ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
-  vars:{...vars,STREAM_MODE:vars.STREAM_MODE},
+  vars:wranglerVars,
   // Carry existing secret versions intact. Newly reviewed secret names
   // have no baseline to inherit and belong in this SAME code-version upload.
   unsafe:{bindings:inheritedBindings}};
