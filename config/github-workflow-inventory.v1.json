@@ -706,8 +706,8 @@
       "environment: production",
       "0214_risk_stream_event_driven.sql",
       "d1 execute",
-      "d1 time-travel info",
-      "test -f config/d1-hotspot-v2-canary.hold"
+      "test -f config/d1-hotspot-v2-canary.hold",
+      "/time_travel/bookmark"
     ],
     "apply-hot50-daily-news-0219.yml": [
       "workflow_dispatch:",
@@ -715,8 +715,8 @@
       "environment: production",
       "0219_hot50_daily_news_signed_gro.sql",
       "d1 execute",
-      "d1 time-travel info",
-      "test -f config/d1-hotspot-v2-canary.hold"
+      "test -f config/d1-hotspot-v2-canary.hold",
+      "/time_travel/bookmark"
     ]
   },
   "predgeBlobSha1": {
