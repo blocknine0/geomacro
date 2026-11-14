@@ -46,6 +46,7 @@ on:
       - 'scripts/ops/attest-canary-additive-secrets.mjs'
       - 'scripts/lib/canary-additive-binding-parity.mjs'
       - 'scripts/tests/canary-additive-binding-parity.test.mjs'
+      - 'scripts/tests/canary-deployment-distribution.test.mjs'
       - 'scripts/tests/canary-preflight-baseline.test.mjs'
       - 'scripts/verify-d1-quota-proof.ts'
       - 'scripts/tests/canary-closed-d1-proof.test.mjs'
@@ -88,6 +89,7 @@ jobs:
           node --experimental-strip-types --test scripts/tests/canary-closed-d1-proof.test.mjs scripts/tests/canary-hold-review-no-repromotion.test.mjs
           node --experimental-strip-types --test scripts/tests/verify-d1-existing-credentials.test.mjs scripts/tests/canary-preflight-baseline.test.mjs
           node --test scripts/tests/canary-additive-binding-parity.test.mjs
+          node --experimental-strip-types --test scripts/tests/canary-deployment-distribution.test.mjs
   protected-release:
     needs: static-contract
     if: >-
