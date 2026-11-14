@@ -97,10 +97,14 @@ test("reviewer-approved Predge license stages durably to the pull table with rea
   /PREDGE_PULL_ENTITLEMENT_OR_RELEASE_UNVERIFIED/u);
 });
 
-test("Predge pull holds for wrong category, non-Standard tier, expired, or altered license rows",async()=>{
+test("one reviewer-bound redistribution license supports all Addendum v2 product tiers",async()=>{
  const {env,row,candidateRow}=await fixture();
  assert.equal(await readPredgePullLicense(env,{...parsed,category:"macro"},now),null);
- assert.equal(await readPredgePullLicense(env,{...parsed,tier:"basic_focused"},now),null);
+ for(const tier of ["basic_focused","standard","complex_full"]){
+  const result=await readPredgePullLicense(env,{...parsed,tier},now);
+  assert.equal(result.gro_id,row.gro_id);
+  assert.equal(result.envelope.payload.tier,"STANDARD");
+ }
  const original=row.license_payload_sha256;
  row.license_payload_sha256="f".repeat(64);
  assert.equal(await readPredgePullLicense(env,parsed,now),null);

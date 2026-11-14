@@ -34,6 +34,10 @@ const categoryRoles=Object.freeze({
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]
 });
+// This is a reviewer-approved derived-content redistribution license for the
+// Addendum v2 buyer. The requested Basic, Standard, or Complex product tier
+// is selected and priced by the paid endpoint; it is not the license's own
+// STANDARD provenance marker.
 export async function stagePredgePullLicense(env,{groId,envelope,approval,now}){
  if(approval?.customer_entitlement_verified!==true||
     approval?.go_live_approved!==true||approval?.canary_hold_cleared!==true||
