@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-14T14:19:48.105Z",
+  "checked_at": "2026-11-14T15:58:57.889Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 43,
+  "item_count": 42,
   "counts": {
     "geopolitics": 6,
-    "macro": 15,
+    "macro": 14,
     "rare_earth": 22
   },
-  "source_native_ids_sha256": "a42b45d9ee45503e9e7493afb3e55ae7d2e89936afdf0b8323b618a82c040f3c",
+  "source_native_ids_sha256": "b64dbf3303df9bddc7f595a0dbf0064aa9d317c18797ebe6d0d88e79cb65b32c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -816,25 +816,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-11T16:15:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-93439b1e",
-      "category": "macro",
-      "title": "Geomacro finds Amul raised milk prices by up to 5.5%; check new rates of Taaza, Gold - The Statesman",
-      "what_changed": "A monitored source feed reports: Amul raised milk prices by up to 5.5%; check new rates of Taaza, Gold - The Statesman. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-11T14:24:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
