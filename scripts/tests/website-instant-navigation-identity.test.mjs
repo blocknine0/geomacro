@@ -14,10 +14,11 @@ const lock = JSON.parse(read("config/website-lock.json"));
 const lockVerifier = read("scripts/ops/verify-website-lock.mjs");
 
 test("all primary and secondary page navigation uses SPA links", () => {
-  for (const route of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/pricing",
+  for (const route of ["/", "/intelligence", "/ask-geomacro", "/pricing",
     "/institutional", "/ecosystem", "/research", "/docs", "/about", "/roadmap", "/contact"]) {
     assert.ok(shell.includes(`to: "${route}"`), `Missing in site navigation: ${route}`);
   }
+  assert.ok(!shell.includes('to: "/risk-indices"'), "Retired page must not appear in navigation");
   assert.match(shell, /const navigationPending = useRouterState/);
   assert.match(shell, /gm-route-progress-active/);
   assert.match(router, /defaultPreload: "intent"/);
@@ -171,15 +172,15 @@ test("sitemap advertises canonical indexable risk pages, never redirect-only /da
   assert.ok(urls.every(url=>url.origin==="https://geomacro.live" &&
     url.search==="" && url.hash===""),"sitemap escaped canonical origin");
   const paths=new Set(urls.map(url=>url.pathname));
-  assert.ok(paths.has("/risk-indices"));
+  assert.ok(!paths.has("/risk-indices"), "Retired Risk Indices page must not be indexed");
   assert.ok(!paths.has("/global-risk"),
     "Founder-retired redirect must not appear in sitemap");
   assert.ok(paths.has("/pricing"));
   assert.ok(!paths.has("/data-api"),
     "Redirect-only alias cannot be advertised as a canonical URL");
   const page=read("src/routes/risk-indices.tsx");
-  assert.match(page,/name: "robots", content: "index, follow/);
-  assert.match(page,/const URL = "https:\/\/geomacro\.live\/risk-indices";/);
+  assert.match(page,/throw notFound\(\)/);
+  assert.doesNotMatch(page,/RiskIndicesWorkspace|useRiskIndices|readGeoMacroNewsSeverityRiskIndices/);
   const retired=read("server/middleware/05-retire-noncommercial-surfaces.ts");
   assert.ok(retired.includes('["/global-risk", "/intelligence"]'));
   assert.ok(retired.includes('setResponseHeader(event, "X-Robots-Tag", "noindex, nofollow, noarchive")'));
@@ -187,6 +188,11 @@ test("sitemap advertises canonical indexable risk pages, never redirect-only /da
   assert.deepEqual(approval.approved_paths,["public/sitemap.xml"]);
   assert.equal(approval.exact_blob_lock,true);
   assert.equal(approval.payment_authorized,false);
+  const retirement=lock.approved_risk_indices_page_retirement_20261114;
+  assert.equal(retirement.exact_blob_lock,true);
+  assert.equal(retirement.website_lock_remains_active,true);
+  assert.equal(retirement.global_risk_final_lock_unmodified,true);
+  assert.ok(retirement.approved_paths.includes("src/routes/risk-indices.tsx"));
   assert.equal(approval.global_risk_final_lock_unmodified,true);
   assert.match(lockVerifier,/approved_public_sitemap_canonical_20261106/);
 });
