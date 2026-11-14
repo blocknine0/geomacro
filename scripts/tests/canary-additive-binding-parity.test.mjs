@@ -40,6 +40,8 @@ test("unknown review names or plaintext vars cannot bypass parity",()=>{
 });
 
 const sha="f".repeat(40);
+const researchRuntime={RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",
+ STREAM_MODE:"PRODUCTION",RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1"};
 const streamBaseline=[db,
  {name:"PREDGE_PAID_TRAFFIC_ENABLED",type:"plain_text",text:"NO"},
  {name:"PREDGE_PAID_GO_LIVE_CROSSCHECK",type:"plain_text",text:""},
@@ -53,17 +55,17 @@ const streamBaseline=[db,
  {name:"RISK_GATE_COUNTRY_SCOPE",type:"plain_text",text:"HOT50"},
  {name:"GEOMACRO_SOURCE_SHA",type:"plain_text",text:"b".repeat(40)}];
 const streamCandidate=[
- ...streamBaseline.filter(x=>!Object.hasOwn(reviewedHot50CandidateVars(sha),x.name)),
- ...Object.entries(reviewedHot50CandidateVars(sha)).map(([name,text])=>
+ ...streamBaseline.filter(x=>!Object.hasOwn(reviewedHot50CandidateVars(sha,researchRuntime),x.name)),
+ ...Object.entries(reviewedHot50CandidateVars(sha,researchRuntime)).map(([name,text])=>
   ({name,type:"plain_text",text})),
  ...REVIEWABLE_ADDITIVE_SECRETS.map(name=>({name,type:"secret_text"}))
 ];
-test("reviewed Hot50 flags and exact five additive secrets pass without broadening review",()=>{
+test("reviewed Hot50 flags and exact additive secrets pass without broadening review",()=>{
  const result=assessReviewedHot50BindingParity(version(streamBaseline),
-  version(streamCandidate),sha,REVIEWABLE_ADDITIVE_SECRETS);
+  version(streamCandidate),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime);
  assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
  assert.equal(result.source_sha,sha);
- assert.equal(result.additions.length,5);
+ assert.equal(result.additions.length,REVIEWABLE_ADDITIVE_SECRETS.length+1);
 });
 test("Predge vars default fail-closed and explicitly reviewed trial vars are validated",()=>{
  const defaults=reviewedHot50CandidateVars(sha);
@@ -91,12 +93,12 @@ test("Predge paid token is additive only when named for review; it remains optio
   .map(name=>({name,type:"secret_text"}));
  const base=version([...streamBaseline,...existingLegacy]);
  const candidateRows=[...streamCandidate.filter(x=>x.name!==token),{name:token,type:"secret_text"}];
- assert.equal(assessReviewedHot50BindingParity(base,version(candidateRows),sha,[token])
+ assert.equal(assessReviewedHot50BindingParity(base,version(candidateRows),sha,[token],researchRuntime)
   .status,"PASS_REVIEWED_HOT50_PARITY");
- assert.throws(()=>assessReviewedHot50BindingParity(base,version(candidateRows),sha,[]),
+ assert.throws(()=>assessReviewedHot50BindingParity(base,version(candidateRows),sha,[],researchRuntime),
   /UNREVIEWED_ADDITION/);
  const noToken=version(streamCandidate.filter(x=>x.name!==token));
- assert.equal(assessReviewedHot50BindingParity(base,noToken,sha,[])
+ assert.equal(assessReviewedHot50BindingParity(base,noToken,sha,[],researchRuntime)
   .status,"PASS_REVIEWED_HOT50_PARITY");
 });
 test("non-reviewed changes, false flags and commercial release fail closed",()=>{
@@ -109,11 +111,11 @@ test("non-reviewed changes, false flags and commercial release fail closed",()=>
  ];
  for(const rows of bad)
   assert.throws(()=>assessReviewedHot50BindingParity(baseline,
-   version(rows),sha,REVIEWABLE_ADDITIVE_SECRETS),/CANARY_BINDINGS_/);
+   version(rows),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/CANARY_BINDINGS_/);
  assert.throws(()=>assessReviewedHot50BindingParity(baseline,
-  version(streamCandidate),sha,[]),/UNREVIEWED_ADDITION/);
+  version(streamCandidate),sha,[],researchRuntime),/UNREVIEWED_ADDITION/);
  assert.throws(()=>assessReviewedHot50BindingParity(baseline,
-  version(streamCandidate),sha,["UNKNOWN"]),/UNREVIEWED_SECRET_NAME/);
+  version(streamCandidate),sha,["UNKNOWN"],researchRuntime),/UNREVIEWED_SECRET_NAME/);
 });
 
 test("existing secret metadata is immutable and only genuinely additive names may be reviewed",()=>{
@@ -121,13 +123,13 @@ test("existing secret metadata is immutable and only genuinely additive names ma
  const old=version([...streamBaseline,already]);
  const candidate=version(streamCandidate);
  const missing=REVIEWABLE_ADDITIVE_SECRETS.slice(1);
- assert.equal(assessReviewedHot50BindingParity(old,candidate,sha,missing)
+ assert.equal(assessReviewedHot50BindingParity(old,candidate,sha,missing,researchRuntime)
   .status,"PASS_REVIEWED_HOT50_PARITY");
  assert.throws(()=>assessReviewedHot50BindingParity(old,candidate,sha,
-  REVIEWABLE_ADDITIVE_SECRETS),/REVIEWED_SECRET_ALREADY_EXISTS/);
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/REVIEWED_SECRET_ALREADY_EXISTS/);
  const rotated=version(streamCandidate.map(x=>x.name===already.name?
   {...x,account_id:"changed-provider-binding"}:x));
- assert.throws(()=>assessReviewedHot50BindingParity(old,rotated,sha,missing),
+ assert.throws(()=>assessReviewedHot50BindingParity(old,rotated,sha,missing,researchRuntime),
   /UNREVIEWED_RESOURCE_CHANGE/);
  const changedFlag=version(streamCandidate.map(x=>x.name==="RISK_STREAM_ACTIVE"?
   {...x,security_scope:"unreviewed-change"}:x));
@@ -138,8 +140,28 @@ test("additional metadata on newly approved secret cannot bypass type or identit
  const bad=streamCandidate.map(x=>x.name===REVIEWABLE_ADDITIVE_SECRETS[0]?
   {...x,provider_ref:"unreviewed"}:x);
  assert.throws(()=>assessReviewedHot50BindingParity(version(streamBaseline),
-  version(bad),sha,REVIEWABLE_ADDITIVE_SECRETS),
+  version(bad),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),
   /REVIEWED_SECRET_TYPE_OR_METADATA/);
+});
+
+test("release reviewer service binding must match the independently protected service name",()=>{
+ const reviewerRuntime={...researchRuntime,GEOMACRO_RELEASE_REVIEWER_SERVICE:"geomacro-release-reviewer"};
+ const base=version(streamBaseline);
+ const vars=reviewedHot50CandidateVars(sha,reviewerRuntime);
+ const candidate=version([
+  ...streamBaseline.filter(x=>!Object.hasOwn(vars,x.name)),
+  ...Object.entries(vars).map(([name,text])=>({name,type:"plain_text",text})),
+  ...REVIEWABLE_ADDITIVE_SECRETS.map(name=>({name,type:"secret_text"})),
+  {name:"GEOMACRO_RELEASE_REVIEWER",type:"service",service:"geomacro-release-reviewer"}
+ ]);
+ assert.equal(assessReviewedHot50BindingParity(base,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,reviewerRuntime).status,"PASS_REVIEWED_HOT50_PARITY");
+ assert.throws(()=>assessReviewedHot50BindingParity(base,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/GEOMACRO_RELEASE_REVIEWER_BINDING_UNREVIEWED/);
+ const wrong=version(candidate.resources.bindings.map(x=>x.name==="GEOMACRO_RELEASE_REVIEWER"?
+  {...x,service:"unreviewed-worker"}:x));
+ assert.throws(()=>assessReviewedHot50BindingParity(base,wrong,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,reviewerRuntime),/GEOMACRO_RELEASE_REVIEWER_BINDING_MISMATCH/);
 });
 
 test("canonical six-stage canary signs Hot50 owner review even when secret additions are empty",async()=>{
@@ -162,7 +184,7 @@ test("provider delta names identify unreviewed additions without leaking any val
  const candidate=version([...streamCandidate,
   {name:"SECRET_KEY",type:"secret_text",secret:"PRIVATE_MATERIAL"},
   {name:"UNEXPECTED_BINDING",type:"plain_text",text:"DO_NOT_LOG_THIS_VALUE"}]);
- const result=diagnoseReviewedHot50BindingDelta(base,candidate,sha,[]);
+ const result=diagnoseReviewedHot50BindingDelta(base,candidate,sha,[],researchRuntime);
  assert.equal(result.status,"UNREVIEWED_BINDING_DELTA_HOLD");
  assert.ok(result.unexpected_addition_names.includes("UNEXPECTED_BINDING"));
  assert.deepEqual(result.actual_additions.find(x=>x.name==="UNEXPECTED_BINDING"),
@@ -171,7 +193,7 @@ test("provider delta names identify unreviewed additions without leaking any val
  assert.equal(result.plain_text_values_included,false);
  assert.equal(result.traffic_promoted,false);
  assert.doesNotMatch(JSON.stringify(result),/DO_NOT_LOG_THIS_VALUE|PRIVATE_MATERIAL/);
- assert.throws(()=>assessReviewedHot50BindingParity(base,candidate,sha,[]),
+ assert.throws(()=>assessReviewedHot50BindingParity(base,candidate,sha,[],researchRuntime),
   /UNREVIEWED_ADDITION/);
 });
 test("reviewed named candidate additions remain diagnostic-only, not authorization",()=>{
@@ -179,9 +201,9 @@ test("reviewed named candidate additions remain diagnostic-only, not authorizati
  const cand=version([...streamCandidate.filter(x=>!REVIEWABLE_ADDITIVE_SECRETS.includes(x.name)),
   {name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"}]);
  const result=diagnoseReviewedHot50BindingDelta(base,cand,sha,
-  ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"]);
+  ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"],researchRuntime);
  assert.equal(result.status,"NO_UNEXPECTED_BINDING_NAMES");
  assert.deepEqual(result.unexpected_addition_names,[]);
  assert.equal(assessReviewedHot50BindingParity(base,cand,sha,
-  ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"]).status,"PASS_REVIEWED_HOT50_PARITY");
+  ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"],researchRuntime).status,"PASS_REVIEWED_HOT50_PARITY");
 });

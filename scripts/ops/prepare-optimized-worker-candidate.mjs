@@ -41,6 +41,19 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   if(old&&old.text!=='0'&&old.value!=='0')
    throw Error('CANDIDATE_BASELINE_RELEASE_HOLD_UNVERIFIED');
  }
+ const reviewerService=predgeRuntimeVars.GEOMACRO_RELEASE_REVIEWER_SERVICE??'';
+ const oldReviewer=bindings.find(x=>x.name==='GEOMACRO_RELEASE_REVIEWER');
+ if(reviewerService&&oldReviewer&&
+    (oldReviewer.type!=='service'||oldReviewer.service!==reviewerService))
+  throw Error('CANDIDATE_REVIEWER_SERVICE_BINDING_MISMATCH');
+ if(vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE==='1'&&!reviewerService)
+  throw Error('CANDIDATE_REVIEWER_SERVICE_REQUIRED');
+ const inheritedBindings=bindings.filter(x=>
+  !Object.hasOwn(vars,x.name)&&!reviewedSecretNames.includes(x.name))
+  .map(x=>({name:x.name,type:'inherit'}));
+ if(reviewerService&&!oldReviewer)
+  inheritedBindings.push({name:'GEOMACRO_RELEASE_REVIEWER',type:'service',
+   service:reviewerService});
  return {name:NAME,main:'src/index.mjs',
   compatibility_date:runtime.compatibility_date,
   compatibility_flags:runtime.compatibility_flags??[],
@@ -49,9 +62,7 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   vars,
   // Carry existing secret versions intact. Newly reviewed secret names
   // have no baseline to inherit and belong in this SAME code-version upload.
-  unsafe:{bindings:bindings.filter(x=>
-   !Object.hasOwn(vars,x.name)&&!reviewedSecretNames.includes(x.name))
-   .map(x=>({name:x.name,type:'inherit'}))}};
+  unsafe:{bindings:inheritedBindings}};
 }
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);

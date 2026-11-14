@@ -4,7 +4,14 @@ export const REVIEWABLE_ADDITIVE_SECRETS=Object.freeze([
   "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
   "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64",
   "RISK_STREAM_INDEX_LEAD_BEARER",
-  "PREDGE_PAID_RISK_GATE_TOKEN"
+  "PREDGE_PAID_RISK_GATE_TOKEN",
+  "RISK_STREAM_GRO_SIGN_PKCS8_B64",
+  "RISK_STREAM_GRO_VERIFY_SPKI_B64",
+  "RISK_STREAM_MACHINE_FACTS_SPKI_B64",
+  "RISK_STREAM_MACHINE_RIGHTS_SPKI_B64",
+  "RISK_STREAM_AES256_KEY_B64",
+  "RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256",
+  "GEOMACRO_LICENSED_WEBHOOK_DOMAINS"
 ]);
 const PREDGE_TRIAL_VARS=Object.freeze({
  PREDGE_PAID_TRAFFIC_ENABLED:"NO",
@@ -52,15 +59,48 @@ export function assessReviewedAdditiveBindingParity(base,candidate,reviewed=[]){
 // This does not authorize payment, certified Risk Indices or release-hold removal.
 export const REVIEWED_HOT50_RUNTIME_VARS=Object.freeze({
  RISK_GATE_COUNTRY_SCOPE:"HOT50",
- RISK_STREAM_ACTIVE:"1",
- STREAM_INGESTION_ENABLED:"true",
- RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1",
+ RISK_STREAM_ACTIVE:"0",
+ STREAM_INGESTION_ENABLED:"false",
+ STREAM_MODE:"DISABLED",
+ RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"0",
  GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
  RISK_STREAM_CANARY_HOLD_CLEARED:"0",
  RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:"0"
 });
 export function reviewedHot50CandidateVars(sha,predgeRuntimeVars={}){
  if(!/^[a-f0-9]{40}$/.test(sha))deny("SOURCE_SHA_INVALID");
+ const stream={
+  RISK_STREAM_ACTIVE:predgeRuntimeVars.RISK_STREAM_ACTIVE??REVIEWED_HOT50_RUNTIME_VARS.RISK_STREAM_ACTIVE,
+  STREAM_INGESTION_ENABLED:predgeRuntimeVars.STREAM_INGESTION_ENABLED??REVIEWED_HOT50_RUNTIME_VARS.STREAM_INGESTION_ENABLED,
+  STREAM_MODE:predgeRuntimeVars.STREAM_MODE??REVIEWED_HOT50_RUNTIME_VARS.STREAM_MODE,
+  RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:predgeRuntimeVars.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED??REVIEWED_HOT50_RUNTIME_VARS.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED,
+  GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
+  RISK_STREAM_CANARY_HOLD_CLEARED:"0",
+  RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:"0"
+ };
+ if(!["0","1"].includes(stream.RISK_STREAM_ACTIVE)||
+    !["false","true"].includes(stream.STREAM_INGESTION_ENABLED)||
+    !["DISABLED","PRODUCTION"].includes(stream.STREAM_MODE)||
+    !["0","1"].includes(stream.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED)||
+    !["0","1"].includes(stream.GEOMACRO_COMMERCIAL_STREAM_RELEASE)||
+    !["0","1"].includes(stream.RISK_STREAM_CANARY_HOLD_CLEARED)||
+    !["0","1"].includes(stream.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED))
+  deny("RISK_STREAM_RUNTIME_VAR_INVALID");
+ const researchOn=stream.RISK_STREAM_ACTIVE==="1"&&
+  stream.STREAM_INGESTION_ENABLED==="true"&&stream.STREAM_MODE==="PRODUCTION"&&
+  stream.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1";
+ const anyResearchOn=stream.RISK_STREAM_ACTIVE==="1"||
+  stream.STREAM_INGESTION_ENABLED==="true"||stream.STREAM_MODE==="PRODUCTION"||
+  stream.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1";
+ if(anyResearchOn&&!researchOn)deny("RISK_STREAM_RESEARCH_FLAGS_INCOMPLETE");
+ if(["GEOMACRO_COMMERCIAL_STREAM_RELEASE","RISK_STREAM_CANARY_HOLD_CLEARED",
+     "RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED"].some(name=>
+       predgeRuntimeVars[name]!==undefined&&predgeRuntimeVars[name]!=="0"))
+  deny("CANARY_NO_FUNDS_CANNOT_ENABLE_COMMERCIAL_RELEASE");
+ const reviewerService=predgeRuntimeVars.GEOMACRO_RELEASE_REVIEWER_SERVICE??"";
+ if(typeof reviewerService!=="string"||reviewerService!==""&&
+    !/^[A-Za-z0-9_-]{1,63}$/u.test(reviewerService))
+  deny("GEOMACRO_RELEASE_REVIEWER_SERVICE_INVALID");
  const paid=predgeRuntimeVars.PREDGE_PAID_TRAFFIC_ENABLED??PREDGE_TRIAL_VARS.PREDGE_PAID_TRAFFIC_ENABLED;
  const crosscheck=predgeRuntimeVars.PREDGE_PAID_GO_LIVE_CROSSCHECK??PREDGE_TRIAL_VARS.PREDGE_PAID_GO_LIVE_CROSSCHECK;
  const trialStart=predgeRuntimeVars.PREDGE_MUTUAL_TRIAL_STARTED_AT??PREDGE_TRIAL_VARS.PREDGE_MUTUAL_TRIAL_STARTED_AT;
@@ -70,7 +110,7 @@ export function reviewedHot50CandidateVars(sha,predgeRuntimeVars={}){
     (!TRIAL_START.test(trialStart)||!Number.isFinite(Date.parse(trialStart))))
   deny("PREDGE_TRIAL_RUNTIME_VAR_INVALID");
  if(storeCheckout!==""&&!["YES","NO"].includes(storeCheckout))deny("STORE_CHECKOUT_RUNTIME_VAR_INVALID");
- return {...REVIEWED_HOT50_RUNTIME_VARS,GEOMACRO_SOURCE_SHA:sha,
+ return {...REVIEWED_HOT50_RUNTIME_VARS,...stream,GEOMACRO_SOURCE_SHA:sha,
   PREDGE_PAID_TRAFFIC_ENABLED:paid,
   PREDGE_PAID_GO_LIVE_CROSSCHECK:crosscheck,
   PREDGE_MUTUAL_TRIAL_STARTED_AT:trialStart,
@@ -125,6 +165,7 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
  if(!Array.isArray(rowsA)||!Array.isArray(rowsB))deny("UNREADABLE");
  const old=new Map(rowsA.map(x=>[x.name,x]));
  const current=new Map(rowsB.map(x=>[x.name,x]));
+ const reviewerService=predgeRuntimeVars.GEOMACRO_RELEASE_REVIEWER_SERVICE??"";
  // Existing secret bindings MUST be preserved, not silently rotated by
  // a newly uploaded secrets file. Only actually missing names may be reviewed.
  for(const name of reviewedSecrets)
@@ -148,9 +189,18 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
   if(row?.type!=="plain_text"||bindingText(row)!==wanted)
    deny("REVIEWED_FLAG_NOT_VERIFIED_"+name);
  }
+ const reviewerBinding=current.get("GEOMACRO_RELEASE_REVIEWER");
+ const reviewerWasPresent=a.has("GEOMACRO_RELEASE_REVIEWER");
+ if(reviewerService){
+  if(reviewerBinding?.type!=="service"||reviewerBinding.service!==reviewerService||
+     Object.keys(reviewerBinding).some(k=>!["name","type","service"].includes(k)))
+   deny("GEOMACRO_RELEASE_REVIEWER_BINDING_MISMATCH");
+ }else if(!reviewerWasPresent&&reviewerBinding)
+  deny("GEOMACRO_RELEASE_REVIEWER_BINDING_UNREVIEWED");
  const additions=[...b.keys()].filter(n=>!a.has(n)).sort();
  const expected=[...Object.keys(required).filter(n=>!a.has(n)),
-   ...reviewedSecrets.filter(n=>!a.has(n))].sort();
+   ...reviewedSecrets.filter(n=>!a.has(n)),
+   ...(reviewerService&&!reviewerWasPresent?["GEOMACRO_RELEASE_REVIEWER"]:[])].sort();
  if(canonical(additions)!==canonical(expected))deny("UNREVIEWED_ADDITION");
  for(const name of reviewedSecrets){
   const row=current.get(name);

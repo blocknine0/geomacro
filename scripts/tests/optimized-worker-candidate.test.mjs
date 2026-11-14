@@ -4,13 +4,15 @@ import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersion
 import {reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS}
  from '../lib/canary-additive-binding-parity.mjs';
 const sha='a'.repeat(40);
+const researchRuntime={RISK_STREAM_ACTIVE:'1',STREAM_INGESTION_ENABLED:'true',
+ STREAM_MODE:'PRODUCTION',RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:'1'};
 const baseline={resources:{script_runtime:{compatibility_date:'2026-10-03',compatibility_flags:[]},bindings:[
  {name:'DB',type:'d1',id:'canonical-db'},
  {name:'CONTROL_PLANE_TOKEN',type:'secret_text'},
  {name:'PAYMENT_ENABLED',type:'plain_text',text:'0'},
  {name:'GEOMACRO_SOURCE_SHA',type:'plain_text',text:'b'.repeat(40)}]}};
 const candidate=()=>{const v=structuredClone(baseline);
- for(const [name,text] of Object.entries(reviewedHot50CandidateVars(sha))){
+ for(const [name,text] of Object.entries(reviewedHot50CandidateVars(sha,researchRuntime))){
   const row=v.resources.bindings.find(x=>x.name===name);
   if(row)row.text=text;
   else v.resources.bindings.push({name,type:'plain_text',text});
@@ -18,8 +20,8 @@ const candidate=()=>{const v=structuredClone(baseline);
  return v;
 };
 test('candidate inherits all production secrets/resources/flags without copying values',()=>{
- const config=candidateConfig(baseline,sha);
- assert.deepEqual(config.vars,reviewedHot50CandidateVars(sha));
+ const config=candidateConfig(baseline,sha,[],researchRuntime);
+ assert.deepEqual(config.vars,reviewedHot50CandidateVars(sha,researchRuntime));
  assert.deepEqual(config.unsafe.bindings,[{name:'DB',type:'inherit'},
   {name:'CONTROL_PLANE_TOKEN',type:'inherit'},{name:'PAYMENT_ENABLED',type:'inherit'}]);
  assert.doesNotMatch(JSON.stringify(config),/canonical-db|secret_text/);
@@ -29,17 +31,17 @@ test('candidate inherits all production secrets/resources/flags without copying 
  assert.equal(config.vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE,'0');
  assert.equal(config.vars.RISK_STREAM_CANARY_HOLD_CLEARED,'0');
  assert.equal(config.vars.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED,'0');
- assert.equal(verifyCandidateBindings(baseline,candidate(),sha),true);
+ assert.equal(verifyCandidateBindings(baseline,candidate(),sha,[],researchRuntime),true);
 });
 test('same binding names cannot conceal resource changes or payment activation',()=>{
  for(const [name,field,value] of [['DB','id','other-db'],['PAYMENT_ENABLED','text','1']]){
   const changed=candidate();changed.resources.bindings.find(x=>x.name===name)[field]=value;
-  assert.throws(()=>verifyCandidateBindings(baseline,changed,sha),/RESOURCE_OR_VALUE_CHANGED/);
+  assert.throws(()=>verifyCandidateBindings(baseline,changed,sha,[],researchRuntime),/RESOURCE_OR_VALUE_CHANGED/);
  }
  const changed=candidate();changed.resources.script_runtime.compatibility_date='2026-11-07';
- assert.throws(()=>verifyCandidateBindings(baseline,changed,sha),/SCRIPT_RUNTIME_CHANGED/);
+ assert.throws(()=>verifyCandidateBindings(baseline,changed,sha,[],researchRuntime),/SCRIPT_RUNTIME_CHANGED/);
  const duplicate=candidate();duplicate.resources.bindings.push(duplicate.resources.bindings[0]);
- assert.throws(()=>verifyCandidateBindings(baseline,duplicate,sha),/COUNT_CHANGED/);
+ assert.throws(()=>verifyCandidateBindings(baseline,duplicate,sha,[],researchRuntime),/COUNT_CHANGED/);
 });
 test('candidate cannot upload from unprotected branch before provider access',async()=>{
  let calls=0;
@@ -50,12 +52,12 @@ test('candidate cannot upload from unprotected branch before provider access',as
 test('candidate preserves enabled production cache and cross-version isolation',()=>{
  const live=structuredClone(baseline);
  live.resources.script_runtime.cache_options={enabled:true,cross_version_cache:false};
- const config=candidateConfig(live,sha);
+ const config=candidateConfig(live,sha,[],researchRuntime);
  assert.deepEqual(config.cache,{enabled:true,cross_version_cache:false});
  const wrong=candidate();
- assert.throws(()=>verifyCandidateBindings(live,wrong,sha),/SCRIPT_RUNTIME_CHANGED/);
+ assert.throws(()=>verifyCandidateBindings(live,wrong,sha,[],researchRuntime),/SCRIPT_RUNTIME_CHANGED/);
  const correct=candidate();correct.resources.script_runtime.cache_options=structuredClone(config.cache);
- assert.equal(verifyCandidateBindings(live,correct,sha),true);
+ assert.equal(verifyCandidateBindings(live,correct,sha,[],researchRuntime),true);
 });
 
 test('protected candidate receives existing independent read-only Billing token',async()=>{
@@ -126,20 +128,20 @@ test('reviewed additive secret set is exact and no unauthorized binding can appe
  for(const name of REVIEWABLE_ADDITIVE_SECRETS)
   enabled.resources.bindings.push({name,type:'secret_text'});
  assert.equal(verifyCandidateBindings(baseline,enabled,sha,
-  REVIEWABLE_ADDITIVE_SECRETS),true);
- assert.throws(()=>verifyCandidateBindings(baseline,enabled,sha,[]),
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),true);
+ assert.throws(()=>verifyCandidateBindings(baseline,enabled,sha,[],researchRuntime),
   /UNREVIEWED_ADDITION/);
  const bad=structuredClone(enabled);
  bad.resources.bindings.push({name:'PAYMENT_OVERRIDE',type:'plain_text',text:'1'});
  assert.throws(()=>verifyCandidateBindings(baseline,bad,sha,
-  REVIEWABLE_ADDITIVE_SECRETS),/UNREVIEWED_ADDITION/);
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/UNREVIEWED_ADDITION/);
  for(const [name,value] of [['RISK_STREAM_ACTIVE','0'],
   ['STREAM_INGESTION_ENABLED','false'],
   ['GEOMACRO_COMMERCIAL_STREAM_RELEASE','1']]){
   const mutated=structuredClone(enabled);
   mutated.resources.bindings.find(b=>b.name===name).text=value;
   assert.throws(()=>verifyCandidateBindings(baseline,mutated,sha,
-   REVIEWABLE_ADDITIVE_SECRETS),/REVIEWED_FLAG_NOT_VERIFIED/);
+   REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/REVIEWED_FLAG_NOT_VERIFIED|CANARY_NO_FUNDS/);
  }
 });
 test('zero-traffic candidate requires explicit separate Hot50 review and secrets-file upload',async()=>{
