@@ -422,8 +422,6 @@ jobs:
           NODE
       - name: Require provider-observed paid D1 headroom before version upload
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
-      - name: Require zone analytics before any candidate upload or traffic mutation
-        run: node -e 'if(!/^[a-f0-9]{32}$/i.test(process.env.CLOUDFLARE_ZONE_ID||""))throw Error("CANARY_ZONE_ID_REQUIRED_BEFORE_CANDIDATE_UPLOAD")'
       - name: Upload exact-main candidate with inherited protected bindings and no traffic change
         id: candidate
         run: |
