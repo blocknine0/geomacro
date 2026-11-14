@@ -50,7 +50,7 @@ jobs:
           node --experimental-strip-types --check scripts/ops/phase2i-source-only-raw-tick.ts
           node --test scripts/tests/public-http-etag.test.mjs
           node --test scripts/tests/geomacro-news-severity-gri.test.mjs
-          node --test scripts/tests/progressive-risk-gate.test.mjs scripts/tests/predge-paid-risk-gate-addendum-v2.test.mjs scripts/tests/store-risk-gate-recharge.test.mjs scripts/tests/hot50-global-search-facts.test.mjs scripts/tests/phase2i-progressive-fact-projection-contract.test.mjs scripts/tests/auxiliary-osint-projection.test.mjs scripts/lib/private-osint-15m-collector.test.mjs scripts/lib/hot-50-direct-20m-sources.test.mjs scripts/lib/hot-50-four-lane-source-crosswalk.test.mjs
+          node --test scripts/tests/progressive-risk-gate.test.mjs scripts/tests/predge-paid-risk-gate-addendum-v2.test.mjs scripts/tests/store-risk-gate-recharge.test.mjs scripts/tests/hot50-global-search-facts.test.mjs scripts/tests/phase2i-progressive-fact-projection-contract.test.mjs scripts/tests/auxiliary-osint-projection.test.mjs scripts/tests/private-osint-three-category-live-receipt.test.mjs scripts/lib/private-osint-15m-collector.test.mjs scripts/lib/hot-50-direct-20m-sources.test.mjs scripts/lib/hot-50-four-lane-source-crosswalk.test.mjs
 
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)
         run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/p1-source-queue-budget.test.mjs scripts/tests/p1-source-fanout.test.mjs
