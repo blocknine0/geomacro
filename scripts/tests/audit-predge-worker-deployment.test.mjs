@@ -19,7 +19,7 @@ const readiness = {
   status: "ready", authority: "cloudflare-d1", scope: "predge-risk-gate-country-v1",
   checks: {
     database: true, audit_store: true, isolated_partner_credential: true,
-    active_pinned_verification_key: true, fresh_verified_commercial_country_gro: false,
+    active_pinned_verification_key: true, fresh_verified_commercial_country_gro: true,
     progressive_decision_ed25519_signer_configured: true,
   },
   paid_launch_approved: false, execution_authorized: false,
@@ -58,6 +58,23 @@ test("stale deployed SHA is an explicit HOLD, not confused with website health",
   assert.equal(result.worker_health_http_status, 200);
   assert.equal(result.status, "HOLD");
   assert.deepEqual(result.blockers, ["CONTROL_PLANE_WORKER_SOURCE_SHA_STALE"]);
+  assert.equal(result.predge_paid_launch_approved, false);
+});
+
+test("missing fresh signed commercial GRO is separately surfaced as a delivery blocker", async () => {
+  const { fetchImpl } = mockFetch();
+  const staleGRO = async (url, init) => {
+    const response = await fetchImpl(url, init);
+    if (String(url).endsWith("/v1/public/risk-gate-d1-readiness")) {
+      const body = structuredClone(readiness);
+      body.checks.fresh_verified_commercial_country_gro = false;
+      return Response.json(body);
+    }
+    return response;
+  };
+  const result = await auditPredgeWorkerDeployment({ env: baseEnv, fetchImpl: staleGRO });
+  assert.equal(result.status, "HOLD");
+  assert.ok(result.blockers.includes("PREDGE_CURRENT_SIGNED_COMMERCIAL_GRO_UNAVAILABLE"));
   assert.equal(result.predge_paid_launch_approved, false);
 });
 

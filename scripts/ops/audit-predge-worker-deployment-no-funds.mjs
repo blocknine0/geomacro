@@ -94,6 +94,8 @@ export async function auditPredgeWorkerDeployment({
   const blockers = [];
   if (!workerHealthOk) blockers.push("CONTROL_PLANE_WORKER_HEALTH_NOT_VERIFIED");
   if (!predgeReadinessOk) blockers.push("PREDGE_PAID_OFF_READINESS_NOT_VERIFIED");
+  if (r?.checks?.fresh_verified_commercial_country_gro !== true)
+    blockers.push("PREDGE_CURRENT_SIGNED_COMMERCIAL_GRO_UNAVAILABLE");
   if (workerHealthOk && h.deployed_source_sha !== expected)
     blockers.push("CONTROL_PLANE_WORKER_SOURCE_SHA_STALE");
   if (cloudflare.status !== "PROVIDER_READBACK") blockers.push("CLOUDFLARE_DEPLOYMENT_READBACK_UNAVAILABLE");
