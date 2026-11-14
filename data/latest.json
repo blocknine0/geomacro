@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-14T01:29:21.190Z",
+  "checked_at": "2026-11-14T02:42:42.966Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-3ecdebb1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: extended United Nations Interim Security Force for Abyei, Adopting Resolution 2838 (2026)",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council extended United Nations Interim Security Force for Abyei, Adopting Resolution 2838 (2026).",
+      "geography": null,
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-13T23:18:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-7a809d63",
       "category": "geopolitics",
@@ -835,25 +854,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-11T04:35:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-f0dcccb5",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto cut jobs at Québec lithium project - Mining.com.au",
-      "what_changed": "A monitored source feed reports: Rio Tinto cut jobs at Québec lithium project - Mining.com.au. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-11T01:48:18.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
