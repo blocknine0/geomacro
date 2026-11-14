@@ -8,6 +8,8 @@
  */
 import {enqueueCommercialIssuerCandidate} from "./risk-stream-commercial-issuer.mjs";
 import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
+import {issueUnsignedDailyNewsBatch} from "./risk-stream-unsigned-gro.mjs";
+import {isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
@@ -455,6 +457,25 @@ export async function processRiskStreamBatch(env,items,{
  const distinct=[...new Map(rows.map(r=>[r.observation_id,r])).values()];
  const archive=await privateArchiveR2(distinct,env);
  await appendCanonical(env.DB,distinct,archive,now,opts);
+ // Stage 1 of the owner-approved architecture: immediately persist the
+ // unsigned research GRO before any independent GRO signing path runs.
+ let unsignedNews={status:"UNSIGNED_GRO_AUTOMATION_HELD",created:0,idempotent:0};
+ if(env.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1"){
+  try{
+   const today=new Date(now).toISOString().slice(0,10);
+   const signals=distinct.filter(x=>isHot50RiskCountry(x.country_iso3)&&
+    Object.hasOwn(POLICIES,x.category)&&x.published_at.slice(0,10)===today).map(x=>({
+    country_iso3:x.country_iso3,category:x.category,
+    event_fingerprint:x.event_fingerprint,published_at:x.published_at,
+    derived:x.derived,original_verified:x.original_verified===true,
+    corroborated_signed_original:false,signal_kind:"RISK_STREAM_QUEUE_EVENT"
+   }));
+   unsignedNews=await issueUnsignedDailyNewsBatch(env,signals,{now,limit:10});
+  }catch{
+   unsignedNews={status:"UNSIGNED_GRO_D1_READBACK_HELD",created:0,idempotent:0};
+   console.error("HOT50_UNSIGNED_NEWS_GRO_HELD");
+  }
+ }
  const grouped=await loadCorroborated(env.DB,distinct,now,opts);
  const signed=[],signedEventKeys=new Set();
  for(const [key,group] of grouped){
@@ -502,6 +523,10 @@ export async function processRiskStreamBatch(env,items,{
   secondary_index_publisher_hints_never_certification:true,
   secondary_index_truncated:secondary.truncated,
   country_scope_hardcoded:false,
+  unsigned_news_gro_state:unsignedNews.status,
+  unsigned_news_gro_created:unsignedNews.created,
+  unsigned_news_gro_idempotent:unsignedNews.idempotent,
+  unsigned_news_gro_signature_created:false,
   daily_news_gro_state:dailyNews.status,daily_news_gro_signed:dailyNews.signed,
   daily_news_gro_is_commercial_release:false};
 }

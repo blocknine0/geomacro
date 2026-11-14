@@ -44,6 +44,7 @@ import {runCommercialIssuerTick} from "./risk-stream-commercial-issuer.mjs";
 import {acceptScopedUntrustedRiskStreamLeads} from "./risk-stream-index-listener.mjs";
 import {runHot50AutonomousStreamTick} from "./risk-stream-autonomous-hot50.mjs";
 import {readDailyNewsGros} from "./risk-stream-news-gro.mjs";
+import {readUnsignedDailyNewsGros} from "./risk-stream-unsigned-gro.mjs";
 import {runCommercialRiskHistoryAppendTick} from "./risk-stream-seven-day-chain.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
@@ -1888,6 +1889,10 @@ export default {
     // No public/Predge route or payment can read this private evidence ledger.
     if(url.pathname==="/v1/internal/risk-stream/daily-news-gros"&&
        request.method==="GET")return readDailyNewsGros(request,env);
+    // Owner-only review of first-stage Hot50 GROs; the response is unsigned
+    // research and cannot authorize a paid delivery or execution.
+    if(url.pathname==="/v1/internal/risk-stream/unsigned-news-gros"&&
+       request.method==="GET")return readUnsignedDailyNewsGros(request,env);
     // Private event stream producer; root-admin authenticates BEFORE Queue
     // send. Only the independently signed originals may reach GRO signing.
     if(url.pathname==='/v1/internal/risk-stream/events'&&

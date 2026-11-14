@@ -13,6 +13,7 @@
     "all-source-reusable-news-json.yml",
     "api-custom-domain-production-acceptance.yml",
     "apply-hot50-daily-news-0219.yml",
+    "apply-hot50-unsigned-gro-0221.yml",
     "apply-multi-source-registry-production.yml",
     "apply-predge-addendum-v2-migration-0131.yml",
     "apply-predge-mutual-trial-migration-0132.yml",

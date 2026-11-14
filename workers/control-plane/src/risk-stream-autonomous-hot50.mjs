@@ -9,6 +9,7 @@ import {RISK_GATE_HOT50,hot50RiskGateEnabled} from "./risk-gate-hot50-scope.mjs"
 import {phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {riskPublisherSearchPlan} from "./risk-gate-global-news-search.mjs";
 import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
+import {issueUnsignedDailyNewsBatch,pruneUnsignedDailyNewsGros} from "./risk-stream-unsigned-gro.mjs";
 import {parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {verifyGeoMacroSevenDayHistory} from "./risk-stream-seven-day-chain.mjs";
 
@@ -365,13 +366,15 @@ export async function hot50DailySignalInputs(target,pool,now=Date.now()){
   if(!same(r)||!current(r.source_clock_at))continue;
   inputs.push({country_iso3:target.country_iso3,category:target.category,
    event_fingerprint:await hash("discovery\n"+r.signal_id),
-   published_at:r.source_clock_at,original_verified:false});
+   published_at:r.source_clock_at,original_verified:false,
+   signal_kind:"DISCOVERY_LANE_SIGNAL"});
  }
  for(const r of pool.search??[]){
   if(!same(r)||!current(r.published_at))continue;
   inputs.push({country_iso3:target.country_iso3,category:target.category,
    event_fingerprint:await hash("search\n"+r.lead_id),
-   published_at:r.published_at,original_verified:false});
+   published_at:r.published_at,original_verified:false,
+   signal_kind:"GLOBAL_SEARCH_INDEX_LEAD"});
  }
  for(const r of pool.evidence??[]){
   if(!same(r)||!current(r.published_at))continue;
@@ -387,7 +390,7 @@ export async function hot50DailySignalInputs(target,pool,now=Date.now()){
   inputs.push({country_iso3:target.country_iso3,category:target.category,
    event_fingerprint:r.event_fingerprint,published_at:r.published_at,
    original_verified:eligibleOriginal,corroborated_signed_original:eligibleOriginal&&signed,
-   derived});
+   signal_kind:"CANONICAL_DERIVED_ANALYSIS",derived});
  }
  // The caller uses the immutable signed-D1 completion census to choose
  // pending events. A clock-derived modulo can starve specific event hashes.
@@ -405,11 +408,21 @@ export async function runHot50AutonomousStreamTick(env,{
    env.RISK_STREAM_ACTIVE!=="1"||env.STREAM_INGESTION_ENABLED!=="true"||
    !hot50RiskGateEnabled(env)||!env.DB?.prepare||!env.DB?.batch)
   return {status:"HOLD_AUTONOMOUS_STREAM_DISABLED",cells_checked:0};
+ let unsignedPrunedRows=0,unsignedPruneState="NOT_DUE";
+ try{
+  unsignedPrunedRows=await pruneUnsignedDailyNewsGros(env,now);
+  if(new Date(now).getUTCHours()===0&&new Date(now).getUTCMinutes()===5)
+   unsignedPruneState="UNSIGNED_GRO_RETENTION_READBACK_PASS";
+ }catch{
+  unsignedPruneState="UNSIGNED_GRO_RETENTION_HOLD";
+  console.error("HOT50_UNSIGNED_GRO_RETENTION_HELD");
+ }
  const targets=planHot50StreamCells(now,perTick),pool=await loadPulse(env.DB,targets,now);
  const storedGroRows=pool.signed.length;
  pool.signed=await verifyHot50SignedGroReadbacks(pool.signed,env,now);
  let basic=0,internalStandard=0,searches=0,leads=0,held=0,complexReady=0;
  let dailyNewsSigned=0,dailyNewsState="GRO_SIGNING_PENDING";
+ let unsignedNewsCreated=0,unsignedNewsIdempotent=0,unsignedNewsState="UNSIGNED_GRO_PENDING";
  for(const target of targets){
   const projection=projectHot50StreamCell(target,pool,now);
   const earlier=pool.prior.get(key(target));
@@ -448,6 +461,15 @@ export async function runHot50AutonomousStreamTick(env,{
      (x.corroborated_signed_original?"CORROBORATED_INTERNAL_GRO":
       x.original_verified?"DUAL_ATTESTED_ORIGINAL":"UNVERIFIED_SIGNAL"))).slice(0,6);
    }
+   try{
+    const unsignedReceipt=await issueUnsignedDailyNewsBatch(env,events,{now,limit:6});
+    unsignedNewsCreated+=unsignedReceipt.created;
+    unsignedNewsIdempotent+=unsignedReceipt.idempotent;
+    unsignedNewsState=unsignedReceipt.status;
+   }catch{
+    unsignedNewsState="UNSIGNED_GRO_D1_READBACK_HELD";
+    console.error("HOT50_UNSIGNED_NEWS_GRO_RECOVERY_HELD");
+   }
    const receipt=await issueDailyNewsBatch(env,events,{now,limit:6});
    dailyNewsSigned+=receipt.signed;
    dailyNewsState=receipt.status;
@@ -462,6 +484,12 @@ export async function runHot50AutonomousStreamTick(env,{
   standard_hold_cells:held,complex_verified_cells:complexReady,
   rejected_unsigned_or_tampered_gro_rows:storedGroRows-pool.signed.length,
   global_search_probes:searches,index_leads_saved:leads,
+  unsigned_news_gro_created:unsignedNewsCreated,
+  unsigned_news_gro_idempotent:unsignedNewsIdempotent,
+  unsigned_news_gro_state:unsignedNewsState,
+  unsigned_news_gro_pruned_rows:unsignedPrunedRows,
+  unsigned_news_gro_retention_state:unsignedPruneState,
+  unsigned_news_gro_signature_created:false,
   daily_news_gro_signed:dailyNewsSigned,daily_news_gro_state:dailyNewsState,
   licensed_deliveries_performed:0,commercial_release_unchanged:true,
   certification_from_index_hits:false,raw_publisher_text_stored:false};
