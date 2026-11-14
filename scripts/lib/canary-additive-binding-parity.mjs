@@ -201,7 +201,16 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
  const expected=[...Object.keys(required).filter(n=>!a.has(n)),
    ...reviewedSecrets.filter(n=>!a.has(n)),
    ...(reviewerService&&!reviewerWasPresent?["GEOMACRO_RELEASE_REVIEWER"]:[])].sort();
- if(canonical(additions)!==canonical(expected))deny("UNREVIEWED_ADDITION");
+ if(canonical(additions)!==canonical(expected)){
+  // Keep the gate fail-closed while making a provider mismatch actionable.
+  // Binding names are safe metadata; no binding values are included.
+  const safe=name=>/^[A-Z_][A-Z0-9_]{0,100}$/u.test(name)?name:
+   "REDACTED_INVALID_BINDING_NAME";
+  const unexpected=additions.filter(name=>!expected.includes(name)).map(safe);
+  const missing=expected.filter(name=>!additions.includes(name)).map(safe);
+  deny("UNREVIEWED_ADDITION_ACTUAL_"+(unexpected.join("__AND__")||"NONE")+
+   "_EXPECTED_MISSING_"+(missing.join("__AND__")||"NONE"));
+ }
  for(const name of reviewedSecrets){
   const row=current.get(name);
   if(row?.type!=="secret_text"||
