@@ -293,7 +293,7 @@ function paidRiskGateFixtureDb(initialQuota=0,standardReady=false){
  },testLedger:ledger};
 }
 
-test("v1 keeps its cap and paid v2 cannot account for unsupported unlicensed tiers",async()=>{
+test("v1 keeps its cap and paid v2 recognizes every Addendum v2 tier before requiring a signed license",async()=>{
  const paid=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  paid.request_id="uncapped-paid-volume-request-001";
  const {publicKey,privateKey}=generateKeyPairSync("ed25519");
@@ -306,10 +306,13 @@ test("v1 keeps its cap and paid v2 cannot account for unsupported unlicensed tie
   RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:db};
  const make=(body,path,auth)=>new Request("https://worker.example"+path,{method:"POST",
   headers:{authorization:"Bearer "+auth,"content-type":"application/json"},body:JSON.stringify(body)});
- const paidResponse=await predgePaidRiskGateD1(make(paid,"/v2/partner/predge/paid-risk-gate",token),env,
-  Date.parse("2026-11-12T00:00:00Z"));
- assert.equal(paidResponse.status,409,(await paidResponse.clone().text()));
- assert.equal((await paidResponse.json()).error,"PREDGE_REVIEWED_LICENSE_TIER_UNAVAILABLE");
+ for(const [index,tier] of ["basic_focused","standard","complex_full"].entries()){
+  paid.tier=tier;paid.request_id=`paid-v2-tier-${index}`;
+  const paidResponse=await predgePaidRiskGateD1(make(paid,"/v2/partner/predge/paid-risk-gate",token),env,
+   Date.parse("2026-11-12T00:00:00Z"));
+  assert.equal(paidResponse.status,409,(await paidResponse.clone().text()));
+  assert.equal((await paidResponse.json()).error,"PREDGE_REVIEWED_LICENSE_UNAVAILABLE");
+ }
  assert.equal(db.testLedger.size,0);
  const pilot=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
  pilot.request_id="v1-pilot-cap-request-001";
@@ -333,7 +336,7 @@ test("Standard paid Risk Gate refuses delivery without a reviewer-issued D1 lice
  const response=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
  const body=await response.json();
  assert.equal(response.status,409,JSON.stringify(body));
- assert.equal(body.error,"PREDGE_REVIEWED_STANDARD_LICENSE_UNAVAILABLE");
+ assert.equal(body.error,"PREDGE_REVIEWED_LICENSE_UNAVAILABLE");
  assert.equal(body.billable,false);
  assert.equal(env.DB.testLedger.size,0);
 });
@@ -350,7 +353,7 @@ test("mutual trial remains held until a Standard reviewer-approved license exist
   body:JSON.stringify(fixture)}),env,Date.parse("2026-11-12T00:00:00Z"));
  const body=await response.json();
  assert.equal(response.status,409,JSON.stringify(body));
- assert.equal(body.error,"PREDGE_REVIEWED_STANDARD_LICENSE_UNAVAILABLE");
+ assert.equal(body.error,"PREDGE_REVIEWED_LICENSE_UNAVAILABLE");
  assert.equal(body.billable,false);
  assert.equal(db.testLedger.has(fixture.request_id),false);
 });

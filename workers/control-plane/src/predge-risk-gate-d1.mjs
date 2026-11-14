@@ -276,7 +276,8 @@ async function paidScopeLockId(parsed,{marketId,conditionId}){
   category:parsed.category,market_id:marketId,condition_id:conditionId}));
 }
 export async function readPredgePullLicense(env,parsed,now){
- if(parsed.subject.type!=="country"||parsed.tier!=="standard"||!parsed.category||
+ if(parsed.subject.type!=="country"||
+   !["basic_focused","standard","complex_full"].includes(parsed.tier)||!parsed.category||
    !env?.DB?.prepare)return null;
  const category={geopolitics:"GEOPOLITICS",macro:"MACRO_FX",
   critical_minerals:"CRITICAL_MINERALS"}[parsed.category];
@@ -461,10 +462,9 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(paidContext?.error)return fail(paidContext.error,400);
    if(!paidContext)return fail("PAID_ACTION_CONTEXT_REQUIRED",400);
    if(!parsed.category)return fail("PAID_CATEGORY_REQUIRED",400);
-   if(lockedTier!=="standard")return fail("PREDGE_REVIEWED_LICENSE_TIER_UNAVAILABLE",409);
    try{
      paidCommercialLicense=await readPredgePullLicense(env,parsed,now);
-     if(!paidCommercialLicense)return fail("PREDGE_REVIEWED_STANDARD_LICENSE_UNAVAILABLE",409);
+     if(!paidCommercialLicense)return fail("PREDGE_REVIEWED_LICENSE_UNAVAILABLE",409);
      const replay=await readPaidIdempotentReplay(env.DB,{client,requestId:parsed.request_id,requestHash});
      if(replay.kind==="replay")return Response.json({...replay.response,idempotent_replay:true},{status:200,headers});
      if(replay.kind==="conflict")return fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
