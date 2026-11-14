@@ -25,6 +25,10 @@ function deploymentShape(deployment) {
   return normalized;
 }
 
+export function emitAuditJson(result, writeLine = line => console.log(line)) {
+  writeLine(JSON.stringify(result));
+}
+
 export async function auditPredgeWorkerDeployment({
   env = process.env,
   fetchImpl = fetch,
@@ -136,8 +140,7 @@ export async function auditPredgeWorkerDeployment({
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     const result = await auditPredgeWorkerDeployment();
-    console.log(JSON.stringify(result));
-    if (result.status === "HOLD") console.log(`::notice::PREDGE_WORKER_DEPLOYMENT_HOLD ${result.blockers.join(",")}`);
+    emitAuditJson(result);
   } catch (error) {
     const code = /^PREDGE_WORKER_[A-Z0-9_]+$/u.test(String(error?.message ?? ""))
       ? error.message : "PREDGE_WORKER_AUDIT_FAILED";
