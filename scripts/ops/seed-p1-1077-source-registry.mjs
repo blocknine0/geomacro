@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Generate deterministic source/category D1 registration from the 369-source
- * working manifest, eight separately live-probed official additions and eight
+ * working manifest, fourteen live-probed source/category additions and eight
  * UK OGL Atom feeds. A lane is one endpoint/category combination, not a URL.
  *
  * This seeder NEVER fetches an unavailable feed or certifies current health.
@@ -18,6 +18,8 @@ const regional=JSON.parse(readFileSync(
  "config/private-osint-regional-corridor-additions.v1.json","utf8"));
 const mineralExpansion=JSON.parse(readFileSync(
  "config/private-osint-mineral-first-party-rss-expansion.v1.json","utf8"));
+const officialPriority=JSON.parse(readFileSync(
+ "config/private-osint-official-priority-additions.v1.json","utf8"));
 const hot50Crosswalk=JSON.parse(readFileSync(
  "config/hot-50-four-lane-source-crosswalk.v1.json","utf8"));
 const GROUPS=Object.freeze({geopolitics:"GEOPOLITICS",
@@ -73,8 +75,8 @@ export function buildP1SourceRegistration(){
    s.category==="MACRO"?"MACRO_FX":s.category,s.owner_country_iso3));
  }
  rows.push(...buildP1VerifiedHot50SourceAdditions(rows));
- if(rows.length!==1087||new Set(rows.map(s=>s.source_id)).size!==1087)
-  fail("SOURCE_1087_COUNT_OR_ID_DRIFT");
+ if(rows.length!==1091||new Set(rows.map(s=>s.source_id)).size!==1091)
+  fail("SOURCE_1091_COUNT_OR_ID_DRIFT");
  return Object.freeze(rows);
 }
 export function buildP1VerifiedHot50SourceAdditions(existingRows=buildP1SourceRegistrationBase()){
@@ -86,11 +88,15 @@ export function buildP1VerifiedHot50SourceAdditions(existingRows=buildP1SourceRe
     liveProbe.additional_crosscutting_probe_summary?.candidate_count!==1||
     liveProbe.additional_crosscutting_probe_summary?.strict_pass_count!==1||
     liveProbe.additional_crosscutting_probe_summary?.fail_count!==0||
-    !Array.isArray(liveProbe.sources)||liveProbe.sources.length!==9)
+    liveProbe.supplemental_candidate_probe_summary?.candidate_count!==15||
+    liveProbe.supplemental_candidate_probe_summary?.strict_pass_count!==3||
+    liveProbe.supplemental_candidate_probe_summary?.fail_count!==12||
+    !Array.isArray(liveProbe.sources)||liveProbe.sources.length!==11)
   fail("HOT50_LIVE_PROBE_MANIFEST_INVALID");
  const candidates=[
   ...regional.sources.map(source=>({source,kind:"regional"})),
   ...mineralExpansion.sources.map(source=>({source,kind:"mineral"})),
+  ...officialPriority.sources.map(source=>({source,kind:"official_priority"})),
   ...(hot50Crosswalk.global_category_failover_candidates??[])
    .map(source=>({source,kind:"crosscutting"}))
  ];
@@ -131,7 +137,7 @@ export function buildP1VerifiedHot50SourceAdditions(existingRows=buildP1SourceRe
     GROUPS[category],evidence.publisher_country_iso3));
   }
  }
- if(result.length!==10)fail("HOT50_LIVE_PROBE_LANE_COUNT_DRIFT");
+ if(result.length!==14)fail("HOT50_LIVE_PROBE_LANE_COUNT_DRIFT");
  return Object.freeze(result);
 }
 function buildP1SourceRegistrationBase(){
@@ -204,7 +210,7 @@ export function buildP1Hot50FallbackMappings(records=buildP1SourceRegistration()
 export function buildP1Hot50AdditionalCellMappings(records=buildP1SourceRegistration()){
  const sourceMap=new Map(records.map(x=>[x.source_id,x]));
  const rows=fallback?.additional_cell_mappings;
- if(!Array.isArray(rows)||rows.length!==114)fail("HOT50_ADDITIONAL_MAPPINGS_INVALID");
+ if(!Array.isArray(rows)||rows.length!==214)fail("HOT50_ADDITIONAL_MAPPINGS_INVALID");
  const seen=new Set();
  for(const link of rows){
   const source=sourceMap.get(link?.source_id);
@@ -220,7 +226,7 @@ export function buildP1Hot50AdditionalCellMappings(records=buildP1SourceRegistra
  return Object.freeze(rows.map(x=>Object.freeze({...x,origin:"VERIFIED_ALTERNATIVE"})));
 }
 export function renderP1SourceRegistrationSQL(records){
- if(!Array.isArray(records)||records.length!==1087||
+ if(!Array.isArray(records)||records.length!==1091||
     new Set(records.map(r=>r.source_id)).size!==records.length)
   fail("SQL_RECORDS_INVALID");
  const lines=[];
@@ -294,12 +300,12 @@ if(import.meta.url==="file://"+process.argv[1]){
  const additionalMappings=buildP1Hot50AdditionalCellMappings(rows);
  const sql=renderP1SourceRegistrationSQL(rows);
  mkdirSync("workers/control-plane/generated",{recursive:true});
- const output="workers/control-plane/generated/p1-1087-seed.sql";
+ const output="workers/control-plane/generated/p1-1091-seed.sql";
  writeFileSync(output,sql,{mode:0o600});
  const urls=new Set(rows.map(x=>x.canonical_endpoint));
- console.log(JSON.stringify({schema:"geomacro.p1.source-manifest-1087.v1",
+ console.log(JSON.stringify({schema:"geomacro.p1.source-manifest-1091.v1",
   configured_lanes:rows.length,distinct_endpoints:urls.size,
-  private_osint_lanes:1079,official_atom_lanes:8,
+  private_osint_lanes:1083,official_atom_lanes:8,
   hot50_cells_with_explicit_verified_fallback:fallbackMappings.length,
   hot50_additional_global_source_mappings:additionalMappings.length,
   hot50_fallback_sources_already_polled:true,

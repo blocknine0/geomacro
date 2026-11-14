@@ -66,6 +66,15 @@ export const P1_HOT50_VERIFIED_ALTERNATIVE_LINKS=new Set([
   "VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]
   .map(country=>"private_global_hub_un_hq_press.geopolitics|"+
    country+"|GEOPOLITICS"),
+ ...["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
+  "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
+  "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
+  "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
+  "VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]
+  .flatMap(country=>[
+   "private_priority_gdacs_24h.geopolitics|"+country+"|GEOPOLITICS",
+   "private_priority_gdacs_24h.macro_fx|"+country+"|MACRO_FX"
+  ]),
  ...["BEL","DEU","FRA","ITA","ESP","NLD","POL"].flatMap(country=>[
   "private_expansion_eurostat_economy_atom.macro_fx|"+country+"|MACRO_FX",
   "private_expansion_eurostat_trade_atom.macro_fx|"+country+"|MACRO_FX"

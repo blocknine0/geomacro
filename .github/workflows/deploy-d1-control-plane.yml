@@ -119,6 +119,7 @@ on:
       - "config/hot50-official-feed-live-probes.v1.json"
       - "config/private-osint-regional-corridor-additions.v1.json"
       - "config/private-osint-mineral-first-party-rss-expansion.v1.json"
+      - "config/private-osint-official-priority-additions.v1.json"
       - "workers/control-plane/src/p1-hot50-verified-global-fallbacks.mjs"
       - "scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs"
       - "workers/control-plane/src/ask-public-model-cache.mjs"
@@ -488,7 +489,7 @@ jobs:
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/lib/hot50-production-proof.test.mjs scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
-      - name: Verify P1 1087 source fanout and exact 585-cell D1 health offline
+      - name: Verify P1 1091 source fanout and exact 585-cell D1 health offline
         run: node --test scripts/tests/p1-source-fanout.test.mjs scripts/tests/p1-source-registry-seed.test.mjs scripts/tests/p1-domain-backoff-single-upsert.test.mjs
       - name: Verify Telegram Bot webhook relay preserves secret and no-leak ACK
         run: node --test scripts/tests/telegram-flash-relay.test.mjs
@@ -1114,13 +1115,13 @@ jobs:
             });
           '
 
-      - name: Generate deterministic P1 1087 source-category registry SQL
+      - name: Generate deterministic P1 1091 source-category registry SQL
         if: env.P0B_ACTIVATE == '1'
         shell: bash
         run: |
           set -euo pipefail
           node scripts/ops/seed-p1-1077-source-registry.mjs
-          test -s workers/control-plane/generated/p1-1087-seed.sql
+          test -s workers/control-plane/generated/p1-1091-seed.sql
       - name: Seed P1 actual research source/category lanes into canonical D1
         if: env.P0B_ACTIVATE == '1'
         shell: bash
@@ -1128,7 +1129,7 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
             --config workers/control-plane/wrangler.runtime.jsonc \
-            --file workers/control-plane/generated/p1-1087-seed.sql >/dev/null
+            --file workers/control-plane/generated/p1-1091-seed.sql >/dev/null
           echo "P1_SOURCE_CATEGORY_SEED_APPLIED=true"
       - name: Require exact P1 source manifest remote D1 readback
         if: env.P0B_ACTIVATE == '1'
@@ -1144,8 +1145,8 @@ jobs:
               const j=JSON.parse(s);
               const data=Array.isArray(j)?j:[j];
               const n=data[0]?.results?.[0]?.n??data[0]?.result?.results?.[0]?.n;
-              if(n!==1087)throw Error("P1_REMOTE_1087_REGISTRY_UNVERIFIED:"+n);
-              console.log("P1_REMOTE_1087_SOURCE_LANES_CONFIGURED=true");
+              if(n!==1091)throw Error("P1_REMOTE_1091_REGISTRY_UNVERIFIED:"+n);
+              console.log("P1_REMOTE_1091_SOURCE_LANES_CONFIGURED=true");
             });'
           HOT50_RAW="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
             --config workers/control-plane/wrangler.runtime.jsonc \

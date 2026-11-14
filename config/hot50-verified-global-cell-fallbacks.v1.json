@@ -5,7 +5,7 @@
     "No source country is rewritten.",
     "Only explicit Hot 50 country/category links below are permitted.",
     "A feed item must independently identify the target country before it can become a cell candidate.",
-    "Additional global sanctions and Eurostat links route watch candidates only; each item still requires native country attribution and category classification.",
+    "Additional global sanctions, UN press, GDACS and Eurostat links route watch candidates only; each item still requires native country attribution and category classification.",
     "No Telegram-only promotion; non-Telegram corroboration and signed GRO gates remain mandatory.",
     "All sources remain RESEARCH_ONLY; no commercial rights are inferred or promoted.",
     "The existing P1 poller handles the verified additions; no new poller, Durable Objects, or public-route D1 reads are introduced."
@@ -1020,6 +1020,606 @@
     {
       "source_id": "private_expansion_eurostat_trade_atom.macro_fx",
       "country_iso3": "POL",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "USA",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "USA",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "CHN",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "CHN",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "IND",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "IND",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "RUS",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "RUS",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "GBR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "GBR",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "DEU",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "DEU",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "FRA",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "FRA",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "JPN",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "JPN",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "KOR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "KOR",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "BEL",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "BEL",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "CAN",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "CAN",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "AUS",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "AUS",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "BRA",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "BRA",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "MEX",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "MEX",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ITA",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ITA",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ESP",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ESP",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "NLD",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "NLD",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "CHE",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "CHE",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "NOR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "NOR",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "SWE",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "SWE",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "POL",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "POL",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "UKR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "UKR",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "TUR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "TUR",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "SAU",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "SAU",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ARE",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ARE",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "IRN",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "IRN",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ISR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ISR",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "EGY",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "EGY",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "QAT",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "QAT",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "OMN",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "OMN",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "IRQ",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "IRQ",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ZAF",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ZAF",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "NGA",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "NGA",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "COD",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "COD",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ZMB",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ZMB",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "CHL",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "CHL",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "PER",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "PER",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "ARG",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "ARG",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "BOL",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "BOL",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "IDN",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "IDN",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "VNM",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "VNM",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "THA",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "THA",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "MYS",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "MYS",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "SGP",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "SGP",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "PHL",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "PHL",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "PAK",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "PAK",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "BGD",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "BGD",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "KAZ",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "KAZ",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "MNG",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "MNG",
+      "category": "MACRO_FX",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.geopolitics",
+      "country_iso3": "MMR",
+      "category": "GEOPOLITICS",
+      "rank": 3
+    },
+    {
+      "source_id": "private_priority_gdacs_24h.macro_fx",
+      "country_iso3": "MMR",
       "category": "MACRO_FX",
       "rank": 3
     }

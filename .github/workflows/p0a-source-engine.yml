@@ -22,6 +22,7 @@ on:
       - 'config/private-osint-working-sources.v1.json'
       - 'config/private-osint-regional-corridor-additions.v1.json'
       - 'config/private-osint-mineral-first-party-rss-expansion.v1.json'
+      - 'config/private-osint-official-priority-additions.v1.json'
       - 'config/official-ogl-atom-sources.json'
       - 'workers/control-plane/migrations/0113_p0a_source_registry.sql'
       - 'scripts/tests/p0a-source-registry-engine.test.mjs'
