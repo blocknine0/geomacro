@@ -78,8 +78,7 @@ export function predgeSingleEndBuyerBinding(metadata) {
  * switch it to paid delivery.
  */
 export function predgePaidTrafficMode(env, policy, now = Date.now()) {
-  if (env?.PREDGE_PAID_TRAFFIC_ENABLED !== "YES" ||
-      policy?.policy_id !== "predge-paid-traffic-addendum-v2" ||
+  if (policy?.policy_id !== "predge-paid-traffic-addendum-v2" ||
       !Number.isSafeInteger(now) || now < 0) return null;
   const trialStart = String(env?.PREDGE_MUTUAL_TRIAL_STARTED_AT ?? "").trim();
   if (trialStart) {
@@ -88,7 +87,8 @@ export function predgePaidTrafficMode(env, policy, now = Date.now()) {
     if (!Number.isFinite(startedAt) || startedAt > now) return null;
     if (now - startedAt < 72 * 3600 * 1000) return "MUTUAL_72H_TRIAL";
   }
-  return env?.PREDGE_PAID_GO_LIVE_CROSSCHECK === "PASS" ? "PAID_ADDENDUM_V2" : null;
+  return env?.PREDGE_PAID_TRAFFIC_ENABLED === "YES" &&
+    env?.PREDGE_PAID_GO_LIVE_CROSSCHECK === "PASS" ? "PAID_ADDENDUM_V2" : null;
 }
 
 export function predgePaidRiskGateTerms(tier) {
