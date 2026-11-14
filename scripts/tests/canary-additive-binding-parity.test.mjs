@@ -66,6 +66,20 @@ test("reviewed Hot50 flags and exact additive secrets pass without broadening re
  assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
  assert.equal(result.source_sha,sha);
  assert.equal(result.additions.length,REVIEWABLE_ADDITIVE_SECRETS.length+1);
+ assert.equal(result.additions.includes("STREAM_MODE"),true);
+ const delta=diagnoseReviewedHot50BindingDelta(version(streamBaseline),
+  version(streamCandidate),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime);
+ assert.deepEqual(delta.expected_additions_missing,[]);
+});
+
+test("missing STREAM_MODE is reported as a missing reviewed candidate binding",()=>{
+ const missing=streamCandidate.filter(x=>x.name!=="STREAM_MODE");
+ const delta=diagnoseReviewedHot50BindingDelta(version(streamBaseline),
+  version(missing),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime);
+ assert.deepEqual(delta.expected_additions_missing,["STREAM_MODE"]);
+ assert.throws(()=>assessReviewedHot50BindingParity(version(streamBaseline),
+  version(missing),sha,REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),
+  /REVIEWED_FLAG_NOT_VERIFIED_STREAM_MODE/);
 });
 test("Predge vars default fail-closed and explicitly reviewed trial vars are validated",()=>{
  const defaults=reviewedHot50CandidateVars(sha);

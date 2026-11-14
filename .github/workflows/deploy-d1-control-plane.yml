@@ -784,6 +784,11 @@ jobs:
                streamVars.RISK_STREAM_CANARY_HOLD_CLEARED!=='1'))
             throw Error('RISK_STREAM_SEVEN_DAY_REQUIRES_COMMERCIAL_RELEASE');
           Object.assign(config.vars, streamVars);
+          // Ensure STREAM_MODE survives config assembly even when the live
+          // baseline does not contain this binding yet.
+          if (!Object.hasOwn(config.vars, 'STREAM_MODE') ||
+              config.vars.STREAM_MODE !== streamVars.STREAM_MODE)
+            throw Error('STREAM_MODE_CANDIDATE_CONFIG_BINDING_MISSING');
           const decodeCanonicalBase64=(name,value)=>{
             if(typeof value!=='string'||!/^[A-Za-z0-9+/]+={0,2}$/.test(value))
               throw Error(name+'_BASE64_INVALID');

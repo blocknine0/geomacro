@@ -34,6 +34,13 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   throw Error('CANDIDATE_REVIEWED_SECRET_NOT_ADDITIVE');
  if(runtime.containers?.length)throw Error('CANDIDATE_CONTAINER_REVIEW_REQUIRED');
  const vars=reviewedHot50CandidateVars(sha,predgeRuntimeVars);
+ // STREAM_MODE is the one Hot50 runtime binding that can be absent from an
+ // older live version. Keep it explicit in the upload config so Wrangler
+ // creates the reviewed plain-text binding instead of silently inheriting
+ // an absent baseline binding.
+ if(!Object.hasOwn(vars,'STREAM_MODE')||
+    !['DISABLED','PRODUCTION'].includes(vars.STREAM_MODE))
+  throw Error('CANDIDATE_STREAM_MODE_BINDING_REQUIRED');
  for(const name of ['GEOMACRO_COMMERCIAL_STREAM_RELEASE',
   'RISK_STREAM_CANARY_HOLD_CLEARED','RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED']){
   const old=bindings.find(x=>x.name===name);
@@ -59,7 +66,7 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   compatibility_flags:runtime.compatibility_flags??[],
   ...(runtime.limits?{limits:runtime.limits}:{}),
   ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
-  vars,
+  vars:{...vars,STREAM_MODE:vars.STREAM_MODE},
   // Carry existing secret versions intact. Newly reviewed secret names
   // have no baseline to inherit and belong in this SAME code-version upload.
   unsafe:{bindings:inheritedBindings}};

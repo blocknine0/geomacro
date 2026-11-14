@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const workflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+const candidateWorkflow=readFileSync(new URL("../../.github/workflows/geomacro-optimized-worker-candidate.yml",import.meta.url),"utf8");
 const example=readFileSync(new URL("../../workers/control-plane/wrangler.example.jsonc",import.meta.url),"utf8");
 const issuer=readFileSync(new URL("../../workers/control-plane/src/risk-stream-commercial-issuer.mjs",import.meta.url),"utf8");
 
@@ -16,6 +17,9 @@ test("stream activation is read from protected production vars in both deploymen
  assert.match(workflow,/RISK_STREAM_ACTIVE: \$\{\{ vars\.RISK_STREAM_ACTIVE \|\| '0' \}\}/);
  assert.match(workflow,/STREAM_INGESTION_ENABLED: \$\{\{ vars\.STREAM_INGESTION_ENABLED \|\| 'false' \}\}/);
  assert.match(workflow,/STREAM_MODE: \$\{\{ vars\.STREAM_MODE \|\| 'DISABLED' \}\}/);
+ assert.match(candidateWorkflow,/STREAM_MODE: \$\{\{ vars\.STREAM_MODE \|\| 'DISABLED' \}\}/);
+ assert.match(workflow,/Object\.assign\(config\.vars, streamVars\)/);
+ assert.match(workflow,/STREAM_MODE_CANDIDATE_CONFIG_BINDING_MISSING/);
  assert.match(example,/"RISK_STREAM_ACTIVE": "0"/);
  assert.match(example,/"STREAM_INGESTION_ENABLED": "false"/);
  assert.match(example,/"STREAM_MODE": "DISABLED"/);
