@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { auditPredgeWorkerDeployment } from "../ops/audit-predge-worker-deployment-no-funds.mjs";
 
 const sha = "a".repeat(40);
@@ -81,4 +82,9 @@ test("provider split and paid-on states can never be reported as PASS", async ()
   assert.equal(paidResult.status, "HOLD");
   assert.ok(paidResult.blockers.includes("PREDGE_PAID_OFF_READINESS_NOT_VERIFIED"));
   assert.equal(paidResult.predge_paid_launch_approved, true);
+});
+
+test("provider-readback workflow is registered in the canonical inventory", () => {
+  const inventory = JSON.parse(readFileSync("config/github-workflow-inventory.v1.json", "utf8"));
+  assert.ok(inventory.retainedWorkflowFiles.includes("predge-worker-deployment-no-funds.yml"));
 });
