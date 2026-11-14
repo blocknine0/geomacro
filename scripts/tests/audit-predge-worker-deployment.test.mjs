@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { auditPredgeWorkerDeployment } from "../ops/audit-predge-worker-deployment-no-funds.mjs";
+import { auditPredgeWorkerDeployment, emitAuditJson } from "../ops/audit-predge-worker-deployment-no-funds.mjs";
 
 const sha = "a".repeat(40);
 const version = "99366783-ada4-4166-b6b0-02ec8be8e78b";
@@ -99,6 +99,15 @@ test("provider split and paid-on states can never be reported as PASS", async ()
   assert.equal(paidResult.status, "HOLD");
   assert.ok(paidResult.blockers.includes("PREDGE_PAID_OFF_READINESS_NOT_VERIFIED"));
   assert.equal(paidResult.predge_paid_launch_approved, true);
+});
+
+test("HOLD CLI output remains a single machine-readable JSON line", () => {
+  const lines = [];
+  emitAuditJson({ status: "HOLD", blockers: ["CONTROL_PLANE_WORKER_SOURCE_SHA_STALE"] }, line => lines.push(line));
+  assert.equal(lines.length, 1);
+  assert.deepEqual(JSON.parse(lines[0]), {
+    status: "HOLD", blockers: ["CONTROL_PLANE_WORKER_SOURCE_SHA_STALE"],
+  });
 });
 
 test("provider-readback workflow is registered in the canonical inventory", () => {
