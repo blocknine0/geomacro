@@ -71,7 +71,9 @@ test("global-search lead remains unverified and cannot promote Standard or Compl
  for(const row of rows){
   const p=JSON.parse(row.payload_json);
   assert.equal(p.evidence_status,"UNVERIFIED_SIGNAL");
-  assert.equal(p.tier_status,"NEWS_ANALYSIS_AVAILABLE");
+  assert.equal(p.tier_status,row.tier==="basic_focused"?
+   "NEWS_ANALYSIS_AVAILABLE":row.tier==="standard"?
+   "EVIDENCE_RECOVERY_REQUIRED":"CONTRACTUAL_COMPLEX_HISTORY_REVIEW_REQUIRED");
   assert.equal(p.commercial_sale_authorized,false);
   assert.equal(p.billable,false);
  }
