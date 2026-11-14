@@ -175,6 +175,9 @@ const approvedPricing = [
   config.approved_verified_historical_indices_20261106,
   // Founder-approved Store/API price-credit parity; exact two source blobs only.
   config.approved_store_api_credit_parity_20261108,
+  // Explicit 2026-11-14 owner-authorized retirement of only the public /risk-indices page.
+  // Exact immutable source blobs; all other website and Global Risk locks remain active.
+  config.approved_risk_indices_page_retirement_20261114,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
