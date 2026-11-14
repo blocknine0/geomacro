@@ -96,6 +96,26 @@ export async function serveGuardedPublicStaticAsset(request,env,now=Date.now()){
   });
  }catch{return denied();}
 }
+// Historical public derived-only shards are read by the Website browser from
+// another origin. Static Assets are asset-first unless run_worker_first lists
+// these routes, so the immutable archive must be explicitly CORS-readable.
+// Do not grant CORS or modify responses for the unrelated PREDGE snapshots.
+const PUBLIC_ARCHIVE_MONTH_RE=/^\/archive\/[0-9]{4}-(?:0[1-9]|1[0-2])\/(?:geopolitics|macro|rare_earth)\.json$/u;
+export function isPublicImmutableArchiveAsset(path){
+ return path==="/index.json"||PUBLIC_ARCHIVE_MONTH_RE.test(path);
+}
+export async function servePublicImmutableArchiveAsset(request,env){
+ const path=new URL(request.url).pathname;
+ if(!isPublicImmutableArchiveAsset(path))return denied();
+ const original=await env.ASSETS.fetch(request);
+ const headers=new Headers(original.headers);
+ headers.set("Access-Control-Allow-Origin","*");
+ headers.set("X-Content-Type-Options","nosniff");
+ headers.set("Referrer-Policy","no-referrer");
+ return new Response(request.method==="HEAD"?null:original.body,{
+  status:original.status,statusText:original.statusText,headers
+ });
+}
 export default {
  async fetch(request,env){
   if(request.method!=="GET"&&request.method!=="HEAD")
@@ -104,7 +124,9 @@ export default {
   const path=new URL(request.url).pathname;
   if(GUARDED.has(path))
    return serveGuardedPublicStaticAsset(request,env);
-  // Includes the historical/PREDGE static snapshot path: unchanged handler.
+  if(isPublicImmutableArchiveAsset(path))
+   return servePublicImmutableArchiveAsset(request,env);
+  // The unrelated public PREDGE snapshot route is unchanged.
   return env.ASSETS.fetch(request);
  }
 };
