@@ -3,7 +3,7 @@
 import {createHash,createHmac,createDecipheriv} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {createB2Client} from './ops/b2-s3-client.mjs';
-import {ORIGIN,need,envString,api,canonicalD1,queryD1,canonicalContentSha256,canonical,signedReport,holdError,SHA_RE} from './release-common.ts';
+import {ORIGIN,need,envString,api,canonicalD1,queryD1,canonicalContentSha256,canonical,signedReport,holdError,SHA_RE,persist} from './release-common.ts';
 const B2_ENDPOINT='https://s3.us-east-005.backblazeb2.com',B2_BUCKET='geomacro-private-archive';
 const QUEUES=['geomacro-ingestion-spool','geomacro-ingestion-dead-letter','geomacro-source-poll','geomacro-source-poll-dlq'];
 const MAX=Number(process.env.PARITY_MAX_B2_READS||'250');
@@ -135,6 +135,24 @@ async function main(){
  const prefix=status.b2_spool_scope?.prefix;
  need(typeof prefix==='string'&&/^geomacro-evidence\/v1\/(?:[A-Za-z0-9_-]+\/)*spool\/$/.test(prefix),'PARITY_LIVE_PREFIX_INVALID');
  const before=await admin('/v1/internal/activation/hot50-census');
+ // Persist only known numeric counters. No B2 request, source content,
+ // credentials or licensing claims are emitted by this diagnostic.
+ const safeCount=(x:unknown)=>Number.isSafeInteger(x)&&Number(x)>=0?x:null;
+ const backlog=before?.backlog??{};
+ persist('artifacts/release/hot50-b2-d1-backlog-diagnostic.json',{
+  schema:'geomacro.hot50-b2-d1-backlog-diagnostic.v1',
+  observed_at:new Date().toISOString(),
+  census_schema_valid:before?.schema==='geomacro.hot50-production-activation-census.v1',
+  total_unhandled:safeCount(backlog.total_unhandled),
+  exact_bundle_journal_mismatch:safeCount(backlog.exact_bundle_journal_mismatch),
+  archived_outboxes:safeCount(backlog.archived_outboxes),
+  pending_outbox:safeCount(backlog.outbox),
+  pending_r2_fallback:safeCount(backlog.r2),
+  d1_zero_unhandled_proven:backlog.d1_zero_unhandled_proven===true,
+  indexed_physical_b2_parity_verified:false,full_bucket_inventory_verified:false,
+  b2_requests:0,provider_mutations:0,payments:0,diagnosis_only:true
+ });
+
  need(before.schema==='geomacro.hot50-production-activation-census.v1'&&before.backlog?.total_unhandled===0&&
   before.backlog?.exact_bundle_journal_mismatch===0,'PARITY_D1_BACKLOG_NOT_ZERO');
  const snap1=await queueSnapshot();
