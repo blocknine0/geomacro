@@ -43,7 +43,15 @@ test('all 3 genuinely checked private categories deliver a source-only live proo
  assert.equal(proof.live_category_health.root_only_references_counted_as_live_sources,false);
  assert.ok(!JSON.stringify(proof).includes('PRIVATE ORIGINAL HEADLINE'));
  assert.ok(!JSON.stringify(proof).includes('/secret/article'));
- assert.ok(!JSON.stringify(proof).includes('example.gov'));
+ assert.deepEqual(
+  Object.keys(proof.sources[0]).sort(),
+  ['source_id','category','transport_parser_state',
+   'candidates_observed_this_sweep','candidates_in_retained_72h_queue',
+   'original_last_published_at_in_72h_queue',
+   'd1_originals_acknowledged_in_retained_queue',
+   'native_publication_is_not_event_verification'].sort());
+ assert.equal(Object.hasOwn(proof.sources[0],'url'),false);
+ assert.equal(Object.hasOwn(proof.sources[0],'article_url'),false);
 });
 test('a denied mineral source remains degraded, while other source categories stay live',()=>{
  const checks=registry.map((s,i)=>check(s,i===2?'DENIED':'OBSERVED'));
