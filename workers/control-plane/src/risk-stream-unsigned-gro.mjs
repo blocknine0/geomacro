@@ -42,7 +42,7 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
   payload_sha256:await hash(payload_json),generated_at:payload.generated_at,
   expires_at:payload.expires_at};
 }
-function validStored(row,expected){
+async function validStored(row,expected){
  if(!row||row.gro_id!==expected.gro_id||row.country_iso3!==expected.country_iso3||
     row.category!==expected.category||row.day_utc!==expected.day_utc||
     row.event_fingerprint!==expected.event_fingerprint||row.tier!==expected.tier||
