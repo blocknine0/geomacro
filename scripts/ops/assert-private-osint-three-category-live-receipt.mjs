@@ -5,7 +5,7 @@
  * This proves source-category HTTP/parser checks, NOT universal availability,
  * independent event verification, publisher permission or a commercial GRO.
  */
-import {readFileSync} from 'node:fs';
+import {readSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const categories=['geopolitics','macro','rare_earth'];
@@ -116,7 +116,19 @@ export function main(argv=process.argv.slice(2)){
  // literal shell redirection. This JS accepts no user-controlled file path.
  // Explicit stdin is the entire trust boundary and is verified below.
  need(argv.length===0,'ARGS_INVALID');
- const proof=JSON.parse(readFileSync(0,'utf8'));
+ // GitHub artifact is small; refuse malformed or unbounded stdin before
+ // allocating parsed objects. This is not a generic file fetch or API.
+ const LIMIT=1_500_000,chunk=Buffer.alloc(8192),parts=[];
+ let size=0;
+ for(;;){
+  const n=readSync(0,chunk,0,chunk.length,null);
+  if(n===0)break;
+  size+=n;
+  need(size<=LIMIT,'PROOF_TOO_LARGE');
+  parts.push(Buffer.from(chunk.subarray(0,n)));
+ }
+ need(size>0,'PROOF_EMPTY');
+ const proof=JSON.parse(Buffer.concat(parts,size).toString('utf8'));
  const report=verifyThreeCategoryPrivateOsintReceipt(proof);
  for(const [category,record] of Object.entries(report.by_category))
   if(record.healthy===0)
