@@ -106,7 +106,9 @@ test("Wrangler raw plain_text binding config satisfies uploaded-version parity",
 test("exact-main upload contract passes with STREAM_MODE and the four reviewed secrets",()=>{
  const reviewed=["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
   "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
-  "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64","RISK_STREAM_INDEX_LEAD_BEARER"];
+  "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64","RISK_STREAM_INDEX_LEAD_BEARER",
+  "RISK_STREAM_GRO_SIGN_PKCS8_B64","RISK_STREAM_GRO_VERIFY_SPKI_B64",
+  "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64"];
  const base={resources:{script_runtime:{compatibility_date:"2026-10-03",
   compatibility_flags:[]},bindings:[...streamBaseline,{name:"CONTROL_PLANE_TOKEN",
    type:"secret_text"}]}};
@@ -122,6 +124,7 @@ test("exact-main upload contract passes with STREAM_MODE and the four reviewed s
   ]}};
  assert.equal(uploaded.resources.bindings.filter(row=>row.name==="STREAM_MODE").length,1);
  assert.deepEqual(REVIEWABLE_ADDITIVE_SECRETS.filter(name=>reviewed.includes(name)),reviewed);
+ assert.ok(reviewed.slice(-4).every(name=>REVIEWABLE_ADDITIVE_SECRETS.includes(name)));
  assert.equal(verifyCandidateBindings(base,uploaded,sha,reviewed,researchRuntime),true);
 });
 test("Predge vars default fail-closed and explicitly reviewed trial vars are validated",()=>{
