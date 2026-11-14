@@ -81,6 +81,7 @@ export function classifyHot50TelegramText(value) {
   const countries=Object.entries(COUNTRY_ALIASES).filter(([,aliases])=>
     aliases.some(alias=>new RegExp("(^|[^\\p{L}])"+escapeRegExp(alias)+"(?=$|[^\\p{L}])","iu").test(text))
   ).map(([country_iso3])=>country_iso3);
+  if(countries.length!==1)return null;
   for(const country_iso3 of countries){
     for(const category of ["critical_minerals","macro","geopolitics"]){
       const result=hot50RiskGateWatchMatch({country_iso3,category,headline:text});

@@ -69,5 +69,6 @@ test("webhook prefilter resolves only explicit Hot50-country event signals",()=>
    category:"macro",event:"fx_sovereign_stress"});
  assert.equal(classifyHot50TelegramText("Fiji armed conflict after attack"),null);
  assert.equal(classifyHot50TelegramText("India local sports result"),null);
+ assert.equal(classifyHot50TelegramText("India sanctions China over trade"),null);
  assert.equal(classifyHot50TelegramText("This strait was mentioned without a disruption"),null);
 });
