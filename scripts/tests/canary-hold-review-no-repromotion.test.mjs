@@ -16,6 +16,8 @@ function fixture(){
   worker_requests:1100,host_requests:1100,worker_errors:0,
   worker_error_ratio:0,http_5xx_ratio:0,worker_wall_time_p95_ms:2,
   worker_wall_time_p99_ms:3,
+  worker_error_ratio_under_0_5pct:true,observability_mode:"ZONE_AND_WORKER",
+  zone_http_5xx_verified:true,
   http_5xx_under_0_5pct:true,version_errors_under_0_5pct:true,
   p99_under_50ms:true,
   host_http_5xx_not_version_isolated:true,
@@ -49,6 +51,25 @@ test("six individually verified prior stage shapes admit a READ-ONLY review only
  assert.equal(a.independent_provider_readback_and_signatures_required,true);
  assert.equal(a.traffic_mutated,false);
  assert.equal(a.remote_hold_removed,false);
+});
+test("six worker-only stages remain reviewable without Cloudflare Zone telemetry",()=>{
+ const x=fixture();
+ for(const stage of x.promotion.stages){
+  stage.observability_mode="WORKER_ONLY_NO_ZONE";
+  stage.zone_http_5xx_verified=false;
+  stage.host_requests=null;
+  stage.http_5xx_ratio=null;
+  stage.http_5xx_under_0_5pct=null;
+ }
+ for(const proof of x.stageReceipts){
+  proof.observability_mode="WORKER_ONLY_NO_ZONE";
+  proof.zone_http_5xx_verified=false;
+  proof.host_requests=null;
+  proof.http_5xx_ratio=null;
+  proof.http_5xx_under_0_5pct=null;
+ }
+ const admitted=admitCompletedCanaryForHoldReview(x);
+ assert.equal(admitted.fully_verified_stages,6);
 });
 test("fabricated, short, mismatched, missing and stale-identity shapes always HOLD",()=>{
  const bad=[
