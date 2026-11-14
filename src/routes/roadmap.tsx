@@ -3,7 +3,7 @@ import { RoadmapSection } from "@/components/sections/roadmap-section";
 
 const TITLE = "Geomacro Roadmap | Risk Intelligence Commercial Readiness";
 const DESCRIPTION =
-  "See Geomacro's shipped risk-intelligence milestones and current development priorities across separate Risk Indices, Risk Gate, governed data, APIs, security and institutional readiness.";
+  "See Geomacro's shipped risk-intelligence milestones and current development priorities across Risk Gate, governed intelligence, APIs, security and institutional readiness.";
 const URL = "https://geomacro.live/roadmap";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 

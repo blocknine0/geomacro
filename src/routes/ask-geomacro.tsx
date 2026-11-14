@@ -3,7 +3,7 @@ import { AskGeomacroSection } from "@/components/home/ask-geomacro";
 
 const TITLE = "Ask Geomacro | Grounded Geopolitical Risk Research";
 const DESCRIPTION =
-  "Ask geopolitical, macroeconomic and critical-mineral risk questions grounded in Geomacro's stored evidence and current verified separate Risk Indices, with explicit evidence boundaries.";
+  "Ask geopolitical, macroeconomic and critical-mineral risk questions grounded in Geomacro's stored evidence, with explicit verification boundaries.";
 const URL = "https://geomacro.live/ask-geomacro";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 

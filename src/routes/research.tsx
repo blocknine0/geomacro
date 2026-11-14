@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EditorialPage } from "@/components/editorial-page";
-const TITLE = "Research, Risk Indices & Methodology · Geomacro";
+const TITLE = "Research & Evidence Methodology · Geomacro";
 const DESCRIPTION =
-  "Geomacro research and methodology for separate geopolitical, macroeconomic and critical-mineral Risk Indices, evidence governance, change attribution, validation limits and GRI v1.2 proof lineage.";
+  "Geomacro research methodology for geopolitical, macroeconomic and critical-mineral intelligence, evidence governance, change attribution and validation limits.";
 export const Route = createFileRoute("/research")({
   head: () => ({
     meta: [
@@ -32,20 +32,20 @@ function ResearchPage() {
   return (
     <EditorialPage
       eyebrow={"Research & evidence"}
-      title={"See how a risk reading is built."}
+      title={"How evidence becomes intelligence."}
       intro={"Methodology, evidence rules and change attribution in one place."}
       items={[
         {
           title: "Methodology",
-          text: "Understand GRI v1.2 and how the three domain indices are derived.",
-          href: "/docs/gri-architecture",
+          text: "Understand source eligibility, independent corroboration and qualified data.",
+          href: "/docs/09-source-governance",
           label: "Read methodology",
         },
         {
           title: "Proof & reproducibility",
-          text: "Inspect available readings, timestamps and their verification details.",
-          href: "/risk-indices",
-          label: "Inspect Risk Indices",
+          text: "Inspect native dates and what evidence has been verified.",
+          href: "/intelligence",
+          label: "Read intelligence",
         },
         {
           title: "What moved the reading",
@@ -61,7 +61,7 @@ function ResearchPage() {
         },
       ]}
       note={
-        "Methodology and integrity proofs do not establish predictive accuracy or external certification. Current signed readings may be unavailable; the product shows that state explicitly."
+        "Evidence methodology does not establish predictive accuracy or external certification. Unavailable and unverified information is identified explicitly."
       }
     />
   );
