@@ -55,6 +55,7 @@ test("news event creates one immutable unsigned object for each tier with no raw
   assert.equal(payload.news_analysis_only,true);
   assert.equal(payload.news_analysis.what,signal.derived.what);
   assert.equal(payload.news_analysis.evidence.status,payload.evidence_status);
+  assert.equal(payload.news_analysis.evidence.source_kind,"NEWS_SIGNAL");
   assert.equal(payload.news_analysis.evidence.publisher_content_included,false);
   assert.equal(payload.news_analysis.evidence.verified_country_risk,false);
   assert.equal(payload.signed,false);
@@ -78,14 +79,15 @@ test("news event creates one immutable unsigned object for each tier with no raw
 test("global-search lead remains unverified and cannot promote Standard or Complex",async()=>{
  const {db,env}=database();
  const lead={...signal,event_fingerprint:"b".repeat(64),original_verified:false,
-  derived:undefined};
+  signal_kind:"GLOBAL_SEARCH_INDEX_LEAD",derived:undefined};
  await issueUnsignedDailyNewsBatch(env,[lead],{now:NOW});
  const rows=db.prepare("SELECT tier,payload_json FROM risk_stream_unsigned_news_gro").all();
  assert.equal(rows.length,3);
  for(const row of rows){
   const p=JSON.parse(row.payload_json);
   assert.equal(p.evidence_status,"UNVERIFIED_SIGNAL");
-  assert.match(p.news_analysis.what,/IND/u);
+  assert.match(p.news_analysis.what,/unverified publisher lead/u);
+  assert.equal(p.news_analysis.evidence.source_kind,"GLOBAL_SEARCH_INDEX_LEAD");
   assert.equal(p.news_analysis.evidence.verified_country_risk,false);
   assert.equal(p.tier_status,row.tier==="basic_focused"?
    "NEWS_ANALYSIS_AVAILABLE":row.tier==="standard"?
