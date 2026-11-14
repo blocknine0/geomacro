@@ -468,7 +468,7 @@ export async function processRiskStreamBatch(env,items,{
     country_iso3:x.country_iso3,category:x.category,
     event_fingerprint:x.event_fingerprint,published_at:x.published_at,
     derived:x.derived,original_verified:x.original_verified===true,
-    corroborated_signed_original:false
+    corroborated_signed_original:false,signal_kind:"RISK_STREAM_QUEUE_EVENT"
    }));
    unsignedNews=await issueUnsignedDailyNewsBatch(env,signals,{now,limit:10});
   }catch{
