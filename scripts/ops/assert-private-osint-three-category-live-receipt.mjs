@@ -44,7 +44,7 @@ export function verifyThreeCategoryPrivateOsintReceipt(proof){
   'POLICY_BOUNDARY_MISMATCH');
  need(Object.keys(h.by_category??{}).sort().join(',')===
   [...categories].sort().join(','),'CATEGORY_SET_INVALID');
- let n=0,healthyTotal=0;const summary={};
+ let n=0,healthyTotal=0;const summary=Object.create(null);
  for(const category of categories){
   const rows=proof.sources.filter(row=>row.category===category);
   const info=h.by_category[category];
@@ -60,8 +60,8 @@ export function verifyThreeCategoryPrivateOsintReceipt(proof){
    info.transport_or_parsed_feed_healthy_checks===actualHealthy&&
    info.unavailable_or_denied_checks===rows.length-actualHealthy,
    'CATEGORY_COUNTER_MISMATCH_'+category);
-  const counts=Object.fromEntries([...new Set(rows.map(row=>row.transport_parser_state))]
-   .sort().map(state=>[state,rows.filter(row=>row.transport_parser_state===state).length]));
+  const counts=[...new Set(rows.map(row=>row.transport_parser_state))]
+   .sort().map(state=>({state,count:rows.filter(row=>row.transport_parser_state===state).length}));
   need(JSON.stringify(counts)===JSON.stringify(info.source_state_counts),
    'SOURCE_STATE_MISMATCH_'+category);
   need((info.native_original_candidates_this_sweep===null||
