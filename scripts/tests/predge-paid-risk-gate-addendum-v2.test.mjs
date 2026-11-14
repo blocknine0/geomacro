@@ -1,12 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {generateKeyPairSync,verify as verifySignature} from "node:crypto";
+import {generateKeyPairSync} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {PREDGE_PAID_RISK_GATE_V2,PREDGE_SINGLE_END_BUYER_LICENSE,
  predgeSingleEndBuyerBinding,predgePaidTrafficMode,predgePaidRiskGateTerms,usdcFromCents}
  from "../../workers/control-plane/src/predge-paid-risk-gate-contract.mjs";
-import {canonicalProgressiveJson} from "../../workers/control-plane/src/progressive-risk-gate.mjs";
 
 function applyPaidLedgerMigrations(db){
  db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
@@ -294,7 +293,7 @@ function paidRiskGateFixtureDb(initialQuota=0,standardReady=false){
  },testLedger:ledger};
 }
 
-test("v1 keeps its 100/day pilot cap while paid v2 quota is uncapped telemetry",async()=>{
+test("v1 keeps its cap and paid v2 cannot account for unsupported unlicensed tiers",async()=>{
  const paid=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  paid.request_id="uncapped-paid-volume-request-001";
  const {publicKey,privateKey}=generateKeyPairSync("ed25519");
@@ -309,7 +308,9 @@ test("v1 keeps its 100/day pilot cap while paid v2 quota is uncapped telemetry",
   headers:{authorization:"Bearer "+auth,"content-type":"application/json"},body:JSON.stringify(body)});
  const paidResponse=await predgePaidRiskGateD1(make(paid,"/v2/partner/predge/paid-risk-gate",token),env,
   Date.parse("2026-11-12T00:00:00Z"));
- assert.equal(paidResponse.status,200,(await paidResponse.clone().text()));
+ assert.equal(paidResponse.status,409,(await paidResponse.clone().text()));
+ assert.equal((await paidResponse.json()).error,"PREDGE_REVIEWED_LICENSE_TIER_UNAVAILABLE");
+ assert.equal(db.testLedger.size,0);
  const pilot=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
  pilot.request_id="v1-pilot-cap-request-001";
  pilot.tier="basic_focused";
@@ -319,116 +320,39 @@ test("v1 keeps its 100/day pilot cap while paid v2 quota is uncapped telemetry",
  assert.equal((await pilotResponse.json()).error,"RISK_GATE_DAILY_LIMIT");
 });
 
-test("paid Risk Gate verdict is signed for one use, supports exact retries, and rejects resale",async()=>{
+test("Standard paid Risk Gate refuses delivery without a reviewer-issued D1 license",async()=>{
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  fixture.tier="standard";
- const {publicKey,privateKey}=generateKeyPairSync("ed25519");
  const env={PREDGE_RISK_GATE_TOKEN:"a".repeat(64),PREDGE_PAID_RISK_GATE_TOKEN:"b".repeat(64),
   PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
-  RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
-  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
-  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
-  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:paidRiskGateFixtureDb(0,true)};
+  DB:paidRiskGateFixtureDb(0,true)};
  const makeRequest=(body,path="/v2/partner/predge/paid-risk-gate")=>new Request("https://worker.example"+path,{
   method:"POST",headers:{authorization:"Bearer "+"b".repeat(64),"content-type":"application/json"},
   body:JSON.stringify(body)});
  const now=Date.parse("2026-11-12T00:00:00Z");
- const first=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
- const firstBody=await first.json();
- assert.equal(first.status,200,JSON.stringify(firstBody));
- assert.equal(firstBody.ok,true);
- assert.equal(Object.hasOwn(firstBody,"error"),false);
- assert.equal(firstBody.decision_signed_payload.issuer,"Geomacro");
- assert.equal(firstBody.tier,"standard");
- assert.equal(firstBody.structure_type,"STANDARD_DUAL_ORIGINAL_GRO_V1");
- assert.equal(firstBody.customer_price_usdc,"0.20");
- assert.equal(firstBody.geomacro_fee_usdc,"0.15");
- assert.equal(firstBody.decision_signed_payload.commercial_signatory,"Geomacro");
- assert.equal(firstBody.decision_signed_payload.source_origin_agnostic_commercial_seal,true);
- assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
-  licensee:"predge",single_end_buyer_only:true,max_end_buyers:1,max_uses:1,
-  bound_end_buyer_id:"customer-001",bound_subject_id:"USA",bound_category:"geopolitics",
-  bound_market_id:"123456789",
-  bound_condition_id:"0x0000000000000000000000000000000000000000000000000000000000000000",
-  further_resale_permitted:false});
- assert.equal(firstBody.billing_mode,"PAID_ADDENDUM_V2");
- assert.equal(firstBody.billable,true);
- assert.equal(firstBody.decision_signature_scheme,"Ed25519");
- assert.equal(firstBody.customer_price_usdc,"0.20");
- assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(firstBody.decision_signed_payload)),
-  publicKey,Buffer.from(firstBody.decision_signature_b64,"base64")),true);
- assert.equal(firstBody.audit_receipt_hash.length,64);
- const limitMessage="Authorization failed: Predge license permits resale/delivery to at most 1 end-buyer. Multi-buyer resale or redistribution is strictly prohibited. Contact: contact@geomacro.live";
- const retry=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
- const retryBody=await retry.json();
- assert.equal(retry.status,200,JSON.stringify(retryBody));
- assert.equal(retryBody.idempotent_replay,true);
- assert.equal(retryBody.verdict_id,firstBody.verdict_id);
- assert.equal(retryBody.decision_signature_b64,firstBody.decision_signature_b64);
- assert.equal(env.DB.testLedger.size,1);
- const secondBuyer=await predgePaidRiskGateD1(makeRequest({...fixture,request_id:"paid-second-buyer-request",
-   action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,
-    end_buyer_id:"customer-002"}}}),env,now);
- const secondBuyerBody=await secondBuyer.json();
- for(const [response,body] of [[secondBuyer,secondBuyerBody]]){
-  assert.equal(response.status,403);
-  assert.equal(body.error,"SINGLE_END_BUYER_LIMIT_EXCEEDED");
-  assert.equal(body.authorization_error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
-  assert.equal(body.message,limitMessage);
- }
- const expectedError="SINGLE_END_BUYER_LIMIT_EXCEEDED";
- const expectedMessage="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Explicit permission from Geomacro's end is required. Contact: contact@geomacro.live";
- const conflict=await predgePaidRiskGateD1(makeRequest({...fixture,
-   action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,market_id:"different-market"}}}),env,now);
- assert.equal(conflict.status,409);
- assert.equal((await conflict.json()).error,"RISK_GATE_IDEMPOTENCY_CONFLICT");
- for(const reused of [{...fixture,request_id:"paid-resale-new-request"}]){
-  const response=await predgePaidRiskGateD1(makeRequest(reused),env,now);
-  const body=await response.json();
-  assert.equal(response.status,403);
-  assert.equal(body.error,expectedError);
-  assert.equal(body.authorization_error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
-  assert.equal(body.execution_authorized,false);
-  assert.equal(body.message,limitMessage);
- }
- const verify=await verifyPredgePaidVerdictD1(makeRequest({verdict_id:firstBody.verdict_id,
-  request_id:undefined,subject:undefined,policy:undefined,tier:undefined,action_context:undefined},
-  "/v2/partner/predge/verify-verdict"),env);
- const verifyBody=await verify.json();
- assert.equal(verify.status,403);
- assert.equal(verifyBody.error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
- assert.equal(verifyBody.message,expectedMessage);
+ const response=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
+ const body=await response.json();
+ assert.equal(response.status,409,JSON.stringify(body));
+ assert.equal(body.error,"PREDGE_REVIEWED_STANDARD_LICENSE_UNAVAILABLE");
+ assert.equal(body.billable,false);
+ assert.equal(env.DB.testLedger.size,0);
 });
 
-test("active mutual trial delivers a signed one-buyer decision with zero fees and records trial usage",async()=>{
+test("mutual trial remains held until a Standard reviewer-approved license exists",async()=>{
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  fixture.request_id="paid-mutual-trial-integration-001";
-  const {publicKey,privateKey}=generateKeyPairSync("ed25519"),db=paidRiskGateFixtureDb();
+ fixture.tier="standard";
+ const db=paidRiskGateFixtureDb();
  const token="b".repeat(64),env={PREDGE_PAID_RISK_GATE_TOKEN:token,
-  PREDGE_PAID_TRAFFIC_ENABLED:"NO",PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-11T00:00:00Z",
-  RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
-  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
-  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
-  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:db};
+  PREDGE_PAID_TRAFFIC_ENABLED:"NO",PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-11T00:00:00Z",DB:db};
  const response=await predgePaidRiskGateD1(new Request("https://worker.example/v2/partner/predge/paid-risk-gate",{
   method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},
   body:JSON.stringify(fixture)}),env,Date.parse("2026-11-12T00:00:00Z"));
  const body=await response.json();
- assert.equal(response.status,200,JSON.stringify(body));
- assert.equal(body.billing_mode,"MUTUAL_72H_TRIAL");
- assert.equal(body.entry_status,"TRIAL_DELIVERED");
+ assert.equal(response.status,409,JSON.stringify(body));
+ assert.equal(body.error,"PREDGE_REVIEWED_STANDARD_LICENSE_UNAVAILABLE");
  assert.equal(body.billable,false);
- assert.equal(body.customer_price_usdc,"0.00");
- assert.equal(body.geomacro_fee_usdc,"0.00");
- assert.equal(body.predge_share_usdc,"0.00");
- assert.equal(body.decision_signed_payload.issuer,"Geomacro");
- assert.equal(body.decision_signed_payload.license_scope.bound_end_buyer_id,"customer-001");
- assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(body.decision_signed_payload)),
-  publicKey,Buffer.from(body.decision_signature_b64,"base64")),true);
- const ledger=db.testLedger.get(fixture.request_id);
- assert.equal(ledger.billing_mode,"MUTUAL_72H_TRIAL");
- assert.equal(ledger.entry_status,"TRIAL_DELIVERED");
- assert.equal(ledger.billable,0);
+ assert.equal(db.testLedger.has(fixture.request_id),false);
 });
 
 test("0132 preserves prior Predge rows and admits only zero-fee trial ledger entries",()=>{

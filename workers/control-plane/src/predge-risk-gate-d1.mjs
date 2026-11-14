@@ -12,6 +12,8 @@ import {readProgressiveFacts,generateProgressiveRiskGateDecision,sevenDayRollupI
 import {predgePaidRiskGateTerms,predgeSingleEndBuyerBinding,
  PREDGE_SINGLE_END_BUYER_LICENSE,predgePaidTrafficMode,usdcFromCents}
  from "./predge-paid-risk-gate-contract.mjs";
+import {canonicalLicensedJson,licensedSha,verifyGeoMacroCommercialLicense}
+ from "./risk-stream-commercial-license.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -28,6 +30,7 @@ const ACTIVE_KEY_SPKI="MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN
 const DEFAULT_AUTHORITY=Object.freeze({key_id:ACTIVE_KEY_ID,public_key_spki_b64:ACTIVE_KEY_SPKI});
 const DAY_LIMIT=100;
 const HARD_CEILING=500;
+const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
  "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
 function fail(error,status=503,extra={}){
@@ -272,6 +275,76 @@ async function paidScopeLockId(parsed,{marketId,conditionId}){
  return digest(canonical({client:"predge",subject_id:parsed.subject.id,tier:parsed.tier,
   category:parsed.category,market_id:marketId,condition_id:conditionId}));
 }
+export async function readPredgePullLicense(env,parsed,now){
+ if(parsed.subject.type!=="country"||parsed.tier!=="standard"||!parsed.category||
+   !env?.DB?.prepare)return null;
+ const category={geopolitics:"GEOPOLITICS",macro:"MACRO_FX",
+  critical_minerals:"CRITICAL_MINERALS"}[parsed.category];
+ if(!category)return null;
+ const nowIso=new Date(now).toISOString();
+ const row=await env.DB.prepare("SELECT gro_id,country_iso3,category,"+
+  "license_envelope_json,license_payload_sha256,release_receipt_sha256,expires_at,"+
+  "entitlement_expires_at,release_approval_json "+
+  "FROM risk_stream_predge_pull_licenses WHERE client_id=? AND country_iso3=? "+
+  "AND category=? AND expires_at>? ORDER BY created_at DESC LIMIT 1")
+  .bind(PREDGE_PULL_CLIENT_ID,parsed.subject.id,category,nowIso).first();
+ if(!row||row.country_iso3!==parsed.subject.id||row.category!==category||
+   Date.parse(row.expires_at)<=now||Date.parse(row.entitlement_expires_at)<=now||
+   Date.parse(row.entitlement_expires_at)>Date.parse(row.expires_at))return null;
+ let envelope;try{envelope=JSON.parse(row.license_envelope_json)}catch{return null;}
+ let approval;try{approval=JSON.parse(row.release_approval_json)}catch{return null;}
+ let verified;
+ try{verified=await verifyGeoMacroCommercialLicense(envelope,{now,
+  trustedLicensePublicSpkiB64:env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64,
+  trustedGroPublicSpkiB64:env.RISK_STREAM_GRO_VERIFY_SPKI_B64});}catch{return null;}
+ const p=envelope?.payload;
+ const {signature_b64:approvalSignature,...unsignedApproval}=approval??{};
+ let approved=false;
+ try{
+  const reviewerKey=await crypto.subtle.importKey("spki",
+   b64bytes(env.GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64),
+   {name:"Ed25519"},false,["verify"]);
+  approved=await crypto.subtle.verify("Ed25519",reviewerKey,b64bytes(approvalSignature),
+   encoder.encode("geomacro.commercial-independent-release-review.v1\n"+
+    canonicalLicensedJson(unsignedApproval)));
+ }catch{return null;}
+ if(!HASH.test(row.gro_id??"")||row.country_iso3!==parsed.subject.id||
+   row.category!==category||row.expires_at!==p?.expires_at||
+   Date.parse(row.expires_at)<=now||
+   row.license_payload_sha256!==verified.payload_sha256||
+   row.release_receipt_sha256!==p?.release_receipt_sha256||
+   p?.tier!=="STANDARD"||p?.subject?.type!=="COUNTRY"||
+   p?.subject?.id!==row.country_iso3||p?.category!==row.category||
+   p?.authorized_redistribution!==true||p?.execution_authorized!==false||
+   p?.charged!==false||!approved||approval?.schema!=="geomacro.commercial-release-accepted.v1"||
+   approval?.client_id!==PREDGE_PULL_CLIENT_ID||
+   approval?.customer_entitlement_verified!==true||approval?.go_live_approved!==true||
+   approval?.canary_hold_cleared!==true||
+   approval?.validated_gro_sha256!==p?.source_gro_sha256||
+   approval?.signed_release_receipt_sha256!==row.release_receipt_sha256||
+   approval?.customer_entitlement_expires_at!==row.entitlement_expires_at)return null;
+ const source=await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+  "WHERE payload_sha256=? LIMIT 1").bind(p.source_gro_sha256).first();
+ const candidate=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
+  "FROM risk_stream_signed_gro WHERE gro_id=? LIMIT 1").bind(row.gro_id).first();
+ if(!source||!candidate||!HASH.test(candidate.payload_sha256??"")||
+   await licensedSha(candidate.payload_json)!==candidate.payload_sha256)return null;
+ let signedCandidate;try{signedCandidate=JSON.parse(candidate.payload_json)}catch{return null;}
+ if(signedCandidate.customer_delivery_authorized!==true||
+   signedCandidate.charged!==false||signedCandidate.execution_authorized!==false||
+   signedCandidate.commercial_origin_gro_id!==source.gro_id||
+   row.gro_id!==await licensedSha("geomacro.authorized-gro.v1\n"+source.gro_id)||
+   signedCandidate.subject?.id!==row.country_iso3||
+   signedCandidate.category!==row.category||
+   signedCandidate.event_fingerprint!==p.event_fingerprint)return null;
+ try{
+  const groKey=await crypto.subtle.importKey("spki",
+   b64bytes(env.RISK_STREAM_GRO_VERIFY_SPKI_B64),{name:"Ed25519"},false,["verify"]);
+  if(!await crypto.subtle.verify("Ed25519",groKey,b64bytes(candidate.signature_b64),
+    encoder.encode(candidate.payload_json)))return null;
+ }catch{return null;}
+ return {gro_id:row.gro_id,envelope,license_payload_sha256:verified.payload_sha256};
+}
 async function paidReplayAlreadyConsumed(db,{client,requestId,requestHash,verdictId,scopeLockId}){
  const ledger=await db.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
    WHERE request_id=? OR verdict_id=? LIMIT 1`).bind(requestId,verdictId).first();
@@ -382,13 +455,16 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  const verdictId=await deterministicVerdictId(requestHash);
  const nowIso=new Date(now).toISOString();
  const client=paidEndpoint?"predge-paid-risk-gate-addendum-v2":"predge-risk-gate-v1",day=nowIso.slice(0,10);
- let paidContext=null,scopeLockId=null;
+ let paidContext=null,scopeLockId=null,paidCommercialLicense=null;
  if(paidEndpoint){
    paidContext=paidLicenseActionContext(parsed);
    if(paidContext?.error)return fail(paidContext.error,400);
    if(!paidContext)return fail("PAID_ACTION_CONTEXT_REQUIRED",400);
    if(!parsed.category)return fail("PAID_CATEGORY_REQUIRED",400);
+   if(lockedTier!=="standard")return fail("PREDGE_REVIEWED_LICENSE_TIER_UNAVAILABLE",409);
    try{
+     paidCommercialLicense=await readPredgePullLicense(env,parsed,now);
+     if(!paidCommercialLicense)return fail("PREDGE_REVIEWED_STANDARD_LICENSE_UNAVAILABLE",409);
      const replay=await readPaidIdempotentReplay(env.DB,{client,requestId:parsed.request_id,requestHash});
      if(replay.kind==="replay")return Response.json({...replay.response,idempotent_replay:true},{status:200,headers});
      if(replay.kind==="conflict")return fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
@@ -416,7 +492,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    Boolean(gro),sevenDayRollupReady,now);
  const tierActivationMatrix=sharedDecision.tierActivationMatrix;
  const complexReady=tierActivationMatrix.complex.active===true;
- const tierReady=sharedDecision.tierReady;
+ const tierReady=sharedDecision.tierReady&&(!paidEndpoint||Boolean(paidCommercialLicense));
  const channel="predge_b2b";
  const structureType=lockedTerms.structure_type;
  const customerPriceUsdc=billingMode==="MUTUAL_72H_TRIAL"?"0.00":
@@ -477,8 +553,10 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
    const context={
       subject:parsed.subject,source:lockedTier==="complex_full"?"cloudflare-d1-verified-hot":"derived-fact-index",
-      verified_signed_gro:lockedTier==="complex_full"&&tierReady,
-      commercial_eligible:lockedTier==="complex_full"&&tierReady,
+      verified_signed_gro:paidEndpoint?Boolean(paidCommercialLicense):
+        lockedTier==="complex_full"&&tierReady,
+      commercial_eligible:paidEndpoint?Boolean(paidCommercialLicense):
+        lockedTier==="complex_full"&&tierReady,
       payment_authorized:false,
       risk_metric_semantics:lockedTier==="complex_full"&&tierReady?"VERIFIED_GRO_RISK_SCORE":result.risk_metric_semantics,
       observation_count:facts.distinct_events,
@@ -501,7 +579,12 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      ...(paidEndpoint?{license_scope:{licensee:"predge",...PREDGE_SINGLE_END_BUYER_LICENSE,
        bound_end_buyer_id:paidContext.endBuyerId,bound_subject_id:parsed.subject.id,
        bound_category:parsed.category,bound_market_id:paidContext.marketId,
-       bound_condition_id:paidContext.conditionId}}:{}),
+       bound_condition_id:paidContext.conditionId},
+       ...(paidCommercialLicense?{
+        geomacro_commercial_license:paidCommercialLicense.envelope,
+        licensed_gro_id:paidCommercialLicense.gro_id,
+        license_payload_sha256:paidCommercialLicense.license_payload_sha256
+       }:{})}:{}),
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
      predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode:billingMode,entry_status:entryStatus,
      tier_activation_matrix:tierActivationMatrix,
