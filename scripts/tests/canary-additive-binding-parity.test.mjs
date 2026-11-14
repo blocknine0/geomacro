@@ -103,7 +103,7 @@ test("Wrangler raw plain_text binding config satisfies uploaded-version parity",
   version(uploaded.resources.bindings),sha,[],researchRuntime).status,
   "PASS_REVIEWED_HOT50_PARITY");
 });
-test("exact-main upload contract passes with STREAM_MODE and the four reviewed secrets",()=>{
+test("exact-main upload contract passes with STREAM_MODE and reviewed signing secrets",()=>{
  const reviewed=["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
   "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
   "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64","RISK_STREAM_INDEX_LEAD_BEARER",
