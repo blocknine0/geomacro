@@ -63,30 +63,54 @@ async function liveCurrent():Promise<any>{
  need(Array.isArray(r.deployments)&&r.deployments.length===1,'CANARY_DEPLOYMENT_UNVERIFIED');
  return r.deployments[0];
 }
-const distribution=(base:string,candidate:string,percent:number)=>percent===100?
+export const distribution=(base:string,candidate:string,percent:number)=>percent===100?
  [{version_id:candidate,percentage:100}]:[
  {version_id:base,percentage:100-percent},{version_id:candidate,percentage:percent}];
-function verifyDistribution(deployment:any,expected:any[]){
+export function verifyDistribution(deployment:any,expected:any[]){
  const actual=deployment?.versions;
- need(Array.isArray(actual)&&actual.length===expected.length&&
-  expected.every(x=>actual.some((a:any)=>a.version_id===x.version_id&&Number(a.percentage)===x.percentage)),
+ need(Array.isArray(actual)&&Array.isArray(expected)&&expected.length>0&&
+  expected.every(x=>typeof x?.version_id==='string'&&
+   UUID_RE.test(x.version_id)&&Number.isSafeInteger(x.percentage)&&
+   x.percentage>=0&&x.percentage<=100)&&
+  new Set(expected.map(x=>x.version_id)).size===expected.length&&
+  expected.reduce((sum,x)=>sum+x.percentage,0)===100&&
+  actual.every((x:any)=>typeof x?.version_id==='string'&&UUID_RE.test(x.version_id)&&
+   Number.isSafeInteger(Number(x.percentage))&&Number(x.percentage)>=0&&
+   Number(x.percentage)<=100)&&
+  new Set(actual.map((x:any)=>x.version_id)).size===actual.length&&
+  actual.reduce((sum:number,x:any)=>sum+Number(x.percentage),0)===100&&
+  actual.every((x:any)=>expected.some(y=>y.version_id===x.version_id&&
+   Number(y.percentage)===Number(x.percentage))),
   'CANARY_REMOTE_SPLIT_MISMATCH');
+ // Cloudflare may omit 0% entries from a deployment response. Normalize only
+ // those absent zero rows; all live traffic percentages and IDs must still
+ // match exactly. The caller's directed version-override probe proves that
+ // the zero-traffic candidate is actually present and runnable in the split.
+ const expectedTraffic=expected.filter(x=>x.percentage>0);
+ const actualTraffic=actual.filter((x:any)=>Number(x.percentage)>0);
+ need(actualTraffic.length===expectedTraffic.length&&
+  expectedTraffic.every(x=>actualTraffic.some((a:any)=>a.version_id===x.version_id&&
+   Number(a.percentage)===x.percentage)),
+  'CANARY_REMOTE_SPLIT_MISMATCH');
+ return true;
 }
-async function deployVersions(base:string,candidate:string,percent:number){
+export async function deployVersions(base:string,candidate:string,percent:number,
+ {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=distribution(base,candidate,percent);
- const result=await api(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
+ const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
  verifyDistribution(result,versions);
  for(let tries=0;tries<6;tries++){
-  try{verifyDistribution(await liveCurrent(),versions);return}catch{await wait(3000)}
+  try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
  }
  throw Error('CANARY_DEPLOYMENT_READBACK_TIMEOUT');
 }
-async function deployBaseline(base:string){
+export async function deployBaseline(base:string,
+ {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=[{version_id:base,percentage:100}];
- const result=await api(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
+ const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
  verifyDistribution(result,versions);
  for(let tries=0;tries<6;tries++){
-  try{verifyDistribution(await liveCurrent(),versions);return}catch{await wait(3000)}
+  try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
  }
  throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
 }
