@@ -4,6 +4,7 @@ import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
  reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS,diagnoseReviewedHot50BindingDelta}
  from "../lib/canary-additive-binding-parity.mjs";
 import {candidateConfig} from "../ops/prepare-optimized-worker-candidate.mjs";
+import {requireCanaryObservabilityPrerequisites} from "../canary-promoter.ts";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
 const added={name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"};
@@ -229,6 +230,8 @@ test("provider delta names identify unreviewed additions without leaking any val
  assert.doesNotMatch(JSON.stringify(result),/DO_NOT_LOG_THIS_VALUE|PRIVATE_MATERIAL/);
  assert.throws(()=>assessReviewedHot50BindingParity(base,candidate,sha,[],researchRuntime),
   /UNREVIEWED_ADDITION/);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,candidate,sha,[],researchRuntime),
+  /UNREVIEWED_ADDITION_ACTUAL_.*UNEXPECTED_BINDING/);
 });
 test("reviewed named candidate additions remain diagnostic-only, not authorization",()=>{
  const base=version(streamBaseline);
@@ -240,4 +243,13 @@ test("reviewed named candidate additions remain diagnostic-only, not authorizati
  assert.deepEqual(result.unexpected_addition_names,[]);
  assert.equal(assessReviewedHot50BindingParity(base,cand,sha,
   ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"],researchRuntime).status,"PASS_REVIEWED_HOT50_PARITY");
+});
+
+test("canary refuses missing or malformed zone analytics identity before traffic changes",()=>{
+ assert.throws(()=>requireCanaryObservabilityPrerequisites({}),
+  /CANARY_ZONE_ID_REQUIRED_BEFORE_TRAFFIC/);
+ assert.throws(()=>requireCanaryObservabilityPrerequisites({CLOUDFLARE_ZONE_ID:"bad"}),
+  /CANARY_ZONE_ID_REQUIRED_BEFORE_TRAFFIC/);
+ assert.equal(requireCanaryObservabilityPrerequisites({
+  CLOUDFLARE_ZONE_ID:"a".repeat(32)}),undefined);
 });
