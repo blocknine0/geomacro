@@ -15,6 +15,9 @@ const hash=async value=>{
  return [...bytes].map(x=>x.toString(16).padStart(2,"0")).join("");
 };
 const fail=code=>{throw Error("HOT50_UNSIGNED_GRO_"+code)};
+const safeAnalysisText=(value,fallback)=>
+ typeof value==="string"&&value.trim().length>=6&&value.trim().length<=360&&
+ !/https?:\/\/|<[^>]+>|[\r\n]/iu.test(value)?value.trim():fallback;;
 
 export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
  if(!Number.isSafeInteger(now)||!TIERS.includes(tier))fail("INPUT_INVALID");
@@ -24,6 +27,21 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
   product_type:"NEWS_ANALYSIS_RISK_GATE",
   analysis_basis:"NEWS_SIGNAL_NOT_MARKET_PRICE_OR_VERIFIED_COUNTRY_RISK",
   news_analysis_only:true,
+  news_analysis:{
+   what:safeAnalysisText(signal?.derived?.what,
+    `A fresh ${payload.category} news signal was observed for ${payload.country_iso3}; publisher text is not included.`),
+   why:safeAnalysisText(signal?.derived?.why,
+    "Potential relevance depends on independent confirmation and the affected exposure."),
+   market:safeAnalysisText(signal?.derived?.market,payload.assessment.market_relevance),
+   watch:safeAnalysisText(signal?.derived?.watch,payload.assessment.watch),
+   evidence:{status:payload.evidence_status,
+    interpretation:payload.evidence_status==="UNVERIFIED_SIGNAL"?
+     "Unverified signal only; no corroborated event or measured country risk is asserted.":
+     payload.evidence_status==="DUAL_ATTESTED_ORIGINAL"?
+     "Dual-attested original exists; independent event corroboration remains required.":
+     "Internal corroboration exists; this record remains unsigned and noncommercial.",
+    publisher_content_included:false,verified_country_risk:false}
+  },
   signed:false,signature_status:"UNSIGNED",
   source_rights_verified:false,
   customer_delivery_authorized:false,
@@ -61,14 +79,20 @@ async function validStored(row,expected){
   "commercial_eligibility","commercial_sale_authorized","country_iso3",
   "customer_delivery_authorized","day_utc","event_class","event_fingerprint",
   "evidence_corroborated","evidence_status","execution_authorized","expires_at",
-  "generated_at","intelligence_owner","issuer","news_analysis_only",
-  "original_publisher_text_included","product_type","raw_source_disclosed","raw_upstream_text_included","schema","signature_status",
+  "generated_at","intelligence_owner","issuer","news_analysis",
+  "news_analysis_only","original_publisher_text_included","product_type","raw_source_disclosed","raw_upstream_text_included","schema","signature_status",
   "signed","source_rights_verified","tier","tier_status"].sort();
  return Object.keys(p).sort().join("|")===allowlist.join("|")&&
   p.schema==="geomacro.hot50-news-unsigned-gro.v1"&&
   p.product_type==="NEWS_ANALYSIS_RISK_GATE"&&
   p.analysis_basis==="NEWS_SIGNAL_NOT_MARKET_PRICE_OR_VERIFIED_COUNTRY_RISK"&&
-  p.news_analysis_only===true&&p.signed===false&&p.signature_status==="UNSIGNED"&&!Object.hasOwn(p,"signature_b64")&&
+  p.news_analysis_only===true&&p.signed===false&&p.signature_status==="UNSIGNED"&&
+  p.news_analysis&&typeof p.news_analysis.what==="string"&&
+  typeof p.news_analysis.why==="string"&&typeof p.news_analysis.market==="string"&&
+  typeof p.news_analysis.watch==="string"&&
+  p.news_analysis.evidence?.status===p.evidence_status&&
+  p.news_analysis.evidence?.publisher_content_included===false&&
+  p.news_analysis.evidence?.verified_country_risk===false&&!Object.hasOwn(p,"signature_b64")&&
   !Object.hasOwn(p,"signing_key_id")&&!Object.hasOwn(p,"signature")&&
   p.gro_id===undefined&&p.country_iso3===expected.country_iso3&&
   p.category===expected.category&&p.day_utc===expected.day_utc&&
