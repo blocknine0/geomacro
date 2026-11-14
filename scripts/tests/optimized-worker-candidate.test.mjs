@@ -150,18 +150,24 @@ test('candidate selection never guesses from previous versions sharing a SHA',as
  assert.doesNotMatch(source,/versions\?deployable=true/u);
 });
 
-test('signed Risk Gate candidate requires the existing four secret signing bindings',()=>{
+test('signed Risk Gate secrets may be inherited or introduced as reviewed non-empty additions',()=>{
  const names=['RISK_STREAM_GRO_SIGN_PKCS8_B64','RISK_STREAM_GRO_VERIFY_SPKI_B64',
   'RISK_STREAM_MACHINE_FACTS_SPKI_B64','RISK_STREAM_MACHINE_RIGHTS_SPKI_B64'];
  const signed={resources:{bindings:names.map(name=>({name,type:'secret_text'}))}};
  assert.equal(assertBaselineRiskStreamSigningBindings(signed),true);
+ const oldBaseline={resources:{bindings:[{name:'DB',type:'d1'}]}};
+ const reviewedEnv=Object.fromEntries(names.map(name=>[name,'non-empty-secret-material']));
+ assert.equal(assertBaselineRiskStreamSigningBindings(oldBaseline,names,reviewedEnv),true);
  for(const name of names){
-  const missing={resources:{bindings:signed.resources.bindings.filter(x=>x.name!==name)}};
-  assert.throws(()=>assertBaselineRiskStreamSigningBindings(missing),
+  const missing={resources:{bindings:oldBaseline.resources.bindings}};
+  assert.throws(()=>assertBaselineRiskStreamSigningBindings(missing,names.filter(x=>x!==name),reviewedEnv),
+   new RegExp('CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING_'+name));
+  assert.throws(()=>assertBaselineRiskStreamSigningBindings(missing,names,
+   {...reviewedEnv,[name]:'   '}),
    new RegExp('CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING_'+name));
  }
  const wrong={resources:{bindings:names.map(name=>({name,type:'plain_text',text:'x'}))}};
- assert.throws(()=>assertBaselineRiskStreamSigningBindings(wrong),
+ assert.throws(()=>assertBaselineRiskStreamSigningBindings(wrong,names,reviewedEnv),
   /CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING/);
 });
 

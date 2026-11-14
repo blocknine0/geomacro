@@ -44,6 +44,23 @@ test("production deployment validates signer keypair, distinct attestations and 
  assert.match(workflow,/RISK_STREAM_SIGNER_DUAL_ATTESTER_AND_ARCHIVE_SECRETS_INSTALLED=true/);
 });
 
+test("candidate signing secrets may be added through the reviewed upload path",()=>{
+ const names=["RISK_STREAM_GRO_SIGN_PKCS8_B64","RISK_STREAM_GRO_VERIFY_SPKI_B64",
+  "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64"];
+ for(const name of names){
+  assert.match(parity,new RegExp(`"${name}"`));
+  assert.match(workflow,new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`));
+ }
+ assert.match(candidateBuilder,/assertBaselineRiskStreamSigningBindings\(baseline,reviewedSecrets,env\)/);
+ assert.match(candidateBuilder,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID/);
+ assert.match(candidateBuilder,/CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED/);
+ assert.match(workflow,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES: \$\{\{ inputs\.reviewed_additive_secret_names \}\}/);
+ assert.match(candidateBuilder,/--secrets-file/);
+ const attest=workflow.slice(workflow.indexOf("      - name: Sign explicit reviewed candidate bindings and Hot50 flags"),
+  workflow.indexOf("      - name: Promote only through canonical signed six-stage"));
+ assert.match(attest,/CANARY_OWNER_REVIEWED_HOT50_RUNTIME: \$\{\{ inputs\.hot50_runtime_confirmation \}\}/);
+});
+
 test("commercial reviewer binding is dynamic, independently keyed and fail-closed",()=>{
  assert.match(workflow,/GEOMACRO_RELEASE_REVIEWER_SERVICE: \$\{\{ vars\.GEOMACRO_RELEASE_REVIEWER_SERVICE \|\| '' \}\}/);
  assert.match(workflow,/GEOMACRO_RELEASE_REVIEWER_SERVICE_REQUIRED/);
