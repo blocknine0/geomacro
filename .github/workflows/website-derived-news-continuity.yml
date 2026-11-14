@@ -238,6 +238,7 @@ jobs:
       research: ${{ steps.budget.outputs.research }}
       maintenance: ${{ steps.budget.outputs.maintenance }}
       snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}
+      canonical_archive_catchup_readonly: ${{ steps.budget.outputs.canonical_archive_catchup_readonly }}
       source_intake: ${{ steps.budget.outputs.source_intake }}
       paid_derived_news_source_lane: ${{ steps.budget.outputs.paid_derived_news_source_lane }}
       paid_derived_news_max_rows: ${{ steps.budget.outputs.paid_derived_news_max_rows }}
@@ -319,6 +320,24 @@ jobs:
             echo "::warning::PAID_DERIVED_D1_MONTHLY_HOLD_STATIC_ARCHIVE_ONLY"
             echo "admitted=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Independently admit read-only canonical archive catchup against Paid monthly reserve
+        id: canonical-readonly-monthly
+        if: needs.quota-admission.outputs.canonical_archive_catchup_readonly == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Denied real provider evidence NEVER becomes an optional D1 query.
+          if node scripts/ops/check-d1-paid-monthly-headroom.mjs --check; then
+            echo "admitted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::CANONICAL_ARCHIVE_PAID_MONTHLY_READONLY_HOLD"
+            echo "admitted=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Collect once and publish only bounded Paid derived D1 rows when physically admitted
         env:
           GEOMACRO_DERIVED_ARCHIVE_ONLY: ${{ steps.paid-monthly-derived.outputs.admitted == 'true' && '0' || '1' }}
@@ -337,7 +356,7 @@ jobs:
           # One complete public-journal bundle read per 55 min, and only when
           # the existing quota planner independently admits snapshot headroom.
           # D1 source writes, PREDGE, B2 and private originals remain off.
-          GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}
+          GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' || (needs.quota-admission.outputs.canonical_archive_catchup_readonly == 'true' && steps.canonical-readonly-monthly.outputs.admitted == 'true') }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         shell: bash
         run: |
