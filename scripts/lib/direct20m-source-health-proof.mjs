@@ -59,7 +59,8 @@ export function buildDirect20mSourceHealthProof({
   }
  }
  const categoryHealth=summarizePrivateOsintThreeCategoryHealth(sources,{
-  sourceEndpointsConfigured:registry.length,d1ReadbackVerified,
+  sourceEndpointsConfigured:registry.length,
+  d1ReadbackVerified:d1ReadbackVerified===true&&Array.isArray(retainedCandidates),
   observedCandidatesMeasured:Array.isArray(observedCandidates),now,
  });
  return {
