@@ -26,7 +26,8 @@ const parseWorkflow=filename=>{
  }catch(error){
   const position=error?.mark?
    ` at line ${error.mark.line+1}, column ${error.mark.column+1}`:"";
-  throw Error('INVALID_GITHUB_WORKFLOW_YAML '+filename+position+': '+String(error?.reason??error?.message??error));
+  const excerpt=typeof error?.mark?.snippet==="string"?`\n${error.mark.snippet}`:"";
+  throw Error('INVALID_GITHUB_WORKFLOW_YAML '+filename+position+': '+String(error?.reason??error?.message??error)+excerpt);
  }
 };
 
