@@ -27,7 +27,12 @@ test("archive-only resumes after trusted deployed archive during D1 quota HELD",
 });
 test("quota-held archive may read at most one complete public journal bundle under snapshot headroom, never write D1",()=>{
  assert.ok(workflow.includes("snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}"));
- assert.ok(block.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}"));
+ const grantLine=block.split("\n").find(line=>line.includes("GEOMACRO_CANONICAL_D1_CATCHUP:"))??"";
+ assert.ok(grantLine.includes("needs.quota-admission.outputs.snapshot_refresh == 'true'"));
+ assert.ok(grantLine.includes("needs.quota-admission.outputs.canonical_archive_catchup_readonly == 'true'"));
+ assert.ok(grantLine.includes("steps.canonical-readonly-monthly.outputs.admitted == 'true'"));
+ assert.ok(block.includes("id: canonical-readonly-monthly"));
+ assert.ok(block.includes("node scripts/ops/check-d1-paid-monthly-headroom.mjs --check"));
  assert.ok(block.includes("node scripts/ops/publish-permanent-derived-news-archive.mjs"));
  assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
  const onlyCollector=block.split('      - name: Collect once and publish only bounded Paid derived D1 rows when physically admitted')[1]?.split('      - name: Publish append-only permanent Finds archive')[0]??'';
