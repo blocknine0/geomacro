@@ -18,7 +18,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: geomacro-hot50-daily-news-migration-0221-production
+  group: geomacro-hot50-unsigned-gro-migration-0221-production
   cancel-in-progress: false
 jobs:
   protected-migration:
@@ -98,7 +98,7 @@ jobs:
            code:r.code,remaining_rows_read:r.remaining_rows_read,
            remaining_rows_written:r.remaining_rows_written}));
           NODE
-          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --json --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('d1_migrations','risk_stream_evidence','risk_stream_signed_gro','risk_stream_hot50_cell_snapshots','risk_stream_unsigned_news_gro','idx_risk_stream_unsigned_news_country_day','idx_risk_stream_unsigned_news_event') ORDER BY name; SELECT name FROM d1_migrations WHERE name='0221_hot50_daily_news_signed_gro.sql' LIMIT 2" > "$RUNNER_TEMP/geomacro-hot50-0221/before.json"
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --json --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('d1_migrations','risk_stream_evidence','risk_stream_signed_gro','risk_stream_hot50_cell_snapshots','risk_stream_unsigned_news_gro','idx_risk_stream_unsigned_news_country_day','idx_risk_stream_unsigned_news_event') ORDER BY name; SELECT name FROM d1_migrations WHERE name='0221_hot50_unsigned_news_gro.sql' LIMIT 2" > "$RUNNER_TEMP/geomacro-hot50-0221/before.json"
           node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
           const result=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0221/before.json','utf8'));
@@ -107,7 +107,7 @@ jobs:
             'risk_stream_hot50_cell_snapshots']){
            if(!rows.some(r=>r.name===name))throw Error('HOT50_0221_BASE_SCHEMA_MISSING_'+name);
           }
-          const already=rows.some(r=>r.name==='0221_hot50_daily_news_signed_gro.sql');
+          const already=rows.some(r=>r.name==='0221_hot50_unsigned_news_gro.sql');
           const objects=['risk_stream_unsigned_news_gro','idx_risk_stream_unsigned_news_country_day',
            'idx_risk_stream_unsigned_news_event'];
           if(already||objects.some(n=>rows.some(r=>r.name===n))){
@@ -122,21 +122,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --file workers/control-plane/migrations/0221_hot50_daily_news_signed_gro.sql
-          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --command "INSERT INTO d1_migrations(name) SELECT '0221_hot50_daily_news_signed_gro.sql' WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name='0221_hot50_daily_news_signed_gro.sql')"
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --file workers/control-plane/migrations/0221_hot50_unsigned_news_gro.sql
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --command "INSERT INTO d1_migrations(name) SELECT '0221_hot50_unsigned_news_gro.sql' WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name='0221_hot50_unsigned_news_gro.sql')"
       - name: Verify physical provider schema and sign immutable migration receipt
         if: inputs.mode == 'apply'
         shell: bash
         run: |
           set -euo pipefail
-          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --json --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('risk_stream_unsigned_news_gro','idx_risk_stream_unsigned_news_country_day','idx_risk_stream_unsigned_news_event') ORDER BY name; SELECT name FROM d1_migrations WHERE name='0221_hot50_daily_news_signed_gro.sql'" > "$RUNNER_TEMP/geomacro-hot50-0221/after.json"
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --json --config "$RUNNER_TEMP/geomacro-hot50-0221/wrangler.json" --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('risk_stream_unsigned_news_gro','idx_risk_stream_unsigned_news_country_day','idx_risk_stream_unsigned_news_event') ORDER BY name; SELECT name FROM d1_migrations WHERE name='0221_hot50_unsigned_news_gro.sql'" > "$RUNNER_TEMP/geomacro-hot50-0221/after.json"
           node --input-type=module <<'NODE'
           import {readFileSync,writeFileSync} from 'node:fs';
           import {createPrivateKey,createPublicKey,createHash,sign,verify} from 'node:crypto';
           const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0221/after.json','utf8'));
           const rows=r.flatMap(x=>x.results??[]);
           const required=['risk_stream_unsigned_news_gro','idx_risk_stream_unsigned_news_country_day',
-           'idx_risk_stream_unsigned_news_event','0221_hot50_daily_news_signed_gro.sql'];
+           'idx_risk_stream_unsigned_news_event','0221_hot50_unsigned_news_gro.sql'];
           if(JSON.stringify([...new Set(rows.map(x=>x.name))].sort())!==JSON.stringify([...required].sort()))
            throw Error('HOT50_0221_PROVIDER_READBACK_DIVERGED');
           const table=rows.find(x=>x.name==='risk_stream_unsigned_news_gro')?.sql??'';
@@ -145,8 +145,8 @@ jobs:
           const unsigned={schema:'geomacro.hot50-unsigned-news-gro-migration-receipt.v1',
            status:'PASS',database_id:process.env.D1_DATABASE_ID,
            main_sha:process.env.EXPECTED_MAIN_SHA,
-           migration:'0221_hot50_daily_news_signed_gro.sql',
-           sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0221_hot50_daily_news_signed_gro.sql')).digest('hex'),
+           migration:'0221_hot50_unsigned_news_gro.sql',
+           sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0221_hot50_unsigned_news_gro.sql')).digest('hex'),
            objects:required,provider_readback_verified:true,
            commercial_release_unchanged:true,no_funds:true,verified_at:new Date().toISOString()};
           const jwk=JSON.parse(process.env.SIGNING_JWK);
@@ -166,7 +166,7 @@ jobs:
         if: inputs.mode == 'apply' && always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: hot50-news-daily-0221-${{ github.run_id }}
+          name: hot50-unsigned-news-gro-0221-${{ github.run_id }}
           path: artifacts/hot50-unsigned-news-gro/migration-0221-receipt.json
           if-no-files-found: error
           retention-days: 30
