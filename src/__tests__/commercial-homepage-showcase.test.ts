@@ -56,7 +56,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(home).not.toContain("home-finds-title");
     expect(home).not.toContain("Explore Geomacro Finds.");
     expect(home).toContain("Follow the risks that affect your work.");
-    expect(home).toContain('to="/risk-indices"');
+    expect(home).not.toContain('to="/risk-indices"');
+    expect(home).toContain("Explore Risk Gate");
     expect(home).toContain("Follow the risks that affect your work.");
     expect(home).not.toContain("Not another raw-data feed.");
   });

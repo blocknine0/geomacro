@@ -42,8 +42,8 @@ describe("commercial public surface v2", () => {
     expect(about).not.toContain("GRI v1.2 - Live");
     expect(about).not.toContain("combined GRI");
     expect(research).toContain("Methodology, evidence rules and change attribution");
-    expect(docs).toContain("Historical GRI material therefore remains available as a methodology and proof reference");
-    expect(llms).toContain("Historical combined-GRI snapshots remain versioned audit records");
+    expect(docs).toContain("The versioned GRI v1.2 parent methodology and proof reference remains available");
+    expect(llms).toContain("Historical GRI proofs are internal audit references");
   });
 
   it("makes the homepage a commercial explanation surface rather than a data dashboard", () => {
@@ -122,8 +122,8 @@ describe("commercial public surface v2", () => {
     const availability = read("src/content/docs/12-data-availability.md");
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
 
-    expect(availability).toContain("a previously verified reading stays visible if a later refresh fails");
-    expect(availability).toContain("does not receive a synthetic or zero-risk substitute");
+    expect(availability).toContain("Historic scored index proofs");
+    expect(availability).toContain("Missing or stale evidence is never presented as a current score.");
     expect(workspace).toContain("Refreshing GeoMacro-certified news readings");
     expect(workspace).toContain("GeoMacro-certified news indices temporarily unavailable");
     expect(workspace).toContain("No unrelated GRI or invented severity fallback is being displayed.");

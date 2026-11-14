@@ -18,7 +18,8 @@ describe("commercial website surface", () => {
     const contact = read("src/routes/contact.tsx");
     const institution = read("src/routes/institutional.tsx");
     expect(home).toContain("Explore intelligence");
-    expect(home).toContain("View Risk Indices");
+    expect(home).not.toContain("View Risk Indices");
+    expect(home).toContain("Explore Risk Gate");
     expect(home).toContain("Visit the Store");
     expect(institution).toContain("For teams");
     expect(institution).toContain("Risk & strategy");

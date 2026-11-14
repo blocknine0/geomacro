@@ -24,17 +24,18 @@ describe("homepage reader and buyer journeys", () => {
     expect(html).not.toContain("Geomacro Finds");
     expect(html).not.toContain("What GeoMacro is finding now.");
     expect(html).not.toContain("No highlights to show right now.");
-    for (const target of ["/intelligence", "/ask-geomacro", "/data-api", "/pricing", "/risk-indices", "/institutional"]) {
+    for (const target of ["/intelligence", "/ask-geomacro", "/data-api", "/pricing", "/institutional"]) {
       expect(html).toContain(`href="${target}"`);
     }
     expect(html).toContain("API keys and self-service checkout coming soon.");
+    expect(html).not.toContain('href="/risk-indices"');
     expect(html).not.toMatch(/Generate structured JSON|Paste news text|Source license|payment-signature/);
   });
 
   it("keeps all primary destinations in the desktop navigation and marks the current page", async () => {
     const html = await page("/pricing");
     const nav = html.match(/<nav aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? "";
-    for (const target of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/pricing"]) {
+    for (const target of ["/", "/intelligence", "/ask-geomacro", "/pricing"]) {
       expect(nav).toContain(`href="${target}"`);
     }
     const active = nav.match(/<a\b[^>]*href="\/pricing"[^>]*>/)?.[0] ?? "";

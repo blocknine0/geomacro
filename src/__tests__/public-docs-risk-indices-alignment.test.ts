@@ -32,7 +32,7 @@ describe("public documentation risk-indices alignment", () => {
     }
   });
 
-  it("keeps the public product surface explicit about all three separate indices", () => {
+  it("documents the owner-retired index page without a false live score claim", () => {
     const surfaces = read("src/content/docs/03-product-surfaces.md");
     const availability = read("src/content/docs/49-commercial-availability.md");
 
@@ -41,13 +41,11 @@ describe("public documentation risk-indices alignment", () => {
       "Macroeconomic Risk Index",
       "Critical Minerals Risk Index",
     ]) {
-      expect(surfaces).toContain(name);
-      expect(availability).toContain(name);
+      expect(surfaces).not.toContain(name);
+      expect(availability).not.toContain("| " + name + " | LIVE |");
     }
-
-    expect(surfaces).toContain("gri-v1.2.0");
-    expect(surfaces).toContain("gri-proof-v1.2.0");
-    expect(surfaces).toContain("Historical combined-GRI snapshots remain versioned audit records");
+    expect(surfaces).toContain("## 3.1 Risk Intelligence");
+    expect(availability).toContain("The public Risk Indices page has been retired.");
   });
 
   it("keeps Risk Gate separate from public index scores and preserves customer control", () => {
