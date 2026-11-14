@@ -87,6 +87,7 @@ jobs:
           path: |
             artifacts/protected-canary/candidate-paid-monthly-headroom.json
             artifacts/protected-canary/optimized-worker-candidate.json
+            artifacts/protected-canary/candidate-binding-delta.json
             artifacts/protected-canary/worker-promotion-preflight.json
           if-no-files-found: warn
           retention-days: 14
