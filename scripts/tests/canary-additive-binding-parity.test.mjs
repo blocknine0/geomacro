@@ -176,7 +176,7 @@ test("provider delta names identify unreviewed additions without leaking any val
 });
 test("reviewed named candidate additions remain diagnostic-only, not authorization",()=>{
  const base=version(streamBaseline);
- const cand=version([...streamCandidate,
+ const cand=version([...streamCandidate.filter(x=>!REVIEWABLE_ADDITIVE_SECRETS.includes(x.name)),
   {name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"}]);
  const result=diagnoseReviewedHot50BindingDelta(base,cand,sha,
   ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"]);
