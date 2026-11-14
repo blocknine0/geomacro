@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {webcrypto} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {issueUnsignedDailyNewsBatch,makeUnsignedDailyNewsGro,
- readUnsignedDailyNewsGros} from "../../workers/control-plane/src/risk-stream-unsigned-gro.mjs";
+ readUnsignedDailyNewsGros,pruneUnsignedDailyNewsGros} from "../../workers/control-plane/src/risk-stream-unsigned-gro.mjs";
 globalThis.crypto??=webcrypto;
 const NOW=Date.parse("2026-11-14T12:00:00.000Z");
 const signal={country_iso3:"IND",category:"GEOPOLITICS",event_fingerprint:"a".repeat(64),
@@ -97,5 +97,25 @@ test("automation flag off is fail-closed and writes nothing",async()=>{
  env.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED="0";
  const r=await issueUnsignedDailyNewsBatch(env,[signal],{now:NOW});
  assert.equal(r.status,"UNSIGNED_GRO_AUTOMATION_HELD");
+ assert.equal(db.prepare("SELECT count(*) AS n FROM risk_stream_unsigned_news_gro").get().n,0);
+});
+
+test("queue arrivals and the rotating Hot50 scanner both drive unsigned GRO creation",()=>{
+ const pipeline=readFileSync("workers/control-plane/src/risk-stream-pipeline.mjs","utf8");
+ const scanner=readFileSync("workers/control-plane/src/risk-stream-autonomous-hot50.mjs","utf8");
+ assert.match(pipeline,/issueUnsignedDailyNewsBatch\(env,signals/);
+ assert.match(pipeline,/unsigned_news_gro_signature_created:false/);
+ assert.match(scanner,/planHot50StreamCells\(now,perTick\)/);
+ assert.match(scanner,/issueUnsignedDailyNewsBatch\(env,events/);
+ assert.match(scanner,/total_cells:150/);
+});
+test("unsigned GRO retention keeps the seven-day progression window and prunes bounded expired rows",async()=>{
+ const {db,env}=database();
+ const oldNow=Date.parse("2026-11-01T00:00:00.000Z");
+ const oldSignal={...signal,published_at:"2026-11-01T00:00:00.000Z",event_fingerprint:"c".repeat(64)};
+ await issueUnsignedDailyNewsBatch(env,[oldSignal],{now:oldNow});
+ assert.equal(await pruneUnsignedDailyNewsGros(env,oldNow),0);
+ const pruneAt=Date.parse("2026-11-09T00:05:00.000Z");
+ assert.equal(await pruneUnsignedDailyNewsGros(env,pruneAt),3);
  assert.equal(db.prepare("SELECT count(*) AS n FROM risk_stream_unsigned_news_gro").get().n,0);
 });
