@@ -3,9 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { DocumentHeader } from "@/components/docs/docs-layout";
 import { DOCS_GROUPS, DOCS_MANIFEST, DOCS_PAGE_COUNT } from "@/lib/docs-content";
 
-const TITLE = "Geomacro Documentation | Risk Indices, Risk Objects & Risk Gate";
+const TITLE = "Geomacro Documentation | Intelligence, Risk Objects & Risk Gate";
 const DESCRIPTION =
-  "Read Geomacro's public documentation for geopolitical, macroeconomic and critical-mineral Risk Indices, evidence governance, the GRI v1.2 proof lineage, Risk Objects, Risk Gate and APIs.";
+  "Read Geomacro's documentation for geopolitical, macroeconomic and critical-mineral intelligence, evidence governance, Risk Objects, Risk Gate and APIs.";
 const URL = "https://geomacro.live/docs";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
@@ -104,7 +104,7 @@ function DocsIndexPage() {
             Product guides, methodology and developer reference. Start with a topic below.
           </p>
 
-          <details className="mt-4 text-sm text-muted-foreground"><summary className="cursor-pointer">Methodology & historical context</summary><p className="mt-3 leading-7">The current public indices preserve the versioned gri-v1.2.0 parent methodology. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product.</p></details>
+          <details className="mt-4 text-sm text-muted-foreground"><summary className="cursor-pointer">Methodology & historical context</summary><p className="mt-3 leading-7">Historical index methodology is retained for audit reference, not offered as a live public product.</p></details>
           <div className="mt-7 flex flex-wrap gap-3 text-sm">
             <Link
               to="/intelligence"
@@ -129,7 +129,6 @@ function DocsIndexPage() {
               {[
                 "Real-world events",
                 "Structured signals",
-                "Separate Risk Indices",
                 "Change attribution",
                 "Risk Objects / Risk Gate",
               ].map((step, index, all) => (

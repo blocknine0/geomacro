@@ -2,7 +2,7 @@
 
 > Explainable geopolitical, macroeconomic and critical-mineral risk intelligence for human and machine decisions.
 
-Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The commercial product is the intelligence layer: live Risk Intelligence, separate verified Risk Indices, grounded Ask Geomacro, machine-readable Risk Objects, Risk Gate decision context and governed paid machine delivery.
+Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The commercial product is the intelligence layer: live Risk Intelligence, grounded Ask Geomacro, machine-readable Risk Objects, Risk Gate decision context and governed paid machine delivery.
 
 ## Current product status
 
@@ -17,13 +17,12 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Signed country and directional-corridor Risk Objects: PRIVATE PILOT
 - Paid agent / x402 access: PRODUCTION GATED; real-money settlement remains fail-closed until explicit production activation
 
-The separate public Risk Indices preserve the versioned `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records, not a second live headline product.
+The public Risk Indices page has been retired. Historical GRI proofs are internal audit references, not a live customer-facing product.
 
 ## Canonical product pages
 
 - Home: https://geomacro.live/
 - Risk Intelligence: https://geomacro.live/intelligence
-- Risk Indices: https://geomacro.live/risk-indices
 - Risk Gate: https://geomacro.live/risk-gate
 - Ask Geomacro: https://geomacro.live/ask-geomacro
 - Data & API: https://geomacro.live/data-api

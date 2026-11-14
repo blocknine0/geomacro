@@ -18,7 +18,7 @@ import { WalletProvider } from "../hooks/WalletProvider";
 
 const DEFAULT_TITLE = "Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DEFAULT_DESCRIPTION =
-  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence with evidence, confidence, change attribution, separate Risk Indices and machine-readable decision context.";
+  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence with evidence, confidence, change attribution and machine-readable decision context.";
 const DEFAULT_OG_IMAGE = "https://geomacro.live/og-image-v2.png";
 
 function NotFoundComponent() {
