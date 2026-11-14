@@ -429,8 +429,6 @@ export function AskWorkspace() {
               <Link to="/pricing" className="hover:text-foreground hover:underline">compare API and monthly access</Link>
               {" · "}
               <Link to="/intelligence" className="hover:text-foreground hover:underline">Intelligence</Link>
-              {" · "}
-              <Link to="/risk-indices" className="hover:text-foreground hover:underline">Risk Indices</Link>
             </p>
           </div>
         </div>

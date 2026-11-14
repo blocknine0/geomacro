@@ -18,7 +18,7 @@ function answerQuestion(input: string): string {
     return "Geomacro is an evidence-driven geopolitical, macroeconomic and critical-minerals risk intelligence product. It helps users see what changed, why it matters, supporting evidence, confidence and risk context.";
   }
   if (q.includes("live") || q.includes("launch") || q.includes("user") || q.includes("people") || q.includes("human")) {
-    return "At launch, users get Geomacro Intelligence, separate Risk Indices, Critical Minerals & Rare Earth Risk, Ask Geomacro, and supporting research/evidence surfaces. Only launch-ready capabilities are presented as live products.";
+    return "At launch, users get Geomacro Intelligence across three domains, Ask Geomacro, and supporting research/evidence surfaces. Only launch-ready capabilities are presented as live products.";
   }
   if (q.includes("roadmap") || q.includes("machine") || q.includes("agent") || q.includes("api") || q.includes("risk gate") || q.includes("x402")) {
     return "Governed machine/API delivery, signed Risk Objects, Risk Gate, paid agent/x402 production access and additional automation are roadmap or controlled capabilities, not part of the initial launch promise. API keys are coming soon. See /data-api for the request console and /pricing for the Store.";
