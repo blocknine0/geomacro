@@ -216,6 +216,7 @@
     "hosted-authority-readiness.yml",
     "hosting-alignment.yml",
     "hot-topic-family-readiness.yml",
+    "hot50-binding-delta-readonly.yml",
     "hot50-commercial-provider-readonly-preflight.yml",
     "hot50-direct-original-news-20m.yml",
     "hot50-news-daily-gro-ci.yml",
