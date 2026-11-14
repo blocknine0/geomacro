@@ -10,6 +10,7 @@ import {commercialDeliveryIsEnabled,stageLicensedCommercialDelivery}
  from "./risk-stream-commercial-outbox.mjs";
 
 const HEX=/^[a-f0-9]{64}$/u;
+const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
 const enc=new TextEncoder();
 const deny=code=>{throw Error("COMMERCIAL_ISSUER_"+code)};
 const iso=now=>new Date(now).toISOString();
@@ -33,6 +34,41 @@ const categoryRoles=Object.freeze({
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]
 });
+export async function stagePredgePullLicense(env,{groId,envelope,approval,now}){
+ if(approval?.customer_entitlement_verified!==true||
+    approval?.go_live_approved!==true||approval?.canary_hold_cleared!==true||
+    !HEX.test(approval?.signed_release_receipt_sha256??"")||
+    !Number.isFinite(Date.parse(approval?.customer_entitlement_expires_at))||
+    Date.parse(approval.customer_entitlement_expires_at)<=now||
+    Date.parse(approval.customer_entitlement_expires_at)>Date.parse(envelope?.payload?.expires_at))
+  deny("PREDGE_PULL_ENTITLEMENT_OR_RELEASE_UNVERIFIED");
+ const p=envelope?.payload,proof=envelope?.license_proof;
+ if(p?.tier!=="STANDARD"||p?.authorized_redistribution!==true||
+    p?.original_publisher_text_included!==false||
+    p?.execution_authorized!==false||p?.charged!==false||
+    !proof?.authorized_redistribution||!HEX.test(proof?.payload_sha256??""))
+  deny("PREDGE_PULL_LICENSE_INVALID");
+ const licenseId=await licensedSha(PREDGE_PULL_CLIENT_ID+"\n"+groId+"\n"+proof.payload_sha256);
+ const json=JSON.stringify(envelope),createdAt=iso(now);
+ await env.DB.prepare("INSERT OR IGNORE INTO risk_stream_predge_pull_licenses "+
+  "(license_id,client_id,gro_id,country_iso3,category,license_envelope_json,"+
+  "release_approval_json,license_payload_sha256,release_receipt_sha256,created_at,"+
+  "expires_at,entitlement_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+  .bind(licenseId,PREDGE_PULL_CLIENT_ID,groId,
+  p.subject.id,p.category,json,JSON.stringify(approval),proof.payload_sha256,
+  approval.signed_release_receipt_sha256,createdAt,p.expires_at,
+  approval.customer_entitlement_expires_at).run();
+ const saved=await env.DB.prepare("SELECT license_id,license_envelope_json,"+
+  "release_approval_json,license_payload_sha256,release_receipt_sha256,entitlement_expires_at FROM risk_stream_predge_pull_licenses "+
+  "WHERE client_id=? AND gro_id=? LIMIT 1").bind(PREDGE_PULL_CLIENT_ID,groId).first();
+ if(saved?.license_id!==licenseId||saved.license_envelope_json!==json||
+    saved.release_approval_json!==JSON.stringify(approval)||
+    saved.license_payload_sha256!==proof.payload_sha256||
+    saved.release_receipt_sha256!==approval.signed_release_receipt_sha256||
+    saved.entitlement_expires_at!==approval.customer_entitlement_expires_at)
+  deny("PREDGE_PULL_LICENSE_D1_READBACK_FAILED");
+ return "PREDGE_PULL_LICENSE_STAGED";
+}
 export function commercialIssuerEnabled(env){
  return commercialDeliveryIsEnabled(env)&&
   typeof env.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64==="string"&&
@@ -161,7 +197,7 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
    releasePublicSpkiB64:env.GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64,
    eligibleDerivedScore:score,approval,now
   });
-  envelopes.push({client_id:g.client_id,license,signature});
+  envelopes.push({client_id:g.client_id,license,signature,approval});
  }
  const signature=envelopes[0].signature;
  const inserted=await env.DB.prepare(
@@ -179,11 +215,16 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
   deny("REVIEWED_GRO_IMMUTABILITY_READBACK_FAILED");
  let staged=0;
  for(const g of envelopes){
-  const result=await stageLicensedCommercialDelivery(env,{
-   client:{client_id:g.client_id},groId:authorizedGroId,
-   envelope:g.license,now});
-  if(!["COMMERCIAL_JOB_STAGED","COMMERCIAL_JOB_IDEMPOTENT"].includes(result.status))
-   deny("COMMERCIAL_OUTBOX_READBACK_NOT_VERIFIED");
+  if(g.client_id===PREDGE_PULL_CLIENT_ID){
+   await stagePredgePullLicense(env,{groId:authorizedGroId,envelope:g.license,
+    approval:g.approval,now});
+  }else{
+   const result=await stageLicensedCommercialDelivery(env,{
+    client:{client_id:g.client_id},groId:authorizedGroId,
+    envelope:g.license,now});
+   if(!["COMMERCIAL_JOB_STAGED","COMMERCIAL_JOB_IDEMPOTENT"].includes(result.status))
+    deny("COMMERCIAL_OUTBOX_READBACK_NOT_VERIFIED");
+  }
   staged++;
  }
  return {status:"SIGNED_LICENSED_JOBS_DURABLE",source_gro_id:sourceGroId,
