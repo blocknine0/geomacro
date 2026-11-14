@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS risk_stream_unsigned_news_gro (
  CHECK(json_extract(payload_json,'$.news_analysis.evidence.status')=evidence_status),
  CHECK(json_extract(payload_json,'$.news_analysis.evidence.publisher_content_included')=0),
  CHECK(json_extract(payload_json,'$.news_analysis.evidence.verified_country_risk')=0),
+ CHECK(json_extract(payload_json,'$.news_analysis.evidence.source_kind') IN
+  ('NEWS_SIGNAL','RISK_STREAM_QUEUE_EVENT','DISCOVERY_LANE_SIGNAL',
+   'GLOBAL_SEARCH_INDEX_LEAD','CANONICAL_DERIVED_ANALYSIS')),
  CHECK(json_extract(payload_json,'$.signed')=0),
  CHECK(json_extract(payload_json,'$.signature_status')='UNSIGNED'),
  CHECK(json_extract(payload_json,'$.commercial_sale_authorized')=0),
