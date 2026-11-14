@@ -6,6 +6,8 @@
 import {makeDailyNewsGro} from "./risk-stream-news-gro.mjs";
 
 const TIERS=Object.freeze(["basic_focused","standard","complex_full"]);
+const SIGNAL_KINDS=new Set(["NEWS_SIGNAL","RISK_STREAM_QUEUE_EVENT",
+ "DISCOVERY_LANE_SIGNAL","GLOBAL_SEARCH_INDEX_LEAD","CANONICAL_DERIVED_ANALYSIS"]);
 const HEX=/^[a-f0-9]{64}$/u;
 const iso=n=>new Date(n).toISOString();
 const day=n=>iso(n).slice(0,10);
@@ -22,6 +24,8 @@ const safeAnalysisText=(value,fallback)=>
 export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
  if(!Number.isSafeInteger(now)||!TIERS.includes(tier))fail("INPUT_INVALID");
  const source=await makeDailyNewsGro(signal,tier,{now});
+ const signalKind=signal?.signal_kind??"NEWS_SIGNAL";
+ if(!SIGNAL_KINDS.has(signalKind))fail("SIGNAL_KIND_INVALID");
  const payload={...source.payload,
   schema:"geomacro.hot50-news-unsigned-gro.v1",
   product_type:"NEWS_ANALYSIS_RISK_GATE",
@@ -29,12 +33,16 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
   news_analysis_only:true,
   news_analysis:{
    what:safeAnalysisText(signal?.derived?.what,
-    `A fresh ${payload.category} news signal was observed for ${payload.country_iso3}; publisher text is not included.`),
+    signalKind==="GLOBAL_SEARCH_INDEX_LEAD"?
+     `Global search found an unverified publisher lead for ${payload.country_iso3} ${payload.category}; no publisher text is included.`:
+     signalKind==="DISCOVERY_LANE_SIGNAL"?
+     `An unverified discovery-lane signal was observed for ${payload.country_iso3} ${payload.category}; no publisher text is included.`:
+     `A fresh ${payload.category} news signal was observed for ${payload.country_iso3}; publisher text is not included.`),
    why:safeAnalysisText(signal?.derived?.why,
     "Potential relevance depends on independent confirmation and the affected exposure."),
    market:safeAnalysisText(signal?.derived?.market,payload.assessment.market_relevance),
    watch:safeAnalysisText(signal?.derived?.watch,payload.assessment.watch),
-   evidence:{status:payload.evidence_status,
+   evidence:{status:payload.evidence_status,source_kind:signalKind,
     interpretation:payload.evidence_status==="UNVERIFIED_SIGNAL"?
      "Unverified signal only; no corroborated event or measured country risk is asserted.":
      payload.evidence_status==="DUAL_ATTESTED_ORIGINAL"?
@@ -91,6 +99,7 @@ async function validStored(row,expected){
   typeof p.news_analysis.why==="string"&&typeof p.news_analysis.market==="string"&&
   typeof p.news_analysis.watch==="string"&&
   p.news_analysis.evidence?.status===p.evidence_status&&
+  SIGNAL_KINDS.has(p.news_analysis.evidence?.source_kind)&&
   p.news_analysis.evidence?.publisher_content_included===false&&
   p.news_analysis.evidence?.verified_country_risk===false&&!Object.hasOwn(p,"signature_b64")&&
   !Object.hasOwn(p,"signing_key_id")&&!Object.hasOwn(p,"signature")&&
