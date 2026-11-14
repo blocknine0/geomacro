@@ -50,16 +50,37 @@ export const HOT50_ACTIVATION_COVERAGE_SQL=`WITH hot(iso3) AS (VALUES ${hotRows}
  FROM hot CROSS JOIN cats LEFT JOIN cells
  ON cells.country_iso3=hot.iso3 AND cells.category=cats.cat
  ORDER BY hot.iso3,cats.cat`;
+function stateRows(values){
+ if(!Array.isArray(values))throw Error("ACTIVATION_CENSUS_STATE_MISSING");
+ const counts={},recovery={};
+ for(const item of values){
+  if(typeof item.state!=="string"||item.state.length>48||Object.hasOwn(counts,item.state))
+   throw Error("ACTIVATION_CENSUS_STATE_INVALID");
+  counts[item.state]=assertedCount(item.n);
+  recovery[item.state]={
+   due_now:assertedCount(item.due_now??0),
+   future_due:assertedCount(item.future_due??0),
+   recent_cooldown:assertedCount(item.recent_cooldown??0),
+   active_leases:assertedCount(item.active_leases??0),
+   expired_leases:assertedCount(item.expired_leases??0)
+  };
+ }
+ return {counts,recovery};
+}
 export async function readHot50ActivationCensus(env, now=Date.now()){
  if(!env?.DB?.prepare||!Number.isSafeInteger(now))return reply({
   ok:false,error:"ACTIVATION_D1_BINDING_UNAVAILABLE"},503);
  const day=new Date(now).toISOString(),cutoff=new Date(now-72*3600000).toISOString();
+ const stale=new Date(now-5*60000).toISOString();
  try{
   const [outbox,queue,bundles,r2,historical,coverage]=await Promise.all([
    env.DB.prepare(`SELECT COUNT(*) total,
      COALESCE(SUM(CASE WHEN state='PENDING_ARCHIVE' THEN 1 ELSE 0 END),0) pending,
      COALESCE(SUM(CASE WHEN state='REPLAYING' THEN 1 ELSE 0 END),0) replaying,
-     COALESCE(SUM(CASE WHEN state='REPLAYING' AND locked_until<=? THEN 1 ELSE 0 END),0) expired_leases,
+     COALESCE(SUM(CASE WHEN state='REPLAYING' AND (locked_until IS NULL OR locked_until<=?) THEN 1 ELSE 0 END),0) expired_leases,
+     COALESCE(SUM(CASE WHEN state='PENDING_ARCHIVE' AND next_retry_at IS NOT NULL AND next_retry_at>? THEN 1 ELSE 0 END),0) future_due,
+     COALESCE(SUM(CASE WHEN state='PENDING_ARCHIVE' AND (next_retry_at IS NULL OR next_retry_at<=?) THEN 1 ELSE 0 END),0) due_now,
+     COALESCE(SUM(CASE WHEN state='REPLAYING' AND locked_until>? THEN 1 ELSE 0 END),0) active_leases,
      COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) archived,
      COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (NOT EXISTS (
        SELECT 1 FROM ingestion_spool_bundles b
@@ -75,22 +96,33 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
            WHERE n.candidate_sha256=q.candidate_sha256 AND n.source_id=q.source_id
             AND n.b2_archive_uri=q.b2_spool_uri))<>item_count)
        THEN 1 ELSE 0 END),0) journal_mismatch
-      FROM p0b_archive_outbox`).bind(day).first(),
-   env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_queue GROUP BY state").all(),
-   env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_bundles GROUP BY state").all(),
-   env.DB.prepare("SELECT state,COUNT(*) n FROM p0b_private_r2_fallback GROUP BY state").all(),
+      FROM p0b_archive_outbox`).bind(day,day,day,day).first(),
+   env.DB.prepare(`SELECT state,COUNT(*) n,
+     COALESCE(SUM(CASE WHEN state IN ('PENDING','RETRY') AND spooled_at<=? THEN 1 ELSE 0 END),0) due_now,
+     COALESCE(SUM(CASE WHEN state IN ('PENDING','RETRY') AND spooled_at>? THEN 1 ELSE 0 END),0) recent_cooldown,
+     COALESCE(SUM(CASE WHEN state='PROCESSING' AND locked_until>? THEN 1 ELSE 0 END),0) active_leases,
+     COALESCE(SUM(CASE WHEN state='PROCESSING' AND (locked_until IS NULL OR locked_until<=?) THEN 1 ELSE 0 END),0) expired_leases
+     FROM ingestion_spool_queue INDEXED BY idx_spool_state_locked GROUP BY state`).bind(stale,stale,day,day).all(),
+   env.DB.prepare(`SELECT state,COUNT(*) n,
+     COALESCE(SUM(CASE WHEN state IN ('PENDING','RETRY') AND created_at<=? THEN 1 ELSE 0 END),0) due_now,
+     COALESCE(SUM(CASE WHEN state IN ('PENDING','RETRY') AND created_at>? THEN 1 ELSE 0 END),0) recent_cooldown,
+     COALESCE(SUM(CASE WHEN state='PROCESSING' AND locked_until>? THEN 1 ELSE 0 END),0) active_leases,
+     COALESCE(SUM(CASE WHEN state='PROCESSING' AND (locked_until IS NULL OR locked_until<=?) THEN 1 ELSE 0 END),0) expired_leases
+     FROM ingestion_spool_bundles INDEXED BY idx_p0b_bundle_pending GROUP BY state`).bind(stale,stale,day,day).all(),
+   env.DB.prepare(`SELECT state,COUNT(*) n,
+     COALESCE(SUM(CASE WHEN state='PENDING_B2' AND next_retry_at<=? THEN 1 ELSE 0 END),0) due_now,
+     COALESCE(SUM(CASE WHEN state='PENDING_B2' AND next_retry_at>? THEN 1 ELSE 0 END),0) future_due,
+     COALESCE(SUM(CASE WHEN state='PROCESSING' AND locked_until>? THEN 1 ELSE 0 END),0) active_leases,
+     COALESCE(SUM(CASE WHEN state='PROCESSING' AND (locked_until IS NULL OR locked_until<=?) THEN 1 ELSE 0 END),0) expired_leases
+     FROM p0b_private_r2_fallback INDEXED BY idx_p0b_r2_pending GROUP BY state`).bind(day,day,day,day).all(),
    env.DB.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).first(),
    env.DB.prepare(HOT50_ACTIVATION_COVERAGE_SQL).bind(cutoff,day).all()
   ]);
-  const queueStates={},bundleStates={},r2States={};
-  for(const [values,output] of [[queue?.results,queueStates],[bundles?.results,bundleStates],[r2?.results,r2States]]){
-   if(!Array.isArray(values))throw Error("ACTIVATION_CENSUS_STATE_MISSING");
-   for(const item of values){
-    if(typeof item.state!=="string"||item.state.length>48||Object.hasOwn(output,item.state))
-     throw Error("ACTIVATION_CENSUS_STATE_INVALID");
-    output[item.state]=assertedCount(item.n);
-   }
-  }
+  const queueBreakdown=stateRows(queue?.results);
+  const bundleBreakdown=stateRows(bundles?.results);
+  const r2Breakdown=stateRows(r2?.results);
+  const queueStates=queueBreakdown.counts,bundleStates=bundleBreakdown.counts,
+   r2States=r2Breakdown.counts;
   // A missing/partial migration or damaged counter cannot assert zero debt.
   if(assertedCount(historical?.categories)!==3||
      assertedCount(historical?.total)<assertedCount(historical?.unarchived))
@@ -139,7 +171,19 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
      exact_bundle_journal_mismatch:assertedCount(outbox.journal_mismatch),
      d1_zero_unhandled_proven:totalUnhandled===0&&assertedCount(outbox.journal_mismatch)===0,
      zero_unhandled_proven:zeroProof,queue_states:queueStates,
-     bundle_states:bundleStates,r2_states:r2States},
+     bundle_states:bundleStates,r2_states:r2States,
+     recovery_state_classification:{
+      outbox:{pending_archive_due_now:assertedCount(outbox.due_now),
+       pending_archive_future_due:assertedCount(outbox.future_due),
+       replaying_active_leases:assertedCount(outbox.active_leases),
+       replaying_expired_leases:assertedCount(outbox.expired_leases),
+       archived:assertedCount(outbox.archived),
+       journal_mismatch:assertedCount(outbox.journal_mismatch)},
+      queue:queueBreakdown.recovery,bundles:bundleBreakdown.recovery,
+      r2:r2Breakdown.recovery,
+      historical_raw:{unarchived:assertedCount(historical.unarchived),
+       state_model:"archive_counter_only",eligibility_window_resolved:false}
+     }},
     coverage:{freshness_window_hours:72,
      observed_cells:150-missing,empty_cells:missing,
      original_dated_cells:matrix.filter(x=>x.original_dated_events>0).length,
