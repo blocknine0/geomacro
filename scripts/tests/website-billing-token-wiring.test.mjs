@@ -45,7 +45,7 @@ test("Website recovery and original pulse retain separate provider Billing Read"
  const recovery=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
  const pulse=readFileSync(".github/workflows/three-domain-30m-original-publisher-pulse.yml","utf8");
  for(const [name,workflow] of [["recovery",recovery],["pulse",pulse]]){
-  const i=workflow.indexOf("  quota-admission:");
+  const i=workflow.indexOf(name==="pulse"?"  original-publisher-pulse:":"  quota-admission:");
   const start=name==="pulse"?workflow.indexOf("- name: Govern source pulse with paced Free D1 account budget"):
    workflow.indexOf("- name: Check account-wide D1 headroom before dispatch or catch-up",i);
   const end=workflow.indexOf("run: node scripts/ops/plan-d1-bundled-work.mjs",start);
