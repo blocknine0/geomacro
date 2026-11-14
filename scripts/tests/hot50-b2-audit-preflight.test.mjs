@@ -61,3 +61,18 @@ test("audit source checks D1 census and account quota BEFORE the FIRST B2 client
  assert.match(source,/PARITY_MAX_B2_READS/u);
  assert.doesNotMatch(source,/ListObjects|listObjectVersions|listBucketVersions/u);
 });
+
+test("protected release records numeric backlog diagnosis before B2 GET and preserves final HOLD",()=>{
+ const code=readFileSync("scripts/certify-b2-parity.ts","utf8");
+ const census=code.indexOf("const before=await admin('/v1/internal/activation/hot50-census')");
+ const diagnostic=code.indexOf("persist('artifacts/release/hot50-b2-d1-backlog-diagnostic.json'");
+ const admission=code.indexOf("'PARITY_D1_BACKLOG_NOT_ZERO'");
+ const get=code.indexOf("await b2.get(");
+ assert.ok(census>=0&&diagnostic>census&&admission>diagnostic&&get>admission);
+ assert.match(code,/total_unhandled:safeCount\(backlog\.total_unhandled\)/u);
+ assert.match(code,/exact_bundle_journal_mismatch:safeCount\(backlog\.exact_bundle_journal_mismatch\)/u);
+ assert.match(code,/full_bucket_inventory_verified:false/u);
+ assert.match(code,/b2_requests:0,provider_mutations:0,payments:0/u);
+ assert.match(code,/scope:'D1_INDEXED_B2_R2_READBACK_ONLY'/u);
+ assert.match(code,/status:'HOLD',verified_at:/u);
+});
