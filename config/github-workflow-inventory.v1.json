@@ -702,7 +702,7 @@
     ],
     "apply-risk-stream-migration-0214.yml": [
       "workflow_dispatch:",
-      "options: [preflight, apply]",
+      "options: [preflight, apply, verify]",
       "environment: production",
       "0214_risk_stream_event_driven.sql",
       "d1 execute",
