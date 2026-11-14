@@ -21,6 +21,9 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
  const source=await makeDailyNewsGro(signal,tier,{now});
  const payload={...source.payload,
   schema:"geomacro.hot50-news-unsigned-gro.v1",
+  product_type:"NEWS_ANALYSIS_RISK_GATE",
+  analysis_basis:"NEWS_SIGNAL_NOT_MARKET_PRICE_OR_VERIFIED_COUNTRY_RISK",
+  news_analysis_only:true,
   signed:false,signature_status:"UNSIGNED",
   source_rights_verified:false,
   customer_delivery_authorized:false,
@@ -54,16 +57,18 @@ async function validStored(row,expected){
     !HEX.test(row.payload_sha256??""))return false;
  if(await hash(row.payload_json)!==row.payload_sha256)return false;
  let p;try{p=JSON.parse(row.payload_json)}catch{return false}
- const allowlist=["assessment","billable","category","certified_risk_index",
+ const allowlist=["analysis_basis","assessment","billable","category","certified_risk_index",
   "commercial_eligibility","commercial_sale_authorized","country_iso3",
   "customer_delivery_authorized","day_utc","event_class","event_fingerprint",
   "evidence_corroborated","evidence_status","execution_authorized","expires_at",
-  "generated_at","intelligence_owner","issuer","original_publisher_text_included",
-  "raw_source_disclosed","raw_upstream_text_included","schema","signature_status",
+  "generated_at","intelligence_owner","issuer","news_analysis_only",
+  "original_publisher_text_included","product_type","raw_source_disclosed","raw_upstream_text_included","schema","signature_status",
   "signed","source_rights_verified","tier","tier_status"].sort();
  return Object.keys(p).sort().join("|")===allowlist.join("|")&&
-  p.schema==="geomacro.hot50-news-unsigned-gro.v1"&&p.signed===false&&
-  p.signature_status==="UNSIGNED"&&!Object.hasOwn(p,"signature_b64")&&
+  p.schema==="geomacro.hot50-news-unsigned-gro.v1"&&
+  p.product_type==="NEWS_ANALYSIS_RISK_GATE"&&
+  p.analysis_basis==="NEWS_SIGNAL_NOT_MARKET_PRICE_OR_VERIFIED_COUNTRY_RISK"&&
+  p.news_analysis_only===true&&p.signed===false&&p.signature_status==="UNSIGNED"&&!Object.hasOwn(p,"signature_b64")&&
   !Object.hasOwn(p,"signing_key_id")&&!Object.hasOwn(p,"signature")&&
   p.gro_id===undefined&&p.country_iso3===expected.country_iso3&&
   p.category===expected.category&&p.day_utc===expected.day_utc&&
