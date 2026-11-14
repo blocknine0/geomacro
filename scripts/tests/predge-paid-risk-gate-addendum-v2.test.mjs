@@ -55,11 +55,11 @@ test("Predge license contract requires exactly one bounded end-buyer identifier"
 test("paid trial mode is time bounded and falls into cross-checked paid mode",()=>{
  const policy={policy_id:"predge-paid-traffic-addendum-v2"};
  const start=Date.parse("2026-11-10T12:00:00Z");
- const env={PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_MUTUAL_TRIAL_STARTED_AT:new Date(start).toISOString()};
+ const env={PREDGE_PAID_TRAFFIC_ENABLED:"NO",PREDGE_MUTUAL_TRIAL_STARTED_AT:new Date(start).toISOString()};
  assert.equal(predgePaidTrafficMode(env,policy,start),"MUTUAL_72H_TRIAL");
  assert.equal(predgePaidTrafficMode(env,policy,start+72*3600_000-1),"MUTUAL_72H_TRIAL");
  assert.equal(predgePaidTrafficMode(env,policy,start+72*3600_000),null);
- assert.equal(predgePaidTrafficMode({...env,PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},
+ assert.equal(predgePaidTrafficMode({...env,PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},
   policy,start+72*3600_000),"PAID_ADDENDUM_V2");
  assert.equal(predgePaidTrafficMode({PREDGE_PAID_TRAFFIC_ENABLED:"YES",
   PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS"},policy,start),"PAID_ADDENDUM_V2");
@@ -403,9 +403,9 @@ test("paid Risk Gate verdict is signed for one use, supports exact retries, and 
 test("active mutual trial delivers a signed one-buyer decision with zero fees and records trial usage",async()=>{
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  fixture.request_id="paid-mutual-trial-integration-001";
- const {publicKey,privateKey}=generateKeyPairSync("ed25519"),db=paidRiskGateFixtureDb();
+  const {publicKey,privateKey}=generateKeyPairSync("ed25519"),db=paidRiskGateFixtureDb();
  const token="b".repeat(64),env={PREDGE_PAID_RISK_GATE_TOKEN:token,
-  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-11T00:00:00Z",
+  PREDGE_PAID_TRAFFIC_ENABLED:"NO",PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-11T00:00:00Z",
   RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
   RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
   RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
