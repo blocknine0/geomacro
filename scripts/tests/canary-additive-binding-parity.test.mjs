@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
  reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS,diagnoseReviewedHot50BindingDelta}
  from "../lib/canary-additive-binding-parity.mjs";
-import {candidateConfig} from "../ops/prepare-optimized-worker-candidate.mjs";
+import {candidateConfig,verifyCandidateBindings} from "../ops/prepare-optimized-worker-candidate.mjs";
 import {requireCanaryObservabilityPrerequisites} from "../canary-promoter.ts";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
@@ -101,6 +102,27 @@ test("Wrangler raw plain_text binding config satisfies uploaded-version parity",
  assert.equal(assessReviewedHot50BindingParity(version(baseline.resources.bindings),
   version(uploaded.resources.bindings),sha,[],researchRuntime).status,
   "PASS_REVIEWED_HOT50_PARITY");
+});
+test("exact-main upload contract passes with STREAM_MODE and the four reviewed secrets",()=>{
+ const reviewed=["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
+  "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
+  "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64","RISK_STREAM_INDEX_LEAD_BEARER"];
+ const base={resources:{script_runtime:{compatibility_date:"2026-10-03",
+  compatibility_flags:[]},bindings:[...streamBaseline,{name:"CONTROL_PLANE_TOKEN",
+   type:"secret_text"}]}};
+ const config=candidateConfig(base,sha,reviewed,researchRuntime);
+ const inherited=new Map(base.resources.bindings.map(row=>[row.name,row]));
+ const uploaded={resources:{script_runtime:structuredClone(base.resources.script_runtime),
+  bindings:[
+   ...Object.entries(config.vars).map(([name,text])=>({name,type:"plain_text",text})),
+   ...config.unsafe.bindings.map(row=>row.type==="inherit"?
+    structuredClone(inherited.get(row.name)):
+    ({name:row.name,type:row.type,text:row.text})),
+   ...reviewed.map(name=>({name,type:"secret_text"}))
+  ]}};
+ assert.equal(uploaded.resources.bindings.filter(row=>row.name==="STREAM_MODE").length,1);
+ assert.deepEqual(REVIEWABLE_ADDITIVE_SECRETS.filter(name=>reviewed.includes(name)),reviewed);
+ assert.equal(verifyCandidateBindings(base,uploaded,sha,reviewed,researchRuntime),true);
 });
 test("Predge vars default fail-closed and explicitly reviewed trial vars are validated",()=>{
  const defaults=reviewedHot50CandidateVars(sha);
@@ -245,11 +267,17 @@ test("reviewed named candidate additions remain diagnostic-only, not authorizati
   ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"],researchRuntime).status,"PASS_REVIEWED_HOT50_PARITY");
 });
 
-test("canary refuses missing or malformed zone analytics identity before traffic changes",()=>{
- assert.throws(()=>requireCanaryObservabilityPrerequisites({}),
-  /CANARY_ZONE_ID_REQUIRED_BEFORE_TRAFFIC/);
+test("Lovable domain canary uses worker-level telemetry without a Cloudflare Zone",()=>{
+ assert.equal(requireCanaryObservabilityPrerequisites({}),"WORKER_D1_B2_ONLY");
+ assert.equal(requireCanaryObservabilityPrerequisites({CLOUDFLARE_ZONE_ID:""}),
+  "WORKER_D1_B2_ONLY");
  assert.throws(()=>requireCanaryObservabilityPrerequisites({CLOUDFLARE_ZONE_ID:"bad"}),
-  /CANARY_ZONE_ID_REQUIRED_BEFORE_TRAFFIC/);
+  /CANARY_ZONE_ID_INVALID/);
  assert.equal(requireCanaryObservabilityPrerequisites({
-  CLOUDFLARE_ZONE_ID:"a".repeat(32)}),undefined);
+  CLOUDFLARE_ZONE_ID:"a".repeat(32)}),"ZONE_AND_WORKER");
+ const promoter=readFileSync(new URL("../canary-promoter.ts",import.meta.url),"utf8");
+ assert.match(promoter,/queryCloudflareAnalytics\(WORKER_GRAPH/);
+ assert.match(promoter,/zone_http_5xx_unavailable_reason:zone\?null:'NO_CLOUDFLARE_ZONE_FOR_DOMAIN'/);
+ assert.match(promoter,/CANARY_D1_SCHEMA_PROOF_NOT_ACCEPTED/);
+ assert.match(promoter,/b2-physical-parity-certificate\.json/);
 });
