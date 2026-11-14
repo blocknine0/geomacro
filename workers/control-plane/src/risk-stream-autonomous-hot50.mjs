@@ -366,13 +366,15 @@ export async function hot50DailySignalInputs(target,pool,now=Date.now()){
   if(!same(r)||!current(r.source_clock_at))continue;
   inputs.push({country_iso3:target.country_iso3,category:target.category,
    event_fingerprint:await hash("discovery\n"+r.signal_id),
-   published_at:r.source_clock_at,original_verified:false});
+   published_at:r.source_clock_at,original_verified:false,
+   signal_kind:"DISCOVERY_LANE_SIGNAL"});
  }
  for(const r of pool.search??[]){
   if(!same(r)||!current(r.published_at))continue;
   inputs.push({country_iso3:target.country_iso3,category:target.category,
    event_fingerprint:await hash("search\n"+r.lead_id),
-   published_at:r.published_at,original_verified:false});
+   published_at:r.published_at,original_verified:false,
+   signal_kind:"GLOBAL_SEARCH_INDEX_LEAD"});
  }
  for(const r of pool.evidence??[]){
   if(!same(r)||!current(r.published_at))continue;
@@ -388,7 +390,7 @@ export async function hot50DailySignalInputs(target,pool,now=Date.now()){
   inputs.push({country_iso3:target.country_iso3,category:target.category,
    event_fingerprint:r.event_fingerprint,published_at:r.published_at,
    original_verified:eligibleOriginal,corroborated_signed_original:eligibleOriginal&&signed,
-   derived});
+   signal_kind:"CANONICAL_DERIVED_ANALYSIS",derived});
  }
  // The caller uses the immutable signed-D1 completion census to choose
  // pending events. A clock-derived modulo can starve specific event hashes.
