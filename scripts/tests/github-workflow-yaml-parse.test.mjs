@@ -27,7 +27,12 @@ const parseWorkflow=filename=>{
   const position=error?.mark?
    ` at line ${error.mark.line+1}, column ${error.mark.column+1}`:"";
   const excerpt=typeof error?.mark?.snippet==="string"?`\n${error.mark.snippet}`:"";
-  throw Error('INVALID_GITHUB_WORKFLOW_YAML '+filename+position+': '+String(error?.reason??error?.message??error)+excerpt);
+  const sourceLine=typeof error?.mark?.buffer==="string"?
+   (error.mark.buffer.split(/\r?\n/u)[error.mark.line]??""):"";
+  const version=String(yaml.VERSION??yaml.default?.VERSION??"unknown");
+  throw Error('INVALID_GITHUB_WORKFLOW_YAML '+filename+position+
+   ' parser='+version+': '+String(error?.reason??error?.message??error)+
+   (sourceLine?`\n${sourceLine}`:"")+excerpt);
  }
 };
 
