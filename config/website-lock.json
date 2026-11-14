@@ -1284,7 +1284,7 @@
   "approved_risk_indices_page_retirement_20261114": {
     "approval": "Owner explicitly directed permanent removal of the Risk Indices page on 2026-11-14 (Asia/Kolkata); follow-up narrowed scope to the public page only.",
     "purpose": "Retire only /risk-indices, its navigation and public product claims. Preserve GRI historical/backend proof, /global-risk frozen lock, OSINT, commercial Risk Gate, website safeguards and paid go-live hold.",
-    "approved_source_commit": "16f76baec93bd743e60b78053fe2435ec0447ffc",
+    "approved_source_commit": "6a7259d393ba9afff3642a9223c37f1709b38f88",
     "approved_paths": [
       "src/routes/risk-indices.tsx",
       "src/components/site-shell.tsx",
@@ -1300,7 +1300,15 @@
       "src/routes/docs.tsx",
       "public/sitemap.xml",
       "public/llms.txt",
-      "README.md"
+      "README.md",
+      "src/content/docs/00-overview.md",
+      "src/content/docs/01-what-is-geomacro.md",
+      "src/content/docs/02-product-architecture.md",
+      "src/content/docs/03-product-surfaces.md",
+      "src/content/docs/12-data-availability.md",
+      "src/content/docs/38-global-coverage.md",
+      "src/content/docs/49-commercial-availability.md",
+      "src/content/docs/51-summary.md"
     ],
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
