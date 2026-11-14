@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
- reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS}
+ reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS,diagnoseReviewedHot50BindingDelta}
  from "../lib/canary-additive-binding-parity.mjs";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
@@ -155,4 +155,33 @@ test("canonical six-stage canary signs Hot50 owner review even when secret addit
  assert.match(promoter,/CANARY_HOT50_SIGNED_OWNER_REVIEW_MISSING/);
  assert.match(promoter,/review\.reviewed_hot50_runtime==='ENABLE_HOT50_RESEARCH_NO_FUNDS'/);
  assert.match(promoter,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
+});
+
+test("provider delta names identify unreviewed additions without leaking any values",()=>{
+ const base=version([...streamBaseline,{name:"SECRET_KEY",type:"secret_text",secret:"PRIVATE_MATERIAL"}]);
+ const candidate=version([...streamCandidate,
+  {name:"SECRET_KEY",type:"secret_text",secret:"PRIVATE_MATERIAL"},
+  {name:"UNEXPECTED_BINDING",type:"plain_text",text:"DO_NOT_LOG_THIS_VALUE"}]);
+ const result=diagnoseReviewedHot50BindingDelta(base,candidate,sha,[]);
+ assert.equal(result.status,"UNREVIEWED_BINDING_DELTA_HOLD");
+ assert.ok(result.unexpected_addition_names.includes("UNEXPECTED_BINDING"));
+ assert.deepEqual(result.actual_additions.find(x=>x.name==="UNEXPECTED_BINDING"),
+  {name:"UNEXPECTED_BINDING",type:"plain_text"});
+ assert.equal(result.secret_values_included,false);
+ assert.equal(result.plain_text_values_included,false);
+ assert.equal(result.traffic_promoted,false);
+ assert.doesNotMatch(JSON.stringify(result),/DO_NOT_LOG_THIS_VALUE|PRIVATE_MATERIAL/);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,candidate,sha,[]),
+  /UNREVIEWED_ADDITION/);
+});
+test("reviewed named candidate additions remain diagnostic-only, not authorization",()=>{
+ const base=version(streamBaseline);
+ const cand=version([...streamCandidate.filter(x=>!REVIEWABLE_ADDITIVE_SECRETS.includes(x.name)),
+  {name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"}]);
+ const result=diagnoseReviewedHot50BindingDelta(base,cand,sha,
+  ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"]);
+ assert.equal(result.status,"NO_UNEXPECTED_BINDING_NAMES");
+ assert.deepEqual(result.unexpected_addition_names,[]);
+ assert.equal(assessReviewedHot50BindingParity(base,cand,sha,
+  ["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64"]).status,"PASS_REVIEWED_HOT50_PARITY");
 });

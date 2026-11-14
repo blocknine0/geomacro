@@ -9,7 +9,7 @@ import {resolve} from 'node:path';
 import {checkD1PaidMonthlyHeadroom}
  from '../lib/d1-workers-paid-monthly-governor.mjs';
 import {REVIEWABLE_ADDITIVE_SECRETS,reviewedHot50CandidateVars,
- assessReviewedHot50BindingParity}
+ assessReviewedHot50BindingParity,diagnoseReviewedHot50BindingDelta}
  from '../lib/canary-additive-binding-parity.mjs';
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
@@ -196,6 +196,11 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
     'GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'].includes(x.name)).map(x=>[x.name,x.text??null])),
   changed_runtime_keys:changedRuntimeKeys,d1_sql_queries:0,traffic_promoted:false,payments:0
  },null,2)+'\n');
+ // Metadata-only, available even if the strict parity check rejects upload.
+ const bindingDelta=diagnoseReviewedHot50BindingDelta(baseline,candidate,
+  env.GITHUB_SHA,reviewedSecrets,env);
+ writeFileSync('artifacts/protected-canary/candidate-binding-delta.json',
+  JSON.stringify(bindingDelta,null,2)+'\n',{mode:0o600});
  verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA,reviewedSecrets,env);
  const final=await get('/deployments?per_page=1');
  if(canonical(final.deployments?.[0]?.versions)!==canonical(versions))

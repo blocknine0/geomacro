@@ -83,6 +83,38 @@ const canonical=x=>JSON.stringify(x,(_,v)=>
  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 // Caller must explicitly provide the reviewed source-controlled secret names when
 // these are newly introduced. A version with hidden/unknown text is a HOLD.
+/**
+ * Read-only diagnostic of provider binding names and TYPES, never credential
+ * values, tokens, binding IDs, plain-text values, or unreviewed flag contents.
+ * The strict gate below still rejects anything not already approved.
+ */
+export function diagnoseReviewedHot50BindingDelta(base,candidate,sha,reviewedSecrets=[],runtimeVars={}){
+ const a=bindingInventory(base),b=bindingInventory(candidate);
+ const desired=reviewedHot50CandidateVars(sha,runtimeVars);
+ const desiredNew=[...Object.keys(desired).filter(name=>!a.has(name)),
+  ...reviewedSecrets.filter(name=>!a.has(name))];
+ const expected=new Set(desiredNew);
+ const safe=name=>/^[A-Z_][A-Z0-9_]{0,100}$/u.test(name)?name:"REDACTED_INVALID_BINDING_NAME";
+ const addition=[...b.keys()].filter(name=>!a.has(name)).sort();
+ const removed=[...a.keys()].filter(name=>!b.has(name)).sort();
+ const unexpected=addition.filter(name=>!expected.has(name));
+ const missing=desiredNew.filter(name=>!b.has(name));
+ const wronglyTyped=[...b.keys()].filter(name=>a.has(name)&&a.get(name)!==b.get(name));
+ return Object.freeze({
+  schema:"geomacro.protected-worker-binding-delta.v1",
+  status:unexpected.length||missing.length||removed.length||wronglyTyped.length?
+   "UNREVIEWED_BINDING_DELTA_HOLD":"NO_UNEXPECTED_BINDING_NAMES",
+  actual_additions:addition.map(name=>({name:safe(name),type:b.get(name)})),
+  expected_additions:[...expected].sort().map(safe),
+  unexpected_addition_names:unexpected.map(safe),
+  expected_additions_missing:missing.map(safe),
+  removed_binding_names:removed.map(safe),
+  changed_binding_type_names:wronglyTyped.map(safe),
+  baseline_binding_count:a.size,candidate_binding_count:b.size,
+  secret_values_included:false,plain_text_values_included:false,
+  secret_metadata_included:false,traffic_promoted:false,payments:0
+ });
+}
 export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecrets=[],predgeRuntimeVars={}){
  const required=reviewedHot50CandidateVars(sha,predgeRuntimeVars);
  const a=bindingInventory(base),b=bindingInventory(candidate);
