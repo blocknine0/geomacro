@@ -91,7 +91,7 @@ export function summarizePrivateOsintThreeCategoryHealth(sources,{
     !Number.isFinite(now))throw Error('PRIVATE_OSINT_LIVE_HEALTH_INVALID');
  const domains=['geopolitics','macro','rare_earth'];
  const healthyStates=new Set(['OBSERVED','EMPTY_OR_OUTSIDE_WINDOW']);
- const perCategory={};
+ const perCategory=Object.create(null);
  for(const category of domains){
   const scoped=sources.filter(s=>s.category===category);
   const checked=scoped.filter(s=>s.transport_parser_state!=='NOT_CHECKED');
@@ -100,8 +100,10 @@ export function summarizePrivateOsintThreeCategoryHealth(sources,{
     scoped.reduce((sum,s)=>sum+(s.candidates_observed_this_sweep??0),0):null;
   const acknowledged=d1ReadbackVerified?
     scoped.reduce((sum,s)=>sum+(s.d1_originals_acknowledged_in_retained_queue??0),0):null;
-  const stateCounts=Object.fromEntries([...new Set(scoped.map(s=>s.transport_parser_state))]
-   .sort().map(state=>[state,scoped.filter(s=>s.transport_parser_state===state).length]));
+  // Never turn provider-controlled parser states into object property names.
+  // Enumerated rows prevent prototype-key injection from hostile feed metadata.
+  const stateCounts=[...new Set(scoped.map(s=>s.transport_parser_state))]
+   .sort().map(state=>({state,count:scoped.filter(s=>s.transport_parser_state===state).length}));
   perCategory[category]=Object.freeze({
    configured_source_category_checks:scoped.length,
    actual_source_category_checks:checked.length,
