@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-/** Generate deterministic source/category D1 registration from 369 independently
- * observed (source-known) endpoint definitions plus eight licensed official
- * Atom feeds. A lane is one endpoint/category combination, not 1077 URLs.
+/** Generate deterministic source/category D1 registration from the 369-source
+ * working manifest, eight separately live-probed official additions and eight
+ * UK OGL Atom feeds. A lane is one endpoint/category combination, not a URL.
  *
  * This seeder NEVER fetches an unavailable feed or certifies current health.
  */
@@ -12,6 +12,14 @@ const ogl=JSON.parse(readFileSync("config/official-ogl-atom-sources.json","utf8"
 const hot50=JSON.parse(readFileSync("config/hot-50-three-domain-watch.v1.json","utf8"));
 const fallback=JSON.parse(readFileSync(
  "config/hot50-verified-global-cell-fallbacks.v1.json","utf8"));
+const liveProbe=JSON.parse(readFileSync(
+ "config/hot50-official-feed-live-probes.v1.json","utf8"));
+const regional=JSON.parse(readFileSync(
+ "config/private-osint-regional-corridor-additions.v1.json","utf8"));
+const mineralExpansion=JSON.parse(readFileSync(
+ "config/private-osint-mineral-first-party-rss-expansion.v1.json","utf8"));
+const hot50Crosswalk=JSON.parse(readFileSync(
+ "config/hot-50-four-lane-source-crosswalk.v1.json","utf8"));
 const GROUPS=Object.freeze({geopolitics:"GEOPOLITICS",
  macro:"MACRO_FX",rare_earth:"CRITICAL_MINERALS"});
 const PARSERS=Object.freeze({rss:"RSS_2",rdf:"RDF",atom:"ATOM"});
@@ -64,13 +72,87 @@ export function buildP1SourceRegistration(){
   rows.push(row(s.source_id,s.feed_url,"ATOM",
    s.category==="MACRO"?"MACRO_FX":s.category,s.owner_country_iso3));
  }
- if(rows.length!==1077||new Set(rows.map(s=>s.source_id)).size!==1077)
-  fail("SOURCE_1077_COUNT_OR_ID_DRIFT");
+ rows.push(...buildP1VerifiedHot50SourceAdditions(rows));
+ if(rows.length!==1087||new Set(rows.map(s=>s.source_id)).size!==1087)
+  fail("SOURCE_1087_COUNT_OR_ID_DRIFT");
  return Object.freeze(rows);
+}
+export function buildP1VerifiedHot50SourceAdditions(existingRows=buildP1SourceRegistrationBase()){
+ if(liveProbe?.schema!=="geomacro.hot50-official-feed-live-probes.v1"||
+    liveProbe.scope!=="VERIFIED_TRANSPORT_ONLY_RESEARCH_ONLY"||
+    liveProbe.candidate_probe_summary?.candidate_count!==23||
+    liveProbe.candidate_probe_summary?.strict_pass_count!==9||
+    liveProbe.candidate_probe_summary?.fail_count!==14||
+    liveProbe.additional_crosscutting_probe_summary?.candidate_count!==1||
+    liveProbe.additional_crosscutting_probe_summary?.strict_pass_count!==1||
+    liveProbe.additional_crosscutting_probe_summary?.fail_count!==0||
+    !Array.isArray(liveProbe.sources)||liveProbe.sources.length!==9)
+  fail("HOT50_LIVE_PROBE_MANIFEST_INVALID");
+ const candidates=[
+  ...regional.sources.map(source=>({source,kind:"regional"})),
+  ...mineralExpansion.sources.map(source=>({source,kind:"mineral"})),
+  ...(hot50Crosswalk.global_category_failover_candidates??[])
+   .map(source=>({source,kind:"crosscutting"}))
+ ];
+ const existingIds=new Set(existingRows.map(x=>x.source_id));
+ const existingUrls=new Set(existingRows.map(x=>x.canonical_endpoint));
+ const probeIds=new Set();
+ const result=[];
+ for(const evidence of liveProbe.sources){
+  const matches=candidates.filter(x=>x.source.id===evidence?.id);
+  const candidate=matches[0],source=candidate?.source,probe=evidence?.probe;
+  const candidateUnapproved=candidate?.kind==="crosscutting"?
+   source?.kind==="official_global_hub_candidate"&&
+    source.transport_verified===false&&source.rights_verified===false&&
+    source.commercial_eligible===false:
+   source?.activation_state==="RUNTIME_PROBE_REQUIRED"&&
+    source.provider_rights_verified===false&&source.commercial_eligible===false;
+  if(matches.length!==1||!source||!candidateUnapproved||
+     source.url!==evidence.url||
+     (source.publisher_country_iso3??null)!==(evidence.publisher_country_iso3??null)||
+     (source.type!==undefined&&source.type!==evidence.type)||
+     JSON.stringify(source.categories)!==JSON.stringify(evidence.categories)||
+     !probe||probe.http_status!==200||probe.redirect_mode!=="error"||
+     probe.redirected!==false||!Number.isSafeInteger(probe.bounded_feed_bytes)||
+     probe.bounded_feed_bytes<1||!Number.isSafeInteger(probe.parsed_items)||
+     probe.parsed_items<1||!Number.isSafeInteger(probe.native_time_items)||
+     probe.native_time_items<1||probe.native_time_items>probe.parsed_items)
+   fail("HOT50_LIVE_PROBE_SOURCE_NOT_VERIFIED");
+  if(probeIds.has(evidence.id)||existingIds.has(evidence.id)||existingUrls.has(evidence.url))
+   fail("HOT50_LIVE_PROBE_SOURCE_DUPLICATE");
+  probeIds.add(evidence.id);
+  for(const category of evidence.categories){
+   if(!Object.hasOwn(GROUPS,category))fail("HOT50_LIVE_PROBE_CATEGORY_INVALID");
+   const tag=category==="macro"?"macro_fx":
+    category==="rare_earth"?"critical_minerals":"geopolitics";
+   const parsed=PARSERS[evidence.type];
+   if(!parsed)fail("HOT50_LIVE_PROBE_PARSER_INVALID");
+   result.push(row(evidence.id+"."+tag,evidence.url,parsed,
+    GROUPS[category],evidence.publisher_country_iso3));
+  }
+ }
+ if(result.length!==10)fail("HOT50_LIVE_PROBE_LANE_COUNT_DRIFT");
+ return Object.freeze(result);
+}
+function buildP1SourceRegistrationBase(){
+ const rows=[];
+ for(const s of working.sources){
+  for(const category of s.categories){
+   const tag=category==="macro"?"macro_fx":
+    category==="rare_earth"?"critical_minerals":"geopolitics";
+   rows.push(row(s.id+"."+tag,s.url,PARSERS[s.type],GROUPS[category],
+    s.publisher_country_iso3));
+  }
+ }
+ for(const s of ogl.sources){
+  rows.push(row(s.source_id,s.feed_url,"ATOM",
+   s.category==="MACRO"?"MACRO_FX":s.category,s.owner_country_iso3));
+ }
+ return rows;
 }
 export function buildP1Hot50FallbackMappings(records=buildP1SourceRegistration()){
  if(fallback?.schema!=="geomacro.p1.hot50-verified-global-watch-cell-fallbacks.v1"||
-    !Array.isArray(fallback.cells)||fallback.cells.length!==54||
+    !Array.isArray(fallback.cells)||fallback.cells.length!==51||
     !Array.isArray(hot50.country_iso3)||hot50.country_iso3.length!==50)
   fail("HOT50_FALLBACK_MANIFEST_INVALID");
  const sourceMap=new Map(records.map(x=>[x.source_id,x]));
@@ -119,8 +201,26 @@ export function buildP1Hot50FallbackMappings(records=buildP1SourceRegistration()
  return Object.freeze(fallback.cells.map(x=>Object.freeze({...x,rank:1,
   origin:"VERIFIED_ALTERNATIVE"})));
 }
+export function buildP1Hot50AdditionalCellMappings(records=buildP1SourceRegistration()){
+ const sourceMap=new Map(records.map(x=>[x.source_id,x]));
+ const rows=fallback?.additional_cell_mappings;
+ if(!Array.isArray(rows)||rows.length!==114)fail("HOT50_ADDITIONAL_MAPPINGS_INVALID");
+ const seen=new Set();
+ for(const link of rows){
+  const source=sourceMap.get(link?.source_id);
+  const key=link?.source_id+"|"+link?.country_iso3+"|"+link?.category;
+  if(!source||source.country_iso3!=="GLOBAL"||
+     source.intended_category!==link?.category||
+     !hot50.country_iso3.includes(link?.country_iso3)||
+     !["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].includes(link?.category)||
+     ![2,3].includes(link?.rank)||seen.has(key))
+   fail("HOT50_ADDITIONAL_MAPPING_INVALID");
+  seen.add(key);
+ }
+ return Object.freeze(rows.map(x=>Object.freeze({...x,origin:"VERIFIED_ALTERNATIVE"})));
+}
 export function renderP1SourceRegistrationSQL(records){
- if(!Array.isArray(records)||records.length!==1077||
+ if(!Array.isArray(records)||records.length!==1087||
     new Set(records.map(r=>r.source_id)).size!==records.length)
   fail("SQL_RECORDS_INVALID");
  const lines=[];
@@ -180,20 +280,28 @@ export function renderP1SourceRegistrationSQL(records){
  lines.push("INSERT OR IGNORE INTO p1_source_to_cell"+
   "(source_id,country_iso3,primary_category,rank,origin) VALUES\n"+
   fallbackValues+";");
+ const additional=buildP1Hot50AdditionalCellMappings(records);
+ const additionalValues=additional.map(x=>"("+[esc(x.source_id),esc(x.country_iso3),
+  esc(x.category),String(x.rank),esc(x.origin)].join(",")+")").join(",\n");
+ lines.push("INSERT OR IGNORE INTO p1_source_to_cell"+
+  "(source_id,country_iso3,primary_category,rank,origin) VALUES\n"+
+  additionalValues+";");
  return lines.join("\n")+"\n";
 }
 if(import.meta.url==="file://"+process.argv[1]){
  const rows=buildP1SourceRegistration();
  const fallbackMappings=buildP1Hot50FallbackMappings(rows);
+ const additionalMappings=buildP1Hot50AdditionalCellMappings(rows);
  const sql=renderP1SourceRegistrationSQL(rows);
  mkdirSync("workers/control-plane/generated",{recursive:true});
- const output="workers/control-plane/generated/p1-1077-seed.sql";
+ const output="workers/control-plane/generated/p1-1087-seed.sql";
  writeFileSync(output,sql,{mode:0o600});
  const urls=new Set(rows.map(x=>x.canonical_endpoint));
- console.log(JSON.stringify({schema:"geomacro.p1.source-manifest-1077.v1",
+ console.log(JSON.stringify({schema:"geomacro.p1.source-manifest-1087.v1",
   configured_lanes:rows.length,distinct_endpoints:urls.size,
-  private_osint_lanes:1069,official_atom_lanes:8,
+  private_osint_lanes:1079,official_atom_lanes:8,
   hot50_cells_with_explicit_verified_fallback:fallbackMappings.length,
+  hot50_additional_global_source_mappings:additionalMappings.length,
   hot50_fallback_sources_already_polled:true,
   generated_sql_path:output,rights_promoted:false,
   source_reachability_reverified_this_run:false}));

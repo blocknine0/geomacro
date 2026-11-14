@@ -57,8 +57,8 @@ test("P1 private D1 migration provides exactly 195 x 3 countries and 10 logical 
    "p1_source_cell_mapping_health");
  }finally{f.close()}
 });
-test("P1 1077 due sources fan out through max 108 per minute and ten isolated Queue shards in an hour",async()=>{
- const f=fixture(1077),batches=[];let attempted=0;
+test("P1 1087 due sources fan out through max 108 per minute and ten isolated Queue shards in an hour",async()=>{
+ const f=fixture(1087),batches=[];let attempted=0;
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(messages){batches.push(messages)}}};
@@ -92,8 +92,8 @@ test("P1 1077 due sources fan out through max 108 per minute and ten isolated Qu
     assert.ok(messages.every(m=>m.acked===1));
    }
   }
-  assert.equal(attempted,1077);
-  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE last_polled_at IS NOT NULL").get().n,1077);
+  assert.equal(attempted,1087);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE last_polled_at IS NOT NULL").get().n,1087);
   const idle=await dispatchP1DueSources(env,{now:now+11*60000});
   assert.equal(idle.queued,0);
   const listing=await listP0aSourceRegistry({DB:f.DB},new URLSearchParams({limit:"250"}));
@@ -175,7 +175,7 @@ test("P1 transport refuses HTML soft 404 masquerading as RSS without promoting a
 });
 
 test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per-source dispatcher leases",async()=>{
- const f=fixture(1077),batches=[];let processed=0;
+ const f=fixture(1087),batches=[];let processed=0;
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
    GEOMACRO_P1_BUNDLED_LEASES_ENABLED:"1",
@@ -229,9 +229,9 @@ test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per
     }
    }
   }
-  assert.equal(processed,1077);
+  assert.equal(processed,1087);
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE poll_dispatch_token IS NOT NULL").get().n,0);
-  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE last_polled_at IS NOT NULL").get().n,1077);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE last_polled_at IS NOT NULL").get().n,1087);
  }finally{f.close()}
 });
 
