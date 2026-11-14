@@ -9,6 +9,7 @@
 import {enqueueCommercialIssuerCandidate} from "./risk-stream-commercial-issuer.mjs";
 import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
 import {issueUnsignedDailyNewsBatch} from "./risk-stream-unsigned-gro.mjs";
+import {isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
@@ -462,7 +463,8 @@ export async function processRiskStreamBatch(env,items,{
  if(env.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1"){
   try{
    const today=new Date(now).toISOString().slice(0,10);
-   const signals=distinct.filter(x=>x.published_at.slice(0,10)===today).map(x=>({
+   const signals=distinct.filter(x=>isHot50RiskCountry(x.country_iso3)&&
+    Object.hasOwn(POLICIES,x.category)&&x.published_at.slice(0,10)===today).map(x=>({
     country_iso3:x.country_iso3,category:x.category,
     event_fingerprint:x.event_fingerprint,published_at:x.published_at,
     derived:x.derived,original_verified:x.original_verified===true,
