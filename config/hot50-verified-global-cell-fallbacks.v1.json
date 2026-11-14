@@ -1,0 +1,355 @@
+{
+  "schema": "geomacro.p1.hot50-verified-global-watch-cell-fallbacks.v1",
+  "purpose": "Explicit watch-trigger routing for the 54 Hot 50 cells with no country-specific P1 source. These GLOBAL source rows are already polled; a mapping is a candidate-search scope, never country-of-origin or event evidence.",
+  "guardrails": [
+    "No source country is rewritten.",
+    "Only explicit Hot 50 country/category links below are permitted.",
+    "A feed item must independently identify the target country before it can become a cell candidate.",
+    "No Telegram-only promotion; non-Telegram corroboration and signed GRO gates remain mandatory.",
+    "All sources remain RESEARCH_ONLY; no commercial rights are inferred or promoted.",
+    "No new feeds, Durable Objects, or public-route D1 reads are introduced."
+  ],
+  "categories": {
+    "GEOPOLITICS": {
+      "watch_category": "geopolitics",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics",
+      "source_id_root": "private_un_news_security_original_rss_review",
+      "url": "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+      "status": 200,
+      "bytes": 35307,
+      "items": 30
+    },
+    "MACRO_FX": {
+      "watch_category": "macro",
+      "source_id": "private_bis_press_global.macro_fx",
+      "source_id_root": "private_bis_press_global",
+      "url": "https://www.bis.org/doclist/all_pressrels.rss",
+      "status": 200,
+      "bytes": 2311,
+      "items": 1
+    },
+    "CRITICAL_MINERALS": {
+      "watch_category": "rare_earth",
+      "source_id": "private_us_doe_minerals_global.critical_minerals",
+      "source_id_root": "private_us_doe_minerals_global",
+      "url": "https://www.energy.gov/rss/energygov/2193718",
+      "status": 200,
+      "bytes": 8488,
+      "items": 10
+    }
+  },
+  "transport_verification": {
+    "verified_at": "2026-11-14T17:27:21.697Z",
+    "method": "Live HTTPS fetch; HTTP 200; existing P0-A RSS/RDF parser produced dated records. Source-country identity remains GLOBAL.",
+    "results": {
+      "GEOPOLITICS": {
+        "url": "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 35437,
+        "items_observed": 30,
+        "content_type": "application/rss+xml; charset=utf-8",
+        "parser": "RSS_2",
+        "parsed_items": 30,
+        "native_time_items": 30
+      },
+      "MACRO_FX": {
+        "url": "https://www.bis.org/doclist/all_pressrels.rss",
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 2311,
+        "items_observed": 1,
+        "content_type": "application/rss+xml; charset=utf-8",
+        "parser": "RDF",
+        "parsed_items": 1,
+        "native_time_items": 1
+      },
+      "CRITICAL_MINERALS": {
+        "url": "https://www.energy.gov/rss/energygov/2193718",
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 8508,
+        "items_observed": 10,
+        "content_type": "application/rss+xml; charset=utf-8",
+        "parser": "RSS_2",
+        "parsed_items": 10,
+        "native_time_items": 10
+      }
+    }
+  },
+  "cells": [
+    {
+      "country_iso3": "RUS",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "RUS",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "RUS",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "BEL",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "BEL",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "BEL",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "CHE",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "CHE",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "CHE",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "UKR",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "UKR",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "UKR",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "SAU",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "SAU",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "SAU",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "ARE",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "ARE",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "ARE",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "QAT",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "QAT",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "QAT",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "IRQ",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "IRQ",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "IRQ",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "ZMB",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "ZMB",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "ZMB",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "CHL",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "CHL",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "CHL",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "PER",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "PER",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "PER",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "BOL",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "BOL",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "BOL",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "IDN",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "IDN",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "IDN",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "THA",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "THA",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "THA",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "MYS",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "MYS",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "MYS",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "BGD",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "BGD",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "BGD",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "MNG",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "MNG",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "MNG",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    },
+    {
+      "country_iso3": "MMR",
+      "category": "GEOPOLITICS",
+      "source_id": "private_un_news_security_original_rss_review.geopolitics"
+    },
+    {
+      "country_iso3": "MMR",
+      "category": "MACRO_FX",
+      "source_id": "private_bis_press_global.macro_fx"
+    },
+    {
+      "country_iso3": "MMR",
+      "category": "CRITICAL_MINERALS",
+      "source_id": "private_us_doe_minerals_global.critical_minerals"
+    }
+  ]
+}

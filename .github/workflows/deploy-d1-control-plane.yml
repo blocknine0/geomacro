@@ -115,6 +115,8 @@ on:
       - "scripts/tests/p1-source-fanout.test.mjs"
       - "scripts/ops/seed-p1-1077-source-registry.mjs"
       - "scripts/tests/p1-source-registry-seed.test.mjs"
+      - "config/hot50-verified-global-cell-fallbacks.v1.json"
+      - "workers/control-plane/src/p1-hot50-verified-global-fallbacks.mjs"
       - "scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs"
       - "workers/control-plane/src/ask-public-model-cache.mjs"
       - "workers/control-plane/migrations/0130_ask_public_model_cache.sql"
@@ -1130,6 +1132,17 @@ jobs:
               const n=data[0]?.results?.[0]?.n??data[0]?.result?.results?.[0]?.n;
               if(n!==1077)throw Error("P1_REMOTE_1077_REGISTRY_UNVERIFIED:"+n);
               console.log("P1_REMOTE_1077_SOURCE_LANES_CONFIGURED=true");
+            });'
+          HOT50_RAW="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config workers/control-plane/wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS n FROM (SELECT country_iso3,primary_category FROM p1_source_to_cell WHERE country_iso3 IN ('USA','CHN','IND','RUS','GBR','DEU','FRA','JPN','KOR','BEL','CAN','AUS','BRA','MEX','ITA','ESP','NLD','CHE','NOR','SWE','POL','UKR','TUR','SAU','ARE','IRN','ISR','EGY','QAT','OMN','IRQ','ZAF','NGA','COD','ZMB','CHL','PER','ARG','BOL','IDN','VNM','THA','MYS','SGP','PHL','PAK','BGD','KAZ','MNG','MMR') GROUP BY country_iso3,primary_category);")"
+          printf '%s' "$HOT50_RAW" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const j=JSON.parse(s),data=Array.isArray(j)?j:[j];
+              const n=data[0]?.results?.[0]?.n??data[0]?.result?.results?.[0]?.n;
+              if(n!==150)throw Error("P1_REMOTE_HOT50_CELL_COVERAGE_UNVERIFIED:"+n);
+              console.log("P1_REMOTE_HOT50_150_CELL_MAPPING_VERIFIED=true");
             });'
       - name: Seed pinned private source registry with exact D1 readback
         if: env.P0B_ACTIVATE == '1'
