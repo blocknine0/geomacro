@@ -93,3 +93,41 @@ test("daily rejects OSINT promotion, credit URLs, synthetic fresh time and split
   assert.equal((await response.json()).paid_eligible,false);
  }
 });
+
+// Browser-read historical archive assets must traverse the Worker to receive
+// CORS. The static asset router otherwise silently bypasses Worker code.
+test("historical index and category shards are browser CORS-readable without altering immutable bytes",async()=>{
+ const {default:worker,isPublicImmutableArchiveAsset}=await import("../../workers/public-finds-archive/src/index.mjs");
+ const config=JSON.parse((await import("node:fs")).readFileSync("workers/public-finds-archive/wrangler.jsonc","utf8"));
+ for(const path of ["/index.json","/archive/2026-11/geopolitics.json",
+                    "/archive/2026-11/macro.json","/archive/2026-11/rare_earth.json"]){
+  assert.equal(isPublicImmutableArchiveAsset(path),true);
+  const patterns=config.assets.run_worker_first;
+  assert(patterns.includes(path==="/index.json"?path:"/archive/*"));
+  const data='{"schema":"public-derived-only","signal_count":2}';
+  const e={ASSETS:{fetch:async()=>new Response(data,{status:200,headers:{"ETag":'"sha-test"',
+   "Content-Type":"application/json"}})}};
+  const response=await worker.fetch(req(path.slice(1)),e);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get("access-control-allow-origin"),"*");
+  assert.equal(response.headers.get("etag"),'"sha-test"');
+  assert.equal(await response.text(),data);
+  const head=await worker.fetch(new Request(req(path.slice(1)).url,{method:"HEAD"}),e);
+  assert.equal(head.status,200);
+  assert.equal(head.headers.get("access-control-allow-origin"),"*");
+  assert.equal(await head.text(),"");
+ }
+ assert(config.assets.run_worker_first.includes("/daily-highlights.json"),
+  "Guarded daily highlights must run Worker-first for coherent publication checks");
+});
+test("public archive CORS remains scoped; unrelated PREDGE assets retain original routing",async()=>{
+ const {default:worker,isPublicImmutableArchiveAsset}=await import("../../workers/public-finds-archive/src/index.mjs");
+ for(const path of ["/secret.json","/archive/2026-11/private.json",
+                    "/archive/2026-13/macro.json","/website-intelligence-predge-72h.json"])
+  assert.equal(isPublicImmutableArchiveAsset(path),false);
+ const original=new Response('{"safe":true}',{headers:{"Content-Type":"application/json"}});
+ const response=await worker.fetch(req("website-intelligence-predge-72h.json"),
+  {ASSETS:{fetch:async()=>original}});
+ assert.equal(response,original);
+ assert.equal(response.headers.get("access-control-allow-origin"),null);
+});
