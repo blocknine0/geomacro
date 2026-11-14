@@ -113,3 +113,37 @@ test("reject compromised D1 schema and missing category even if browser paints t
   assert.equal(evaluatePublicNews(doc(),tabs+article("Geopolitics")+"</main>",NOW).accepted,false);
   assert.deepEqual(x.d1_domains_present,["geopolitics","rare_earth"]);
 });
+const liveTabs='<main data-testid="geomacro-derived-news-desk">'+
+  '<button aria-pressed="true">Geopolitics <span>14</span></button>'+
+  '<button aria-pressed="false">Macro Economics <span>26</span></button>'+
+  '<button aria-pressed="false">Critical Minerals <span>28</span></button>';
+const currentArticle=(domain,id)=>'<article data-testid="geomacro-concrete-intelligence-card" '+
+  'data-geomacro-story-id="'+id+'"><span>'+
+  (domain==='macro'?'Macro Economics':domain==='geopolitics'?'Geopolitics':'Critical Minerals')+
+  '</span><h3>Human-readable editorial headline</h3></article>';
+test("current React Story has canonical ID and Macro Economics label",()=>{
+ const signals=names.map(n=>row(n));
+ const x=evaluatePublicNews(doc(signals),
+  liveTabs+currentArticle('geopolitics',signals[0].id)+'</main>',
+  NOW,{
+   macro:liveTabs.replace('aria-pressed="true"','aria-pressed="false"')
+    .replace('<button aria-pressed="false">Macro Economics','<button aria-pressed="true">Macro Economics')+
+    currentArticle('macro',signals[1].id)+'</main>',
+   rare_earth:liveTabs.replace('aria-pressed="true"','aria-pressed="false"')
+    .replace('<button aria-pressed="false">Critical Minerals','<button aria-pressed="true">Critical Minerals')+
+    currentArticle('rare_earth',signals[2].id)+'</main>'
+  });
+ assert.equal(x.accepted,true);
+ assert.deepEqual(x.browser_tabs_available,names.slice().sort());
+ assert.deepEqual(x.browser_domains_rendered,names.slice().sort());
+});
+test("current editorial card must carry exact canonical D1 ID, not a matching category alone",()=>{
+ const known=row('geopolitics');
+ const bad=liveTabs+currentArticle('geopolitics','geopolitics-deadbeef')+'</main>';
+ const x=evaluatePublicNews(doc([known]),bad,NOW);
+ assert.equal(x.accepted,false);
+ assert.deepEqual(x.browser_domains_rendered,[]);
+ const match=evaluatePublicNews(doc([known]),liveTabs+
+  currentArticle('geopolitics',known.id)+'</main>',NOW);
+ assert.equal(match.accepted,true);
+});
