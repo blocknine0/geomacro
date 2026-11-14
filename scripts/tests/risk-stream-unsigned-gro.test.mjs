@@ -31,6 +31,11 @@ test("unsigned Hot50 GRO schema prevents signature, rights, sale and execution c
   "CHECK(commercial_sale_authorized=0)","CHECK(source_rights_verified=0)",
   "CHECK(raw_source_disclosed=0)","CHECK(execution_authorized=0)"])
   assert.ok(schema.includes(clause),clause);
+ const triggers=db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger'").all().map(x=>x.name);
+ assert.deepEqual(triggers.sort(),[
+  "trg_risk_stream_unsigned_news_expired_delete_only",
+  "trg_risk_stream_unsigned_news_no_update"
+ ]);
 });
 test("news event creates one immutable unsigned object for each tier with no raw source fields",async()=>{
  const {db,env}=database();
@@ -41,6 +46,8 @@ test("news event creates one immutable unsigned object for each tier with no raw
  assert.equal(receipt.commercial_sale_authorized,false);
  const rows=db.prepare("SELECT * FROM risk_stream_unsigned_news_gro ORDER BY tier").all();
  assert.equal(rows.length,3);
+ assert.throws(()=>db.exec("UPDATE risk_stream_unsigned_news_gro SET tier='standard'"));
+ assert.throws(()=>db.exec("DELETE FROM risk_stream_unsigned_news_gro"));
  for(const row of rows){
   const payload=JSON.parse(row.payload_json);
   assert.equal(payload.signed,false);
