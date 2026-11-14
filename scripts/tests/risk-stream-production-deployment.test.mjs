@@ -5,6 +5,7 @@ import {readFileSync} from "node:fs";
 const workflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
 const candidateWorkflow=readFileSync(new URL("../../.github/workflows/geomacro-optimized-worker-candidate.yml",import.meta.url),"utf8");
 const candidateBuilder=readFileSync(new URL("../ops/prepare-optimized-worker-candidate.mjs",import.meta.url),"utf8");
+const parity=readFileSync(new URL("../lib/canary-additive-binding-parity.mjs",import.meta.url),"utf8");
 const example=readFileSync(new URL("../../workers/control-plane/wrangler.example.jsonc",import.meta.url),"utf8");
 const issuer=readFileSync(new URL("../../workers/control-plane/src/risk-stream-commercial-issuer.mjs",import.meta.url),"utf8");
 
@@ -51,6 +52,20 @@ test("commercial reviewer binding is dynamic, independently keyed and fail-close
  assert.match(issuer,/export function commercialIssuerEnabled\(env\)/);
  assert.match(issuer,/typeof env\.GEOMACRO_RELEASE_REVIEWER\?\.fetch==="function"/);
  assert.doesNotMatch(example,/"binding": "GEOMACRO_RELEASE_REVIEWER"/);
+});
+
+test("held canary retains the exact binding-delta receipt and preflights zone SLO identity",()=>{
+ const held=workflow.slice(workflow.indexOf("  held-versioned-canary-rollout:"),
+  workflow.indexOf("  p0-1-offline-regression:"));
+ assert.match(held,/CANARY_ZONE_ID_REQUIRED_BEFORE_CANDIDATE_UPLOAD/);
+ assert.match(held,/candidate-binding-delta\.json/);
+ assert.match(held,/optimized-worker-candidate\.json/);
+ assert.match(held,/release-dependency-readiness\.json/);
+ assert.match(candidateBuilder,/commercial_license_prerequisite/);
+ assert.match(candidateBuilder,/SIGNED_RELEASE_APPROVAL_AND_GEOMACRO_RELEASE_REVIEWER_SERVICE_REQUIRED/);
+ assert.match(held,/if: always\(\)/);
+ assert.match(parity,/UNREVIEWED_ADDITION_ACTUAL_/);
+ assert.match(parity,/EXPECTED_MISSING_/);
 });
 
 test("deployment wiring keeps Store checkout default off",()=>{
