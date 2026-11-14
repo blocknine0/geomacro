@@ -422,6 +422,8 @@ jobs:
           NODE
       - name: Require provider-observed paid D1 headroom before version upload
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
+      - name: Require zone analytics before any candidate upload or traffic mutation
+        run: node -e 'if(!/^[a-f0-9]{32}$/i.test(process.env.CLOUDFLARE_ZONE_ID||""))throw Error("CANARY_ZONE_ID_REQUIRED_BEFORE_CANDIDATE_UPLOAD")'
       - name: Upload exact-main candidate with inherited protected bindings and no traffic change
         id: candidate
         run: |
@@ -446,7 +448,12 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-deploy-workflow-canary-receipts
-          path: artifacts/release/canary-*.json
+          path: |
+            artifacts/release/canary-*.json
+            artifacts/protected-canary/candidate-binding-delta.json
+            artifacts/protected-canary/optimized-worker-candidate.json
+            artifacts/protected-canary/candidate-paid-monthly-headroom.json
+            artifacts/protected-canary/release-dependency-readiness.json
           if-no-files-found: warn
           retention-days: 14
 
