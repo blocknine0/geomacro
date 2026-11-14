@@ -73,7 +73,7 @@ jobs:
            .replace(/^\s*\/\/.*$/gm,''));
           cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:process.env.D1_DATABASE_ID}));
           writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/wrangler.json',JSON.stringify(cfg));
-          writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/d1-info.json',JSON.stringify(identity));
+          writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/d1-info.json',JSON.stringify(identity.result??identity));
           NODE
           $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 time-travel info geomacro-control-plane --json --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" > "$RUNNER_TEMP/geomacro-hot50-0219/bookmark.json"
           node scripts/ops/verify-protected-d1-migration-gate.mjs --backup "$RUNNER_TEMP/geomacro-hot50-0219/d1-info.json" "$RUNNER_TEMP/geomacro-hot50-0219/bookmark.json"
