@@ -87,9 +87,6 @@ export function CommercialHome() {
               Follow the risks that affect your work.
             </h2>
           </div>
-          <Link to="/risk-indices" className="gm-text-link">
-            View Risk Indices <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
         <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border bg-border md:grid-cols-3">
           {DOMAINS.map(({ category, title, text, icon: Icon }, i) => (
@@ -120,7 +117,7 @@ export function CommercialHome() {
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             {[
               { to: "/intelligence", title: "Understand a development", text: "Read what happened, why it matters and the original publication date.", action: "Read findings" },
-              { to: "/risk-indices", title: "Explore country risk", text: "Inspect available risk readings, their dates and coverage limits.", action: "View Risk Indices" },
+              { to: "/risk-gate", title: "Explore decision context", text: "Learn how evidence-backed Risk Gate decisions remain advisory.", action: "Explore Risk Gate" },
               { to: "/institutional", title: "Plan a team workflow", text: "Discuss research, treasury and supply-chain intelligence needs.", action: "For teams" },
             ].map(({ to, title, text, action }) => (
               <Link key={to} to={to} className="group rounded-xl border border-border bg-background p-6 transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
