@@ -62,15 +62,18 @@ test("missing index row, false zero and changed source count cannot claim PASS",
  assert.equal(verifyStep3IndexSetResult(good,{sourceRows:4100}).verified_rows,4100);
  for(const row of [
   {...good[0],canonical_minus_index:1},
-  {...good[0],index_minus_canonical:1},
+  {...good[0],index_minus_canonical:1}
+ ])assert.throws(()=>verifyStep3IndexSetResult([row],{sourceRows:4100}),
+  /COMPLETE_SET_MEMBERSHIP_MISMATCH/);
+ for(const row of [
   {...good[0],index_rows:4099},
   {...good[0],canonical_rows:4101}
  ])assert.throws(()=>verifyStep3IndexSetResult([row],{sourceRows:4100}),
-  /COMPLETE_SET_MEMBERSHIP_OR_CONCURRENT_COUNT_UNVERIFIED/);
+  /CONCURRENT_ROW_COUNT_MISMATCH/);
  assert.throws(()=>verifyStep3IndexSetResult(good,{sourceRows:4101}),
-  /COMPLETE_SET_MEMBERSHIP_OR_CONCURRENT_COUNT_UNVERIFIED/);
+  /CONCURRENT_ROW_COUNT_MISMATCH/);
  assert.throws(()=>verifyStep3IndexSetResult(good,{sourceRows:STEP3_SET_MAX_SOURCE_ROWS+1}),
-  /COMPLETE_SET_MEMBERSHIP_OR_CONCURRENT_COUNT_UNVERIFIED/);
+  /SOURCE_ROWS_OUTSIDE_REVIEWED_BOUND/);
 });
 test("SQL injection and unreviewed partial predicate remain HOLD",()=>{
  const input={table:"phase2h_private_raw_news",
