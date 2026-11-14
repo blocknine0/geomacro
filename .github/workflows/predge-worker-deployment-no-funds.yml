@@ -1,0 +1,73 @@
+name: Predge Worker Deployment Readback (NO FUNDS)
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "workers/control-plane/**"
+      - "scripts/ops/audit-predge-worker-deployment-no-funds.mjs"
+      - "scripts/tests/audit-predge-worker-deployment.test.mjs"
+      - ".github/workflows/predge-worker-deployment-no-funds.yml"
+  pull_request:
+    paths:
+      - "scripts/ops/audit-predge-worker-deployment-no-funds.mjs"
+      - "scripts/tests/audit-predge-worker-deployment.test.mjs"
+      - ".github/workflows/predge-worker-deployment-no-funds.yml"
+      - "workers/control-plane/src/predge-risk-gate-d1.mjs"
+      - "workers/control-plane/src/index.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-predge-worker-readback-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --test scripts/tests/audit-predge-worker-deployment.test.mjs
+  provider-readback:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GITHUB_SHA: ${{ github.sha }}
+      CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Read Cloudflare deployment and live Predge readiness without mutation
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/predge-worker
+          node scripts/ops/audit-predge-worker-deployment-no-funds.mjs | tee artifacts/predge-worker/deployment-readback.json
+      - name: Summarize provider readback
+        if: always()
+        run: |
+          if test -f artifacts/predge-worker/deployment-readback.json; then
+            node -e 'const fs=require("node:fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const rows=["### Predge Worker provider readback",`- Status: **${x.status}**`,`- Expected source SHA: \`${x.expected_source_sha}\``,`- Deployed source SHA: \`${x.deployed_source_sha??"unverified"}\``,`- Cloudflare deployment: \`${x.cloudflare?.deployment_id??x.cloudflare?.status}\``,`- Worker health: HTTP ${x.worker_health_http_status} (${x.worker_health_ok?"ready":"not verified"})`,`- Predge readiness: HTTP ${x.predge_readiness_http_status}; paid launch approved: \`${x.predge_paid_launch_approved}\``,`- Blockers: ${(x.blockers||[]).join(", ")||"none"}`,"- Traffic changes: 0; D1 writes: 0; payments: 0"];fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,rows.join("\n")+"\n")' artifacts/predge-worker/deployment-readback.json
+          else
+            echo "### Predge Worker provider readback" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Status: HOLD (provider result unavailable)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: predge-worker-deployment-readback-${{ github.run_id }}
+          path: artifacts/predge-worker/deployment-readback.json
+          retention-days: 14
+          if-no-files-found: warn

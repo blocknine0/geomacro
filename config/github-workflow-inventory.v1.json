@@ -312,6 +312,7 @@
     "predge-shared-d1-news-live-acceptance.yml",
     "predge-signed-market-public-verification.yml",
     "predge-token-only-sealed-handoff.yml",
+    "predge-worker-deployment-no-funds.yml",
     "private-global-osint-15m.yml",
     "private-independent-review-package.yml",
     "private-osint-585-census-daily.yml",
