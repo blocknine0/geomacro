@@ -37,3 +37,16 @@ CREATE INDEX IF NOT EXISTS idx_risk_stream_unsigned_news_event
  ON risk_stream_unsigned_news_gro(event_fingerprint,day_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_risk_stream_unsigned_news_generated
  ON risk_stream_unsigned_news_gro(generated_at,gro_id);
+
+-- Preserve immutability; only expired rows can be physically purged by retention.
+CREATE TRIGGER IF NOT EXISTS trg_risk_stream_unsigned_news_no_update
+ BEFORE UPDATE ON risk_stream_unsigned_news_gro
+ BEGIN
+  SELECT RAISE(ABORT,'UNSIGNED_GRO_IMMUTABLE');
+ END;
+CREATE TRIGGER IF NOT EXISTS trg_risk_stream_unsigned_news_expired_delete_only
+ BEFORE DELETE ON risk_stream_unsigned_news_gro
+ WHEN OLD.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')
+ BEGIN
+  SELECT RAISE(ABORT,'UNSIGNED_GRO_RETENTION_NOT_EXPIRED');
+ END;
