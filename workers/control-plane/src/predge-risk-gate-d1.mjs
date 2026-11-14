@@ -273,9 +273,6 @@ async function paidScopeLockId(parsed,{marketId,conditionId}){
   category:parsed.category,market_id:marketId,condition_id:conditionId}));
 }
 async function paidReplayAlreadyConsumed(db,{client,requestId,requestHash,verdictId,scopeLockId}){
- const request=await db.prepare(`SELECT request_hash,state FROM risk_gate_d1_requests
-   WHERE client_id=? AND request_id=? LIMIT 1`).bind(client,requestId).first();
- if(request)return true;
  const ledger=await db.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
    WHERE request_id=? OR verdict_id=? LIMIT 1`).bind(requestId,verdictId).first();
  if(ledger)return true;
@@ -283,6 +280,30 @@ async function paidReplayAlreadyConsumed(db,{client,requestId,requestHash,verdic
    WHERE client_id='predge-paid-license-scope-v1' AND request_id=? LIMIT 1`)
    .bind(scopeLockId).first();
  return Boolean(lock);
+}
+async function readPaidIdempotentReplay(db,{client,requestId,requestHash}){
+ const claim=await db.prepare(`SELECT request_hash,state,response_json FROM risk_gate_d1_requests
+   WHERE client_id=? AND request_id=? LIMIT 1`).bind(client,requestId).first();
+ if(!claim)return {kind:"new"};
+ if(claim.request_hash!==requestHash)return {kind:"conflict"};
+ if(claim.state!=="DONE"||!claim.response_json)return {kind:"in_progress"};
+ let response;
+ try{response=JSON.parse(claim.response_json);}catch{return {kind:"invalid"};}
+ if(response?.ok!==true||response.execution_authorized!==false||
+    response.risk_gate?.execution_authorized!==false||
+    response.channel!=="predge_b2b"||
+    !["PAID_ADDENDUM_V2","MUTUAL_72H_TRIAL"].includes(response.billing_mode)||
+    typeof response.verdict_id!=="string")return {kind:"invalid"};
+ const ledger=await db.prepare(`SELECT verdict_id,request_hash,response_sha256,billing_mode,
+     entry_status,billable,geomacro_fee_usdc_cents
+   FROM predge_paid_risk_gate_usage_ledger WHERE request_id=? LIMIT 1`)
+   .bind(requestId).first();
+ if(!ledger||ledger.verdict_id!==response.verdict_id||ledger.request_hash!==requestHash||
+    ledger.billing_mode!==response.billing_mode||
+    ledger.entry_status!==response.entry_status||
+    ledger.response_sha256!==await digest(canonical(response))||
+    ledger.billable!==(response.billable?1:0))return {kind:"invalid"};
+ return {kind:"replay",response};
 }
 async function claimPaidScopeOnce(db,{parsed,scopeLockId,endBuyerId,nowIso}){
  const endBuyerIdHash=await digest(endBuyerId);
@@ -368,6 +389,11 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(!paidContext)return fail("PAID_ACTION_CONTEXT_REQUIRED",400);
    if(!parsed.category)return fail("PAID_CATEGORY_REQUIRED",400);
    try{
+     const replay=await readPaidIdempotentReplay(env.DB,{client,requestId:parsed.request_id,requestHash});
+     if(replay.kind==="replay")return Response.json({...replay.response,idempotent_replay:true},{status:200,headers});
+     if(replay.kind==="conflict")return fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
+     if(replay.kind==="in_progress")return fail("RISK_GATE_REQUEST_IN_PROGRESS",409);
+     if(replay.kind==="invalid")return fail("RISK_GATE_REPLAY_INVALID",503);
      scopeLockId=await paidScopeLockId(parsed,paidContext);
      if(await paidReplayAlreadyConsumed(env.DB,{client,requestId:parsed.request_id,
        requestHash,verdictId,scopeLockId}))return singleEndBuyerLimitExceeded();
@@ -413,7 +439,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(claim.request_hash!==requestHash)
      return paidEndpoint?singleEndBuyerLimitExceeded():fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
    if(claim.state==="DONE"&&claim.response_json){
-      if(paidEndpoint)return singleEndBuyerLimitExceeded();
+      if(paidEndpoint)return fail("RISK_GATE_REPLAY_INVALID",503);
       let saved;
       try{saved=JSON.parse(claim.response_json)}catch{return fail("RISK_GATE_REPLAY_INVALID");}
       if(saved?.ok!==true||saved?.execution_authorized!==false||

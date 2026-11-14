@@ -207,7 +207,7 @@ test("Stage 3 rehearsal reads account billing through its dedicated token bindin
 });
 
 
-function paidRiskGateFixtureDb(initialQuota=0){
+function paidRiskGateFixtureDb(initialQuota=0,standardReady=false){
  const requests=new Map(),ledger=new Map(),receipts=new Map();
  let quotaUsed=initialQuota;
  const key=(client,id)=>client+"|"+id;
@@ -218,8 +218,9 @@ function paidRiskGateFixtureDb(initialQuota=0){
     if(sql.includes("FROM risk_gate_d1_requests")&&sql.includes("client_id=? AND request_id=?")){
      const row=requests.get(key(values[0],values[1]));return row?{...row}:null;
     }
-    if(sql.includes("FROM progressive_risk_gate_facts"))return {unique_events:1,
-      max_publisher_count:1,corroborated_events:0,corroborated_countries:0,
+    if(sql.includes("FROM progressive_risk_gate_facts"))return {unique_events:standardReady?2:1,
+      max_publisher_count:standardReady?2:1,corroborated_events:standardReady?1:0,
+      corroborated_countries:standardReady?1:0,
       latest_event_clock:"2026-11-11T12:00:00.000Z",categories:"geopolitics"};
     if(sql.includes("FROM native_events"))return {index_events:0,latest_index_clock:null,
       native_corroborated_publisher_count:0};
@@ -318,15 +319,16 @@ test("v1 keeps its 100/day pilot cap while paid v2 quota is uncapped telemetry",
  assert.equal((await pilotResponse.json()).error,"RISK_GATE_DAILY_LIMIT");
 });
 
-test("paid Risk Gate verdict is signed for one use and rejects replay or resale",async()=>{
+test("paid Risk Gate verdict is signed for one use, supports exact retries, and rejects resale",async()=>{
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
+ fixture.tier="standard";
  const {publicKey,privateKey}=generateKeyPairSync("ed25519");
  const env={PREDGE_RISK_GATE_TOKEN:"a".repeat(64),PREDGE_PAID_RISK_GATE_TOKEN:"b".repeat(64),
   PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
   RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
   RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
   RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
-  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:paidRiskGateFixtureDb()};
+  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:paidRiskGateFixtureDb(0,true)};
  const makeRequest=(body,path="/v2/partner/predge/paid-risk-gate")=>new Request("https://worker.example"+path,{
   method:"POST",headers:{authorization:"Bearer "+"b".repeat(64),"content-type":"application/json"},
   body:JSON.stringify(body)});
@@ -337,6 +339,10 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  assert.equal(firstBody.ok,true);
  assert.equal(Object.hasOwn(firstBody,"error"),false);
  assert.equal(firstBody.decision_signed_payload.issuer,"Geomacro");
+ assert.equal(firstBody.tier,"standard");
+ assert.equal(firstBody.structure_type,"STANDARD_DUAL_ORIGINAL_GRO_V1");
+ assert.equal(firstBody.customer_price_usdc,"0.20");
+ assert.equal(firstBody.geomacro_fee_usdc,"0.15");
  assert.equal(firstBody.decision_signed_payload.commercial_signatory,"Geomacro");
  assert.equal(firstBody.decision_signed_payload.source_origin_agnostic_commercial_seal,true);
  assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
@@ -348,15 +354,23 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  assert.equal(firstBody.billing_mode,"PAID_ADDENDUM_V2");
  assert.equal(firstBody.billable,true);
  assert.equal(firstBody.decision_signature_scheme,"Ed25519");
+ assert.equal(firstBody.customer_price_usdc,"0.20");
  assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(firstBody.decision_signed_payload)),
   publicKey,Buffer.from(firstBody.decision_signature_b64,"base64")),true);
  assert.equal(firstBody.audit_receipt_hash.length,64);
  const limitMessage="Authorization failed: Predge license permits resale/delivery to at most 1 end-buyer. Multi-buyer resale or redistribution is strictly prohibited. Contact: contact@geomacro.live";
- for(const reused of [fixture,{...fixture,request_id:"paid-second-buyer-request",
+ const retry=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
+ const retryBody=await retry.json();
+ assert.equal(retry.status,200,JSON.stringify(retryBody));
+ assert.equal(retryBody.idempotent_replay,true);
+ assert.equal(retryBody.verdict_id,firstBody.verdict_id);
+ assert.equal(retryBody.decision_signature_b64,firstBody.decision_signature_b64);
+ assert.equal(env.DB.testLedger.size,1);
+ const secondBuyer=await predgePaidRiskGateD1(makeRequest({...fixture,request_id:"paid-second-buyer-request",
    action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,
-    end_buyer_id:"customer-002"}}}]){
-  const response=await predgePaidRiskGateD1(makeRequest(reused),env,now);
-  const body=await response.json();
+    end_buyer_id:"customer-002"}}}),env,now);
+ const secondBuyerBody=await secondBuyer.json();
+ for(const [response,body] of [[secondBuyer,secondBuyerBody]]){
   assert.equal(response.status,403);
   assert.equal(body.error,"SINGLE_END_BUYER_LIMIT_EXCEEDED");
   assert.equal(body.authorization_error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
@@ -364,8 +378,11 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  }
  const expectedError="SINGLE_END_BUYER_LIMIT_EXCEEDED";
  const expectedMessage="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Explicit permission from Geomacro's end is required. Contact: contact@geomacro.live";
- for(const reused of [fixture,{...fixture,action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,market_id:"different-market"}}},
-   {...fixture,request_id:"paid-resale-new-request"}]){
+ const conflict=await predgePaidRiskGateD1(makeRequest({...fixture,
+   action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,market_id:"different-market"}}}),env,now);
+ assert.equal(conflict.status,409);
+ assert.equal((await conflict.json()).error,"RISK_GATE_IDEMPOTENCY_CONFLICT");
+ for(const reused of [{...fixture,request_id:"paid-resale-new-request"}]){
   const response=await predgePaidRiskGateD1(makeRequest(reused),env,now);
   const body=await response.json();
   assert.equal(response.status,403);
