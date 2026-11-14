@@ -275,7 +275,7 @@ export class B2SpoolManager {
   return this.open(bytes,candidateSha256,sourceId);
  }
 
- async spoolBundleAndVerify(payloads:SpoolPayload[],opts:{keyTime?:Date}={}){
+ async spoolBundleAndVerify(payloads:SpoolPayload[],opts:{keyTime?:Date;verifiedReceipt?:{b2Uri:string;batchSha256:string;itemCount:number;verifiedAt:string;etag?:string|null}}={}){
   if(opts.keyTime!==undefined&&(!(opts.keyTime instanceof Date)||
       !Number.isFinite(opts.keyTime.getTime())))
    throw Error('P0B_BUNDLE_IDEMPOTENT_CLOCK_INVALID');
@@ -324,6 +324,18 @@ export class B2SpoolManager {
   const day=stamp.slice(0,8);
   const group=new Set(payloads.map(p=>p.sourceId)).size===1?payloads[0].sourceId:'mixed';
   const key=bundleKey(this.prefix,day,group,stamp,batchSha256);
+  // An ARCHIVED D1 outbox row is written only after exact B2 GET/hash/decrypt
+  // verification. Reuse that provider-backed receipt for six hours when the
+  // deterministic content address matches; older receipts get a fresh B2 audit.
+  const prior=opts.verifiedReceipt,priorAt=Date.parse(prior?.verifiedAt??'');
+  const nowMs=this.now().getTime();
+  if(prior&&Number.isFinite(priorAt)&&priorAt<=nowMs&&
+    nowMs-priorAt<=6*60*60_000&&prior.b2Uri==='b2://'+key&&
+    prior.batchSha256===batchSha256&&prior.itemCount===index.length){
+   return {b2Uri:prior.b2Uri,byteSize:object.length,batchSha256,
+    etag:prior.etag??null,storedAt:new Date(priorAt).toISOString(),
+    items:index,reusedVerifiedReceipt:true};
+  }
   const put=await this.request('PUT',key,object);
   const readback=(await this.request('GET',key)).data;
   if(readback.length!==object.length||
