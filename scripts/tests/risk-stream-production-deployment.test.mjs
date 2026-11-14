@@ -62,7 +62,8 @@ test("held canary retains the exact binding-delta receipt and preflights zone SL
  assert.match(held,/optimized-worker-candidate\.json/);
  assert.match(held,/release-dependency-readiness\.json/);
  assert.match(candidateBuilder,/commercial_license_prerequisite/);
- assert.match(candidateBuilder,/SIGNED_RELEASE_APPROVAL_AND_GEOMACRO_RELEASE_REVIEWER_SERVICE_REQUIRED/);
+ assert.match(candidateBuilder,/CANDIDATE_RELEASE_FLAG_IS_HELD_AT_ZERO/);
+ assert.match(candidateBuilder,/GEOMACRO_RELEASE_REVIEWER_SERVICE_BINDING/);
  assert.match(held,/if: always\(\)/);
  assert.match(parity,/UNREVIEWED_ADDITION_ACTUAL_/);
  assert.match(parity,/EXPECTED_MISSING_/);
