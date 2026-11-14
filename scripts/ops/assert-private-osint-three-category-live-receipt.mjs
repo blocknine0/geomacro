@@ -87,8 +87,16 @@ export function verifyThreeCategoryPrivateOsintReceipt(proof){
  need(h.source_category_checks_healthy===healthyTotal&&
   h.all_three_categories_have_live_feed_transport===
    categories.every(category=>summary[category].healthy>0)&&
+  h.all_registered_source_transports_healthy===(healthyTotal===n&&
+   categories.every(category=>summary[category].healthy>0))&&
   h.all_registered_sources_live===(healthyTotal===n&&
-   categories.every(category=>summary[category].healthy>0)),
+   categories.every(category=>summary[category].healthy>0)&&
+   proof.current_sweep_native_candidate_attribution_measured===true&&
+   proof.sources.every(row=>Number.isSafeInteger(row.candidates_observed_this_sweep)&&
+    row.candidates_observed_this_sweep>0))&&
+  h.all_three_categories_observed_native_candidates_this_tick===
+   (proof.current_sweep_native_candidate_attribution_measured===true&&
+    categories.every(category=>summary[category].native_candidates>0)),
   'FALSE_ALL_LIVE_STATUS');
  return {
   schema:'geomacro.private-osint-live-source-acceptance.v1',
