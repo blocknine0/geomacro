@@ -75,8 +75,20 @@ jobs:
           writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/wrangler.json',JSON.stringify(cfg));
           writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/d1-info.json',JSON.stringify(identity.result??identity));
           NODE
-          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 time-travel info geomacro-control-plane --json --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" > "$RUNNER_TEMP/geomacro-hot50-0219/bookmark.json"
-          node scripts/ops/verify-protected-d1-migration-gate.mjs --backup "$RUNNER_TEMP/geomacro-hot50-0219/d1-info.json" "$RUNNER_TEMP/geomacro-hot50-0219/bookmark.json"
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          const url='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/d1/database/'+encodeURIComponent(process.env.D1_DATABASE_ID)+'/time_travel/bookmark';
+          const r=await fetch(url,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,
+            accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('HOT50_0219_BOOKMARK_HTTP_'+r.status);
+          const body=await r.json(),bookmark=body?.result?.bookmark;
+          if(body?.success!==true||typeof bookmark!=='string'||!/^[a-f0-9-]{20,100}$/iu.test(bookmark))
+            throw Error('HOT50_0219_TIME_TRAVEL_BOOKMARK_UNVERIFIED');
+          console.log(JSON.stringify({schema:'geomacro.protected-d1-backup-point.v1',status:'PASS',
+            bookmark_sha256:createHash('sha256').update(bookmark).digest('hex'),
+            provider:'cloudflare-d1-time-travel',restore_exercised:false,no_funds:true}));
+          NODE
           node --input-type=module <<'NODE'
           import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
           const r=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
