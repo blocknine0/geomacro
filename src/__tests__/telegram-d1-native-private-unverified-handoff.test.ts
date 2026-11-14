@@ -21,6 +21,7 @@ const payload={
   source_id:"telegram_authorized_publisher_feed",
   source_record_id:123,source_channel_key:"verifiednews",
   published_at:item.published_at,headline:"Sensitive private post for test only",
+  signal_category:"GEOPOLITICS",country_iso3:"USA",watch_event:"conflict",
   verification_status:"UNVERIFIED",raw_payload:null,
 };
 const normalize=(j:unknown)=>JSON.stringify(j,null,2)+"\n";
