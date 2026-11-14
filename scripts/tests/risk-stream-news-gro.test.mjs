@@ -77,6 +77,13 @@ test("original proof and verified corroboration are separately signable upgrades
  assert.equal(JSON.parse(rows.find(r=>r.evidence_status==="CORROBORATED_INTERNAL_GRO").payload_json)
   .tier_status,"INTERNAL_CORROBORATED_REVIEW_REQUIRED");
 });
+test("immutable retry rejects a D1 row signed under an unexpected key id",async()=>{
+ const {db,env}=database();
+ await issueDailyNewsGro(env,src,"standard",{now:NOW});
+ db.prepare("UPDATE risk_stream_daily_news_gro SET signing_key_id='other-key' ").run();
+ await assert.rejects(issueDailyNewsGro(env,src,"standard",{now:NOW}),
+  /EXISTING_SIGNATURE_INVALID/u);
+});
 test("feature-off never issues, signer missing fails closed",async()=>{
  const {env}=database();
  assert.equal((await issueDailyNewsBatch({...env,RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"0"},

@@ -21,6 +21,9 @@ const ROLES=Object.freeze({GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]});
 const WINDOW=48*3600000,MAX_ROWS=400;
 const RETRYABLE_D1=/(?:\b503\b|\b429\b|SQLITE_BUSY|D1_ERROR|OVERLOADED|TIMEOUT|UNAVAILABLE)/iu;
+export const hot50ResearchTickStatus=dailyNewsState=>
+ dailyNewsState==="GRO_SIGNING_OR_D1_READBACK_HELD"?
+  "HOT50_RESEARCH_TICK_PARTIAL_HOLD":"HOT50_RESEARCH_TICK_D1_READBACK_PASS";
 async function retryD1(operation){
  for(let attempt=0;attempt<4;attempt++){
   try{return await operation()}catch(error){
@@ -453,7 +456,7 @@ export async function runHot50AutonomousStreamTick(env,{
    console.error("HOT50_DAILY_NEWS_GRO_RECOVERY_HELD");
   }
  }
- return {status:"HOT50_RESEARCH_TICK_D1_READBACK_PASS",
+ return {status:hot50ResearchTickStatus(dailyNewsState),
   cells_checked:targets.length,total_cells:150,categories:HOT50_STREAM_CATEGORIES,
   basic_research_cells:basic,internal_signed_standard_cells:internalStandard,
   standard_hold_cells:held,complex_verified_cells:complexReady,
