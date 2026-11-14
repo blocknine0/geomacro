@@ -143,7 +143,9 @@ jobs:
           if(JSON.stringify([...new Set(rows.map(x=>x.name))].sort())!==JSON.stringify([...required].sort()))
            throw Error('HOT50_0221_PROVIDER_READBACK_DIVERGED');
           const table=rows.find(x=>x.name==='risk_stream_unsigned_news_gro')?.sql??'';
-          if(!table.includes('commercial_sale_authorized=0')||!table.includes('raw_source_disclosed=0'))
+          if(!table.includes('commercial_sale_authorized=0')||!table.includes('raw_source_disclosed=0')||
+             !table.includes("json_extract(payload_json,'$.product_type')='NEWS_ANALYSIS_RISK_GATE'")||
+             !table.includes("json_extract(payload_json,'$.news_analysis_only')=1"))
            throw Error('HOT50_0221_SAFETY_SCHEMA_INVALID');
           const unsigned={schema:'geomacro.hot50-unsigned-news-gro-migration-receipt.v1',
            status:'PASS',database_id:process.env.D1_DATABASE_ID,
