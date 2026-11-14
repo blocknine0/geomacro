@@ -96,7 +96,12 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   const collector=readFileSync(new URL("scripts/ops/publish-website-derived-news.ts",root),"utf8");
   const legacy=readFileSync(new URL(".github/workflows/auto-ingest-news.yml",root),"utf8");
   assert.ok(primary.includes('cron: "7,27,47 * * * *"'));
-   assert.ok(primary.includes('GEOMACRO_DERIVED_ARCHIVE_ONLY: "1"'));
+   // The original archive-only constant became a governed dynamic Paid
+   // derived lane. It MUST remain archive-only unless the separate monthly
+   // headroom check returns a genuine admission receipt.
+   assert.ok(primary.includes("GEOMACRO_DERIVED_ARCHIVE_ONLY: ${{ steps.paid-monthly-derived.outputs.admitted == 'true' && '0' || '1' }}"));
+   assert.ok(primary.includes("if: needs.quota-admission.outputs.paid_derived_news_source_lane == 'true'"));
+   assert.ok(primary.includes("node scripts/ops/check-d1-paid-monthly-headroom.mjs --check"));
    assert.ok(primary.includes("github.event_name == 'push' ||"));
    assert.ok(primary.includes("github.event_name != 'push' &&"));
    assert.ok(primary.includes("needs.quota-admission.outputs.research == 'false'"));
