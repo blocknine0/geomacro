@@ -25,6 +25,15 @@ const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
 const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
+/** A Cloudflare Zone is optional: Lovable-managed domains have none. If it
+ * exists, retain edge 5xx telemetry; otherwise use exact Worker-version
+ * errors, p95/p99, directed health/readiness, and the signed D1/B2 proofs. */
+export function requireCanaryObservabilityPrerequisites(env:Record<string,string|undefined>){
+ const zone=(env.CLOUDFLARE_ZONE_ID??'').trim();
+ if(zone&&!/^[a-f0-9]{32}$/iu.test(zone))
+  need(false,'CANARY_ZONE_ID_INVALID');
+ return zone?'ZONE_AND_WORKER':'WORKER_D1_B2_ONLY';
+}
 // Cloudflare Workers invocation quantiles expose wallTimeP99 in MICROSECONDS,
 // not requestDurationP99 in milliseconds. Query the exact routed Worker
 // version, not the aggregate script; a 1% canary can be hidden by 99% baseline.
@@ -41,6 +50,13 @@ const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$vers
    }
   }
  }
+}`;
+const WORKER_GRAPH=`query CanaryWorkerObservability($accountTag:string!,$script:string!,$version:string!,$start:Time!,$end:Time!){
+ viewer{accounts(filter:{accountTag:$accountTag}){
+  workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
+   dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP95 wallTimeP99}
+  }
+ }}
 }`;
 async function liveCurrent():Promise<any>{
  const r=await api(route+'?per_page=1');
@@ -118,38 +134,49 @@ async function checkVersionParity(base:string,candidate:string,headSha:string,{r
 }
 
 async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
- const account=envString('CLOUDFLARE_ACCOUNT_ID',32),zone=envString('CLOUDFLARE_ZONE_ID',32);
- const graph=await queryCloudflareAnalytics(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
+ const account=envString('CLOUDFLARE_ACCOUNT_ID',32);
+ const zone=(process.env.CLOUDFLARE_ZONE_ID??'').trim();
+ if(zone&&!/^[a-f0-9]{32}$/iu.test(zone))need(false,'CANARY_ZONE_ID_INVALID');
+ const graph=zone?
+  await queryCloudflareAnalytics(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end}):
+  await queryCloudflareAnalytics(WORKER_GRAPH,{accountTag:account,script:WORKER,version,start,end});
  const worker=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0];
- const http=graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0];
+ const http=zone?graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0]:null;
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
  const siteCount=http?.count,ratio=http?.ratio?.status5xx;
  const wallTimeP95Us=worker?.quantiles?.wallTimeP95;
  const wallTimeP99Us=worker?.quantiles?.wallTimeP99;
- // HTTP 5xx remains zone-host aggregate; Workers invocation errors are
- // exact scriptVersion. Both must pass, and low candidate volume holds.
+ // Worker errors are exact-scriptVersion telemetry. Zone HTTP 5xx is an
+ // additional edge signal only when the account actually owns a Cloudflare
+ // Zone for the hostname; an unzoned Lovable domain has no such measurement.
  // wallTimeP99 is microseconds; convert to milliseconds for the 50ms SLO.
  need(worker?.dimensions?.scriptVersion===version&&
-  Number.isSafeInteger(requests)&&Number.isSafeInteger(errors)&&
-  Number.isSafeInteger(siteCount)&&
-  typeof ratio==='number'&&ratio>=0&&ratio<=1&&
+  Number.isSafeInteger(requests)&&requests>0&&Number.isSafeInteger(errors)&&
+  (!zone||Number.isSafeInteger(siteCount))&&
+  (!zone||typeof ratio==='number'&&ratio>=0&&ratio<=1)&&
   typeof wallTimeP99Us==='number'&&Number.isFinite(wallTimeP99Us)&&wallTimeP99Us>=0&&
   typeof wallTimeP95Us==='number'&&Number.isFinite(wallTimeP95Us)&&wallTimeP95Us>=0,
   'CANARY_PROVIDER_VERSION_METRICS_UNAVAILABLE');
  const p95=wallTimeP95Us/1000;
  const p99=wallTimeP99Us/1000;
  need(p95<=p99,'CANARY_PROVIDER_QUANTILES_INCONSISTENT');
- if(requests<1000||siteCount<1000){
+ if(requests<1000||(zone&&siteCount<1000)){
   need(!requireVolume,'CANARY_PROVIDER_SAMPLE_FLOOR_UNMET');
   return null;
  }
+ const workerErrorRatio=errors/requests;
  return {worker_script_version:version,worker_requests:requests,worker_errors:errors,
-  worker_error_ratio:errors/requests,host_requests:siteCount,
-  http_5xx_ratio:ratio,worker_wall_time_p95_ms:p95,worker_wall_time_p99_ms:p99,
-  http_5xx_under_0_5pct:ratio<=0.005,
+  worker_error_ratio:workerErrorRatio,worker_error_ratio_under_0_5pct:workerErrorRatio<=0.005,
+  observability_mode:zone?'ZONE_AND_WORKER':'WORKER_ONLY_NO_ZONE',
+  host_requests:siteCount??null,
+  http_5xx_ratio:ratio??null,worker_wall_time_p95_ms:p95,worker_wall_time_p99_ms:p99,
+  http_5xx_under_0_5pct:zone?ratio<=0.005:null,
+  zone_http_5xx_verified:!!zone,
   version_errors_under_0_5pct:errors/requests<=0.005,
   p99_under_50ms:p99<50,
-  host_http_5xx_not_version_isolated:true,worker_metrics_version_isolated:true};
+  host_http_5xx_not_version_isolated:!!zone,
+  zone_http_5xx_unavailable_reason:zone?null:'NO_CLOUDFLARE_ZONE_FOR_DOMAIN',
+  worker_metrics_version_isolated:true};
 }
 // All D1 databases and every day in the 5th-to-5th Paid billing cycle,
 // never only the current UTC day. GraphQL telemetry lags; a provider
@@ -237,7 +264,8 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
    if(Date.now()-began>=120000){
     const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
      pct===0?base:candidate,false);
-    if(result)need(result.http_5xx_under_0_5pct&&
+    if(result)need(result.worker_error_ratio_under_0_5pct&&
+     (!result.zone_http_5xx_verified||result.http_5xx_under_0_5pct)&&
      result.version_errors_under_0_5pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
    }
   }
@@ -249,7 +277,9 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
   'CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED');
  const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
   pct===0?base:candidate,true);
- need(result.http_5xx_under_0_5pct&&result.version_errors_under_0_5pct&&result.p99_under_50ms,
+ need(result.worker_error_ratio_under_0_5pct&&
+  (!result.zone_http_5xx_verified||result.http_5xx_under_0_5pct)&&
+  result.version_errors_under_0_5pct&&result.p99_under_50ms,
   'CANARY_SLO_BREACH');
  return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,...result,
   latest_d1_provider_observation:d1,
@@ -389,8 +419,13 @@ export function admitCompletedCanaryForHoldReview({
     current.verified_minutes>=stageWindowMs(pct)/60000&&
     current.worker_script_version===(pct===0?baseline:candidate)&&
     Number.isSafeInteger(current.worker_requests)&&current.worker_requests>=1000&&
-    Number.isSafeInteger(current.host_requests)&&current.host_requests>=1000&&
-    current.http_5xx_under_0_5pct===true&&
+    (current.zone_http_5xx_verified===true?
+     Number.isSafeInteger(current.host_requests)&&current.host_requests>=1000:
+     current.observability_mode==='WORKER_ONLY_NO_ZONE'&&
+      current.host_requests===null)&&
+    current.worker_error_ratio_under_0_5pct===true&&
+    (current.zone_http_5xx_verified===true?current.http_5xx_under_0_5pct===true:
+     current.observability_mode==='WORKER_ONLY_NO_ZONE')&&
     current.version_errors_under_0_5pct===true&&
     current.p99_under_50ms===true&&
     current.observed_d1_hourly_pace?.status==='PASS_OBSERVED_PAID_MONTHLY_PACE'&&
@@ -417,6 +452,7 @@ async function main(){
  const promote=args[0]==='--promote',reviewHold=args[0]==='--review-hold';
  const mainSha=assertOfficialMain();
  need(existsSync(HOLD),'CANARY_EXISTING_PROTECTION_REQUIRED');
+ if(promote)requireCanaryObservabilityPrerequisites(process.env);
 
  if(reviewHold){
   // Read-only final admission AFTER a separately signed, complete 100%

@@ -18,6 +18,10 @@ const bindings=[
  {name:"RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"},
  {name:"RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64",type:"secret_text"},
  {name:"RISK_GATE_DECISION_ED25519_KEY_ID",type:"secret_text"},
+ {name:"RISK_STREAM_GRO_SIGN_PKCS8_B64",type:"secret_text"},
+ {name:"RISK_STREAM_GRO_VERIFY_SPKI_B64",type:"secret_text"},
+ {name:"RISK_STREAM_MACHINE_FACTS_SPKI_B64",type:"secret_text"},
+ {name:"RISK_STREAM_MACHINE_RIGHTS_SPKI_B64",type:"secret_text"},
  {name:"GEOMACRO_SOURCE_SHA",type:"plain_text",text:SHA},
  {name:"PREDGE_PAID_TRAFFIC_ENABLED",type:"plain_text",text:"NO"},
  {name:"PREDGE_PAID_GO_LIVE_CROSSCHECK",type:"plain_text",text:""},
@@ -111,6 +115,16 @@ test("untrusted SHA, annotations and Worker bindings never authorize promotion",
  assert.equal(check(1,0,{candidateVersion:{
   ...version(B),resources:{bindings:wrong}
  }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
+});
+test("promotion requires the complete stream signer and two-machine-attester binding set",()=>{
+ const required=["RISK_STREAM_GRO_SIGN_PKCS8_B64","RISK_STREAM_GRO_VERIFY_SPKI_B64",
+  "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64"];
+ for(const name of required){
+  const reduced=enabledBindings.filter(row=>row.name!==name);
+  const proof=check(1,0,{baselineVersion:{id:A,resources:{bindings:reduced}},
+   candidateVersion:{id:B,resources:{bindings:reduced}}});
+  assert.equal(proof.reason,"PROTECTED_BINDING_MISSING",name);
+ }
 });
 test("stale, wrong-cycle and unverified provider Paid receipts HOLD",()=>{
  const altered=[

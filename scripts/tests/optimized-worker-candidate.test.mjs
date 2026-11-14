@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersionIdFromWranglerEvents} from '../ops/prepare-optimized-worker-candidate.mjs';
+import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersionIdFromWranglerEvents,
+ assertBaselineRiskStreamSigningBindings} from '../ops/prepare-optimized-worker-candidate.mjs';
 import {reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS}
  from '../lib/canary-additive-binding-parity.mjs';
 const sha='a'.repeat(40);
@@ -147,6 +148,21 @@ test('candidate selection never guesses from previous versions sharing a SHA',as
  assert.match(source,/uploadedVersionIdFromWranglerEvents/u);
  assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId);"));
  assert.doesNotMatch(source,/versions\?deployable=true/u);
+});
+
+test('signed Risk Gate candidate requires the existing four secret signing bindings',()=>{
+ const names=['RISK_STREAM_GRO_SIGN_PKCS8_B64','RISK_STREAM_GRO_VERIFY_SPKI_B64',
+  'RISK_STREAM_MACHINE_FACTS_SPKI_B64','RISK_STREAM_MACHINE_RIGHTS_SPKI_B64'];
+ const signed={resources:{bindings:names.map(name=>({name,type:'secret_text'}))}};
+ assert.equal(assertBaselineRiskStreamSigningBindings(signed),true);
+ for(const name of names){
+  const missing={resources:{bindings:signed.resources.bindings.filter(x=>x.name!==name)}};
+  assert.throws(()=>assertBaselineRiskStreamSigningBindings(missing),
+   new RegExp('CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING_'+name));
+ }
+ const wrong={resources:{bindings:names.map(name=>({name,type:'plain_text',text:'x'}))}};
+ assert.throws(()=>assertBaselineRiskStreamSigningBindings(wrong),
+  /CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING/);
 });
 
 // The new version must carry real new secrets in the SAME immutable code upload.
