@@ -133,7 +133,7 @@ export async function issueUnsignedDailyNewsBatch(env,signals,{
   // publisher clock. Global search index leads remain explicitly unverified.
   const preview=await makeDailyNewsGro(signal,"basic_focused",{now});
   const key=[preview.payload.country_iso3,preview.payload.category,
-   preview.payload.event_fingerprint,preview.source.payload.evidence_status].join("|");
+   preview.payload.event_fingerprint,preview.payload.evidence_status].join("|");
   unique.set(key,signal);
  }
  const records=[];
