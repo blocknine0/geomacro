@@ -43,6 +43,14 @@ test("valid owner-reviewed role pair passes manifest validation",()=>{
  assert.equal(result.pendingEntries.length,0);
 });
 
+test("production registry workflow accepts Cloudflare D1 uuid or id with strict target checks",()=>{
+ const workflow=readFileSync(join(ROOT,
+  ".github/workflows/apply-risk-stream-source-registry.yml"),"utf8");
+ assert.match(workflow,/\(body\?.result\?.uuid\s*\?\?\s*body\?.result\?.id\)!==databaseId/u);
+ assert.match(workflow,/body\?.success!==true/u);
+ assert.match(workflow,/body\?.result\?.name!=='geomacro-control-plane'/u);
+});
+
 test("shipped manifest approves only repository-documented OGL sources and retains pending examples",()=>{
  const manifest=readJson("config/risk-stream-source-rights-reviewed.v1.json");
  const result=validateSourceRightsManifest(manifest,now);
