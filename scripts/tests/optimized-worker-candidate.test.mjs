@@ -27,11 +27,31 @@ test('candidate inherits all production secrets/resources/flags without copying 
  assert.doesNotMatch(JSON.stringify(config),/canonical-db|secret_text/);
  assert.equal(config.vars.RISK_STREAM_ACTIVE,'1');
  assert.equal(config.vars.STREAM_INGESTION_ENABLED,'true');
+ assert.equal(config.vars.STREAM_MODE,'PRODUCTION');
  assert.equal(config.vars.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED,'1');
  assert.equal(config.vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE,'0');
  assert.equal(config.vars.RISK_STREAM_CANARY_HOLD_CLEARED,'0');
  assert.equal(config.vars.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED,'0');
+ const serialized=JSON.parse(JSON.stringify(config));
+ assert.equal(Object.hasOwn(serialized.vars,'STREAM_MODE'),true);
+ assert.equal(serialized.vars.STREAM_MODE,'PRODUCTION');
  assert.equal(verifyCandidateBindings(baseline,candidate(),sha,[],researchRuntime),true);
+});
+
+test('candidate config materializes STREAM_MODE when the live baseline omits it',()=>{
+ const live=structuredClone(baseline);
+ live.resources.bindings=live.resources.bindings.filter(x=>x.name!=='STREAM_MODE');
+ const config=candidateConfig(live,sha);
+ assert.equal(config.vars.STREAM_MODE,'DISABLED');
+ const uploaded={resources:{...live.resources,bindings:[
+  ...live.resources.bindings.filter(x=>!Object.hasOwn(config.vars,x.name)),
+  ...Object.entries(config.vars).map(([name,text])=>({name,type:'plain_text',text}))
+ ]}};
+ assert.equal(uploaded.resources.bindings.find(x=>x.name==='STREAM_MODE').text,'DISABLED');
+ assert.equal(verifyCandidateBindings(live,uploaded,sha),true);
+ const omitted=structuredClone(uploaded);
+ omitted.resources.bindings=omitted.resources.bindings.filter(x=>x.name!=='STREAM_MODE');
+ assert.throws(()=>verifyCandidateBindings(live,omitted,sha),/RESOURCE_OR_VALUE_CHANGED/);
 });
 test('same binding names cannot conceal resource changes or payment activation',()=>{
  for(const [name,field,value] of [['DB','id','other-db'],['PAYMENT_ENABLED','text','1']]){
