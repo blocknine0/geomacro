@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,sign} from "node:crypto";
 import {HOT50_STREAM_TARGETS,HOT50_STREAM_CATEGORIES,planHot50StreamCells,
  projectHot50StreamCell,probeHot50GlobalSearch,runHot50AutonomousStreamTick,
- verifyHot50SignedGroReadbacks,verifyHot50ComplexCell}
+ verifyHot50SignedGroReadbacks,verifyHot50ComplexCell,hot50ResearchTickStatus}
  from "../../workers/control-plane/src/risk-stream-autonomous-hot50.mjs";
 const now=Date.parse("2026-11-12T12:01:00Z"),at=new Date(now-1800000).toISOString();
 const digest=s=>createHash("sha256").update(s).digest("hex");
@@ -13,6 +13,12 @@ const roles={
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]
 };
+test("daily GRO signing or D1 readback failure is visible as a research partial hold",()=>{
+ assert.equal(hot50ResearchTickStatus("GRO_SIGNATURE_READBACK_PASS"),
+  "HOT50_RESEARCH_TICK_D1_READBACK_PASS");
+ assert.equal(hot50ResearchTickStatus("GRO_SIGNING_OR_D1_READBACK_HELD"),
+  "HOT50_RESEARCH_TICK_PARTIAL_HOLD");
+});
 const sample=(category,source,role,root,atTime=at)=>({
  observation_id:digest(category+source),country_iso3:"USA",category,
  event_fingerprint:digest("one same real event "+category),

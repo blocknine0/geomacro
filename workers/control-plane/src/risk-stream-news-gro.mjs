@@ -143,9 +143,10 @@ export async function makeDailyNewsGro(signal,tier,{now=Date.now()}={}){
  return {gro_id:groId,payload};
 }
 
-async function verifySaved(row,publicKey,expected=null){
+async function verifySaved(row,publicKey,expected=null,expectedKeyId=null){
  if(!row||!HEX.test(row.payload_sha256??"")||
   typeof row.payload_json!=="string"||row.payload_json.length>9000||
+  (expectedKeyId!==null&&row.signing_key_id!==expectedKeyId)||
   await progressiveSha(row.payload_json)!==row.payload_sha256)return false;
  let stored;try{stored=JSON.parse(row.payload_json)}catch{return false}
  if(stored.raw_source_disclosed!==false||stored.raw_upstream_text_included!==false||
@@ -168,10 +169,12 @@ export async function issueDailyNewsGro(env,signal,tier,{now=Date.now()}={}){
  const key=await crypto.subtle.importKey("spki",
   decode(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64),
   {name:"Ed25519"},false,["verify"]);
- const existing=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
+ const expectedKeyId=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
+ if(!/^[A-Za-z0-9._:-]{1,96}$/u.test(expectedKeyId))fail("SIGNING_KEY_ID_INVALID");
+ const existing=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64,signing_key_id "+
   "FROM risk_stream_daily_news_gro WHERE gro_id=? LIMIT 1").bind(gro_id).first();
  if(existing){
-  if(!await verifySaved(existing,key,payload))fail("EXISTING_SIGNATURE_INVALID");
+  if(!await verifySaved(existing,key,payload,expectedKeyId))fail("EXISTING_SIGNATURE_INVALID");
   return {gro_id,status:"IDEMPOTENT_SIGNED_READBACK",evidence_status:payload.evidence_status};
  }
  const signed=await signProgressiveDecision(payload,env);
@@ -189,9 +192,9 @@ export async function issueDailyNewsGro(env,signal,tier,{now=Date.now()}={}){
   payload.event_fingerprint,tier,payload.evidence_status,canonical,digest,
   signed.decision_signature_b64,signed.decision_signature_key_id,
   payload.generated_at,payload.expires_at).run();
- const saved=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
+ const saved=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64,signing_key_id "+
   "FROM risk_stream_daily_news_gro WHERE gro_id=? LIMIT 1").bind(gro_id).first();
- if(!await verifySaved(saved,key,payload))fail("D1_SIGNED_READBACK_INVALID");
+ if(!await verifySaved(saved,key,payload,expectedKeyId))fail("D1_SIGNED_READBACK_INVALID");
  return {gro_id,status:"SIGNED_D1_READBACK",evidence_status:payload.evidence_status};
 }
 
