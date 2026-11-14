@@ -9,7 +9,7 @@ import {RISK_GATE_HOT50,hot50RiskGateEnabled} from "./risk-gate-hot50-scope.mjs"
 import {phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {riskPublisherSearchPlan} from "./risk-gate-global-news-search.mjs";
 import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
-import {issueUnsignedDailyNewsBatch} from "./risk-stream-unsigned-gro.mjs";
+import {issueUnsignedDailyNewsBatch,pruneUnsignedDailyNewsGros} from "./risk-stream-unsigned-gro.mjs";
 import {parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {verifyGeoMacroSevenDayHistory} from "./risk-stream-seven-day-chain.mjs";
 
@@ -406,6 +406,15 @@ export async function runHot50AutonomousStreamTick(env,{
    env.RISK_STREAM_ACTIVE!=="1"||env.STREAM_INGESTION_ENABLED!=="true"||
    !hot50RiskGateEnabled(env)||!env.DB?.prepare||!env.DB?.batch)
   return {status:"HOLD_AUTONOMOUS_STREAM_DISABLED",cells_checked:0};
+ let unsignedPrunedRows=0,unsignedPruneState="NOT_DUE";
+ try{
+  unsignedPrunedRows=await pruneUnsignedDailyNewsGros(env,now);
+  if(new Date(now).getUTCHours()===0&&new Date(now).getUTCMinutes()===5)
+   unsignedPruneState="UNSIGNED_GRO_RETENTION_READBACK_PASS";
+ }catch{
+  unsignedPruneState="UNSIGNED_GRO_RETENTION_HOLD";
+  console.error("HOT50_UNSIGNED_GRO_RETENTION_HELD");
+ }
  const targets=planHot50StreamCells(now,perTick),pool=await loadPulse(env.DB,targets,now);
  const storedGroRows=pool.signed.length;
  pool.signed=await verifyHot50SignedGroReadbacks(pool.signed,env,now);
@@ -476,6 +485,8 @@ export async function runHot50AutonomousStreamTick(env,{
   unsigned_news_gro_created:unsignedNewsCreated,
   unsigned_news_gro_idempotent:unsignedNewsIdempotent,
   unsigned_news_gro_state:unsignedNewsState,
+  unsigned_news_gro_pruned_rows:unsignedPrunedRows,
+  unsigned_news_gro_retention_state:unsignedPruneState,
   unsigned_news_gro_signature_created:false,
   daily_news_gro_signed:dailyNewsSigned,daily_news_gro_state:dailyNewsState,
   licensed_deliveries_performed:0,commercial_release_unchanged:true,
