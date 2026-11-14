@@ -22,7 +22,7 @@ const failureCode=(error:unknown)=>{
  return /^P0B_[A-Z0-9_]{3,80}$/u.test(m)?m:'P0B_PRODUCER_FAILURE';
 };
 function holdMillis(code:string,date:Date){
- if(code==='P0B_B2_QUOTA_HELD')return Math.max(60000,
+ if(code==='P0B_B2_QUOTA_HELD'||/^P0B_B2_(?:PUT|GET)_HTTP_429$/u.test(code))return Math.max(60000,
   Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()+1)-date.getTime());
  if(/^P0B_B2_(?:PUT|GET)_HTTP_(?:401|403)$/u.test(code)||
   code==='P0B_B2_BUNDLE_INTEGRITY_MISMATCH'||code==='P0B_BUNDLE_AUTHENTICATION_FAILED')
@@ -151,10 +151,14 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    // PENDING_ARCHIVE row without advancing any source cursor.
    const opened=await openP0bArchiveOutbox(env.DB,chunk.map(x=>x.payload),
     now(),env.B2_SPOOL_ENCRYPTION_KEY,opts.replayLeaseId??null);
-   objects_requested++;
+   const verifiedReceipt=opened.state==='ARCHIVED'?{
+    b2Uri:opened.b2_uri,batchSha256:opened.b2_object_sha256,
+    itemCount:opened.item_count,verifiedAt:opened.archived_at,etag:opened.b2_etag
+   }:undefined;
    const verified=await manager.spoolBundleAndVerify(opened.payloads,{
-    keyTime:new Date(opened.first_seen_at)
+    keyTime:new Date(opened.first_seen_at),verifiedReceipt
    });
+   if(!verified.reusedVerifiedReceipt)objects_requested++;
    if(verified.items.length!==chunk.length)throw Error('P0B_BUNDLE_ITEM_READBACK_MISMATCH');
    const registeredAt=now().toISOString();
    const commands=[env.DB.prepare(
