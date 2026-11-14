@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync } from "node:fs";
+import { hot50RiskGateWatchMatch } from "../workers/control-plane/src/hot50-telegram-watch-filter.mjs";
 
 const CATEGORIES = new Set(["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]);
 const USERNAME = /^[a-z0-9_]{5,32}$/;
@@ -49,6 +50,11 @@ export function verifyTelegramLeadEnvelope(input) {
   if (input.country_iso3 != null && !/^[A-Z]{3}$/.test(String(input.country_iso3))) {
     throw new Error("TELEGRAM_COUNTRY_INVALID");
   }
+  const watch = hot50RiskGateWatchMatch({
+    country_iso3: input.country_iso3, category: input.category, headline,
+    event_type: input.event_type, topic_code: input.topic_code,
+  });
+  if (!watch.accepted) throw new Error(`TELEGRAM_HOT50_WATCH_FILTERED:${watch.reason}`);
   if (input.source_url != null) {
     const expected = `https://t.me/${input.source_channel_key}/`;
     if (!String(input.source_url).toLowerCase().startsWith(expected.toLowerCase())) {
@@ -66,6 +72,7 @@ export function verifyTelegramLeadEnvelope(input) {
     source_url: input.source_url ?? null,
     verification_status: "UNVERIFIED",
     country_iso3: input.country_iso3 ?? null,
+    watch_event: watch.event,
     raw_payload: null,
   };
 }

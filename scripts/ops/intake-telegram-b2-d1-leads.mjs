@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import {hot50RiskGateWatchMatch} from "../../workers/control-plane/src/hot50-telegram-watch-filter.mjs";
 
 const SIGNAL=/^tg_[a-f0-9]{32}$/u;
 const DELIVERY=/^tg_[a-f0-9]{32}_[a-f0-9]{16}$/u;
@@ -53,6 +54,10 @@ export function validateTelegramDurableIntake(item,payload,payloadText){
     item.scoring_eligible===false &&
     item.commercial_eligible===false,
     "TELEGRAM_D1_INTAKE_PREPROMOTION_FORBIDDEN");
+  assert(hot50RiskGateWatchMatch({country_iso3:payload.country_iso3,
+    category:payload.signal_category,watch_event:payload.watch_event,
+    event_type:payload.watch_event}).accepted,
+    "TELEGRAM_D1_INTAKE_WATCH_FILTERED");
   assert(payload.source_id===SOURCE&&
     payload.source_channel_key===channel&&
     String(payload.source_record_id)===String(record)&&

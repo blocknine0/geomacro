@@ -4,6 +4,8 @@
  * Existing private geomacro-telegram-signals Worker performs authorization,
  * source-specific permission checks, keyword routing and D1 readback.
  */
+import {classifyHot50TelegramText} from "./hot50-telegram-watch-filter.mjs";
+
 const HEADER = "x-telegram-bot-api-secret-token";
 const SECRET_RE = /^[A-Za-z0-9_-]{32,256}$/u;
 const MAX_UPDATE_BYTES = 64 * 1024;
@@ -70,6 +72,17 @@ export async function relayTelegramFlashWebhook(request,env,forward=fetch) {
   let body;
   try {body=await boundedBody(request)}
   catch{return reply(413,"INVALID_TELEGRAM_UPDATE_SIZE")}
+  let update;
+  try {update=JSON.parse(new TextDecoder().decode(body))}
+  catch{return Response.json({ok:true,accepted:false,duplicate:false,ignored:"invalid_update"},
+    {status:200,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}})}
+  const post=update?.channel_post;
+  const text=typeof post?.text==="string"?post.text:
+    typeof post?.caption==="string"?post.caption:"";
+  const watch=classifyHot50TelegramText(text);
+  if(!watch)return Response.json({ok:true,accepted:false,duplicate:false,
+    ignored:"outside_hot50_risk_gate_scope"},
+    {status:200,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
   try {
     const response=await forward(origin+"/telegram/webhook",{
       method:"POST",redirect:"manual",

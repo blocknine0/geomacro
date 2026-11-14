@@ -8,6 +8,7 @@ import {readFileSync,realpathSync,lstatSync} from "node:fs";
 import {resolve,dirname,basename} from "node:path";
 import {execFileSync} from "node:child_process";
 import {pathToFileURL} from "node:url";
+import {hot50RiskGateWatchMatch} from "../../workers/control-plane/src/hot50-telegram-watch-filter.mjs";
 
 const ID=/^tg_[a-f0-9]{32}_[a-f0-9]{16}$/u;
 const SHA=/^[a-f0-9]{64}$/u;
@@ -27,6 +28,9 @@ export function verifyAuthorizedTelegramResearchLead(entry,payload,now=new Date(
  assert(entry.queue_state==="PENDING"&&entry.verification_status==="UNVERIFIED"&&
   entry.scoring_eligible===false&&entry.commercial_eligible===false,
   "TELEGRAM_RESEARCH_UNVERIFIED_REQUIRED");
+ const watch=hot50RiskGateWatchMatch({country_iso3:payload.country_iso3,
+  category:payload.signal_category,watch_event:payload.watch_event,event_type:payload.watch_event});
+ assert(watch.accepted,"TELEGRAM_RESEARCH_HOT50_WATCH_FILTERED");
  assert(payload.source_id==="telegram_authorized_publisher_feed"&&
   payload.source_url===null&&payload.raw_payload===null&&
   payload.headline==="TELEGRAM_LEAD_METADATA_ONLY"&&
@@ -44,10 +48,12 @@ export function verifyAuthorizedTelegramResearchLead(entry,payload,now=new Date(
  assert(Number.isFinite(at)&&at<=now.getTime()&&at>=now.getTime()-WINDOW,
   "TELEGRAM_RESEARCH_STALE_OR_FUTURE");
  return Object.freeze({delivery_id:entry.delivery_id,category,country_iso3:country,
-  published_at:new Date(at).toISOString()});
+  watch_event:watch.event,published_at:new Date(at).toISOString()});
 }
 export function authorizedTelegramResearchSql(row,now=new Date()){
  assert(ID.test(row.delivery_id)&&Object.values(CATEGORIES).includes(row.category)&&
+   ["conflict","sanctions","export_ban","chokepoint_disruption",
+    "fx_sovereign_stress","critical_mineral_supply_shock"].includes(row.watch_event)&&
    (row.country_iso3===null||/^[A-Z]{3}$/u.test(row.country_iso3))&&
    Number.isFinite(Date.parse(row.published_at))&&Number.isFinite(now.getTime()),
    "TELEGRAM_RESEARCH_SQL_ROW_INVALID");
@@ -101,6 +107,10 @@ export function fromAuthorizedSummary(file,now=new Date()){
 }
 export async function publishTelegramPrivateResearch(summaryPath,now=new Date()){
  const leads=fromAuthorizedSummary(summaryPath,now);
+ if(leads.length===0)return {schema:"geomacro.telegram-research-json-production-ack.v1",
+  accepted:0,d1_readback_verified:true,watch_filtered_only:true,
+  raw_telegram_content_stored:false,independent_original_verified:false,
+  commercial_product_authorized:false,x402_charges:0};
  let accepted=0;
  for(const row of leads){
    executeD1(authorizedTelegramResearchSql(row,now));

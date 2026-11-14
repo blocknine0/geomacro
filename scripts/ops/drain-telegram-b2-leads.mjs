@@ -111,7 +111,12 @@ async function main() {
     if (String(envelope.source_channel_key ?? "") !== row.source_channel_key) throw new Error("TELEGRAM_CHANNEL_QUEUE_MISMATCH");
     if (Number(envelope.source_record_id ?? 0) !== row.source_record_id) throw new Error("TELEGRAM_MESSAGE_ID_QUEUE_MISMATCH");
     if (String(envelope.published_at ?? "") !== row.published_at) throw new Error("TELEGRAM_PUBLISHED_AT_QUEUE_MISMATCH");
-    const sanitized = verifyTelegramLeadEnvelope(envelope);
+    let sanitized;
+    try { sanitized = verifyTelegramLeadEnvelope(envelope); }
+    catch (error) {
+      if (error instanceof Error && error.message.startsWith("TELEGRAM_HOT50_WATCH_FILTERED:")) continue;
+      throw error;
+    }
     const outputPath = path.join(outDir, `${row.delivery_id}.json`);
     writeFileSync(outputPath, `${JSON.stringify(sanitized, null, 2)}\n`, "utf8");
     accepted.push({
@@ -136,6 +141,7 @@ async function main() {
     checked_at: new Date().toISOString(),
     queue_rows: rows.length,
     verified_objects: accepted.length,
+    watch_filtered: rows.length - accepted.length,
     status: "VERIFIED_UNVERIFIED_LEADS_READY_FOR_CANONICAL_INGEST",
     accepted,
     b2_usage: b2.usage(),
