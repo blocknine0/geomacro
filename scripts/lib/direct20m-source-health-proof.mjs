@@ -131,7 +131,16 @@ export function summarizePrivateOsintThreeCategoryHealth(sources,{
   source_category_checks_healthy:healthy,
   all_configured_source_category_checks_observed:observed===expected,
   all_three_categories_have_live_feed_transport:allThree,
-  all_registered_sources_live:allThree&&healthy===expected&&observed===expected,
+  all_registered_source_transports_healthy:allThree&&healthy===expected&&observed===expected,
+  // All sources LIVE requires genuine native candidate evidence for EVERY
+  // source-category this very tick, not merely HTTP 200 or an empty RSS feed.
+  all_registered_sources_live:allThree&&healthy===expected&&observed===expected&&
+   observedCandidatesMeasured===true&&sources.every(row=>
+    Number.isSafeInteger(row.candidates_observed_this_sweep)&&
+    row.candidates_observed_this_sweep>0),
+  all_three_categories_observed_native_candidates_this_tick:
+   observedCandidatesMeasured===true&&domains.every(c=>
+    perCategory[c].native_original_candidates_this_sweep>0),
   by_category:perCategory,
   country_195_routes_are_discovery_not_verified_event_coverage:true,
   root_only_references_counted_as_live_sources:false,
