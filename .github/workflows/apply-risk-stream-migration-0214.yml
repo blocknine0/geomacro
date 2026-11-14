@@ -92,21 +92,25 @@ jobs:
             remaining_rows_read:r.remaining_rows_read,remaining_rows_written:r.remaining_rows_written,
             checked_at_utc:r.checked_at_utc,no_funds:true}));
           NODE
-      - name: Confirm production D1 Time Travel bookmark
+      - name: Confirm production D1 Time Travel bookmark from Cloudflare API
         shell: bash
         run: |
           set -euo pipefail
-          "$RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler" d1 time-travel info geomacro-control-plane --json --config "$RUNNER_TEMP/geomacro-0214/wrangler.json" > "$RUNNER_TEMP/geomacro-0214/bookmark.json"
           node --input-type=module <<'NODE'
-          import {readFileSync} from 'node:fs';
           import {createHash} from 'node:crypto';
-          const v=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-0214/bookmark.json','utf8'));
-          const bookmark=String(v.bookmark??v.result?.bookmark??'');
-          if((v.version??v.result?.version)!=='production'||!/^[a-f0-9-]{20,100}$/iu.test(bookmark))
+          const id=process.env.D1_DATABASE_ID;
+          const url='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/d1/database/'+encodeURIComponent(id)+'/time_travel/bookmark';
+          const r=await fetch(url,{headers:{authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,
+            accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('RISK_STREAM_0214_BOOKMARK_HTTP_'+r.status);
+          const body=await r.json();
+          const bookmark=body?.result?.bookmark;
+          if(body?.success!==true||typeof bookmark!=='string'||!/^[a-f0-9-]{20,100}$/iu.test(bookmark))
             throw Error('RISK_STREAM_0214_TIME_TRAVEL_BOOKMARK_UNVERIFIED');
           console.log(JSON.stringify({schema:'geomacro.protected-d1-backup-point.v1',status:'PASS',
             bookmark_sha256:createHash('sha256').update(bookmark).digest('hex'),
-            restore_exercised:false,no_funds:true}));
+            provider:'cloudflare-d1-time-travel',restore_exercised:false,no_funds:true}));
           NODE
       - name: Read physical preflight schema; reject partial or prior migration
         shell: bash
