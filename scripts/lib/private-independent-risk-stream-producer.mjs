@@ -115,7 +115,8 @@ export function producePrivateIndependentRiskStreamCandidates({
  candidates=[],now=new Date()
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
-    !Array.isArray(candidates)||candidates.length>96)fail();
+    !Array.isArray(candidates)||candidates.length>96||
+    candidates.some(x=>x?.schema!=="geomacro.private-independent-event-source-candidate.v1"))fail();
  const queue=clusterPrivateIndependentEventCandidates({candidates,now});
  const qualifiedClaims=new Set(queue.review_candidates.filter(x=>
   x.state==="MULTI_ORIGIN_REVIEW_REQUIRED"&&
