@@ -16,7 +16,10 @@ const raw=String(process.env.CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS||"");
 need(raw===raw.trim(),"CANARY_OWNER_REVIEWED_SECRET_FORMAT_INVALID");
 const reviewed=raw?raw.split(","):[];
 const runtime=reviewedHot50CandidateVars(sha,process.env);
-const reviewedPredgeRuntimeVars=Object.fromEntries(["PREDGE_PAID_TRAFFIC_ENABLED","PREDGE_PAID_GO_LIVE_CROSSCHECK","PREDGE_MUTUAL_TRIAL_STARTED_AT"].map(name=>[name,runtime[name]]));
+const reviewedRuntimeNames=[...Object.keys(runtime),"GEOMACRO_RELEASE_REVIEWER_SERVICE"];
+const reviewedPredgeRuntimeVars=Object.fromEntries(reviewedRuntimeNames
+ .filter(name=>runtime[name]!==undefined||process.env[name]!==undefined)
+ .map(name=>[name,runtime[name]??process.env[name]]));
 need(reviewed.length<=REVIEWABLE_ADDITIVE_SECRETS.length&&
  new Set(reviewed).size===reviewed.length&&
  reviewed.every(s=>REVIEWABLE_ADDITIVE_SECRETS.includes(s)),

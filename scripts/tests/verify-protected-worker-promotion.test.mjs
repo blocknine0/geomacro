@@ -27,15 +27,19 @@ const bindings=[
  {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"},
  {name:"RISK_STREAM_ACTIVE",type:"plain_text",text:"0"},
  {name:"STREAM_INGESTION_ENABLED",type:"plain_text",text:"false"},
+ {name:"STREAM_MODE",type:"plain_text",text:"DISABLED"},
  {name:"RISK_STREAM_HOT50_AUTONOMOUS_ENABLED",type:"plain_text",text:"0"},
  {name:"GEOMACRO_COMMERCIAL_STREAM_RELEASE",type:"plain_text",text:"0"},
  {name:"RISK_STREAM_CANARY_HOLD_CLEARED",type:"plain_text",text:"0"},
  {name:"RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED",type:"plain_text",text:"0"}
 ];
 const enabledBindings=[...bindings.map(b=>
- ["RISK_STREAM_ACTIVE","STREAM_INGESTION_ENABLED",
+ ["RISK_STREAM_ACTIVE","STREAM_INGESTION_ENABLED","STREAM_MODE",
   "RISK_STREAM_HOT50_AUTONOMOUS_ENABLED"].includes(b.name)?
-  {...b,text:b.name==="STREAM_INGESTION_ENABLED"?"true":"1"}:{...b})];
+  {...b,text:b.name==="STREAM_INGESTION_ENABLED"?"true":
+   b.name==="STREAM_MODE"?"PRODUCTION":"1"}:{...b})];
+const reviewedRuntimeVars={RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",
+ STREAM_MODE:"PRODUCTION",RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1"};
 const version=(id,message="",extra=[])=>({
  id,annotations:{"workers/message":message},
  resources:{bindings:[...(id===A?bindings:enabledBindings),...extra]}
@@ -69,7 +73,7 @@ const check=(stage,observed,overrides={})=>assessWorkerPromotion({
  deployment:at(observed,stage!==0),baselineVersion:version(A),
  candidateVersion:version(B,"geomacro-main:"+SHA),
  baselineId:A,candidateId:B,targetPercent:stage,sourceSha:SHA,
- quota,now:NOW,spendPolicyEnforced:false,
+ quota,now:NOW,spendPolicyEnforced:false,reviewedPredgeRuntimeVars:reviewedRuntimeVars,
  ...overrides
 });
 
