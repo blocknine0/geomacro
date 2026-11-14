@@ -18,9 +18,9 @@ function database(){
    return {first:async()=>stmt.get(...values)??null,
     all:async()=>({results:stmt.all(...values)}),
     run:async()=>stmt.run(...values)};}}},
-  async batch(statements){return statements.map(s=>{
-   const result=s.run();return {success:true,meta:{changes:Number(result.changes)}};
-  });}
+  async batch(statements){return Promise.all(statements.map(async s=>{
+   const result=await s.run();return {success:true,meta:{changes:Number(result.changes)}};
+  }));}
  },RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1"};
  return {db,env};
 }
