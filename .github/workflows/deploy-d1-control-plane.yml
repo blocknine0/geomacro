@@ -435,6 +435,7 @@ jobs:
           BASELINE_VERSION_ID: ${{ steps.candidate.outputs.baseline }}
           CANDIDATE_VERSION_ID: ${{ steps.candidate.outputs.candidate }}
           CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS: ${{ inputs.reviewed_additive_secret_names }}
+          CANARY_OWNER_REVIEWED_HOT50_RUNTIME: ${{ inputs.hot50_runtime_confirmation }}
         run: node --experimental-strip-types scripts/ops/attest-canary-additive-secrets.mjs
       - name: Promote only through canonical signed six-stage health, readiness, and rollback gate
         env:
