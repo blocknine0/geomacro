@@ -629,7 +629,7 @@ jobs:
         # Denied/empty feeds remain honestly degraded, never fake live news.
         run: |
           set -euo pipefail
-          node scripts/ops/assert-private-osint-three-category-live-receipt.mjs "$RUNNER_TEMP/geomacro-direct20m-source-proof.json"
+          node scripts/ops/assert-private-osint-three-category-live-receipt.mjs < "$RUNNER_TEMP/geomacro-direct20m-source-proof.json"
       - name: Remove unencrypted prior queue from protected runner
         if: always()
         env:
@@ -834,7 +834,7 @@ jobs:
         # quota-held original into a D1-acknowledged observation.
         run: |
           set -euo pipefail
-          node scripts/ops/assert-private-osint-three-category-live-receipt.mjs "$RUNNER_TEMP/geomacro-direct20m-source-proof.json"
+          node scripts/ops/assert-private-osint-three-category-live-receipt.mjs < "$RUNNER_TEMP/geomacro-direct20m-source-proof.json"
 
   replay-quota-held-encrypted-spool:
     name: Recover one encrypted held-source batch into verified canonical D1
