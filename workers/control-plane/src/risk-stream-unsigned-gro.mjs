@@ -19,7 +19,7 @@ const hash=async value=>{
 const fail=code=>{throw Error("HOT50_UNSIGNED_GRO_"+code)};
 const safeAnalysisText=(value,fallback)=>
  typeof value==="string"&&value.trim().length>=6&&value.trim().length<=360&&
- !/https?:\/\/|<[^>]+>|[\r\n]/iu.test(value)?value.trim():fallback;;
+ !/https?:\/\/|<[^>]+>|[\r\n]/iu.test(value)?value.trim():fallback;
 
 export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
  if(!Number.isSafeInteger(now)||!TIERS.includes(tier))fail("INPUT_INVALID");
@@ -34,10 +34,10 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
   news_analysis:{
    what:safeAnalysisText(signal?.derived?.what,
     signalKind==="GLOBAL_SEARCH_INDEX_LEAD"?
-     `Global search found an unverified publisher lead for ${payload.country_iso3} ${payload.category}; no publisher text is included.`:
+     `Global search found an unverified publisher lead for ${source.payload.country_iso3} ${source.payload.category}; no publisher text is included.`:
      signalKind==="DISCOVERY_LANE_SIGNAL"?
-     `An unverified discovery-lane signal was observed for ${payload.country_iso3} ${payload.category}; no publisher text is included.`:
-     `A fresh ${payload.category} news signal was observed for ${payload.country_iso3}; publisher text is not included.`),
+     `An unverified discovery-lane signal was observed for ${source.payload.country_iso3} ${source.payload.category}; no publisher text is included.`:
+     `A fresh ${source.payload.category} news signal was observed for ${source.payload.country_iso3}; publisher text is not included.`),
    why:safeAnalysisText(signal?.derived?.why,
     "Potential relevance depends on independent confirmation and the affected exposure."),
    market:safeAnalysisText(signal?.derived?.market,payload.assessment.market_relevance),
