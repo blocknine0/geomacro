@@ -73,6 +73,7 @@ export function verifyStep3IndexSetResult(proof,{sourceRows,minRows=1}={}){
  if(row.canonical_minus_index!==0||row.index_minus_canonical!==0)
   fail("COMPLETE_SET_MEMBERSHIP_MISMATCH");
  return Object.freeze({verified_rows:sourceRows,complete_set_membership:true});
+}
 /**
  * Reads only provider aggregates. Exact index registry and projected xinfo
  * are checked, and every index must be a supported full ROWID index.
