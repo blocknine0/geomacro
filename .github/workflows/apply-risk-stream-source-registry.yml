@@ -64,7 +64,7 @@ jobs:
              redirect:'error',signal:AbortSignal.timeout(15000)});
           if(!response.ok)throw Error('RISK_STREAM_SOURCE_REGISTRY_D1_IDENTITY_HTTP_'+response.status);
           const body=await response.json();
-          if(body?.success!==true||body?.result?.id!==databaseId||
+          if(body?.success!==true||(body?.result?.uuid??body?.result?.id)!==databaseId||
              body?.result?.name!=='geomacro-control-plane')
             throw Error('RISK_STREAM_SOURCE_REGISTRY_D1_TARGET_UNVERIFIED');
           console.log(JSON.stringify({schema:'geomacro.risk-stream-source-registry-preflight.v1',
