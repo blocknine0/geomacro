@@ -10,6 +10,8 @@ import {admitP0bSourceStorage} from './p0b-source-storage-admission.mjs';
  */
 import {pollP0aSources} from "./p0a-source-registry.mjs";
 import {dispatchP1BundledDueSources,verifiedP1BundledLeasePairs} from "./p1-source-bundled-dispatch.mjs";
+import {P1_HOT50_VERIFIED_ALTERNATIVE_LINKS}
+ from "./p1-hot50-verified-global-fallbacks.mjs";
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u,ISO3=/^[A-Z]{3}$/u;
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const MAX_DUE=105,SHARDS=10,BATCH=15;
@@ -353,20 +355,24 @@ export async function p1UpsertSourceCellMap(env,body){
   const key=x.source_id+"|"+x.country_iso3+"|"+x.category;
   if(keys.has(key))return response({ok:false,error:"P1_CELL_MAPPING_DUPLICATE"},400);
   keys.add(key);
-  // Protect against invented entity coverage or category leakage. A
-  // GLOBAL source must be configured through a separate verified
-  // country/topic feed registry, never automatically in this endpoint.
+  // A global source is eligible only for an exact checked-in Hot 50
+  // VERIFIED_ALTERNATIVE link. This routes a watch query; it does not claim
+  // that the publisher is in that country or that an item is country evidence.
   const src=await env.DB.prepare("SELECT country_iso3,intended_category "+
    "FROM source_registry WHERE source_id=? AND enabled=1"
   ).bind(x.source_id).first();
-  if(src?.country_iso3!==x.country_iso3||
+  const alternativeKey=x.source_id+"|"+x.country_iso3+"|"+x.category;
+  const verifiedAlternative=P1_HOT50_VERIFIED_ALTERNATIVE_LINKS.has(alternativeKey)&&
+   src?.country_iso3==="GLOBAL"&&src?.intended_category===x.category;
+  if((src?.country_iso3!==x.country_iso3&&!verifiedAlternative)||
      src?.intended_category!==x.category)
    return response({ok:false,error:"P1_SOURCE_CELL_NATIVE_SCOPE_MISMATCH"},400);
   stmts.push(env.DB.prepare(
-   "INSERT INTO p1_source_to_cell(source_id,country_iso3,primary_category,rank) "+
-   "VALUES (?,?,?,?) ON CONFLICT(source_id,country_iso3,primary_category) "+
-   "DO UPDATE SET rank=excluded.rank"
-  ).bind(x.source_id,x.country_iso3,x.category,x.rank));
+   "INSERT INTO p1_source_to_cell(source_id,country_iso3,primary_category,rank,origin) "+
+   "VALUES (?,?,?,?,?) ON CONFLICT(source_id,country_iso3,primary_category) "+
+   "DO UPDATE SET rank=excluded.rank,origin=excluded.origin"
+  ).bind(x.source_id,x.country_iso3,x.category,x.rank,
+   verifiedAlternative?"VERIFIED_ALTERNATIVE":"EXPLICIT_REGISTERED"));
  }
  try{
   await env.DB.batch(stmts);

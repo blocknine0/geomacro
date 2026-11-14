@@ -9,6 +9,9 @@ import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {createHash} from "node:crypto";
 const working=JSON.parse(readFileSync("config/private-osint-working-sources.v1.json","utf8"));
 const ogl=JSON.parse(readFileSync("config/official-ogl-atom-sources.json","utf8"));
+const hot50=JSON.parse(readFileSync("config/hot-50-three-domain-watch.v1.json","utf8"));
+const fallback=JSON.parse(readFileSync(
+ "config/hot50-verified-global-cell-fallbacks.v1.json","utf8"));
 const GROUPS=Object.freeze({geopolitics:"GEOPOLITICS",
  macro:"MACRO_FX",rare_earth:"CRITICAL_MINERALS"});
 const PARSERS=Object.freeze({rss:"RSS_2",rdf:"RDF",atom:"ATOM"});
@@ -65,6 +68,57 @@ export function buildP1SourceRegistration(){
   fail("SOURCE_1077_COUNT_OR_ID_DRIFT");
  return Object.freeze(rows);
 }
+export function buildP1Hot50FallbackMappings(records=buildP1SourceRegistration()){
+ if(fallback?.schema!=="geomacro.p1.hot50-verified-global-watch-cell-fallbacks.v1"||
+    !Array.isArray(fallback.cells)||fallback.cells.length!==54||
+    !Array.isArray(hot50.country_iso3)||hot50.country_iso3.length!==50)
+  fail("HOT50_FALLBACK_MANIFEST_INVALID");
+ const sourceMap=new Map(records.map(x=>[x.source_id,x]));
+ const direct=new Set(records.filter(x=>x.country_iso3!=="GLOBAL").map(x=>
+  x.country_iso3+"|"+x.intended_category));
+ const expected=new Set();
+ for(const country of hot50.country_iso3){
+  for(const category of ["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]){
+   const key=country+"|"+category;
+   if(!direct.has(key))expected.add(key);
+  }
+ }
+ const actual=new Set();
+ for(const link of fallback.cells){
+  const key=link?.country_iso3+"|"+link?.category;
+  const source=sourceMap.get(link?.source_id);
+  if(!hot50.country_iso3.includes(link?.country_iso3)||
+     !["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].includes(link?.category)||
+     !source||source.country_iso3!=="GLOBAL"||
+     source.intended_category!==link.category||direct.has(key)||actual.has(key))
+   fail("HOT50_FALLBACK_LINK_INVALID");
+  actual.add(key);
+ }
+ if(actual.size!==expected.size||[...expected].some(key=>!actual.has(key)))
+  fail("HOT50_FALLBACK_COVERAGE_DRIFT");
+ const expectedSources={
+  GEOPOLITICS:"private_un_news_security_original_rss_review.geopolitics",
+  MACRO_FX:"private_bis_press_global.macro_fx",
+  CRITICAL_MINERALS:"private_us_doe_minerals_global.critical_minerals"
+ };
+ for(const [category,sourceId] of Object.entries(expectedSources)){
+  const row=sourceMap.get(sourceId),baseId=sourceId.slice(0,sourceId.lastIndexOf("."));
+  const observed=working.sources.find(x=>x.id===baseId);
+  const evidence=fallback.transport_verification?.results?.[category];
+  if(!row||row.country_iso3!=="GLOBAL"||row.intended_category!==category||
+     !observed||observed.acceptance?.http_status!==200||
+     observed.acceptance?.feed_parsed!==true||
+     observed.acceptance?.native_publication_clock_present!==true||
+     evidence?.http_status!==200||evidence.feed_parsed!==true||
+     evidence.native_publication_clock_present!==true||
+     !Number.isSafeInteger(evidence.parsed_items)||evidence.parsed_items<1||
+     !Number.isSafeInteger(evidence.native_time_items)||evidence.native_time_items<1||
+     evidence.url!==row.canonical_endpoint)
+   fail("HOT50_FALLBACK_SOURCE_NOT_VERIFIED");
+ }
+ return Object.freeze(fallback.cells.map(x=>Object.freeze({...x,rank:1,
+  origin:"VERIFIED_ALTERNATIVE"})));
+}
 export function renderP1SourceRegistrationSQL(records){
  if(!Array.isArray(records)||records.length!==1077||
     new Set(records.map(r=>r.source_id)).size!==records.length)
@@ -120,10 +174,17 @@ export function renderP1SourceRegistrationSQL(records){
   "FROM source_registry WHERE enabled=1 AND country_iso3<>'GLOBAL'"+
   ") WHERE ordinal<=3;"
  );
+ const fallbacks=buildP1Hot50FallbackMappings(records);
+ const fallbackValues=fallbacks.map(x=>"("+[esc(x.source_id),esc(x.country_iso3),
+  esc(x.category),String(x.rank),esc(x.origin)].join(",")+")").join(",\n");
+ lines.push("INSERT OR IGNORE INTO p1_source_to_cell"+
+  "(source_id,country_iso3,primary_category,rank,origin) VALUES\n"+
+  fallbackValues+";");
  return lines.join("\n")+"\n";
 }
 if(import.meta.url==="file://"+process.argv[1]){
  const rows=buildP1SourceRegistration();
+ const fallbackMappings=buildP1Hot50FallbackMappings(rows);
  const sql=renderP1SourceRegistrationSQL(rows);
  mkdirSync("workers/control-plane/generated",{recursive:true});
  const output="workers/control-plane/generated/p1-1077-seed.sql";
@@ -132,6 +193,8 @@ if(import.meta.url==="file://"+process.argv[1]){
  console.log(JSON.stringify({schema:"geomacro.p1.source-manifest-1077.v1",
   configured_lanes:rows.length,distinct_endpoints:urls.size,
   private_osint_lanes:1069,official_atom_lanes:8,
+  hot50_cells_with_explicit_verified_fallback:fallbackMappings.length,
+  hot50_fallback_sources_already_polled:true,
   generated_sql_path:output,rights_promoted:false,
   source_reachability_reverified_this_run:false}));
 }

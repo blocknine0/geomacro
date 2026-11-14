@@ -7,6 +7,8 @@ import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth,
 import {p1SourceContentFingerprintFields,fetchP0aSource,
  listP0aSourceRegistry} from "../../workers/control-plane/src/p0a-source-registry.mjs";
 import {normalizeP0aPayload} from "../../workers/control-plane/src/p0a-source-format.mjs";
+import {P1_HOT50_VERIFIED_ALTERNATIVE_LINKS}
+ from "../../workers/control-plane/src/p1-hot50-verified-global-fallbacks.mjs";
 const now=Date.parse("2026-11-04T16:10:00.000Z"),last=()=>new Date(now).toISOString();
 const migrations=["0113_p0a_source_registry.sql","0119_p1_source_fanout_585.sql","0127_p1_bundled_source_dispatch.sql","0128_cloudflare_queue_monthly_source_budget.sql"];
 function fixture(count=0){
@@ -125,6 +127,29 @@ test("P1 585-cell dashboard distinguishes configured sources from independently 
   assert.equal(updated.gaps,584);
   assert.equal(updated.matrix.find(x=>x.country_iso3==="AFG"&&x.category==="GEOPOLITICS").mapping_complete,false);
   assert.equal(updated.target_95_percent_met,false);
+ }finally{f.close()}
+});
+test("P1 permits only the exact verified global Hot 50 watch-cell alternatives",async()=>{
+ const f=fixture();
+ try{
+  const env={DB:f.DB},link=[...P1_HOT50_VERIFIED_ALTERNATIVE_LINKS][0];
+  const [source_id,country_iso3,category]=link.split("|");
+  f.db.prepare("INSERT INTO source_registry("+
+   "source_id,canonical_endpoint,parser_type,intended_category,country_iso3,"+
+   "rights_tier,polling_interval_sec,rate_limit_backoff) VALUES(?,?,?,?,?,?,?,?)")
+   .run(source_id,"https://www.example.org/feed.xml",category==="MACRO_FX"?"RDF":"RSS_2",
+    category,"GLOBAL","RESEARCH_ONLY",3600,"{}");
+  const allowed=await p1UpsertSourceCellMap(env,{links:[{category,country_iso3,
+   rank:1,source_id}]});
+  assert.equal(allowed.status,200);
+  assert.equal(f.db.prepare("SELECT origin FROM p1_source_to_cell WHERE source_id=?")
+   .get(source_id).origin,"VERIFIED_ALTERNATIVE");
+  const forbiddenCountry=country_iso3==="USA"?"CAN":"USA";
+  const denied=await p1UpsertSourceCellMap(env,{links:[{category,
+   country_iso3:forbiddenCountry,rank:1,source_id}]});
+  assert.equal(denied.status,400);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM p1_source_to_cell WHERE source_id=?")
+   .get(source_id).n,1);
  }finally{f.close()}
 });
 test("P1 transport refuses HTML soft 404 masquerading as RSS without promoting an origin",async()=>{

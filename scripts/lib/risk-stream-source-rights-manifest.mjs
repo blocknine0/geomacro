@@ -59,7 +59,8 @@ function validateEntry(entry,ids,current){
  if(!isIsoDate(entry.rights_expire_at)||Date.parse(entry.rights_expire_at+"T00:00:00.000Z")<=current)
   fail("APPROVED_RIGHTS_EXPIRED_OR_INVALID");
  if(!validHttpsUrl(evidence.licence_url)||!validHttpsUrl(evidence.terms_url)||
-    !isIsoDateTime(evidence.reviewed_at)||typeof evidence.reviewer!=="string"||
+    !isIsoDateTime(evidence.reviewed_at)||Date.parse(evidence.reviewed_at)>current||
+    typeof evidence.reviewer!=="string"||
     evidence.reviewer.trim().length<2||evidence.reviewer.trim().length>160||
     evidence.notes.trim().length<12)fail("APPROVED_EVIDENCE_INCOMPLETE");
 }
