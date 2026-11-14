@@ -50,6 +50,9 @@ test("news event creates one immutable unsigned object for each tier with no raw
  assert.throws(()=>db.exec("DELETE FROM risk_stream_unsigned_news_gro"));
  for(const row of rows){
   const payload=JSON.parse(row.payload_json);
+  assert.equal(payload.product_type,"NEWS_ANALYSIS_RISK_GATE");
+  assert.equal(payload.analysis_basis,"NEWS_SIGNAL_NOT_MARKET_PRICE_OR_VERIFIED_COUNTRY_RISK");
+  assert.equal(payload.news_analysis_only,true);
   assert.equal(payload.signed,false);
   assert.equal(payload.signature_status,"UNSIGNED");
   assert.equal(payload.evidence_status,"UNVERIFIED_SIGNAL");
