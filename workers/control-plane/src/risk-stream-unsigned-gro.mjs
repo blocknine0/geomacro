@@ -40,12 +40,12 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
      `A fresh ${source.payload.category} news signal was observed for ${source.payload.country_iso3}; publisher text is not included.`),
    why:safeAnalysisText(signal?.derived?.why,
     "Potential relevance depends on independent confirmation and the affected exposure."),
-   market:safeAnalysisText(signal?.derived?.market,payload.assessment.market_relevance),
-   watch:safeAnalysisText(signal?.derived?.watch,payload.assessment.watch),
-   evidence:{status:payload.evidence_status,source_kind:signalKind,
-    interpretation:payload.evidence_status==="UNVERIFIED_SIGNAL"?
+   market:safeAnalysisText(signal?.derived?.market,source.payload.assessment.market_relevance),
+   watch:safeAnalysisText(signal?.derived?.watch,source.payload.assessment.watch),
+   evidence:{status:source.payload.evidence_status,source_kind:signalKind,
+    interpretation:source.payload.evidence_status==="UNVERIFIED_SIGNAL"?
      "Unverified signal only; no corroborated event or measured country risk is asserted.":
-     payload.evidence_status==="DUAL_ATTESTED_ORIGINAL"?
+     source.payload.evidence_status==="DUAL_ATTESTED_ORIGINAL"?
      "Dual-attested original exists; independent event corroboration remains required.":
      "Internal corroboration exists; this record remains unsigned and noncommercial.",
     publisher_content_included:false,verified_country_risk:false}
@@ -67,7 +67,7 @@ export async function makeUnsignedDailyNewsGro(signal,tier,{now=Date.now()}={}){
  return {gro_id:source.gro_id,country_iso3:payload.country_iso3,
   category:payload.category,day_utc:payload.day_utc,
   event_fingerprint:payload.event_fingerprint,tier,
-  evidence_status:payload.evidence_status,payload_json,
+  evidence_status:source.payload.evidence_status,payload_json,
   payload_sha256:await hash(payload_json),generated_at:payload.generated_at,
   expires_at:payload.expires_at};
 }
@@ -133,7 +133,7 @@ export async function issueUnsignedDailyNewsBatch(env,signals,{
   // publisher clock. Global search index leads remain explicitly unverified.
   const preview=await makeDailyNewsGro(signal,"basic_focused",{now});
   const key=[preview.payload.country_iso3,preview.payload.category,
-   preview.payload.event_fingerprint,preview.payload.evidence_status].join("|");
+   preview.payload.event_fingerprint,preview.source.payload.evidence_status].join("|");
   unique.set(key,signal);
  }
  const records=[];
