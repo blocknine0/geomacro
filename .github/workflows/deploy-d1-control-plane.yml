@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 31704)
-Total output lines: 2063
-
 name: Deploy D1 Control Plane
 # P0: main redeploy after read-only observer clock-order correction; no budget override.
 # P0 post-reset operational redeploy: production bootstrap remains fully gated.
@@ -915,7 +912,135 @@ jobs:
           const publicKey=process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
           if(keyId&&publicKey){
             if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(keyId))throw Error('FINDS_KEY_ID_INVALID');
-           …1704 tokens truncated…          set -euo pipefail
+            const existing=keys[keyId];
+            if(existing&&(typeof existing==='string'?existing:existing.public_key_spki_b64)!==publicKey)
+              throw Error('FINDS_PUBLIC_KEY_REGISTRY_CONFLICT');
+            if(!existing)keys[keyId]={public_key_spki_b64:publicKey,status:'active',
+              not_before:process.env.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE||null,
+              not_after:process.env.RISK_OBJECT_SIGNING_KEY_NOT_AFTER||null};
+          }
+          config.vars.AUTOMATED_FINDS_VERIFY_KEYS_JSON=JSON.stringify(keys);
+          const lowPem=process.env.GEOMACRO_LOW_REVIEW_PUBLIC_PEM;
+          const lowPin=process.env.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256;
+          if(lowPem||lowPin){
+            const {createPublicKey,createHash}=require('node:crypto');
+            const key=createPublicKey(lowPem);
+            if(key.asymmetricKeyType!=='ed25519')throw Error('LOW_REVIEW_KEY_TYPE_INVALID');
+            const der=key.export({format:'der',type:'spki'});
+            const pub=der.toString('base64');
+            if(createHash('sha256').update(der).digest('hex')!==lowPin||
+              Object.values(keys).some(v=>(typeof v==='string'?v:v.public_key_spki_b64)===pub))
+              throw Error('LOW_REVIEW_DISTINCT_PIN_REQUIRED');
+            config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SPKI_B64=pub;
+            config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256=lowPin;
+          }
+
+          // Opt-in R2/KV only: no paid provision, new database or B2 mutation.
+          const r2=String(process.env.PUBLIC_NEWS_R2_BUCKET||'').trim();
+          const kv=String(process.env.PUBLIC_NEWS_KV_NAMESPACE_ID||'').trim();
+          if(kv&&!r2)throw Error('PUBLIC_NEWS_KV_REQUIRES_R2');
+          if(r2){
+            if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(r2))
+              throw Error('PUBLIC_NEWS_R2_BUCKET_INVALID');
+            config.r2_buckets=[...(config.r2_buckets??[]),
+              {binding:'PUBLIC_NEWS_R2',bucket_name:r2}];
+            config.vars.PUBLIC_NEWS_OFFLOAD_ENABLED='1';
+            if(kv){
+              if(!/^[a-f0-9]{32}$/.test(kv))throw Error('PUBLIC_NEWS_KV_NAMESPACE_INVALID');
+              config.kv_namespaces=[...(config.kv_namespaces??[]),
+                {binding:'PUBLIC_NEWS_KV',id:kv}];
+            }
+          }
+          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
+          NODE
+
+      - name: Admit native API custom domain only for active owner-account Cloudflare zone
+        id: api_domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/prepare-cloudflare-custom-domain-runtime.mjs
+
+      - name: Observe account-wide D1 free quota without spending D1 rows
+        # Diagnostic only. Cloudflare GraphQL reports account-wide usage;
+        # neither a missing metrics permission nor exhausted headroom grants
+        # permission to skip migrations, pay, or bypass any production gate.
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-d1-account-daily-quota-readonly.mjs
+
+      - name: Inspect top D1 row-read fingerprints without revealing SQL
+        # This is Cloudflare query-insights API metadata, not a D1 SQL query.
+        # Sanitize raw query strings inside the process; never upload or echo
+        # its raw stdout, which may contain private source/table names.
+        continue-on-error: true
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="$(mktemp)"
+          trap 'rm -f "$raw"' EXIT
+          if npx -y "wrangler@${WRANGLER_VERSION}" d1 insights "$D1_DATABASE_NAME" --timePeriod=1d --sort-type=sum --sort-by=reads --limit=20 --json > "$raw" 2>/dev/null; then
+            node ../../scripts/ops/summarize-d1-reads-insights.mjs "$raw"
+            node ../../scripts/ops/attribute-d1-query-insights.mjs "$raw"
+          else
+            echo "::warning::D1_READ_PRESSURE_INSIGHTS_PROVIDER_UNAVAILABLE"
+          fi
+
+      - name: Provision P0-B ingestion and dead-letter queues when activated
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Probe each queue with the supported pinned Wrangler 4 info command.
+          for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter geomacro-source-poll geomacro-source-poll-dlq; do
+            if npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null 2>&1; then
+              echo "P0B_QUEUE_PRESENT:$queue"
+            else
+              npx -y "wrangler@${WRANGLER_VERSION}" queues create "$queue" >/dev/null
+              npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null
+              echo "P0B_QUEUE_CREATED_AND_READBACK_VERIFIED:$queue"
+            fi
+          done
+
+      - name: Apply committed D1 migrations remotely
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
+
+      - name: Verify transactional raw-news archive counters against canonical D1
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Protected deploy readback: compare three materialized rows against
+          # canonical immutable source truth before the Worker changes traffic.
+          data="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS categories,COALESCE(SUM(CASE WHEN c.staged_count<>(SELECT COUNT(*) FROM phase2h_private_raw_news r WHERE r.category=c.category) OR c.archived_count<>(SELECT COUNT(*) FROM phase2h_private_raw_news r WHERE r.category=c.category AND r.b2_object_sha256 IS NOT NULL) THEN 1 ELSE 0 END),0) AS mismatches FROM phase2h_archive_totals c;")"
+          printf '%s' "$data" | node -e '
+            let text="";
+            process.stdin.on("data",x=>text+=x);
+            process.stdin.on("end",()=>{
+              const payload=JSON.parse(text);
+              const rows=(Array.isArray(payload)?payload:[payload])
+                .flatMap(x=>x?.results??x?.result?.[0]?.results??[]);
+              if(rows.length!==1||Number(rows[0].categories)!==3||
+                  Number(rows[0].mismatches)!==0)
+                throw Error("PHASE2H_COUNTERS_CANONICAL_PARITY_UNVERIFIED");
+              console.log("PASS: three category counters match canonical D1 on deploy.");
+            });
+          '
+
+      - name: Confirm progressive Risk Gate D1 fact tables are durable before deployment
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
           data="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
             --config wrangler.runtime.jsonc \
             --command "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('progressive_risk_gate_facts','progressive_risk_gate_cell_state');")"
