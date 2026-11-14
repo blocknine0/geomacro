@@ -56,6 +56,9 @@ test("candidate signing secrets may be added through the reviewed upload path",(
  assert.match(candidateBuilder,/CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED/);
  assert.match(workflow,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES: \$\{\{ inputs\.reviewed_additive_secret_names \}\}/);
  assert.match(candidateBuilder,/--secrets-file/);
+ const attest=workflow.slice(workflow.indexOf("      - name: Sign explicit reviewed candidate bindings and Hot50 flags"),
+  workflow.indexOf("      - name: Promote only through canonical signed six-stage"));
+ assert.match(attest,/CANARY_OWNER_REVIEWED_HOT50_RUNTIME: \$\{\{ inputs\.hot50_runtime_confirmation \}\}/);
 });
 
 test("commercial reviewer binding is dynamic, independently keyed and fail-closed",()=>{
