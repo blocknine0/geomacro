@@ -54,13 +54,22 @@ function validStored(row,expected){
     !HEX.test(row.payload_sha256??""))return false;
  if(await hash(row.payload_json)!==row.payload_sha256)return false;
  let p;try{p=JSON.parse(row.payload_json)}catch{return false}
- return p.schema==="geomacro.hot50-news-unsigned-gro.v1"&&p.signed===false&&
+ const allowlist=["assessment","billable","category","certified_risk_index",
+  "commercial_eligibility","commercial_sale_authorized","country_iso3",
+  "customer_delivery_authorized","day_utc","event_class","event_fingerprint",
+  "evidence_corroborated","evidence_status","execution_authorized","expires_at",
+  "generated_at","intelligence_owner","issuer","original_publisher_text_included",
+  "raw_source_disclosed","raw_upstream_text_included","schema","signature_status",
+  "signed","source_rights_verified","tier","tier_status"].sort();
+ return Object.keys(p).sort().join("|")===allowlist.join("|")&&
+  p.schema==="geomacro.hot50-news-unsigned-gro.v1"&&p.signed===false&&
   p.signature_status==="UNSIGNED"&&!Object.hasOwn(p,"signature_b64")&&
   !Object.hasOwn(p,"signing_key_id")&&!Object.hasOwn(p,"signature")&&
   p.gro_id===undefined&&p.country_iso3===expected.country_iso3&&
   p.category===expected.category&&p.day_utc===expected.day_utc&&
   p.event_fingerprint===expected.event_fingerprint&&p.tier===expected.tier&&
   p.evidence_status===expected.evidence_status&&
+  p.generated_at===row.generated_at&&p.expires_at===row.expires_at&&
   p.commercial_sale_authorized===false&&p.source_rights_verified===false&&
   p.customer_delivery_authorized===false&&p.billable===false&&
   p.execution_authorized===false&&p.raw_source_disclosed===false&&
