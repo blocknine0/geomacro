@@ -18,6 +18,7 @@
     "apply-predge-mutual-trial-migration-0132.yml",
     "apply-production-migrations.yml",
     "apply-risk-gate-production-migrations.yml",
+    "apply-risk-stream-migration-0214.yml",
     "apply-source-network-staging-migrations.yml",
     "apply-ucdp-production-migrations.yml",
     "ask-free-groq-live-proof.yml",
@@ -453,8 +454,10 @@
     "x402-pilot-product-lane-zero-fund.yml"
   ],
   "criticalWorkflowFiles": [
+    "apply-hot50-daily-news-0219.yml",
     "apply-predge-addendum-v2-migration-0131.yml",
     "apply-predge-mutual-trial-migration-0132.yml",
+    "apply-risk-stream-migration-0214.yml",
     "auto-ingest-news.yml",
     "b2-raw-storage-maintenance.yml",
     "canary-promotion.yml",
@@ -696,6 +699,24 @@
       "environment: production",
       "0131_predge_paid_risk_gate_addendum_v2.sql",
       "d1 execute"
+    ],
+    "apply-risk-stream-migration-0214.yml": [
+      "workflow_dispatch:",
+      "options: [preflight, apply]",
+      "environment: production",
+      "0214_risk_stream_event_driven.sql",
+      "d1 execute",
+      "d1 time-travel info",
+      "test -f config/d1-hotspot-v2-canary.hold"
+    ],
+    "apply-hot50-daily-news-0219.yml": [
+      "workflow_dispatch:",
+      "options: [preflight, apply]",
+      "environment: production",
+      "0219_hot50_daily_news_signed_gro.sql",
+      "d1 execute",
+      "d1 time-travel info",
+      "test -f config/d1-hotspot-v2-canary.hold"
     ]
   },
   "predgeBlobSha1": {

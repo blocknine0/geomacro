@@ -50,6 +50,7 @@ jobs:
           test "$MODE" = preflight -o "$MODE" = apply
           test "$EXPECTED_MAIN_SHA" = "$(git rev-parse HEAD)"
           test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          test -f config/d1-hotspot-v2-canary.hold
           if [ "$MODE" = apply ]; then
             test "$APPROVAL" = APPLY_HOT50_NEWS_0219_PRODUCTION
             test "${#SIGNING_JWK}" -ge 40
@@ -65,13 +66,17 @@ jobs:
            {headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},
             redirect:'error',signal:AbortSignal.timeout(15000)});
           if(!r.ok)throw Error('HOT50_0219_D1_IDENTITY_HTTP_'+r.status);
-          assertD1DatabaseIdentity(await r.json(),{databaseId:process.env.D1_DATABASE_ID,
+          const identity=await r.json();
+          assertD1DatabaseIdentity(identity,{databaseId:process.env.D1_DATABASE_ID,
            databaseName:'geomacro-control-plane'});
           const cfg=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8')
            .replace(/^\s*\/\/.*$/gm,''));
           cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:process.env.D1_DATABASE_ID}));
           writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/wrangler.json',JSON.stringify(cfg));
+          writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/d1-info.json',JSON.stringify(identity.result??identity));
           NODE
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 time-travel info geomacro-control-plane --json --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" > "$RUNNER_TEMP/geomacro-hot50-0219/bookmark.json"
+          node scripts/ops/verify-protected-d1-migration-gate.mjs --backup "$RUNNER_TEMP/geomacro-hot50-0219/d1-info.json" "$RUNNER_TEMP/geomacro-hot50-0219/bookmark.json"
           node --input-type=module <<'NODE'
           import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
           const r=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
