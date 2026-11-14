@@ -9,6 +9,7 @@
  * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac,createHash} from "node:crypto";
+import {submitAuxiliaryOsintProjection} from "../lib/auxiliary-osint-projection.mjs";
 import {buildDirect20mSourceHealthProof} from "../lib/direct20m-source-health-proof.mjs";
 import {resolve,sep,dirname} from "node:path";
 import {writeFileSync,readFileSync,mkdirSync} from "node:fs";
@@ -71,23 +72,19 @@ async function projectProgressiveFacts(candidates,verifiedIds){
    clock_basis:"ORIGINAL_PUBLICATION",extracted_entities:[iso,c.category],
    rights_verified:false,commercial_eligible:false});
  }
- let accepted=0;
- for(let offset=0;offset<facts.length;offset+=25){
-  const batch=facts.slice(offset,offset+25);
-  const response=await fetch("https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-facts",{
-   method:"POST",redirect:"error",cache:"no-store",signal:AbortSignal.timeout(15000),
-   headers:{Authorization:"Bearer "+controlToken,"Content-Type":"application/json",
-    Accept:"application/json","Cache-Control":"no-store"},
-   body:JSON.stringify({schema:"geomacro.progressive-fact-batch.v1",facts:batch})
-  });
-  if(response.status!==200)throw Error("PROGRESSIVE_FACT_PROJECTION_HTTP_"+response.status);
-  const receipt=await response.json();
-  if(receipt?.ok!==true||receipt.schema!=="geomacro.progressive-fact-admission.v1"||
-     receipt.raw_news_text_stored!==false||receipt.accepted!==batch.length)
-   throw Error("PROGRESSIVE_FACT_PROJECTION_RECEIPT_INVALID");
-  accepted+=receipt.accepted;
- }
- return {selected:selected.length,projected:accepted,unattributed:selected.length-facts.length,
+ const delivery=await submitAuxiliaryOsintProjection({
+  records:facts,
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-facts",
+  token:controlToken,requestSchema:"geomacro.progressive-fact-batch.v1",
+  requestField:"facts",receiptSchema:"geomacro.progressive-fact-admission.v1",
+  validateReceipt:receipt=>receipt.raw_news_text_stored===false,
+  timeoutMs:15000,
+ });
+ if(facts.length>0&&!delivery.complete)
+  console.log("::warning::AUXILIARY_OSINT_FACTS_"+delivery.reason);
+ return {selected:selected.length,projected:delivery.acknowledged,
+  deferred:delivery.deferred,unattributed:selected.length-facts.length,
+  projection_status:delivery.status,production_endpoint_verified:delivery.production_endpoint_verified,
   source_text_sent:false,rights_verified:false,commercial_eligible:false};
 }
 
@@ -279,26 +276,22 @@ for(const candidate of newlyAcknowledged){
  });
 }
 const progressiveProjection=[...projectedByKey.values()];
-let progressiveProjectionAccepted=0;
-for(let offset=0;offset<progressiveProjection.length;offset+=25){
- const observations=progressiveProjection.slice(offset,offset+25);
- const response=await fetch("https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-observations",{
-  method:"POST",redirect:"error",cache:"no-store",
-  headers:{"Authorization":"Bearer "+controlToken,"Accept":"application/json",
-   "Content-Type":"application/json","Cache-Control":"no-store"},
-  body:JSON.stringify({schema:"geomacro.progressive-observation-projection-request.v1",observations}),
-  signal:AbortSignal.timeout(12000),
- });
- if(!response.ok)throw Error("PROGRESSIVE_OBSERVATION_PROJECTION_HTTP_"+response.status);
- const receipt=await response.json();
- if(receipt?.ok!==true||receipt.schema!=="geomacro.progressive-observation-projection.v1"||
-    receipt.accepted!==observations.length||
-    receipt.unverified_observations!==observations.length||
-    receipt.rights_verified!==false||receipt.commercial_eligible!==false||
-    receipt.standard_corroboration_admitted!==false||receipt.raw_news_text_stored!==false)
-  throw Error("PROGRESSIVE_OBSERVATION_PROJECTION_RECEIPT_INVALID");
- progressiveProjectionAccepted+=receipt.accepted;
-}
+const observationDelivery=await submitAuxiliaryOsintProjection({
+ records:progressiveProjection,
+ endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-observations",
+ token:controlToken,requestSchema:"geomacro.progressive-observation-projection-request.v1",
+ requestField:"observations",receiptSchema:"geomacro.progressive-observation-projection.v1",
+ validateReceipt:(receipt,batch)=>receipt.unverified_observations===batch.length&&
+  receipt.rights_verified===false&&receipt.commercial_eligible===false&&
+  receipt.standard_corroboration_admitted===false&&receipt.raw_news_text_stored===false,
+});
+if(progressiveProjection.length>0&&!observationDelivery.complete)
+ console.log("::warning::AUXILIARY_OSINT_OBSERVATIONS_"+observationDelivery.reason);
+console.log(JSON.stringify({
+ schema:"geomacro.phase2i-progressive-observation-projection.v1",
+ ...observationDelivery,
+ d1_verified_source_count:stage.selected_count,source_ack_independent:true,
+}));
 
 // A healthy, genuinely checked feed is a check heartbeat even with zero
 // new native-dated stories. Persist three sanitized category checks in D1
@@ -324,7 +317,7 @@ if(threeDomainDirect20m&&hotFeedHealthy<hotFeedUrls.size)
 const verifiedIds=new Set(stage.verified_record_ids??[]);
 const progressiveFactsProjection=await projectProgressiveFacts(indexed.candidates,verifiedIds);
 console.log(JSON.stringify({schema:"geomacro.phase2i-progressive-fact-projection.v1",
- ...progressiveProjection,raw_news_text_stored:false}));
+ ...progressiveFactsProjection,raw_news_text_stored:false}));
 const candidatesWithD1Receipts=queue.candidates.map(candidate=>{
  const native=candidate.datePrecision==="day"
   ?candidate.publishedAt.slice(0,10):candidate.publishedAt;
