@@ -1,6 +1,8 @@
+import {hot50RiskGateWatchMatch} from "./hot50-telegram-watch-filter.mjs";
+
 export const OWNER_EXPORT_DERIVED_SCHEMA="geomacro.telegram-export-derived.v1";
 const LIMIT=72*60*60*1000;
-const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
+const CATEGORIES=new Set(["geopolitics","macro","rare_earth","critical_minerals"]);
 const RIGHTS="OWNER_DECLARED_TELEGRAM_DERIVED_ONLY";
 const SHA=/^[0-9a-f]{64}$/u;
 const SAFE_SNAP=/^(?:Geopolitical claim|Macro\/FX claim|Critical-minerals claim) [a-z /-]{8,100}; unverified export-derived research only(?:\.|\. Explicit numeric units present: [a-z%, ]{1,60}\.)$/u;
@@ -43,7 +45,12 @@ function valid(item,now){
      Object.keys(n).sort().join("|")!=="unit|value"||
      !/^[0-9]{1,9}(?:\.[0-9]{1,3})?$/u.test(n.value)||
      !/^(?:%|percent|usd|eur|inr|tonnes?|tons?|kg|kilograms?|mt|million|billion|bps)$/u.test(n.unit)))reject();
+ const watch=hot50RiskGateWatchMatch({country_iso3:item.country_iso3,category:item.category,
+   event_type:item.event_type,topic_code:item.topic_code,derived_summary:item.derived_summary});
+ if(!watch.accepted) return null;
  const publicRow=Object.fromEntries(Object.entries(item).filter(([k])=>!k.startsWith("internal_")));
+ publicRow.watch_event=watch.event;
+ publicRow.category=watch.category;
  const raw=JSON.stringify(publicRow);
  if(raw.length>2000||/https?:\/\/|t\.me\/|@[\w]+|telegram_(?:username|message_id)|raw_payload/i.test(raw))reject();
  return raw;
@@ -54,9 +61,11 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
    body.items.length>LIMITS.maxItems||
    Object.keys(body).sort().join("|")!=="items|object_sha256|schema")reject();
  const ids=new Set(),textHashes=new Set(),prepared=[];
+ let watchFiltered=0;
  const at=new Date(now).toISOString(),expires=new Date(now+LIMIT).toISOString();
  for(const item of body.items){
    const projection=valid(item,now);
+   if(projection===null){watchFiltered++;continue;}
    const digest=await crypto.subtle.digest("SHA-256",
      new TextEncoder().encode(body.object_sha256+"|"+
        item.internal_message_fingerprint+"|"+item.internal_chat_fingerprint));
@@ -65,6 +74,10 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
    ids.add(id);textHashes.add(item.internal_message_fingerprint);
    prepared.push({id,item,projection});
  }
+ if(prepared.length===0)return respond({ok:true,already_processed:false,accepted:0,
+   checked:body.items.length,watch_filtered:watchFiltered,
+   d1_readback_verified:true,raw_telegram_content_stored:false,
+   commercial_rights_verified:false,paid_delivery_enabled:false,source_content_reproduced:false});
  try{
    const prior=await env.DB.prepare("SELECT accepted_items FROM telegram_export_processed_objects WHERE object_sha256=?")
        .bind(body.object_sha256).first();
@@ -86,7 +99,7 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
    for(const r of fresh)batch.push(env.DB.prepare(
      "INSERT OR IGNORE INTO telegram_export_derived_items(item_id,source_object_sha256,private_chat_sha256,private_text_sha256,category,country_iso3,source_native_published_at,observed_at,expires_at,projection_json) VALUES(?,?,?,?,?,?,?,?,?,?)")
       .bind(r.id,body.object_sha256,r.item.internal_chat_fingerprint,
-        r.item.internal_message_fingerprint,r.item.category,r.item.country_iso3,
+        r.item.internal_message_fingerprint,r.item.category==="critical_minerals"?"rare_earth":r.item.category,r.item.country_iso3,
         r.item.source_native_published_at,r.item.observed_at,expires,r.projection));
    batch.push(env.DB.prepare("DELETE FROM telegram_export_derived_items WHERE expires_at<?").bind(at));
    batch.push(env.DB.prepare("DELETE FROM telegram_export_processed_objects WHERE expires_at<?").bind(at));
@@ -102,7 +115,7 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
    }
    if(admitted!==fresh.length)throw Error("TELEGRAM_EXPORT_D1_READBACK_FAILED");
    return respond({ok:true,already_processed:false,accepted:admitted,
-     checked:prepared.length,d1_readback_verified:true,
+     checked:body.items.length,watch_filtered:watchFiltered,d1_readback_verified:true,
      raw_telegram_content_stored:false,commercial_rights_verified:false,
      paid_delivery_enabled:false,source_content_reproduced:false});
  }catch{return respond({ok:false,error:"TELEGRAM_EXPORT_D1_WRITE_UNAVAILABLE"},503)}

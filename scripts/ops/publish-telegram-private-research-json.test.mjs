@@ -13,12 +13,13 @@ const payload={source_id:"telegram_authorized_publisher_feed",
  source_channel_key:"approvedgov",source_record_id:12,
  published_at:row.published_at,signal_category:"CRITICAL_MINERALS",
  country_iso3:"IND",headline:"TELEGRAM_LEAD_METADATA_ONLY",
+ watch_event:"critical_mineral_supply_shock",
  source_url:null,raw_payload:null,verification_status:"UNVERIFIED"};
 test("accepted signed-B2/D1 handoff produces country- and domain-tagged private-only research JSON",()=>{
  const result=verifyAuthorizedTelegramResearchLead(row,payload,NOW);
  assert.deepEqual(result,{
   delivery_id:row.delivery_id,category:"rare_earth",country_iso3:"IND",
-  published_at:row.published_at});
+  watch_event:"critical_mineral_supply_shock",published_at:row.published_at});
  const sql=authorizedTelegramResearchSql(result,NOW);
  assert.match(sql,/JOIN telegram_signal_lead_queue q/);
  assert.match(sql,/q.state='CONSUMED'/);
@@ -33,6 +34,8 @@ test("fake commercial authorization, raw source URL, copied headline and stale/e
   [row,{...payload,headline:"I have new full copied article"}],
   [row,{...payload,raw_payload:"Original message body"}],
   [row,{...payload,signal_category:"UNKNOWN"}],
+  [row,{...payload,country_iso3:"FJI",watch_event:"critical_mineral_supply_shock"}],
+  [row,{...payload,watch_event:"NOT_A_RISK_EVENT"}],
   [row,{...payload,country_iso3:"PERSON"}],
   [{...row,delivery_id:signal+"_deadbeefdeadbeef"},payload],
   [{...row,published_at:"2026-10-20T00:00:00.000Z"},

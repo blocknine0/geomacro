@@ -9,6 +9,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/telegram-b2-d1-consumer.yml"
+      - "workers/control-plane/src/telegram-flash-relay.mjs"
+      - "scripts/tests/telegram-flash-relay.test.mjs"
       - "scripts/ops/drain-telegram-b2-leads.mjs"
       - "scripts/ops/intake-telegram-b2-d1-leads.mjs"
       - "scripts/ops/publish-telegram-private-research-json.mjs"
@@ -17,6 +19,10 @@ on:
       - "workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql"
       - "workers/control-plane/migrations/0027_telegram_authorized_research_json.sql"
       - "scripts/verify-telegram-lead-envelope.mjs"
+      - "workers/control-plane/src/hot50-telegram-watch-filter.mjs"
+      - "scripts/tests/telegram-hot50-watch-filter.test.mjs"
+      - "config/hot-50-three-domain-watch.v1.json"
+      - "scripts/lib/hot-50-country-watch.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
       - "workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql"
@@ -26,11 +32,17 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/telegram-b2-d1-consumer.yml"
+      - "workers/control-plane/src/telegram-flash-relay.mjs"
+      - "scripts/tests/telegram-flash-relay.test.mjs"
       - "scripts/ops/drain-telegram-b2-leads.mjs"
       - "scripts/ops/intake-telegram-b2-d1-leads.mjs"
       - "scripts/ops/check-telegram-b2-d1-admission.mjs"
       - "workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql"
       - "scripts/verify-telegram-lead-envelope.mjs"
+      - "workers/control-plane/src/hot50-telegram-watch-filter.mjs"
+      - "scripts/tests/telegram-hot50-watch-filter.test.mjs"
+      - "config/hot-50-three-domain-watch.v1.json"
+      - "scripts/lib/hot-50-country-watch.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
       - "workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql"
@@ -66,7 +78,9 @@ jobs:
           grep -q 'telegram_private_unverified_leads' workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql
           grep -q 'TELEGRAM_D1_INTAKE_DURABLE_READBACK_MISMATCH' scripts/ops/intake-telegram-b2-d1-leads.mjs
           grep -q 'telegramD1AckSql' scripts/ops/intake-telegram-b2-d1-leads.mjs
+          node --check workers/control-plane/src/hot50-telegram-watch-filter.mjs
           node --check scripts/ops/intake-telegram-b2-d1-leads.mjs
+          node --test scripts/tests/telegram-hot50-watch-filter.test.mjs scripts/tests/telegram-flash-relay.test.mjs
           node --check scripts/ops/publish-telegram-private-research-json.mjs
           node --test scripts/ops/publish-telegram-private-research-json.test.mjs
           node --check scripts/ops/check-telegram-b2-d1-admission.mjs

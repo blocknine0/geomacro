@@ -38,6 +38,16 @@ test("50 countries x 3 categories are complete, unique, rotating and bounded",()
  assert.equal(all.size,150);
  assert.throws(()=>planHot50StreamCells(now,11),/SCAN_PACE_INVALID/);
 });
+test("Telegram watch leads prioritize search without counting as evidence or GRO inputs",()=>{
+ const t=HOT50_STREAM_TARGETS.find(x=>x.country_iso3==="USA"&&x.category==="GEOPOLITICS");
+ const trigger={country_iso3:"USA",category:"geopolitics",published_at:at};
+ const r=projectHot50StreamCell(t,{telegramTriggers:[trigger]},now);
+ assert.equal(r.telegram_watch_trigger_count,1);
+ assert.equal(r.needs_search,true);
+ assert.equal(r.signal_count,0);
+ assert.equal(r.basic_status,"NO_SIGNALS");
+ assert.deepEqual(r.source_lanes,[]);
+});
 test("five discovery lanes and unsigned OSINT remain Basic research only",()=>{
  const t=HOT50_STREAM_TARGETS.find(x=>x.country_iso3==="USA"&&x.category==="GEOPOLITICS");
  const discovery=["canonical","private_osint","reusable_news","gdelt_cameo","website_intelligence"]
