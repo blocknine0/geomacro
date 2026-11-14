@@ -21,20 +21,23 @@ const candidate=()=>{const v=structuredClone(baseline);
 };
 test('candidate inherits all production secrets/resources/flags without copying values',()=>{
  const config=candidateConfig(baseline,sha,[],researchRuntime);
- assert.deepEqual(config.vars,reviewedHot50CandidateVars(sha,researchRuntime));
+ const {STREAM_MODE,...normalVars}=reviewedHot50CandidateVars(sha,researchRuntime);
+ assert.deepEqual(config.vars,normalVars);
  assert.deepEqual(config.unsafe.bindings,[{name:'DB',type:'inherit'},
-  {name:'CONTROL_PLANE_TOKEN',type:'inherit'},{name:'PAYMENT_ENABLED',type:'inherit'}]);
+  {name:'CONTROL_PLANE_TOKEN',type:'inherit'},{name:'PAYMENT_ENABLED',type:'inherit'},
+  {name:'STREAM_MODE',type:'plain_text',text:STREAM_MODE}]);
  assert.doesNotMatch(JSON.stringify(config),/canonical-db|secret_text/);
  assert.equal(config.vars.RISK_STREAM_ACTIVE,'1');
  assert.equal(config.vars.STREAM_INGESTION_ENABLED,'true');
- assert.equal(config.vars.STREAM_MODE,'PRODUCTION');
+ assert.equal(config.unsafe.bindings.find(x=>x.name==='STREAM_MODE').text,'PRODUCTION');
  assert.equal(config.vars.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED,'1');
  assert.equal(config.vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE,'0');
  assert.equal(config.vars.RISK_STREAM_CANARY_HOLD_CLEARED,'0');
  assert.equal(config.vars.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED,'0');
  const serialized=JSON.parse(JSON.stringify(config));
- assert.equal(Object.hasOwn(serialized.vars,'STREAM_MODE'),true);
- assert.equal(serialized.vars.STREAM_MODE,'PRODUCTION');
+ assert.equal(Object.hasOwn(serialized.vars,'STREAM_MODE'),false);
+ assert.deepEqual(serialized.unsafe.bindings.find(x=>x.name==='STREAM_MODE'),
+  {name:'STREAM_MODE',type:'plain_text',text:'PRODUCTION'});
  assert.equal(verifyCandidateBindings(baseline,candidate(),sha,[],researchRuntime),true);
 });
 
@@ -42,10 +45,14 @@ test('candidate config materializes STREAM_MODE when the live baseline omits it'
  const live=structuredClone(baseline);
  live.resources.bindings=live.resources.bindings.filter(x=>x.name!=='STREAM_MODE');
  const config=candidateConfig(live,sha);
- assert.equal(config.vars.STREAM_MODE,'DISABLED');
+ assert.equal(Object.hasOwn(config.vars,'STREAM_MODE'),false);
+ assert.deepEqual(config.unsafe.bindings.find(x=>x.name==='STREAM_MODE'),
+  {name:'STREAM_MODE',type:'plain_text',text:'DISABLED'});
  const uploaded={resources:{...live.resources,bindings:[
-  ...live.resources.bindings.filter(x=>!Object.hasOwn(config.vars,x.name)),
-  ...Object.entries(config.vars).map(([name,text])=>({name,type:'plain_text',text}))
+  ...Object.entries(config.vars).map(([name,text])=>({name,type:'plain_text',text})),
+  ...config.unsafe.bindings.map(x=>x.type==='inherit'?
+   structuredClone(live.resources.bindings.find(row=>row.name===x.name)):
+   ({name:x.name,type:x.type,text:x.text}))
  ]}};
  assert.equal(uploaded.resources.bindings.find(x=>x.name==='STREAM_MODE').text,'DISABLED');
  assert.equal(verifyCandidateBindings(live,uploaded,sha),true);
@@ -197,6 +204,7 @@ test('candidate carries Predge vars fail-closed and adds the paid token only whe
   'GEOMACRO_STORE_CHECKOUT_ENABLED'])
   assert.match(flow,new RegExp(name));
  const defaults=candidateConfig(baseline,sha);
+ assert.equal(defaults.unsafe.bindings.find(x=>x.name==='STREAM_MODE').text,'DISABLED');
  assert.equal(defaults.vars.PREDGE_PAID_TRAFFIC_ENABLED,'NO');
  assert.equal(defaults.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK,'');
  assert.equal(defaults.vars.PREDGE_MUTUAL_TRIAL_STARTED_AT,'');
