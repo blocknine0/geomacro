@@ -57,7 +57,8 @@ test("commercial reviewer binding is dynamic, independently keyed and fail-close
 test("held canary retains the exact binding-delta receipt and preflights zone SLO identity",()=>{
  const held=workflow.slice(workflow.indexOf("  held-versioned-canary-rollout:"),
   workflow.indexOf("  p0-1-offline-regression:"));
- assert.match(held,/CANARY_ZONE_ID_REQUIRED_BEFORE_CANDIDATE_UPLOAD/);
+ assert.doesNotMatch(held,/CANARY_ZONE_ID_REQUIRED_BEFORE_CANDIDATE_UPLOAD/);
+ assert.match(candidateBuilder,/commercial_issuer_readiness/);
  assert.match(held,/candidate-binding-delta\.json/);
  assert.match(held,/optimized-worker-candidate\.json/);
  assert.match(held,/release-dependency-readiness\.json/);
