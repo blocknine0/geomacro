@@ -4,9 +4,12 @@ on:
     paths:
       - "workers/control-plane/src/risk-stream-news-gro.mjs"
       - "workers/control-plane/src/risk-stream-unsigned-gro.mjs"
+      - "workers/control-plane/src/risk-stream-unsigned-gro.mjs"
       - "workers/control-plane/src/risk-stream-pipeline.mjs"
       - "workers/control-plane/src/risk-stream-autonomous-hot50.mjs"
       - "workers/control-plane/migrations/0219_hot50_daily_news_signed_gro.sql"
+      - "workers/control-plane/migrations/0221_hot50_unsigned_news_gro.sql"
+      - "scripts/tests/risk-stream-unsigned-gro.test.mjs"
       - "workers/control-plane/migrations/0221_hot50_unsigned_news_gro.sql"
       - "scripts/tests/risk-stream-unsigned-gro.test.mjs"
       - "scripts/tests/risk-stream-news-gro.test.mjs"
@@ -16,9 +19,12 @@ on:
     branches: [main]
     paths:
       - "workers/control-plane/src/risk-stream-news-gro.mjs"
+      - "workers/control-plane/src/risk-stream-unsigned-gro.mjs"
       - "workers/control-plane/src/risk-stream-pipeline.mjs"
       - "workers/control-plane/src/risk-stream-autonomous-hot50.mjs"
       - "workers/control-plane/migrations/0219_hot50_daily_news_signed_gro.sql"
+      - "workers/control-plane/migrations/0221_hot50_unsigned_news_gro.sql"
+      - "scripts/tests/risk-stream-unsigned-gro.test.mjs"
       - "scripts/tests/risk-stream-news-gro.test.mjs"
       - "scripts/tests/hot50-daily-news-stream-wiring.test.mjs"
       - ".github/workflows/hot50-news-daily-gro-ci.yml"
