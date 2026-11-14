@@ -95,14 +95,14 @@ export async function issueUnsignedDailyNewsBatch(env,signals,{
    records.push(await makeUnsignedDailyNewsGro(signal,tier,{now}));
  if(records.length>30)fail("BATCH_LIMIT");
  const inserts=[];
- let idempotent=0;
+ let alreadyPresent=0,created=0;
  for(const row of records){
   const prior=await env.DB.prepare(
    "SELECT * FROM risk_stream_unsigned_news_gro WHERE gro_id=? LIMIT 1"
   ).bind(row.gro_id).first();
   if(prior){
    if(!await validStored(prior,row))fail("EXISTING_ROW_INVALID");
-   idempotent++;
+   alreadyPresent++;
    continue;
   }
   inserts.push(env.DB.prepare(
@@ -119,6 +119,12 @@ export async function issueUnsignedDailyNewsBatch(env,signals,{
   const result=await env.DB.batch(inserts);
   if(!Array.isArray(result)||result.length!==inserts.length||
      result.some(x=>x?.success===false))fail("D1_BATCH_UNVERIFIED");
+  for(const item of result){
+   const changes=item?.meta?.changes;
+   if(!Number.isSafeInteger(changes)||changes<0||changes>1)
+    fail("D1_CHANGE_COUNT_UNVERIFIED");
+   created+=changes;
+  }
  }
  const ids=records.map(x=>x.gro_id);
  const response=await env.DB.prepare(
@@ -130,7 +136,8 @@ export async function issueUnsignedDailyNewsBatch(env,signals,{
  const byId=new Map(response.results.map(x=>[x.gro_id,x]));
  for(const row of records)
   if(!await validStored(byId.get(row.gro_id),row))fail("D1_READBACK_INVALID");
- const created=records.length-idempotent;
+ const idempotent=records.length-created;
+ if(idempotent<alreadyPresent)fail("IDEMPOTENCY_CENSUS_INVALID");
  return {schema:"geomacro.hot50-unsigned-news-gro-issuance.v1",
   status:"UNSIGNED_GRO_D1_READBACK_PASS",events:unique.size,created,idempotent,
   tiers:TIERS,signature_created:false,commercial_sale_authorized:false,
