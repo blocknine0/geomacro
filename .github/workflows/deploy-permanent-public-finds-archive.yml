@@ -30,6 +30,9 @@ on:
       - "scripts/tests/verify-public-static-archive-readback.test.mjs"
       - "scripts/tests/public-static-worker-cohort-guard.test.mjs"
       - "workers/public-finds-archive/src/index.mjs"
+      - "scripts/lib/verify-public-archive-browser-cors.mjs"
+      - "scripts/ops/verify-public-archive-browser-cors.mjs"
+      - "scripts/tests/verify-public-archive-browser-cors.test.mjs"
       - "scripts/lib/public-daily-official-finds.mjs"
       - "scripts/tests/public-daily-official-finds.test.mjs"
       - "workers/public-finds-archive/wrangler.jsonc"
@@ -58,7 +61,7 @@ jobs:
           node --check scripts/ops/decide-public-finds-static-freshness-deploy.mjs
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
           node --test scripts/tests/verify-public-static-archive-readback.test.mjs
-          node --test scripts/tests/public-static-worker-cohort-guard.test.mjs
+          node --test scripts/tests/public-static-worker-cohort-guard.test.mjs scripts/tests/verify-public-archive-browser-cors.test.mjs
           node --test scripts/tests/public-daily-official-finds.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
           node --test scripts/tests/website-predge-static-72h-snapshot.test.mjs
@@ -253,3 +256,9 @@ jobs:
             originals:daily.signals.length,independently_corrob_verified:false,
             attributed:true,d1_reads:0,predge_touched:false,payments:0}));
           NODE
+
+      - name: Prove live browser-origin CORS on immutable three-category archive shards
+        if: github.event_name != 'schedule' || steps.refresh.outputs.deploy == 'true'
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-public-archive-browser-cors.mjs
