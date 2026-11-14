@@ -5,8 +5,9 @@
  * This proves source-category HTTP/parser checks, NOT universal availability,
  * independent event verification, publisher permission or a commercial GRO.
  */
-import {readFileSync,writeFileSync} from 'node:fs';
-import {resolve,sep} from 'node:path';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 const categories=['geopolitics','macro','rare_earth'];
 const healthy=new Set(['OBSERVED','EMPTY_OR_OUTSIDE_WINDOW']);
 const need=(ok,code)=>{if(!ok)throw Error('PRIVATE_OSINT_THREE_CATEGORY_'+code)};
@@ -110,13 +111,12 @@ export function verifyThreeCategoryPrivateOsintReceipt(proof){
   rights_verified:false,paid_eligible:false,payments:0,
  };
 }
-export function main(argv=process.argv.slice(2),env=process.env){
- need(argv.length===1&&typeof env.RUNNER_TEMP==='string','ARGS_INVALID');
- const base=resolve(env.RUNNER_TEMP);
- const path=resolve(argv[0]);
- need(path.startsWith(base+sep)&&path.endsWith('geomacro-direct20m-source-proof.json'),
-  'SOURCE_PROOF_PATH_UNTRUSTED');
- const proof=JSON.parse(readFileSync(path,'utf8'));
+export function main(argv=process.argv.slice(2)){
+ // The protected GitHub job opens its OWN fixed runner artifact with a
+ // literal shell redirection. This JS accepts no user-controlled file path.
+ // Explicit stdin is the entire trust boundary and is verified below.
+ need(argv.length===0,'ARGS_INVALID');
+ const proof=JSON.parse(readFileSync(0,'utf8'));
  const report=verifyThreeCategoryPrivateOsintReceipt(proof);
  for(const [category,record] of Object.entries(report.by_category))
   if(record.healthy===0)
@@ -126,5 +126,5 @@ export function main(argv=process.argv.slice(2),env=process.env){
  console.log(JSON.stringify(report));
  return report;
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+resolve(process.argv[1])).href)
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))
  main();
