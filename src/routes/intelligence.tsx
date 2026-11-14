@@ -18,7 +18,6 @@ import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.function
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
-import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
 import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
@@ -128,7 +127,6 @@ function IntelligencePage() {
     [loaderData.now, loaderData.rows],
   );
   const intel = useIntelligence(initialData);
-  const riskIndices = useRiskIndices();
   const [category, setCategory] = useState<(typeof COMMERCIAL_DOMAINS)[number]["key"]>("geopolitics");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<IntelSort>("newest");
@@ -413,49 +411,6 @@ function IntelligencePage() {
           </div>
 
           <aside className="space-y-4" aria-label="Intelligence context">
-            <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Risk Indices</p>
-                <Link to="/risk-indices" className="text-xs text-primary hover:underline">Open</Link>
-              </div>
-              {riskIndices.data ? (
-                <div className="mt-4 space-y-3">
-                  {riskIndices.data.indices.map((index) => (
-                    <div key={index.key} className="border-b border-border/50 pb-3 last:border-0 last:pb-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium leading-5">{index.name}</p>
-                          <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                            {index.eventCount} evidence · {index.independentStoryCount} stories
-                          </p>
-                        </div>
-                        {index.status === "available" && index.score !== null ? (
-                          <RiskBadge score={index.score} showScore />
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">Refreshing</span>
-                        )}
-                      </div>
-                      {index.changePoints !== null ? (
-                        <div className="mt-2"><RiskTrend delta={index.changePoints} /></div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : riskIndices.status === "error" ? (
-                <div className="mt-4 rounded-lg border border-dashed border-border/70 p-4">
-                  <p className="text-xs font-medium text-foreground">Risk Indices temporarily unavailable</p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">No synthetic reading is shown while the verified package is unavailable.</p>
-                  <Button type="button" variant="ghost" size="sm" onClick={riskIndices.retry} className="mt-2 h-8 px-2 text-xs">Retry</Button>
-                </div>
-              ) : (
-                <div className="mt-4 space-y-3" aria-label="Refreshing verified risk indices">
-                  {Array.from({ length: 3 }, (_, index) => (
-                    <div key={index} className="h-12 animate-pulse rounded-lg bg-muted/30" />
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Risk domains</p>
               <div className="mt-4 space-y-3">

@@ -36,7 +36,7 @@ describe("final commercial website closure", () => {
     for (const marker of ["Testnet", "Prediction Markets", "Bridge & Swap", "Arc / Onchain"]) {
       expect(shell).not.toContain(marker);
     }
-    for (const route of ["/intelligence", "/risk-indices", "/institutional", "/pricing", "/contact"]) {
+    for (const route of ["/intelligence", "/institutional", "/pricing", "/contact"]) {
       expect(shell).toContain(route);
     }
     expect(shell).not.toContain('to: "/global-risk"');

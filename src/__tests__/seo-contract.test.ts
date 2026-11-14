@@ -12,7 +12,6 @@ const PRIMARY_INDEXABLE_ROUTES = [
   "https://geomacro.live/intelligence",
   "https://geomacro.live/risk-gate",
   "https://geomacro.live/ask-geomacro",
-  "https://geomacro.live/risk-indices",
   "https://geomacro.live/pricing",
   "https://geomacro.live/institutional",
   "https://geomacro.live/ecosystem",
@@ -35,7 +34,7 @@ describe("public SEO contract", () => {
   it("keeps every commercial route in the sitemap and retired product routes out", () => {
     const sitemap = read("public/sitemap.xml");
     for (const url of PRIMARY_INDEXABLE_ROUTES) expect(sitemap).toContain("<loc>" + url + "</loc>");
-    for (const marker of ["testnet", "bridge-swap", "prediction-market", "arc-testnet", "/arena", "/onchain", "/global-risk", "/data-api", "/docs/gri-architecture"]) {
+    for (const marker of ["/risk-indices", "testnet", "bridge-swap", "prediction-market", "arc-testnet", "/arena", "/onchain", "/global-risk", "/data-api", "/docs/gri-architecture"]) {
       expect(sitemap.toLowerCase()).not.toContain(marker);
     }
   });

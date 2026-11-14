@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EditorialPage } from "@/components/editorial-page";
-const TITLE = "Research, Risk Indices & Methodology · Geomacro";
+const TITLE = "Research & Evidence Methodology · Geomacro";
 const DESCRIPTION =
-  "Geomacro research and methodology for separate geopolitical, macroeconomic and critical-mineral Risk Indices, evidence governance, change attribution, validation limits and GRI v1.2 proof lineage.";
+  "Geomacro research and methodology for geopolitical, macroeconomic and critical-mineral intelligence, evidence governance, change attribution and validation limits.";
 export const Route = createFileRoute("/research")({
   head: () => ({
     meta: [
@@ -43,9 +43,9 @@ function ResearchPage() {
         },
         {
           title: "Proof & reproducibility",
-          text: "Inspect available readings, timestamps and their verification details.",
-          href: "/risk-indices",
-          label: "Inspect Risk Indices",
+          text: "Inspect dated intelligence findings and the scope of their verification.",
+          href: "/intelligence",
+          label: "Read intelligence",
         },
         {
           title: "What moved the reading",

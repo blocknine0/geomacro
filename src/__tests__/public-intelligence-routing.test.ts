@@ -30,7 +30,8 @@ describe("public intelligence routing contract", () => {
     const globalRiskRoute = read("src/routes/global-risk.tsx");
     const riskIndicesRoute = read("src/routes/risk-indices.tsx");
     expect(globalRiskRoute).toContain("GlobalRiskDomainIndices");
-    expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
+    expect(riskIndicesRoute).toContain("throw notFound()");
+    expect(riskIndicesRoute).not.toContain("RiskIndicesWorkspace");
     expect(read("src/lib/use-global-risk.ts")).toContain("GLOBAL_RISK_EDGE_URL");
     expect(read("src/lib/use-risk-indices.ts")).toContain("RISK_INDICES_EDGE_URL");
   });

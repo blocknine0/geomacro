@@ -138,7 +138,8 @@ describe("separate public risk indices contract", () => {
     expect(globalRiskRoute).toContain("GlobalRiskDomainIndices");
     expect(globalRiskRoute).not.toContain("GlobalRiskWorkspace");
     expect(globalRiskRoute).not.toContain("RiskIndicesWorkspace");
-    expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
+    expect(riskIndicesRoute).toContain("throw notFound()");
+    expect(riskIndicesRoute).not.toContain("RiskIndicesWorkspace");
     expect(riskIndicesRoute).not.toContain("GlobalRiskDomainIndices");
     expect(globalRiskWorkspace).toContain("useGlobalRisk");
     expect(globalRiskWorkspace).toContain("Three risks. Three separate indices.");
@@ -180,7 +181,8 @@ describe("separate public risk indices contract", () => {
       expect(surface).not.toContain("Risk index store unavailable");
     }
 
-    expect(read("src/routes/intelligence.tsx")).toContain("useRiskIndices");
+    expect(read("src/routes/intelligence.tsx")).not.toContain("useRiskIndices");
+    expect(read("src/routes/intelligence.tsx")).toContain("Risk domains");
     expect(read("src/routes/institutional.tsx")).toContain("Risk & strategy");
   });
 });

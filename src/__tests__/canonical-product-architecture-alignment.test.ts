@@ -8,7 +8,6 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const TOKENS = [
   "Real-world evidence and data",
   "Structured intelligence state",
-  "Separate Risk Indices - Live",
   "Ask Geomacro - Live",
   "Country Risk Object - Private Pilot",
   "Corridor Risk Object - Private Pilot",

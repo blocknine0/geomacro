@@ -25,7 +25,6 @@ import {
 const PRIMARY_NAV = [
   { to: "/", label: "Home" },
   { to: "/intelligence", label: "Intelligence" },
-  { to: "/risk-indices", label: "Risk Indices" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
   { to: "/pricing", label: "Store & API" },
 ] as const;
@@ -298,7 +297,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <div className="mt-3 flex flex-col gap-2.5">
                   <Link to="/" className="hover:text-foreground">Home</Link>
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
-                  <Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
                   <Link to="/pricing" className="hover:text-foreground">Store & API</Link>
                 </div>
@@ -334,7 +332,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span className="min-w-0 max-w-full leading-relaxed">Intelligence findings have no added publication delay · Risk Indices retain their 60-minute delay · API keys coming soon</span>
+              <span className="min-w-0 max-w-full leading-relaxed">Intelligence findings have no added publication delay · API keys coming soon</span>
               <nav aria-label="Legal and trust information" className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
                 <Link to="/about" hash="privacy" className="whitespace-nowrap hover:text-foreground">Privacy</Link>
                 <Link to="/about" hash="product-use" className="whitespace-nowrap hover:text-foreground">Product use</Link>

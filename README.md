@@ -6,7 +6,7 @@
 **Documentation:** https://geomacro.live/docs  
 **Security policy:** [SECURITY.md](SECURITY.md)
 
-Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable intelligence. The commercial product is the intelligence layer: public risk intelligence, three separate Risk Indices, Ask Geomacro, machine-readable Risk Objects, bounded Risk Gate decision context and governed API/agent delivery.
+Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable intelligence. The commercial product is the intelligence layer: public risk intelligence, Ask Geomacro, machine-readable Risk Objects, bounded Risk Gate decision context and governed API/agent delivery.
 
 ## What Geomacro gives customers
 
@@ -30,7 +30,6 @@ Geomacro does **not** sell or return raw article/feed payloads, private source i
 Real-world evidence and data
         -> Normalize, classify and preserve provenance
         -> Structured intelligence state
-             +-- Separate Risk Indices - Live
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
@@ -50,9 +49,6 @@ The Risk Gate boundary is non-authorizing: `execution_authorized=false`. Identit
 | Surface | Status | Product truth |
 |---|---|---|
 | Risk Intelligence | **LIVE** | Structured public geopolitical, macroeconomic and critical-mineral intelligence |
-| Geopolitical Risk Index | **LIVE** | Separate verified geopolitical risk reading with versioned GRI v1.2 lineage |
-| Macroeconomic Risk Index | **LIVE** | Separate verified macroeconomic risk reading with versioned GRI v1.2 lineage |
-| Critical Minerals Risk Index | **LIVE** | Separate verified critical-minerals risk reading with versioned GRI v1.2 lineage |
 | Ask Geomacro | **LIVE** | Governed query path over canonical intelligence with bounded freshness recovery |
 | Research / methodology | **LIVE** | Public methodology, product boundaries and verification documentation |
 | Risk API | **PRIVATE PILOT** | Controlled machine-readable country/corridor risk delivery |
@@ -71,7 +67,7 @@ Macroeconomic Risk Index
 Critical Minerals Risk Index
 ```
 
-The parent methodology remains `gri-v1.2.0` with proof lineage `gri-proof-v1.2.0`. Historical combined-GRI snapshots remain audit records rather than a second current headline product.
+The public Risk Indices page is retired. Historical GRI evidence and proofs are retained for audit only, not marketed as current indices.
 
 Missing eligible evidence is never converted into zero risk. Stale, incomplete or unverifiable product state must fail closed or present an explicit bounded fallback state rather than inventing a replacement score.
 

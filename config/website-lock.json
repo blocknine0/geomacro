@@ -1280,4 +1280,42 @@
     "new_unreviewed_website_changes_not_authorized": true,
     "production_publish_requires_exact_sha_proof": true
   }
+,
+  "approved_risk_indices_page_retirement_20261114": {
+    "approval": "Owner explicitly directed permanent removal of the Risk Indices page on 2026-11-14 (Asia/Kolkata); follow-up narrowed scope to the public page only.",
+    "purpose": "Retire only /risk-indices, its navigation and public product claims. Preserve GRI historical/backend proof, /global-risk frozen lock, OSINT, commercial Risk Gate, website safeguards and paid go-live hold.",
+    "approved_source_commit": "4a4eff73b587cec3ed10f07992555cd432737186",
+    "approved_paths": [
+      "src/routes/risk-indices.tsx",
+      "src/components/site-shell.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/routes/intelligence.tsx",
+      "src/routes/research.tsx",
+      "src/components/ask/ask-workspace.tsx",
+      "src/components/intelligence/event-detail-workspace.tsx",
+      "src/lib/geomacro-public-links.ts",
+      "src/lib/public-api-endpoints.ts",
+      "src/routes/about.tsx",
+      "src/routes/__root.tsx",
+      "src/routes/docs.tsx",
+      "public/sitemap.xml",
+      "public/llms.txt",
+      "README.md",
+      "src/content/docs/00-overview.md",
+      "src/content/docs/01-what-is-geomacro.md",
+      "src/content/docs/02-product-architecture.md",
+      "src/content/docs/03-product-surfaces.md",
+      "src/content/docs/12-data-availability.md",
+      "src/content/docs/38-global-coverage.md",
+      "src/content/docs/49-commercial-availability.md",
+      "src/content/docs/51-summary.md",
+      "src/routes/review.tsx",
+      "src/components/institutional/workspace.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "non_index_backends_and_workflows_unmodified": true,
+    "payments_unmodified": true
+  }
 }

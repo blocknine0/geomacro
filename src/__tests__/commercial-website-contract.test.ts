@@ -9,7 +9,6 @@ const ARCHITECTURE_TOKENS = [
   "Real-world evidence and data",
   "Normalize, classify and preserve provenance",
   "Structured intelligence state",
-  "Separate Risk Indices - Live",
   "Ask Geomacro - Live",
   "Country Risk Object - Private Pilot",
   "Corridor Risk Object - Private Pilot",
@@ -30,7 +29,7 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps navigation commercial-only", () => {
     const shell = read("src/components/site-shell.tsx");
     expect(shell).toContain('label: "Intelligence"');
-    expect(shell).toContain('label: "Risk Indices"');
+    expect(shell).not.toContain('label: "Risk Indices"');
     expect(shell).toContain('label: "Store & API"');
     expect(shell).toContain('label: "For teams"');
     expect(shell).not.toContain('to: "/data-api", label:');

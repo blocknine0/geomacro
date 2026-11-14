@@ -123,7 +123,8 @@ describe("production website runtime contract", () => {
     expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");
     expect(event).toContain("[event-route] preload failed; rendering unavailable state");
     expect(event).toContain("return null");
-    expect(intelligence).toContain("Risk Indices temporarily unavailable");
+    expect(intelligence).not.toContain("Risk Indices temporarily unavailable");
+    expect(intelligence).toContain("Risk domains");
   });
 
   it("binds final website acceptance to exact-source lock, evidence time and mirror parity", () => {

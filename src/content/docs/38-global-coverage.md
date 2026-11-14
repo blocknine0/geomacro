@@ -4,9 +4,7 @@ Geomacro is designed as global geopolitical and macro risk intelligence, but dif
 
 ## Public global layer
 
-The public Geopolitical, Macroeconomic and Critical Minerals Risk Indices summarize qualifying evidence within their respective domains. Each domain is presented independently. If a domain has no current verified eligible evidence, it is not converted into a zero-risk reading.
-
-The current public indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage, but the historical combined GRI is no longer the public headline product.
+The public intelligence layer presents dated evidence and derived findings across Geopolitics, Macro/FX and Critical Minerals. It does not publish a numerical Risk Indices page.
 
 ## Subject-specific layer
 
