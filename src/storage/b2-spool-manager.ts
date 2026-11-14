@@ -344,7 +344,8 @@ export class B2SpoolManager {
   const restored=await this.decodeBundle(readback,batchSha256);
   if(restored.items.length!==index.length)throw Error('P0B_BUNDLE_ITEM_READBACK_MISMATCH');
   return {b2Uri:'b2://'+key,byteSize:object.length,batchSha256,
-   etag:put.etag,storedAt:this.now().toISOString(),items:index};
+   etag:put.etag,storedAt:this.now().toISOString(),items:index,
+   reusedVerifiedReceipt:false};
  }
  private async decodeBundle(object:Uint8Array,batchSha256:string){
   if(object.length>MAX_CIPHER_BYTES)throw Error('P0B_BUNDLE_CIPHER_TOO_LARGE');
