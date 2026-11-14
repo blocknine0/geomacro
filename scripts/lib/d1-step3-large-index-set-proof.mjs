@@ -12,6 +12,9 @@ const IDENT=/^[A-Za-z_][A-Za-z0-9_]{0,95}$/u;
 const fail=s=>{throw Error("STEP3_SET_INDEX_"+s)};
 const q=x=>{if(typeof x!=="string"||!IDENT.test(x))fail("IDENTIFIER_INVALID");return '"'+x+'"';};
 export const STEP3_SET_MAX_SOURCE_ROWS=100000;
+// Reviewed only for the 0211 spool ROWID join. At most 150k rows; the caller
+// still enforces the 3M provider rows-read cap across every verifier query.
+export const STEP3_JOIN_MAX_SOURCE_ROWS=150000;
 const PREDICATES=Object.freeze({
  phase2h_private_raw_news:Object.freeze({
   idx_phase2h_pending_recent_ingested_category:'"b2_object_sha256" IS NULL',
@@ -181,7 +184,7 @@ export function verifyStep3IndexJoinResult(proof,{sourceRows}={}){
     Object.keys(proof[0]??{}).sort().join(",")!==
       "distinct_rowids,index_rows,mismatched_rows"||
     !Number.isSafeInteger(sourceRows)||sourceRows<1||
-    sourceRows>STEP3_SET_MAX_SOURCE_ROWS||
+    sourceRows>STEP3_JOIN_MAX_SOURCE_ROWS||
     !Number.isSafeInteger(proof[0].index_rows)||
     !Number.isSafeInteger(proof[0].distinct_rowids)||
     !Number.isSafeInteger(proof[0].mismatched_rows)||
@@ -199,10 +202,10 @@ export function auditStep3AllIndexesJoin(table,query){
  q(table);
  if(typeof query!=="function")fail("PROVIDER_READER_REQUIRED");
  const boundedSQL="SELECT COUNT(*) AS n FROM (SELECT 1 FROM "+q(table)+
-  " NOT INDEXED LIMIT "+(STEP3_SET_MAX_SOURCE_ROWS+1)+")";
+  " NOT INDEXED LIMIT "+(STEP3_JOIN_MAX_SOURCE_ROWS+1)+")";
  const bound=read(query,boundedSQL,1);
  if(bound.length!==1||!Number.isSafeInteger(bound[0]?.n)||
-    bound[0].n<1||bound[0].n>STEP3_SET_MAX_SOURCE_ROWS)
+    bound[0].n<1||bound[0].n>STEP3_JOIN_MAX_SOURCE_ROWS)
   fail("JOIN_SOURCE_ROWS_OUTSIDE_REVIEWED_BOUND");
  const rows=bound[0].n;
  const quick=read(query,"PRAGMA quick_check("+q(table)+")",2);
