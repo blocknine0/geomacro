@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-14T10:06:59.052Z",
+  "checked_at": "2026-11-14T12:56:28.490Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 46,
+  "item_count": 45,
   "counts": {
     "geopolitics": 6,
     "macro": 16,
-    "rare_earth": 24
+    "rare_earth": 23
   },
-  "source_native_ids_sha256": "c3b175000ab2204786bab5a36e658083365a422fa2197be637423ecf425ad160",
+  "source_native_ids_sha256": "4c3f2418b643b094c1d4fddd3a3f3416d764d62c8009ae7ec9ad7428f3bc59da",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -877,25 +877,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-8a8349af",
-      "category": "rare_earth",
-      "title": "Geomacro finds Jiangxi Copper set EGM on Two Supply and Services Agreements - TipRanks",
-      "what_changed": "A monitored source feed reports: Jiangxi Copper set EGM on Two Supply and Services Agreements - TipRanks. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-11T11:16:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
