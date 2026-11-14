@@ -145,6 +145,26 @@ export async function issueUnsignedDailyNewsBatch(env,signals,{
   raw_source_disclosed:false,execution_authorized:false};
 }
 
+/** Keep the unsigned D1 working set bounded while preserving the full
+ * seven-day evidence window required by later signed tiers. Runs once daily
+ * on the existing Worker cron and deletes at most 1,000 expired rows.
+ */
+export async function pruneUnsignedDailyNewsGros(env,now=Date.now()){
+ if(!Number.isSafeInteger(now)||!env?.DB?.prepare)fail("PRUNE_INPUT_INVALID");
+ const date=new Date(now);
+ if(date.getUTCHours()!==0||date.getUTCMinutes()!==5)return 0;
+ const cutoff=iso(now-8*86400000);
+ const result=await env.DB.prepare(
+  "DELETE FROM risk_stream_unsigned_news_gro WHERE gro_id IN "+
+  "(SELECT gro_id FROM risk_stream_unsigned_news_gro WHERE generated_at<? "+
+  "ORDER BY generated_at,gro_id LIMIT ?)"
+ ).bind(cutoff,1000).run();
+ const changes=result?.meta?.changes??result?.changes;
+ if(!Number.isSafeInteger(changes)||changes<0||changes>1000)
+  fail("PRUNE_CHANGE_COUNT_UNVERIFIED");
+ return changes;
+}
+
 export async function readUnsignedDailyNewsGros(request,env,now=Date.now()){
  const bad=(error,status=400)=>Response.json({ok:false,error},{status});
  if(request.method!=="GET"||!env?.DB?.prepare)return bad("UNSIGNED_GRO_READ_UNAVAILABLE",503);
