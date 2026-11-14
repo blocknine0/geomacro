@@ -4,7 +4,7 @@ import {DatabaseSync} from "node:sqlite";
 import {auditStep3AllIndexesSet,step3BuildIndexSetSQL,
  verifyStep3IndexSetResult,STEP3_SET_MAX_SOURCE_ROWS,
  step3BuildIndexJoinSQL,verifyStep3IndexJoinResult,
- auditStep3AllIndexesJoin}
+ auditStep3AllIndexesJoin,STEP3_JOIN_MAX_SOURCE_ROWS}
  from "../lib/d1-step3-large-index-set-proof.mjs";
 const read=d=>(sql,max)=>{
  assert.match(sql,/^(?:SELECT |PRAGMA |EXPLAIN QUERY PLAN SELECT )/);
@@ -164,4 +164,13 @@ test("ROWID join fails closed on forged provider plan, mismatch and FK/UNIQUE pr
      assert(out.length<=max);return out;
     }));
  }finally{d.close()}
+});
+
+test("0211 spool join admits only the reviewed 150k cap",()=>{
+ assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,150000);
+ const atBound=[{index_rows:150000,distinct_rowids:150000,mismatched_rows:0}];
+ assert.equal(verifyStep3IndexJoinResult(atBound,{sourceRows:150000}).verified_rows,150000);
+ const overBound=[{index_rows:150001,distinct_rowids:150001,mismatched_rows:0}];
+ assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:150001}),
+  /COMPLETE_ROWID_AND_KEY_PARITY_UNVERIFIED/u);
 });
