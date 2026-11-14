@@ -25,6 +25,12 @@ const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
 const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
+/** Zone-level 5xx analytics is a required canary SLO. Fail before any
+ * provider traffic mutation if the protected environment is incomplete. */
+export function requireCanaryObservabilityPrerequisites(env:Record<string,string|undefined>){
+ need(/^[a-f0-9]{32}$/iu.test(env.CLOUDFLARE_ZONE_ID??''),
+  'CANARY_ZONE_ID_REQUIRED_BEFORE_TRAFFIC');
+}
 // Cloudflare Workers invocation quantiles expose wallTimeP99 in MICROSECONDS,
 // not requestDurationP99 in milliseconds. Query the exact routed Worker
 // version, not the aggregate script; a 1% canary can be hidden by 99% baseline.
@@ -417,6 +423,7 @@ async function main(){
  const promote=args[0]==='--promote',reviewHold=args[0]==='--review-hold';
  const mainSha=assertOfficialMain();
  need(existsSync(HOLD),'CANARY_EXISTING_PROTECTION_REQUIRED');
+ if(promote)requireCanaryObservabilityPrerequisites(process.env);
 
  if(reviewHold){
   // Read-only final admission AFTER a separately signed, complete 100%
