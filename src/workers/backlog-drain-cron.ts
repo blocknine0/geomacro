@@ -14,6 +14,18 @@ export interface DrainEnv {
  DB:any;
  INGEST_QUEUE:{send:(v:unknown)=>Promise<void>};
 }
+// Keep retry indexes parked for the same durable circuit deadline. The circuit
+// itself is never deleted; after expiry each B2 attempt must still win a fresh
+// atomic account-ledger reservation before any provider network request.
+async function storageRetryAt(env:any,now:number,fallbackMs:number){
+ try{
+  const row=await env.DB.prepare(
+   "SELECT hold_until FROM p0b_storage_circuit WHERE singleton=1").first();
+  const until=Date.parse(row?.hold_until??"");
+  if(Number.isFinite(until)&&until>now)return new Date(until).toISOString();
+ }catch{/* the existing bounded retry remains; no B2 request is authorized here */}
+ return new Date(now+fallbackMs).toISOString();
+}
 export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
  if(!env?.DB?.prepare||!env?.INGEST_QUEUE?.send||
     !Number.isSafeInteger(limit)||limit<1||limit>100)
@@ -139,7 +151,7 @@ export async function drainP0bArchiveOutbox(env:ProducerEnv,{
    archived++;
   }catch{
    failed++;
-   const retry=new Date(now+60_000).toISOString();
+   const retry=await storageRetryAt(env,now,60_000);
    try{
     await env.DB.prepare(
      "UPDATE p0b_archive_outbox SET state='PENDING_ARCHIVE',"+
@@ -222,12 +234,13 @@ export async function drainR2Fallback(env:R2FallbackEnv&DrainEnv,{
   }catch{
    failed++;
    const nextMs=Math.min(3600_000,60_000*2**Math.min(row.attempt_count+1,6));
+   const retry=await storageRetryAt(env,now,nextMs);
    try{await env.DB.prepare(
     "UPDATE p0b_private_r2_fallback SET attempt_count=attempt_count+1,"+
     "next_retry_at=?,state='PENDING_B2',locked_until=NULL,lease_id=NULL,"+
     "last_error_code='P0B_R2_REPLAY_NOT_B2_VERIFIED' "+
     "WHERE batch_id=? AND state='PROCESSING' AND lease_id=?"
-   ).bind(new Date(now+nextMs).toISOString(),row.batch_id,leaseId).run();}
+   ).bind(retry,row.batch_id,leaseId).run();}
    catch{/* R2 object and earlier D1 index remain durable for later retry. */}
   }
  }
