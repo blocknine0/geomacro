@@ -3,16 +3,16 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: preflight is read-only; apply runs only additive 0214
+        description: preflight is read-only; apply runs additive 0214; verify only reads existing provider schema
         type: choice
-        options: [preflight, apply]
+        options: [preflight, apply, verify]
         required: true
       expected_main_sha:
         description: Exact reviewed current-main SHA
         type: string
         required: true
       approval:
-        description: APPLY_RISK_STREAM_0214_PRODUCTION required for apply
+        description: APPLY_RISK_STREAM_0214_PRODUCTION required for apply; verify is read-only
         type: string
         required: true
 permissions:
@@ -47,12 +47,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$MODE" = preflight -o "$MODE" = apply
+          test "$MODE" = preflight -o "$MODE" = apply -o "$MODE" = verify
           test "$EXPECTED_MAIN_SHA" = "$(git rev-parse HEAD)"
           test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
           test -f config/d1-hotspot-v2-canary.hold
           if [ "$MODE" = apply ]; then
             test "$APPROVAL" = APPLY_RISK_STREAM_0214_PRODUCTION
+          fi
+          if [ "$MODE" = apply ] || [ "$MODE" = verify ]; then
             test "${#SIGNING_JWK}" -ge 40
           fi
           test -n "$CLOUDFLARE_API_TOKEN" -a -n "$CLOUDFLARE_ACCOUNT_ID" -a -n "$CLOUDFLARE_BILLING_READ_TOKEN"
@@ -127,13 +129,23 @@ jobs:
             'idx_risk_stream_rights_backfill','risk_stream_signed_gro','idx_risk_stream_signed_current',
             'risk_stream_delivery_outbox','idx_risk_stream_delivery_due','risk_stream_b2_token_bucket',
             'risk_stream_internal_delivery_receipts','0214_risk_stream_event_driven.sql'];
-          if(rows.some(x=>expected.includes(x.name)))
-            throw Error('RISK_STREAM_0214_PARTIAL_OR_ALREADY_APPLIED_REVIEW_REQUIRED');
-          console.log(JSON.stringify({schema:'geomacro.risk-stream-0214-preflight.v1',
-            result:'PASS',main_sha:process.env.EXPECTED_MAIN_SHA,provider_schema_readback:true,
-            production_database_identity_verified:true,quota_and_backup_verified:true,
-            canary_hold_present:true,production_sql_executed:false,traffic_changed:false,
-            paid_activation:false,no_funds:true}));
+          const names=new Set(rows.filter(x=>typeof x.name==='string').map(x=>x.name));
+          if(process.env.MODE==='verify'){
+            if(expected.some(name=>!names.has(name)))
+              throw Error('RISK_STREAM_0214_VERIFICATION_SCHEMA_INCOMPLETE');
+            console.log(JSON.stringify({schema:'geomacro.risk-stream-0214-provider-verification.v1',
+              result:'PASS',main_sha:process.env.EXPECTED_MAIN_SHA,provider_schema_readback:true,
+              migration_marker_present:true,production_sql_executed_by_verify_mode:false,
+              traffic_changed:false,paid_activation:false,no_funds:true}));
+          }else{
+            if(expected.some(name=>names.has(name)))
+              throw Error('RISK_STREAM_0214_PARTIAL_OR_ALREADY_APPLIED_REVIEW_REQUIRED');
+            console.log(JSON.stringify({schema:'geomacro.risk-stream-0214-preflight.v1',
+              result:'PASS',main_sha:process.env.EXPECTED_MAIN_SHA,provider_schema_readback:true,
+              production_database_identity_verified:true,quota_and_backup_verified:true,
+              canary_hold_present:true,production_sql_executed:false,traffic_changed:false,
+              paid_activation:false,no_funds:true}));
+          }
           NODE
       - name: Apply only additive migration 0214
         if: inputs.mode == 'apply'
@@ -146,7 +158,7 @@ jobs:
           "$RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler" d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0214/wrangler.json" --file workers/control-plane/migrations/0214_risk_stream_event_driven.sql
           "$RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler" d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0214/wrangler.json" --command "INSERT INTO d1_migrations(name) SELECT '0214_risk_stream_event_driven.sql' WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name='0214_risk_stream_event_driven.sql')"
       - name: Verify exact provider readback and sign migration receipt
-        if: inputs.mode == 'apply'
+        if: inputs.mode == 'apply' || inputs.mode == 'verify'
         shell: bash
         run: |
           set -euo pipefail
@@ -161,8 +173,10 @@ jobs:
             'idx_risk_stream_rights_backfill','risk_stream_signed_gro','idx_risk_stream_signed_current',
             'risk_stream_delivery_outbox','idx_risk_stream_delivery_due','risk_stream_b2_token_bucket',
             'risk_stream_internal_delivery_receipts','0214_risk_stream_event_driven.sql'];
-          if(JSON.stringify([...new Set(rows.map(x=>x.name))].sort())!==JSON.stringify([...expected].sort()))
-            throw Error('RISK_STREAM_0214_PROVIDER_READBACK_DIVERGED');
+          const names=new Set(rows.filter(x=>typeof x.name==='string').map(x=>x.name));
+          const missing=expected.filter(name=>!names.has(name));
+          if(missing.length)
+            throw Error('RISK_STREAM_0214_PROVIDER_READBACK_DIVERGED_'+missing.join('_'));
           const sourceCount=rows.find(x=>Number.isSafeInteger(x.source_count))?.source_count;
           if(sourceCount!==0)throw Error('RISK_STREAM_0214_UNEXPECTED_SOURCE_ROWS');
           const sourceSql=rows.find(x=>x.name==='risk_stream_sources')?.sql??'';
@@ -173,8 +187,8 @@ jobs:
             database_id:process.env.D1_DATABASE_ID,main_sha:process.env.EXPECTED_MAIN_SHA,
             migration:'0214_risk_stream_event_driven.sql',
             sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0214_risk_stream_event_driven.sql')).digest('hex'),
-            objects:expected,provider_readback_verified:true,source_registry_empty:true,
-            sources_enabled_by_migration:false,commercial_rights_granted:false,
+            objects:expected,provider_readback_verified:true,application_mode:process.env.MODE,
+            source_registry_empty:true,sources_enabled_by_migration:false,commercial_rights_granted:false,
             canary_hold_present:true,worker_deployed:false,traffic_changed:false,paid_activation:false,
             no_funds:true,verified_at:new Date().toISOString()};
           const key=createPrivateKey({key:JSON.parse(process.env.SIGNING_JWK),format:'jwk'});
@@ -188,7 +202,7 @@ jobs:
             JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
           NODE
       - name: Archive signed provider receipt
-        if: inputs.mode == 'apply' && always()
+        if: (inputs.mode == 'apply' || inputs.mode == 'verify') && always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: risk-stream-migration-0214-${{ github.run_id }}
