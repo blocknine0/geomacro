@@ -32,18 +32,13 @@ const testFlows = [
   },
   {
     title: "2. Critical Minerals & Rare Earth Risk",
-    href: "/global-risk",
+    href: "/intelligence",
     copy: "Pay particular attention to the Critical Minerals risk product, including rare-earth supply, geopolitical concentration and sourcing exposure. Judge whether it stands on its own as a useful commercial risk view rather than feeling like a secondary feature.",
   },
   {
     title: "3. Ask Geomacro",
     href: "/ask-geomacro",
     copy: "Ask a real geopolitical, macroeconomic, trade, sanctions, supply-chain, rare-earth or market-risk question. Check the direct answer, risk drivers, confidence, verification status and supporting evidence.",
-  },
-  {
-    title: "4. Risk Indices",
-    href: "/global-risk",
-    copy: "Review the separate geopolitical, macroeconomic and critical-minerals risk views. Check whether the signals, evidence and methodology boundaries are understandable and decision-useful.",
   },
   {
     title: "5. Risk Gate",
@@ -124,7 +119,7 @@ function ReviewPage() {
           </p>
           <div className="mt-5 flex flex-wrap gap-3 text-sm">
             <a className="underline underline-offset-4" href="/intelligence">Intelligence</a>
-            <a className="underline underline-offset-4" href="/global-risk">Risk Indices</a>
+            <a className="underline underline-offset-4" href="/risk-gate">Risk Gate</a>
             <a className="underline underline-offset-4" href="https://github.com/blocknine0/geomacro" target="_blank" rel="noreferrer">GitHub</a>
             <a className="underline underline-offset-4" href="/roadmap">Roadmap</a>
             <a className="underline underline-offset-4" href="/docs/01-what-is-geomacro">Documentation</a>
