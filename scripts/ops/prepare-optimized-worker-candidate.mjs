@@ -91,6 +91,17 @@ export function verifyCandidateBindings(baseline,candidate,sha,reviewedSecrets=[
   throw Error('CANDIDATE_SCRIPT_RUNTIME_CHANGED');
  return true;
 }
+export function assertBaselineRiskStreamSigningBindings(baseline){
+ const required=['RISK_STREAM_GRO_SIGN_PKCS8_B64','RISK_STREAM_GRO_VERIFY_SPKI_B64',
+  'RISK_STREAM_MACHINE_FACTS_SPKI_B64','RISK_STREAM_MACHINE_RIGHTS_SPKI_B64'];
+ const rows=baseline?.resources?.bindings;
+ if(!Array.isArray(rows))throw Error('CANDIDATE_BASELINE_BINDINGS_UNREADABLE');
+ const byName=new Map(rows.map(row=>[row.name,row]));
+ const missing=required.filter(name=>byName.get(name)?.type!=='secret_text');
+ if(missing.length)
+  throw Error('CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING_'+missing.join('_'));
+ return true;
+}
 /**
  * Wrangler's structured machine output identifies the ONE version created
  * by THIS upload. A historical SHA match or "latest" page is never enough:
@@ -133,6 +144,33 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  if(!Array.isArray(versions)||versions.length!==1||Number(versions[0].percentage)!==100||
     !UUID.test(versions[0].version_id??''))throw Error('CANDIDATE_BASELINE_NOT_100_PERCENT');
  const baselineId=versions[0].version_id,baseline=await get('/versions/'+baselineId);
+ const requiredRiskSigningSecrets=['RISK_STREAM_GRO_SIGN_PKCS8_B64',
+  'RISK_STREAM_GRO_VERIFY_SPKI_B64','RISK_STREAM_MACHINE_FACTS_SPKI_B64',
+  'RISK_STREAM_MACHINE_RIGHTS_SPKI_B64'];
+ const baselineBindingByName=new Map((baseline.resources.bindings??[]).map(x=>[x.name,x]));
+ const missingRiskSigningSecrets=requiredRiskSigningSecrets.filter(name=>
+  baselineBindingByName.get(name)?.type!=='secret_text');
+ const reviewerService=env.GEOMACRO_RELEASE_REVIEWER_SERVICE??'';
+ const commercialRelease=env.GEOMACRO_COMMERCIAL_STREAM_RELEASE==='1';
+ mkdirSync('artifacts/protected-canary',{recursive:true});
+ writeFileSync('artifacts/protected-canary/release-dependency-readiness.json',
+  JSON.stringify({schema:'geomacro.held-canary-release-dependencies.v1',
+   source_sha:env.GITHUB_SHA,baseline_id:baselineId,
+   signed_gro_signing_bindings_present:missingRiskSigningSecrets.length===0,
+   missing_signed_gro_binding_names:missingRiskSigningSecrets,
+   signed_gro_runtime_signature_checks_remain_required:true,
+   commercial_issuer_enabled:commercialRelease&&Boolean(reviewerService),
+   commercial_release_flag_enabled:commercialRelease,
+   reviewer_service_binding_configured:Boolean(reviewerService),
+   reviewer_service_name_logged:false,
+   commercial_license_prerequisite:commercialRelease?
+    'SIGNED_RELEASE_APPROVAL_AND_GEOMACRO_RELEASE_REVIEWER_SERVICE_REQUIRED':
+    'COMMERCIAL_RELEASE_FLAG_IS_HELD_AT_ZERO',
+   traffic_promoted:false,payments:0},null,2)+'\n');
+ // Signed Risk Gates require an independent machine attestation pair and the
+ // stream signer pair. Secret values remain hidden; runtime verification is
+ // still authoritative.
+ assertBaselineRiskStreamSigningBindings(baseline);
  // No candidate version upload with a Free-plan or stale UTC-day quota.
  // Require the same physical monthly provider gate as the protected promoter.
  const quota=await checkD1PaidMonthlyHeadroom({env,fetchImpl,
