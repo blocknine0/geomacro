@@ -2,18 +2,9 @@
 
 Geomacro models missing, stale and unverifiable information explicitly. Missing evidence is never silently converted into zero risk.
 
-## Public Risk Indices availability
+## Historical evidence availability
 
-The public Geopolitical, Macroeconomic and Critical Minerals Risk Indices read only a verified published package compatible with the current public contract. The read path checks the parent methodology/proof versions, required integrity hashes, reconciliation, story-correlation provenance and snapshot validity before accepting the package.
-
-Public presentation is fail-soft:
-
-- a previously verified reading stays visible if a later refresh fails;
-- a cold read uses a neutral refreshing/loading state rather than exposing a raw infrastructure error;
-- a domain without a current verified score does not receive a synthetic or zero-risk substitute;
-- recovery continues through the verified read path rather than falling back to a browser-side recalculation.
-
-The current public split preserves the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline score.
+Historic scored index proofs, where retained, are audit records rather than public live readings. Missing or stale evidence is never presented as a current score.
 
 ## Risk Gate availability
 

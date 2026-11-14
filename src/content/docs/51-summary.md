@@ -9,7 +9,7 @@ evidence + provenance
         ↓
 structured risk intelligence
         ↓
-separate Risk Indices / subject Risk Objects
+subject Risk Objects (Private Pilot)
         ↓
 attribution + confidence + freshness + integrity
         ↓
@@ -18,9 +18,9 @@ Ask Geomacro / Risk API / Risk Gate / Research
 human or customer-controlled machine decision
 ```
 
-The current public product includes Risk Intelligence, separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro.
+The current public product includes Risk Intelligence and Ask Geomacro.
 
-The public indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline score.
+The Risk Indices website page is retired. Historical proofs remain archived as audit evidence.
 
 Country/corridor Risk Objects and Risk Gate are **Private Pilot** infrastructure.
 
