@@ -59,17 +59,19 @@ export function step3BuildIndexSetSQL({table,index,columns,predicate=null}={}){
 export function verifyStep3IndexSetResult(proof,{sourceRows,minRows=1}={}){
  if(!Array.isArray(proof)||proof.length!==1||
     Object.keys(proof[0]??{}).sort().join(",")!==
-     "canonical_minus_index,canonical_rows,index_minus_canonical,index_rows"||
-    !Number.isSafeInteger(sourceRows)||sourceRows<minRows||
-    sourceRows>STEP3_SET_MAX_SOURCE_ROWS||
-    ![0,1].includes(proof[0].canonical_minus_index)||
-    ![0,1].includes(proof[0].index_minus_canonical)||
-    !Number.isSafeInteger(proof[0].canonical_rows)||
-    !Number.isSafeInteger(proof[0].index_rows)||
-    proof[0].canonical_rows!==sourceRows||
-    proof[0].index_rows!==sourceRows||
-    proof[0].canonical_minus_index!==0||proof[0].index_minus_canonical!==0)
-  fail("COMPLETE_SET_MEMBERSHIP_OR_CONCURRENT_COUNT_UNVERIFIED");
+     "canonical_minus_index,canonical_rows,index_minus_canonical,index_rows")
+  fail("EQUALITY_PROOF_SHAPE_UNVERIFIED");
+ if(!Number.isSafeInteger(sourceRows)||sourceRows<minRows||
+    sourceRows>STEP3_SET_MAX_SOURCE_ROWS)
+  fail("SOURCE_ROWS_OUTSIDE_REVIEWED_BOUND");
+ const row=proof[0];
+ if(![row.canonical_minus_index,row.canonical_rows,
+      row.index_minus_canonical,row.index_rows].every(Number.isSafeInteger))
+  fail("EQUALITY_PROOF_COUNTER_INVALID");
+ if(row.canonical_rows!==sourceRows||row.index_rows!==sourceRows)
+  fail("CONCURRENT_ROW_COUNT_MISMATCH");
+ if(row.canonical_minus_index!==0||row.index_minus_canonical!==0)
+  fail("COMPLETE_SET_MEMBERSHIP_MISMATCH");
  return Object.freeze({verified_rows:sourceRows,complete_set_membership:true});
 }
 /**
