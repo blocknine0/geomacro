@@ -91,13 +91,18 @@ export function verifyCandidateBindings(baseline,candidate,sha,reviewedSecrets=[
   throw Error('CANDIDATE_SCRIPT_RUNTIME_CHANGED');
  return true;
 }
-export function assertBaselineRiskStreamSigningBindings(baseline){
+export function assertBaselineRiskStreamSigningBindings(baseline,reviewedSecrets=[],env=process.env){
  const required=['RISK_STREAM_GRO_SIGN_PKCS8_B64','RISK_STREAM_GRO_VERIFY_SPKI_B64',
   'RISK_STREAM_MACHINE_FACTS_SPKI_B64','RISK_STREAM_MACHINE_RIGHTS_SPKI_B64'];
  const rows=baseline?.resources?.bindings;
  if(!Array.isArray(rows))throw Error('CANDIDATE_BASELINE_BINDINGS_UNREADABLE');
+ if(!Array.isArray(reviewedSecrets))throw Error('CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID');
  const byName=new Map(rows.map(row=>[row.name,row]));
- const missing=required.filter(name=>byName.get(name)?.type!=='secret_text');
+ const missing=required.filter(name=>{
+  const existing=byName.get(name);
+  if(existing)return existing.type!=='secret_text';
+  return !(reviewedSecrets.includes(name)&&typeof env[name]==='string'&&env[name].trim().length>0);
+ });
  if(missing.length)
   throw Error('CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING_'+missing.join('_'));
  return true;
@@ -144,12 +149,23 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  if(!Array.isArray(versions)||versions.length!==1||Number(versions[0].percentage)!==100||
     !UUID.test(versions[0].version_id??''))throw Error('CANDIDATE_BASELINE_NOT_100_PERCENT');
  const baselineId=versions[0].version_id,baseline=await get('/versions/'+baselineId);
+ const requested=String(env.CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES??"");
+ const reviewedSecrets=requested===""?[]:requested.split(",");
+ if(reviewedSecrets.some(name=>name!==name.trim())||
+    new Set(reviewedSecrets).size!==reviewedSecrets.length||
+    reviewedSecrets.some(name=>!REVIEWABLE_ADDITIVE_SECRETS.includes(name)||
+     baseline.resources.bindings.some(row=>row.name===name)))
+  throw Error('CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID');
+ const secretValues=Object.fromEntries(reviewedSecrets.map(name=>[name,env[name]]));
+ if(Object.values(secretValues).some(v=>typeof v!=='string'||!v.trim()))
+  throw Error('CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED');
  const requiredRiskSigningSecrets=['RISK_STREAM_GRO_SIGN_PKCS8_B64',
   'RISK_STREAM_GRO_VERIFY_SPKI_B64','RISK_STREAM_MACHINE_FACTS_SPKI_B64',
   'RISK_STREAM_MACHINE_RIGHTS_SPKI_B64'];
  const baselineBindingByName=new Map((baseline.resources.bindings??[]).map(x=>[x.name,x]));
- const missingRiskSigningSecrets=requiredRiskSigningSecrets.filter(name=>
-  baselineBindingByName.get(name)?.type!=='secret_text');
+ const candidateHasSigningSecret=name=>baselineBindingByName.get(name)?.type==='secret_text'||
+  (reviewedSecrets.includes(name)&&typeof env[name]==='string'&&env[name].trim().length>0);
+ const missingRiskSigningSecrets=requiredRiskSigningSecrets.filter(name=>!candidateHasSigningSecret(name));
  const reviewerService=env.GEOMACRO_RELEASE_REVIEWER_SERVICE??'';
  const issuerSecretNames=['GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64',
   'GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64',
@@ -184,7 +200,7 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  // Signed Risk Gates require an independent machine attestation pair and the
  // stream signer pair. Secret values remain hidden; runtime verification is
  // still authoritative.
- assertBaselineRiskStreamSigningBindings(baseline);
+ assertBaselineRiskStreamSigningBindings(baseline,reviewedSecrets,env);
  // No candidate version upload with a Free-plan or stale UTC-day quota.
  // Require the same physical monthly provider gate as the protected promoter.
  const quota=await checkD1PaidMonthlyHeadroom({env,fetchImpl,
@@ -212,16 +228,6 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   monthly_read_headroom:quota.remaining_rows_read,
   monthly_write_headroom:quota.remaining_rows_written,
   normal_budget_held:quota.status!=='PASS',provider_metrics_delayed:true};
- const requested=String(env.CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES??"");
- const reviewedSecrets=requested===""?[]:requested.split(",");
- if(reviewedSecrets.some(name=>name!==name.trim())||
-    new Set(reviewedSecrets).size!==reviewedSecrets.length||
-    reviewedSecrets.some(name=>!REVIEWABLE_ADDITIVE_SECRETS.includes(name)||
-     baseline.resources.bindings.some(row=>row.name===name)))
-  throw Error('CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID');
- const secretValues=Object.fromEntries(reviewedSecrets.map(name=>[name,env[name]]));
- if(Object.values(secretValues).some(v=>typeof v!=='string'||!v.trim()))
-  throw Error('CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED');
  const config=candidateConfig(baseline,env.GITHUB_SHA,reviewedSecrets,env);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
