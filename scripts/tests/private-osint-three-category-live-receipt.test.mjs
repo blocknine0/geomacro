@@ -66,7 +66,8 @@ test('an HTTP 200 RSS feed with no recent item counts as healthy transport, NOT 
   observedCandidates:[],retainedCandidates:[],now,
  });
  const accepted=verifyThreeCategoryPrivateOsintReceipt(proof);
- assert.equal(accepted.all_registered_sources_live,true);
+ assert.equal(accepted.all_registered_sources_live,false);
+ assert.equal(proof.live_category_health.all_registered_source_transports_healthy,true);
  assert.equal(accepted.by_category.rare_earth.native_candidates,0);
  assert.equal(accepted.by_category.rare_earth.status,'HEALTHY_FEED_NO_NEW_NATIVE_CANDIDATES');
 });
