@@ -1,8 +1,8 @@
 {
   "schema": "geomacro.phase2ib.governed-raw-archive-cycle.v1",
-  "production_main_sha": "56fb86dee0546f39a5d28c546b73b1aaa90cc5cd",
-  "github_run_id": "43496625916",
-  "checked_at": "2026-11-13T19:55:50.098Z",
+  "production_main_sha": "1946a7df43885d964705b6823ec3f09d66bc7ac4",
+  "github_run_id": "43568137637",
+  "checked_at": "2026-11-14T06:49:21.648Z",
   "provider_maintenance_admitted": true,
   "archive_schedule": "EVERY_SIX_HOURS_00_06_12_18_UTC",
   "archive_cycle_hours": 6,
@@ -11,7 +11,7 @@
   "automatic_d1_deletion_paused": true,
   "batch_maximum_unmodified": 300,
   "account_governor_unchanged": true,
-  "status": "ARCHIVE_POSITIVE_PROOF_NOT_AVAILABLE",
+  "status": "IDLE_NO_PENDING_NO_NEW_B2_PROOF",
   "archive_job_result": "success",
   "latest_verified_receipt": null,
   "last_positive_receipt": {
