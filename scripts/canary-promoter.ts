@@ -67,7 +67,7 @@ export const distribution=(base:string,candidate:string,percent:number)=>percent
  [{version_id:candidate,percentage:100}]:[
  {version_id:base,percentage:100-percent},{version_id:candidate,percentage:percent}];
 export function verifyDistribution(deployment:any,expected:any[]){
- const actual=deployment?.versions;
+ const actual=deployment?.deployment?.versions??deployment?.versions;
  need(Array.isArray(actual)&&Array.isArray(expected)&&expected.length>0&&
   expected.every(x=>typeof x?.version_id==='string'&&
    UUID_RE.test(x.version_id)&&Number.isSafeInteger(x.percentage)&&
@@ -94,11 +94,20 @@ export function verifyDistribution(deployment:any,expected:any[]){
   'CANARY_REMOTE_SPLIT_MISMATCH');
  return true;
 }
+function hasDeploymentVersions(deployment:any){
+ return deployment!==null&&typeof deployment==='object'&&
+  (Object.hasOwn(deployment,'versions')||
+   deployment.deployment!==null&&typeof deployment.deployment==='object'&&
+    Object.hasOwn(deployment.deployment,'versions'));
+}
 export async function deployVersions(base:string,candidate:string,percent:number,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=distribution(base,candidate,percent);
  const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
- verifyDistribution(result,versions);
+ // Cloudflare's POST response may acknowledge a deployment without returning
+ // version rows. Verify rows when the response supplies them, then always
+ // confirm the actual deployment from the canonical GET readback below.
+ if(hasDeploymentVersions(result))verifyDistribution(result,versions);
  for(let tries=0;tries<6;tries++){
   try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
  }
@@ -108,7 +117,7 @@ export async function deployBaseline(base:string,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=[{version_id:base,percentage:100}];
  const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
- verifyDistribution(result,versions);
+ if(hasDeploymentVersions(result))verifyDistribution(result,versions);
  for(let tries=0;tries<6;tries++){
   try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
  }
