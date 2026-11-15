@@ -26,17 +26,17 @@ test("scheduled direct and private collectors hand only complete licensed sideca
 
 test("Render collector does not promote ordinary article metadata and invokes both internal attest and event endpoints only for opt-in originals",()=>{
  const worker=read("workers/unified-ingestor/ingestor.py");
- assert.match(worker,/geomacro_risk_stream_candidate/u);
  assert.match(worker,/risk_stream_item_licensed/u);
  assert.match(worker,/risk-stream\/attest/u);
  assert.match(worker,/risk-stream\/events/u);
- assert.match(worker,/candidate\.get\("schema"\) != "geomacro\.risk-stream-candidate\.v1"/u);
- assert.match(worker,/risk_stream_candidate_extension == "geomacro_risk_stream_candidate"/u);
+ assert.match(worker,/candidate_from_standard_entry/u);
+ assert.match(worker,/risk_stream_standard_item_license_candidate is True/u);
+ assert.match(worker,/rel=\[\\"'\]license/u);
  assert.match(worker,/self\.pending\.setdefault\(event\["id"\], event\)/u);
  const feeds=JSON.parse(read("config/unified-rss-feed-registry.v1.json"));
  const rights=JSON.parse(read("config/risk-stream-source-rights-reviewed.v1.json"));
  const approved=new Set(rights.entries.filter(entry=>entry.status==="APPROVED").map(entry=>entry.source_id));
  const opted=feeds.sources.filter(feed=>feed.risk_stream_item_licensed===true);
  assert.ok(opted.length>0);
- assert.ok(opted.every(feed=>feed.risk_stream_candidate_extension==="geomacro_risk_stream_candidate"&&approved.has(feed.name)));
+ assert.ok(opted.every(feed=>feed.risk_stream_standard_item_license_candidate===true&&approved.has(feed.name)));
 });

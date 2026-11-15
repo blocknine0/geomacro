@@ -33,7 +33,7 @@ const original={category:"GEOPOLITICS",country_iso3:"GBR",feed_origin:"RSS",
 const candidateXml=`<feed xmlns:gm="https://geomacro.live/ns/risk-stream/1"><entry><gm:geomacro_risk_stream_candidate>${JSON.stringify(original).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}</gm:geomacro_risk_stream_candidate></entry></feed>`;
 const feed=(name=source.source_id)=>({name,url:"https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
  source_type:"official",risk_category:"conflict",risk_stream_item_licensed:true,
- risk_stream_candidate_extension:"geomacro_risk_stream_candidate"});
+ risk_stream_standard_item_license_candidate:true});
 const fetchFixture=async(_url,options)=>({ok:true,text:async()=>{
  assert.equal(options.redirect,"error");return candidateXml;
 }});
@@ -62,6 +62,64 @@ test("metadata-only or non-opted-in feeds cannot produce a Risk Stream sidecar",
   fetchImpl:async()=>{throw Error("must not fetch unapproved feed")},rightsManifest:manifest,
   feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{...feed(),risk_stream_item_licensed:false}]},sourceRegistry});
  assert.equal(notOptedIn.originals.length,0);
+});
+
+test("ordinary Atom entries derive guarded sidecars from entry fields and the linked page license",async()=>{
+ const ordinary=`<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>tag:gov.uk,2026:news/123</id>
+  <title>UK announces new sanctions policy for Russia</title><updated>2026-11-15T09:30:00Z</updated>
+  <link rel="alternate" href="https://www.gov.uk/government/news/sanctions-policy-russia"/>
+  <summary>New sanctions policy announcement relating to Russia.</summary></entry></feed>`;
+ const page=`<html><footer><a href="${source.rights_evidence.licence_url}" rel="license">Open Government Licence v3.0</a>
+  <a href="${source.rights_evidence.terms_url}">Terms</a></footer></html>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url,options)=>{
+  assert.equal(options.redirect,"error");
+  return {ok:true,text:async()=>url.endsWith(".atom")?ordinary:page,
+   headers:{get:()=>null}};
+ },rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(result.originals.length,1);
+ assert.equal(result.counts.standard_entries_seen,1);
+ assert.equal(result.counts.standard_candidates_built,1);
+ assert.equal(result.originals[0].country_iso3,"RUS");
+ assert.equal(result.originals[0].category,"GEOPOLITICS");
+ assert.equal(result.originals[0].source_id,source.source_id);
+ assert.match(result.originals[0].raw_payload,/Open Government Licence v3\.0/u);
+ const admitted=await emitRiskStreamCandidates({originals:result.originals,sourceRegistry,
+  rightsManifest:manifest,now,dryRun:true});
+ assert.equal(admitted.item_license_skipped,0);
+});
+
+test("standard Atom items with item-level restrictions or no license evidence are rejected",async()=>{
+ const ordinary=`<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>tag:x,1</id>
+  <title>Sanctions policy for Russia</title><updated>2026-11-15T09:30:00Z</updated>
+  <link href="https://www.gov.uk/government/news/sanctions-policy-russia"/></entry></feed>`;
+ for(const page of ["<html>Non-commercial item</html>","<html>No license marker</html>",
+  `<html><a href="${source.rights_evidence.licence_url}" rel="license">Open Government Licence v3.0</a> all rights reserved</html>`]){
+  const result=await collectRiskStreamFeedExtensions({collector:"private",now,fetchImpl:async(url)=>({ok:true,
+   text:async()=>url.endsWith(".atom")?ordinary:page,headers:{get:()=>null}}),rightsManifest:manifest,
+   feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+  assert.equal(result.originals.length,0);
+ }
+});
+
+test("standard JSON Feed items use published link and timestamp fields without an upstream extension",async()=>{
+ const jsonFeed=JSON.stringify({version:"https://jsonfeed.org/version/1.1",items:[{
+  id:"policy-record-77",url:"https://www.gov.uk/government/news/sanctions-russia",
+  title:"UK sanctions policy for Russia",date_published:"2026-11-15T09:30:00Z",
+  summary:"Sanctions policy update relating to Russia."}]});
+ const page=`<a rel="license" href="${source.rights_evidence.licence_url}">Open Government Licence v3.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url.endsWith(".atom")?jsonFeed:page,headers:{get:()=>null}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(result.originals.length,1);
+ assert.equal(result.originals[0].country_iso3,"RUS");
+ assert.equal(result.originals[0].source_id,source.source_id);
+ assert.equal(result.originals[0].feed_origin,"OFFICIAL_API");
+ const restricted=JSON.stringify({items:[{id:"policy-record-78",url:"https://www.gov.uk/government/news/sanctions-russia",
+  title:"UK sanctions policy for Russia",date_published:"2026-11-15T09:30:00Z",license:"CC BY-NC"}]});
+ const skipped=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url.endsWith(".atom")?restricted:page,headers:{get:()=>null}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(skipped.originals.length,0);
 });
 
 test("private collector adds only redacted corroboration features at dual attestation",async()=>{
