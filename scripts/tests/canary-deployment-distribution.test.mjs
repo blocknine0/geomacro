@@ -42,6 +42,50 @@ test("0-percent candidate must remain in a split response when Cloudflare return
  ]},expected),/CANARY_REMOTE_SPLIT_MISMATCH/);
 });
 
+test("nested POST deployment versions are verified without requiring a top-level versions field",async()=>{
+ const providerApi=async()=>({deployment:{versions:[
+  {version_id:BASE,percentage:100}
+ ]}});
+ let reads=0;
+ await deployVersions(BASE,CANDIDATE,0,{providerApi,
+  readCurrent:async()=>{reads++;return {versions:[
+   {version_id:BASE,percentage:100}
+  ]}},pause:async()=>{}});
+ assert.equal(reads,1);
+ assert.equal(verifyDistribution({deployment:{versions:[
+  {version_id:BASE,percentage:100}
+ ]}},distribution(BASE,CANDIDATE,0)),true);
+});
+
+test("POST acknowledgments without versions defer verification to live deployment GET",async()=>{
+ for(const deploy of [
+  (providerApi,readCurrent)=>deployVersions(BASE,CANDIDATE,0,
+   {providerApi,readCurrent,pause:async()=>{}}),
+  (providerApi,readCurrent)=>deployBaseline(BASE,
+   {providerApi,readCurrent,pause:async()=>{}})
+ ]){
+  let reads=0;
+  await deploy(async()=>({id:"deployment-ack"}),async()=>{
+   reads++;
+   return {versions:[{version_id:BASE,percentage:100}]};
+  });
+  assert.equal(reads,1);
+ }
+});
+
+test("present but malformed or mismatched POST version rows fail closed before polling",async()=>{
+ let reads=0;
+ await assert.rejects(deployVersions(BASE,CANDIDATE,0,{
+  providerApi:async()=>({versions:[
+   {version_id:BASE,percentage:99},{version_id:CANDIDATE,percentage:1}
+  ]}),
+  readCurrent:async()=>{reads++;return {versions:[
+   {version_id:BASE,percentage:100}
+  ]}},pause:async()=>{}
+ }),/CANARY_REMOTE_SPLIT_MISMATCH/);
+ assert.equal(reads,0);
+});
+
 test("nonzero stages and 100-percent candidate require exact traffic percentages",()=>{
  for(const percent of [1,5,25,50,100]){
   const expected=distribution(BASE,CANDIDATE,percent);
