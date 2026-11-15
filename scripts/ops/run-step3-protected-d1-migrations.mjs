@@ -66,7 +66,9 @@ import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3NativeHistorySQL,
  classifyStep3NativeHistory,step30212PendingSourcePreflightSQL,
  validateStep30212PendingSourcePreflight,step3SchemaSQL,
- verifyStep3Schema,verifyStep3Explain,
+ verifyStep3Schema,verifyStep3Explain,deriveStep3SourceRowBudget,
+ step3SourceRowBudgetFailure,STEP3_SOURCE_READ_COST_PER_ROW,
+ STEP3_SOURCE_WRITE_COST_PER_ROW,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
 const ROOT="artifacts/release",LOG=ROOT+"/d1-step3-migration-execution.json";
@@ -220,9 +222,9 @@ function ensureLedger(config,manifests,report){
  save(report);
  return map;
 }
-async function refreshedGate(report,stage){
- const estimate=report.operation_kind==="production"?
-   report.large_0212_production_cost_envelope:null;
+async function refreshedGate(report,stage,estimateOverride=null){
+ const estimate=estimateOverride??(report.operation_kind==="production"?
+   report.large_0212_production_cost_envelope:null);
  let x,attempts=0;
  // Retry network and service errors only; never admit missing provider
  // measurements, truncated groups, stale readings or insufficient headroom.
@@ -244,21 +246,66 @@ async function refreshedGate(report,stage){
   attempts,day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
   read_remaining:x.remaining_rows_read,
-  write_remaining:x.remaining_rows_written};
+  write_remaining:x.remaining_rows_written,
+  paced_remaining_rows_read:Math.max(0,
+   x.monthly_paced_ceiling_read-x.observed_rows_read),
+  paced_remaining_rows_written:Math.max(0,
+   x.monthly_paced_ceiling_written-x.observed_rows_written),
+  reserved_migration_rows_read:x.reserved_migration_rows_read,
+  reserved_migration_rows_written:x.reserved_migration_rows_written};
  save(report);
  if(x.status!=="PASS")throw Error(D1_PAID_HEADROOM_HOLD);
  return x;
 }
-function boundedInputs(config,step,report){
+async function rejectExceededSourceBudget(config,report,migrationId,items,
+ probeProviderRowsRead){
+ await refreshedGate(report,"BEFORE_EXACT_SOURCE_ROW_DIAGNOSTIC_"+migrationId);
+ const details=[];
+ for(const item of items){
+  const count=q(config,"SELECT COUNT(*) AS source_rows FROM \""+
+   item.source_table+"\"",{maxRows:1});
+  const exact=count.rows[0]?.source_rows;
+  if(count.rows.length!==1||!Number.isSafeInteger(exact)||exact<0)
+   fail("MIGRATION_SOURCE_ROW_COUNT_UNVERIFIED");
+  details.push({...step3SourceRowBudgetFailure({
+   migrationId,sourceTable:item.source_table,sourceRows:exact,
+   budget:item.budget}),
+   probe_provider_rows_read:probeProviderRowsRead,
+   exact_count_provider_rows_read:count.readRows});
+ }
+ report.source_row_budget_exceeded=details;
+ save(report);
+ await refreshedGate(report,"AFTER_EXACT_SOURCE_ROW_DIAGNOSTIC_"+migrationId);
+ throw Error("STEP3_MIGRATION_SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET");
+}
+async function boundedInputs(config,step,report){
  if(!step.sizeTables.length)return;
- const cap=step.sizeTableRowCap??3000;
+ const admission=deriveStep3SourceRowBudget(step.id,report.latest_headroom);
+ const cap=admission.budget;
  const sql=step3SizeProbeSQL(step.sizeTables,cap);
  const r=q(config,sql,{maxRows:1});
+ const row=r.rows[0];
+ const exceeded=Array.isArray(r.rows)&&r.rows.length===1?
+  step.sizeTables.map((table,index)=>({table,index}))
+   .filter(({index})=>row?.["over_"+index]===1):[];
+ if(exceeded.length){
+  await rejectExceededSourceBudget(config,report,step.id,
+   exceeded.map(item=>({source_table:item.table,budget:cap})),r.readRows);
+ }
  const x=validateStep3SizeProbe(step.sizeTables,r.rows,cap);
  report.bounded_inputs??=[];
+ const estimated_rows_read=cap*step.sizeTables.length*
+  STEP3_SOURCE_READ_COST_PER_ROW;
+ const estimated_rows_written=cap*step.sizeTables.length*
+  STEP3_SOURCE_WRITE_COST_PER_ROW;
  report.bounded_inputs.push({...x,migration:step.id,
+  budget:cap,budget_admission:admission,
+  estimated_rows_read,estimated_rows_written,
   provider_rows_read:r.readRows});
  save(report);
+ await refreshedGate(report,"STAGED_INDEX_BUDGET_ADMITTED_"+step.id,{
+  estimated_rows_read,estimated_rows_written
+ });
 }
 function baseline(config){
  const r=q(config,"SELECT record_id,raw_sha256 FROM phase2h_private_raw_news "+
@@ -791,21 +838,40 @@ export async function applyStep3Migrations({env=process.env}={}){
     });
     save(state);
    }else if(manifest.id==="0212"){
-    // The 0212 source is genuinely >3000 rows in production. Admit only a
-    // reviewed one-time bounded 24k-source envelope; the entire existing
-    // SQL hash, seven-index audit, pending-hour parity, and 30% Paid
-    // reserve are unchanged. If unverified, stop BEFORE checkpoint/DDL.
-    const source=q(config,step30212PendingSourcePreflightSQL(),{maxRows:1});
-    if(source.readRows>200000)
+    // Bound 0212 by the exact full-index proof ceiling, further reduced by
+    // fresh paid monthly/paced headroom and its independent read/write cost
+    // estimate. Stop before checkpoint/DDL if any source table exceeds it.
+    const sourceAdmission=deriveStep3SourceRowBudget("0212",state.latest_headroom);
+    const relatedAdmission=deriveStep3SourceRowBudget("0204",state.latest_headroom);
+    const source=q(config,step30212PendingSourcePreflightSQL({
+     sourceCap:sourceAdmission.budget,
+     relatedSourceCap:relatedAdmission.budget
+    }),{maxRows:1});
+    if(source.readRows>1000000)
      fail("0212_PREFLIGHT_PROVIDER_READ_COST_EXCEEDED");
+    const observed=source.rows[0];
+    const exceeded=[
+     {key:"raw_rows",table:"phase2h_private_raw_news",budget:sourceAdmission.budget},
+     {key:"osint_rows",table:"private_osint_news_25h",budget:relatedAdmission.budget},
+     {key:"website_rows",table:"website_derived_intelligence",budget:relatedAdmission.budget}
+    ].filter(x=>observed?.[x.key]===x.budget+1);
+    if(exceeded.length)
+     await rejectExceededSourceBudget(config,state,"0212",
+      exceeded.map(x=>({source_table:x.table,budget:x.budget})),source.readRows);
     state.large_0212_production_cost_envelope=
-     validateStep30212PendingSourcePreflight(source.rows);
+     validateStep30212PendingSourcePreflight(source.rows,{
+      sourceCap:sourceAdmission.budget,
+      relatedSourceCap:relatedAdmission.budget
+     });
+    state.large_0212_source_budget={source:sourceAdmission,
+     related_sources:relatedAdmission};
     state.large_0212_preflight_provider_rows_read=source.readRows;
     save(state);
     await refreshedGate(state,"LARGE_0212_ESTIMATED_COST_AFTER_SOURCE_PROBE");
    }else{
-    // Any other pending migration retains the strict 3k bound.
-    boundedInputs(config,manifest,state);
+    // Remaining pending migrations use a fresh paid-headroom budget capped
+    // by the matching complete source-index integrity proof ceiling.
+    await boundedInputs(config,manifest,state);
    }
   }
   // Missing production HMAC is admissible ONLY for an entirely new
@@ -1033,7 +1099,10 @@ export async function rehearseStep3Shadow({env=process.env}={}){
    /^geomacro-d1-publisher-shadow(?:-[a-z0-9-]+)?$/u.test(x.name??""));
   if(matching.length!==1)fail("SHADOW_REAL_DATABASE_ID_NOT_MATCHED");
   report.real_shadow_database_identity_verified=true;
-  for(const m of manifests)boundedInputs(config,m,report);
+  for(const m of manifests){
+   await refreshedGate(report,"BEFORE_STAGED_INDEX_BUDGET_"+m.id);
+   await boundedInputs(config,m,report);
+  }
   report.original_immutable_sample_sha256=baseline(config);
   // FAIL-CLOSED BEFORE any recovery R2 checkpoint or shadow DDL; merely
   // finding a row does NOT replace the separate real original/B2 proof.
