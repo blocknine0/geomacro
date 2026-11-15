@@ -140,9 +140,10 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     officialApiDisplayUrls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
     officialApis: {
       canonical: `${origin}/api/v1/intelligence/query`,
-      geopolitics: `${origin}/api/v1/intelligence/geopolitics`,
-      macro_fx: `${origin}/api/v1/intelligence/macro-fx`,
-      critical_minerals: `${origin}/api/v1/intelligence/critical-minerals`,
+      risk_gate: `${origin}/api/v1/risk-gate`,
+      geopolitics: `${origin}/api/v1/risk-gate`,
+      macro_fx: `${origin}/api/v1/risk-gate`,
+      critical_minerals: `${origin}/api/v1/risk-gate`,
       agent: `${origin}/api/v1/agent`,
       pricing: `${origin}/api/v1/pricing`,
       no_funds_availability: `${origin}/api/v1/intelligence/availability`,

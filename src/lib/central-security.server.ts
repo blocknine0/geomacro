@@ -99,6 +99,7 @@ export function isCoinbaseTestnetLocalSecurityFallbackAllowed(
  */
 const PAID_INTELLIGENCE_WRITES = new Set([
   "/api/v1/intelligence/query",
+  "/api/v1/risk-gate",
   "/api/v1/intelligence/geopolitics",
   "/api/v1/intelligence/macro-fx",
   "/api/v1/intelligence/critical-minerals",
@@ -224,6 +225,7 @@ export function classifyCentralSecurityRoute(
     pathname.startsWith("/api/x402") ||
     pathname === "/api/v1/agent" ||
     pathname === "/api/v1/intelligence/query" ||
+    pathname === "/api/v1/risk-gate" ||
     pathname === "/api/v1/intelligence/geopolitics" ||
     pathname === "/api/v1/intelligence/macro-fx" ||
     pathname === "/api/v1/intelligence/critical-minerals" ||

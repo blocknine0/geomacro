@@ -24,9 +24,9 @@ const LOCKED=[
   ["intelligence_query","complex_multi_source","0.05"],
   ["signed_risk_object","existing_valid_signed","0.03"],
   ["signed_risk_object","newly_qualified_signed","0.05"],
-  ["risk_gate_bundle","existing_proof_preflight","0.10"],
-  ["risk_gate_bundle","standard","0.15"],
-  ["risk_gate_bundle","complex_multi_source","0.25"],
+  ["risk_gate_bundle","existing_proof_preflight","0.15"],
+  ["risk_gate_bundle","standard","0.20"],
+  ["risk_gate_bundle","complex_multi_source","0.30"],
 ] as const;
 
 describe("founder-locked USD prices: precise output fields per product",()=>{

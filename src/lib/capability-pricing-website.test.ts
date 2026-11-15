@@ -19,8 +19,9 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
     expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
-    expect(categoryApiPricing).toContain("GEOMACRO_CAPABILITY_PRICES.intelligence_query");
-    expect(categoryApiPricing).toContain("GEOMACRO_OFFICIAL_API_CATALOG");
+    expect(categoryApiPricing).toContain("basic_focused: \"0.15\"");
+    expect(categoryApiPricing).toContain("/api/v1/risk-gate");
+    expect(categoryApiPricing).toContain("complex_full: \"0.30\"");
     expect(pricing).toContain("<CategoryApiPricing showPrices />");
     expect(dataApi).not.toContain("CategoryApiPricing");
     expect(pricing).not.toContain("<CapabilityPriceSchedule />");

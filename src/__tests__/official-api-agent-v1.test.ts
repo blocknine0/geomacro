@@ -28,6 +28,7 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(d.countries_routable).toBe(195);
   expect(d.domains).toEqual(["geopolitics","macro","rare_earth"]);
   expect(d.endpoints.canonical_intelligence).toBe("/api/v1/intelligence/query");
+  expect(d.endpoints.risk_gate).toBe("/api/v1/risk-gate");
   expect(d.endpoints.free_finds).toBe("/api/v1/finds");
   expect(d.endpoints.mcp).toBe("/api/mcp");
   expect(d.endpoints.a2a).toBe("/api/a2a");
@@ -47,6 +48,11 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(openapi.openapi).toBe("3.1.0");
   expect(openapi.paths["/api/v1/agent"].post.requestBody.content["application/json"].schema.required).toEqual(["tool","arguments"]);
   expect(openapi.paths["/api/v1/intelligence/query"]).toHaveProperty("post");
+  expect(openapi.paths["/api/v1/risk-gate"].post.security).toEqual([{BearerApiKey:[]}]);
+  expect(openapi.paths["/api/v1/risk-gate"].post.requestBody.content["application/json"].schema.properties.category.enum)
+    .toEqual(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
+  expect(openapi.paths["/api/v1/risk-gate"].post.requestBody.content["application/json"].schema.properties.tier.enum)
+    .toContain("COMPLEX");
   expect(openapi.paths["/api/v1/finds"]).toHaveProperty("get");
   const media=openapi.paths["/api/v1/agent"].post.requestBody.content["application/json"];
   const paid=GEOMACRO_AGENT_TOOLS.filter(tool=>tool.paid);
@@ -69,7 +75,7 @@ describe("official Geomacro API and AI Agent v1",()=>{
   const agent=officialGeomacroAgentDiscovery();
   const openapi=officialGeomacroAgentOpenApi();
   const pricing=publicGeomacroPaidPricingManifest();
-  expect(GEOMACRO_OFFICIAL_API_CATALOG).toHaveLength(5);
+  expect(GEOMACRO_OFFICIAL_API_CATALOG).toHaveLength(3);
   expect(agent.official_api_display_names).toEqual(GEOMACRO_OFFICIAL_API_DISPLAY_NAMES);
   expect(agent.official_api_catalog).toEqual(GEOMACRO_OFFICIAL_API_CATALOG);
   expect(pricing.official_api_display_names).toEqual(GEOMACRO_OFFICIAL_API_DISPLAY_NAMES);
@@ -85,10 +91,10 @@ describe("official Geomacro API and AI Agent v1",()=>{
     // Existing stable operation IDs, route URLs and request methods remain untouched.
     expect(operation.operationId).toBeTruthy();
   }
-  expect(pricing.official_api.geopolitics).toBe("geomacro.live /api/v1/intelligence/geopolitics");
-  expect(pricing.official_api_transport_legacy.geopolitics).toBe("POST /api/v1/intelligence/geopolitics");
-  expect(pricing.official_api.macro_fx).toBe("geomacro.live /api/v1/intelligence/macro-fx");
-  expect(pricing.official_api.critical_minerals).toBe("geomacro.live /api/v1/intelligence/critical-minerals");
+  expect(pricing.official_api.geopolitics).toBe("geomacro.live /api/v1/risk-gate");
+  expect(pricing.official_api_transport_legacy.risk_gate).toContain("POST /api/v1/risk-gate");
+  expect(pricing.official_api.macro_fx).toBe("geomacro.live /api/v1/risk-gate");
+  expect(pricing.official_api.critical_minerals).toBe("geomacro.live /api/v1/risk-gate");
   expect(agent.payment_authorized_by_discovery).toBe(false);
   expect(pricing.payment_authorized).toBe(false);
  });

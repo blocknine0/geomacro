@@ -19,12 +19,8 @@ export function formatGeomacroApiDisplayPath(path: string): string {
 export const GEOMACRO_OFFICIAL_API_CATALOG = Object.freeze([
   {id:"intelligence",name:"GEOMACRO Intelligence API",
     method:"POST",path:"/api/v1/intelligence/query"},
-  {id:"geopolitics",name:"GEOMACRO Geopolitics API",
-    method:"POST",path:"/api/v1/intelligence/geopolitics"},
-  {id:"macro_fx",name:"GEOMACRO Macro/FX API",
-    method:"POST",path:"/api/v1/intelligence/macro-fx"},
-  {id:"critical_minerals",name:"GEOMACRO Critical Minerals API",
-    method:"POST",path:"/api/v1/intelligence/critical-minerals"},
+  {id:"risk_gate",name:"GEOMACRO Commercial Risk Gate API",
+    method:"POST",path:"/api/v1/risk-gate"},
   {id:"agent",name:"GEOMACRO AI Agent API",
     method:"POST",path:"/api/v1/agent"},
 ] as const);

@@ -43,9 +43,9 @@ test("exactly three immutable names, prices, decimal atomic amounts",()=>{
  assert.deepEqual(Object.keys(RISK_GATE_PRODUCT_TIERS),[
   "basic_focused","standard","complex_full"]);
  assert.deepEqual(Object.values(RISK_GATE_PRODUCT_TIERS).map(x=>x.usd_per_call),[
-  "0.10","0.15","0.25"]);
+  "0.15","0.20","0.30"]);
  assert.deepEqual(Object.values(RISK_GATE_PRODUCT_TIERS).map(x=>x.usdc_atomic),[
-  "100000","150000","250000"]);
+  "150000","200000","300000"]);
  const catalog=readFileSync("src/lib/capability-pricing-catalog.ts","utf8");
  for(const x of Object.values(RISK_GATE_PRODUCT_TIERS)){
   assert(catalog.includes(x.legacy_variant+':"'+x.usd_per_call+'"'));
@@ -55,7 +55,7 @@ test("Basic single unverified observation creates bounded indicative score and f
  const r=render("basic_focused");
  assert.equal(r.schema,RISK_GATE_PRODUCT_SCHEMA);
  assert.equal(r.status,"READY");
- assert.equal(r.price.usd_per_call,"0.10");
+ assert.equal(r.price.usd_per_call,"0.15");
  assert.equal(r.indicative_risk_score_0_100,10);
  assert.equal(r.confidence.level,"LOW");
  assert.equal(r.confidence.verification,"PROVISIONAL");
@@ -99,7 +99,7 @@ test("Standard blocks two unrelated or unverified observations and requires thre
 });
 test("Standard real three-category corroboration delivers verified fact sheets with source references",()=>{
  const r=render("standard",{verified_gro:gro()});
- assert.equal(r.price.usd_per_call,"0.15");
+ assert.equal(r.price.usd_per_call,"0.20");
  assert.equal(r.status,"READY");
  assert.equal(r.corroborated_risk_score_0_100,31.5);
  assert.deepEqual(r.confidence,{level:"MEDIUM",verification:"VERIFIED"});
@@ -190,7 +190,7 @@ test("Complex verified signature, 7-day signed-history holes and private B2 refe
  assert.equal(withIncompleteGro.category_fact_sheets[2].evidence_status,"NOT_FULLY_VERIFIED");
  const r=render("complex_full",{verified_gro:gro(),archive_proof:archive,history:days});
  assert.equal(r.status,"READY");
- assert.equal(r.price.usd_per_call,"0.25");
+ assert.equal(r.price.usd_per_call,"0.30");
  assert.equal(r.proprietary_institutional_score_0_100,72);
  assert.deepEqual(r.confidence,{level:"HIGH",verification:"CRYPTO_SIGNED"});
  assert.equal(r.gro_signature.scheme,"Ed25519");

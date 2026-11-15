@@ -15,14 +15,14 @@ import {productActivationTriggers} from "./risk-gate-activation-triggers.mjs";
 export const RISK_GATE_PRODUCT_SCHEMA="geomacro.risk-gate-commercial-three-tier.v1";
 export const RISK_GATE_PRODUCT_TIERS=Object.freeze({
  basic_focused:Object.freeze({tier:"BASIC_FOCUSED",legacy_variant:"existing_proof_preflight",
-  display_name:"Basic / Focused",usd_per_call:"0.10",usdc_atomic:"100000",
+  display_name:"Basic / Focused",usd_per_call:"0.15",usdc_atomic:"150000",
   requirement:"SINGLE_OBSERVED_SOURCE",confidence:"LOW",verification:"PROVISIONAL"}),
  standard:Object.freeze({tier:"STANDARD",legacy_variant:"standard",
-  display_name:"Standard",usd_per_call:"0.15",usdc_atomic:"150000",
+  display_name:"Standard",usd_per_call:"0.20",usdc_atomic:"200000",
   requirement:"THREE_CATEGORY_INDEPENDENT_CORROBORATION",
   confidence:"MEDIUM",verification:"VERIFIED"}),
  complex_full:Object.freeze({tier:"COMPLEX_FULL",legacy_variant:"complex_multi_source",
-  display_name:"Complex / Full",usd_per_call:"0.25",usdc_atomic:"250000",
+  display_name:"Complex / Full",usd_per_call:"0.30",usdc_atomic:"300000",
   requirement:"SIGNED_GRO_B2_READBACK_AND_SEVEN_DAY_HISTORY",
   confidence:"HIGH",verification:"CRYPTO_SIGNED"}),
 });

@@ -14,6 +14,10 @@ describe("public endpoint integration contract", () => {
     expect(officialGeomacroAgentDiscovery().public_endpoint_catalog).toEqual(endpoints);
     expect(new Set(endpoints.map(endpoint => endpoint.path)).size).toBe(endpoints.length);
     expect(endpoints.some(endpoint => String(endpoint.path) === "/api/public/global-risk")).toBe(false);
+    expect(endpoints.find(endpoint=>endpoint.id==="risk_gate")).toMatchObject({
+      path:"/api/v1/risk-gate",methods:["POST"],
+    });
+    expect(examples.risk_gate).toMatchObject({category:"MACRO_FX",tier:"STANDARD",country_iso3:"IND"});
     expect(paths["/api/public/global-risk"].get.deprecated).toBe(true);
     for (const endpoint of endpoints) {
       for (const method of endpoint.methods) {

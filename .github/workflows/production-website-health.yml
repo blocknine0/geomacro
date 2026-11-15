@@ -87,7 +87,10 @@ jobs:
           grep -Fq 'ApiKeysNotice' src/routes/pricing.tsx
           grep -Fq 'CategoryApiPricing' src/routes/pricing.tsx
           grep -Fq 'redirect({ to: "/pricing", replace: true })' src/routes/data-api.tsx
-          grep -Fq 'GEOMACRO_CAPABILITY_PRICES.intelligence_query' src/components/category-api-pricing.tsx
+          grep -Fq 'basic_focused: "0.15"' src/components/category-api-pricing.tsx
+          grep -Fq 'standard: "0.20"' src/components/category-api-pricing.tsx
+          grep -Fq 'complex_full: "0.30"' src/components/category-api-pricing.tsx
+          grep -Fq 'geomacro.live /api/v1/risk-gate' src/components/category-api-pricing.tsx
           grep -Fq 'There is no category surcharge.' src/components/category-api-pricing.tsx
           grep -Fq 'Self-service access and checkout are not open yet.' src/components/api-keys-notice.tsx
           grep -Fq 'Coming soon' src/components/api-keys-notice.tsx

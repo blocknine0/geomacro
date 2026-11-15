@@ -1,31 +1,28 @@
-import {
-  GEOMACRO_CAPABILITY_PRICES,
-  GEOMACRO_CAPABILITY_PRICING_VERSION,
-} from "@/lib/capability-pricing-catalog";
-import { GEOMACRO_OFFICIAL_API_CATALOG } from "@/lib/geomacro-official-api-branding";
+import { GEOMACRO_CAPABILITY_PRICING_VERSION } from "@/lib/capability-pricing-catalog";
 import { GEOMACRO_CREDIT_COSTS } from "@/lib/commercial-access-contract";
 
 const CATEGORY_API_LABELS = [
-  { id: "geopolitics", label: "Geopolitics" },
-  { id: "macro_fx", label: "Macro / FX" },
-  { id: "critical_minerals", label: "Critical Minerals / Rare Earths" },
+  { id: "geopolitics", label: "Geopolitics", name: "GEOMACRO Geopolitics API" },
+  { id: "macro_fx", label: "Macro/FX", name: "GEOMACRO Macro/FX API" },
+  { id: "critical_minerals", label: "Critical Minerals", name: "GEOMACRO Critical Minerals API" },
 ] as const;
 
 const VARIANTS = [
-  { id: "focused", label: "Focused" },
-  { id: "standard", label: "Standard" },
-  { id: "complex_multi_source", label: "Complex multi-source" },
+  { id: "basic_focused", label: "Focused (BASIC)" },
+  { id: "standard", label: "Standard (STANDARD)" },
+  { id: "complex_full", label: "Complex multi-source (COMPLEX)" },
 ] as const;
 
-const CATEGORY_APIS = CATEGORY_API_LABELS.map((category) => {
-  const api = GEOMACRO_OFFICIAL_API_CATALOG.find((candidate) => candidate.id === category.id);
-  if (!api) throw new Error(`Missing canonical Geomacro category API: ${category.id}`);
-  return { ...category, ...api };
-});
+const RISK_GATE_PRICES = {
+  basic_focused: "0.15",
+  standard: "0.20",
+  complex_full: "0.30",
+} as const;
+
+const CATEGORY_APIS = CATEGORY_API_LABELS;
 
 /** Public price display only. Category aliases share the canonical query engine and payment resource. */
 export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) {
-  const prices = GEOMACRO_CAPABILITY_PRICES.intelligence_query;
   return (
     <section
       aria-labelledby="category-api-pricing-title"
@@ -37,14 +34,14 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
         Three category APIs. One intelligence engine.
       </h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-        Each category uses the same canonical intelligence engine. Direct USDC per-delivery
-        prices below are separate from prepaid credits. Self-service per-delivery purchases are not offered yet.
+        One unified Risk Gate delivers all three categories across three evidence tiers. The listed
+        USDC rates match the Predge customer schedule; checkout remains disabled until separately approved.
         There is no category surcharge.
       </p>
       <div className="mt-5 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[300px] text-left text-sm">
           <caption className="sr-only">
-            Official GEOMACRO Geopolitics, Macro/FX and Critical Minerals APIs
+            Unified GEOMACRO Risk Gate pricing for Geopolitics, Macro/FX and Critical Minerals
           </caption>
           <thead className="bg-muted/40">
             <tr>
@@ -65,18 +62,21 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
                     Official Geomacro intelligence endpoint
                   </span>
                   <code className="mt-2 block break-all text-xs font-medium text-primary">
-                    geomacro.live {api.path}
+                    geomacro.live /api/v1/risk-gate
                   </code>
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    category: geopolitics | macro-fx | critical-minerals
+                  </span>
                 </th>
                 {showPrices && VARIANTS.map((variant) => (
                   <td
                     key={variant.id}
-                    data-capability="intelligence_query"
+                    data-capability="risk_gate_bundle"
                     data-variant={variant.id}
-                    data-price-usdc={prices[variant.id]}
+                    data-price-usdc={RISK_GATE_PRICES[variant.id]}
                     className="p-4 font-mono font-medium"
                   >
-                    {prices[variant.id]} <span className="font-sans text-xs text-muted-foreground">USDC</span>
+                    {RISK_GATE_PRICES[variant.id]} <span className="font-sans text-xs text-muted-foreground">USDC</span>
                   </td>
                 ))}
               </tr>
@@ -85,21 +85,30 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
         </table>
       </div>
       {showPrices && (
-        <p className="mt-4 text-sm font-medium" data-prepaid-credit-cost={GEOMACRO_CREDIT_COSTS.intelligence_query}>
-          Prepaid plans/packs: {GEOMACRO_CREDIT_COSTS.intelligence_query} credit per qualified intelligence query,
-          whether Focused, Standard or Complex. USDC per-call rates do not define a credit conversion.
+        <p className="mt-4 text-sm font-medium" data-prepaid-credit-cost={GEOMACRO_CREDIT_COSTS.risk_gate_bundle}>
+          Prepaid-credit Risk Gate pricing follows the account catalog. USDC per-delivery rates do not define a credit conversion.
         </p>
       )}
+      <aside className="mt-5 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:p-5" aria-label="Official GeoMacro commercial Risk Gate">
+        <p className="text-sm font-semibold">Official GEOMACRO Commercial Risk Gate</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Ed25519-signed derived intelligence with verified commercial redistribution and AI-agent usage rights.
+          Built for direct API consumers and AI agents, with Base USDC x402 and prepaid-credit options alongside enterprise
+          partner access available under separate terms.
+        </p>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          Availability and charges remain gated by account eligibility, delivery checks, and explicit production
+          billing approval.
+        </p>
+      </aside>
       <div className="mt-4 space-y-2 text-xs leading-5 text-muted-foreground">
         <p>
-          All three branded category APIs use the canonical
-          <span className="mx-1 font-semibold">GEOMACRO Intelligence API</span>
-          at <code>geomacro.live /api/v1/intelligence/query</code>; they are not three separate
-          merchant resources or separate charges.
+          All three categories route through the single canonical
+          <span className="mx-1 font-semibold">GEOMACRO Risk Gate API</span>
+          at <code>geomacro.live /api/v1/risk-gate</code>; pass the category as a request parameter.
         </p>
         <p>
-          Per-delivery pricing is not available for public checkout yet. An exact request must pass
-          evidence, commercial-rights, signing and delivery checks before it can become chargeable.
+          A request must pass evidence, commercial-rights, signing and delivery checks before it can become chargeable.
           Production USDC payments remain locked pending separate approval.
         </p>
       </div>
