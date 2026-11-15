@@ -34,6 +34,7 @@ import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.
 import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts,projectUnverifiedProgressiveObservations} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgePaidRiskGateD1,predgeRiskGateD1,predgeRiskGateD1Readiness,verifyPredgePaidVerdictD1} from "./predge-risk-gate-d1.mjs";
+import {commercialLicenseKeyId,COMMERCIAL_LICENSE_KEY_URL} from "./risk-stream-commercial-license.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
@@ -1768,6 +1769,18 @@ export default {
         key_id:id,scheme:"Ed25519",public_key_spki_b64:spki},{
         status:200,headers:{"Cache-Control":"public, max-age=120",
           "X-Content-Type-Options":"nosniff"}});
+    }
+    if(request.method==="GET"&&url.pathname==="/.well-known/geomacro-commercial-license-keys.json"&&!url.search){
+      const spki=String(env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64??"");
+      if(!/^[A-Za-z0-9+/]{55,120}={0,2}$/.test(spki))
+        return json({ok:false,error:"GEOMACRO_COMMERCIAL_LICENSE_KEY_UNAVAILABLE"},503);
+      try{return Response.json({ok:true,schema:"geomacro.commercial-license-keyset.v1",
+        issuer:"GeoMacro (https://geomacro.live)",verification_key_url:COMMERCIAL_LICENSE_KEY_URL,
+        keys:[{key_id:await commercialLicenseKeyId(spki),scheme:"Ed25519",
+          public_key_spki_b64:spki,status:"active"}]},{status:200,headers:{
+          "Cache-Control":"public, max-age=300","X-Content-Type-Options":"nosniff",
+          "X-GeoMacro-Publisher":"https://geomacro.live"}})}
+      catch{return json({ok:false,error:"GEOMACRO_COMMERCIAL_LICENSE_KEY_INVALID"},503)}
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
       return predgeRiskGateD1Readiness(env);

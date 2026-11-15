@@ -34,7 +34,8 @@ const DAY_LIMIT=100;
 const HARD_CEILING=500;
 const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
- "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
+ "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer",
+ "X-GeoMacro-Publisher":"https://geomacro.live"};
 function fail(error,status=503,extra={}){
  return Response.json({ok:false,error,channel:"predge_b2b",verdict_id:null,
   tier:null,structure_type:null,customer_price_usdc:"0.00",
@@ -331,11 +332,23 @@ export async function readPredgePullLicense(env,parsed,now){
    approval?.validated_gro_sha256!==p?.source_gro_sha256||
    approval?.signed_release_receipt_sha256!==row.release_receipt_sha256||
    approval?.customer_entitlement_expires_at!==row.entitlement_expires_at)return null;
- const source=await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
-  "WHERE payload_sha256=? LIMIT 1").bind(p.source_gro_sha256).first();
+ // Bind the commercial license to the authorized candidate GRO and its
+ // distinct original no-funds GRO. The source hash is the candidate hash;
+ // provenance therefore resolves through the candidate's signed origin ID.
+ let licensedCandidatePayload;
+ try{licensedCandidatePayload=JSON.parse(p.source_gro_payload_json)}catch{return null;}
+ const commercialOriginGroId=licensedCandidatePayload?.commercial_origin_gro_id;
+ const source=commercialOriginGroId?
+  await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+   "WHERE gro_id=? LIMIT 1").bind(commercialOriginGroId).first():
+  await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+   "WHERE payload_sha256=? LIMIT 1").bind(p.source_gro_sha256).first();
  const candidate=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
   "FROM risk_stream_signed_gro WHERE gro_id=? LIMIT 1").bind(row.gro_id).first();
- if(!source||!candidate||!HASH.test(candidate.payload_sha256??"")||
+ if(!source||source.payload_sha256!==approval?.source_gro_sha256||
+   !candidate||(commercialOriginGroId&&candidate.payload_sha256!==p.source_gro_sha256)||
+   !HASH.test(candidate.payload_sha256??"")||
+   (commercialOriginGroId&&candidate.payload_json!==p.source_gro_payload_json)||
    await licensedSha(candidate.payload_json)!==candidate.payload_sha256)return null;
  let signedCandidate;try{signedCandidate=JSON.parse(candidate.payload_json)}catch{return null;}
  if(signedCandidate.customer_delivery_authorized!==true||
@@ -556,7 +569,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
    let result;
-   if(lockedTier==="complex_full"&&tierReady){
+   if(lockedTier==="complex_full"&&tierReady&&!paidCommercialLicense){
      const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
      result=evaluateRiskGate(parsed,gro,new Date(now));
      const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
@@ -590,6 +603,13 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      source_origin_agnostic_commercial_seal:true,
      request_hash:requestHash,risk_gate:result,context,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     provider_meta:{powered_by:"GeoMacro",
+      pricing_and_recharge_url:"https://geomacro.live/pricing",
+      live_desk_url:"https://geomacro.live/risk-indices",
+      tier_upgrade_hint:lockedTier==="basic_focused"?
+       "Explore Standard for deeper Risk→Effect→Price context.":
+       lockedTier==="standard"?
+       "Explore Complex Full for cross-category and cross-corridor synthesis.":null},
      ...(paidCommercialLicense?(()=>{
        const score=paidCommercialLicense.eligible_derived_score;
        const posture={CONTINUE:"CONTINUE",REDUCE_EXPOSURE:"REDUCE_LIMIT",
@@ -611,7 +631,8 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
        ...(paidCommercialLicense?{
         geomacro_commercial_license:paidCommercialLicense.envelope,
         licensed_gro_id:paidCommercialLicense.gro_id,
-        license_payload_sha256:paidCommercialLicense.license_payload_sha256
+        license_payload_sha256:paidCommercialLicense.license_payload_sha256,
+        commercial_rights:paidCommercialLicense.envelope.payload.commercial_rights
        }:{})}:{}),
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
      predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode:billingMode,entry_status:entryStatus,

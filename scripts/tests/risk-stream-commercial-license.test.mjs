@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync,sign,createHash} from "node:crypto";
 import {issueGeoMacroCommercialLicense,verifyGeoMacroCommercialLicense,
-  GEOMACRO_LICENSE_ID,canonicalLicensedJson}
+  GEOMACRO_LICENSE_ID,canonicalLicensedJson,verifyCommercialRights,
+  COMMERCIAL_LICENSE_KEY_URL,commercialLicenseKeyId}
  from "../../workers/control-plane/src/risk-stream-commercial-license.mjs";
 import {dispatchLicensedCommercialOutbox,commercialDeliveryIsEnabled}
  from "../../workers/control-plane/src/risk-stream-commercial-outbox.mjs";
@@ -86,12 +87,31 @@ test("GeoMacro derived commercial licence has domain-separated pinned Ed25519 pr
  assert.equal(e.payload.license_id,GEOMACRO_LICENSE_ID);
  assert.equal(e.license_proof.authorized_redistribution,true);
  assert.equal(e.payload.third_party_publisher_licensing_not_granted,true);
+ assert.equal(e.payload.commercial_rights.issuer,"GeoMacro (https://geomacro.live)");
+ assert.equal(e.payload.commercial_rights.license_type,"GEOMACRO_COMMERCIAL_DERIVED_INTELLIGENCE_V1");
+ assert.equal(e.payload.commercial_rights.raw_sources_not_republished,true);
+ assert.equal(e.payload.commercial_rights.licensed_source_text_included,false);
+ assert.equal(e.payload.commercial_rights.verification_key_url,COMMERCIAL_LICENSE_KEY_URL);
+ assert.equal(e.payload.commercial_rights.verification_key_id,
+  await commercialLicenseKeyId(f.inputs.licensePublicSpkiB64));
+ assert.equal(await verifyCommercialRights(e.payload.commercial_rights,
+  f.inputs.licensePublicSpkiB64),true);
  assert.equal(e.payload.derived.risk_score_0_100,62);
  const verified=await verifyGeoMacroCommercialLicense(e,{
   now,trustedLicensePublicSpkiB64:f.inputs.licensePublicSpkiB64,
   trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64});
  assert.equal(verified.status,"GEOMACRO_DERIVED_LICENSE_SIGNATURE_VERIFIED");
  assert.equal(verified.original_source_rights_not_derived_from_signature,true);
+});
+test("commercial rights block has its own domain-separated Ed25519 signature and rejects edits",async()=>{
+ const f=fixture(),e=await issueGeoMacroCommercialLicense(f.inputs);
+ const original=e.payload.commercial_rights;
+ e.payload.commercial_rights={...original,issuer:"Untrusted issuer"};
+ await assert.rejects(verifyGeoMacroCommercialLicense(e,{
+  now,trustedLicensePublicSpkiB64:f.inputs.licensePublicSpkiB64,
+  trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64}),/ENVELOPE_SIGNATURE_OR_HASH_INVALID|COMMERCIAL_RIGHTS_POLICY_INVALID/);
+ await assert.rejects(verifyCommercialRights({...original,license_type:"OTHER"},
+  f.inputs.licensePublicSpkiB64),/COMMERCIAL_RIGHTS_POLICY_INVALID/);
 });
 test("modified commercial score, unknown signing key and forged release signature fail closed",async()=>{
  const f=fixture(),e=await issueGeoMacroCommercialLicense(f.inputs);
@@ -104,7 +124,7 @@ test("modified commercial score, unknown signing key and forged release signatur
  const attacker=generateKeyPairSync("ed25519");
  await assert.rejects(verifyGeoMacroCommercialLicense(e,{
   now,trustedLicensePublicSpkiB64:b64(attacker.publicKey),
-  trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64}),/ENVELOPE_SIGNATURE_OR_HASH_INVALID/);
+  trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64}),/ENVELOPE_SIGNATURE_OR_HASH_INVALID|COMMERCIAL_RIGHTS_POLICY_INVALID/);
  const t=fixture();
  t.inputs.approval.signature_b64=sign(null,Buffer.from("forge"),t.groKey.privateKey).toString("base64");
  await assert.rejects(issueGeoMacroCommercialLicense(t.inputs),/RELEASE_REVIEW_SIGNATURE_INVALID/);

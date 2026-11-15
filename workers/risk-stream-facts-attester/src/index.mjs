@@ -1,5 +1,6 @@
 import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipeline.mjs";
 import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
+import {isRiskStreamInternalCorroboration} from "../../control-plane/src/risk-stream-internal-corroboration.mjs";
 
 const MAX_BODY=32*1024;
 const MAX_AGE=72*3600000;
@@ -68,9 +69,10 @@ function checkedUrl(value,root){
 async function validateOriginal(event,now){
  const keys=["schema","kind","country_iso3","category","feed_origin","event_key",
   "event_fingerprint","entities","source_id","source_url","publisher_root_domain",
-  "parent_media_entity","source_role","published_at","original_page_sha256",
+  "parent_media_entity","source_role","published_at","original_page_sha256","risk_context",
   "derived","raw_payload","proof","rights_verification"];
- if(!exact(event,keys)||event.schema!=="geomacro.risk-stream-candidate.v1"||
+ if(!(exact(event,keys)||exact(event,keys.filter(key=>key!=="risk_context")))||
+    event.schema!=="geomacro.risk-stream-candidate.v1"||
     event.kind!=="VERIFIED_ORIGINAL"||event.proof!==null||
     !/^[A-Z]{3}$/u.test(event.country_iso3??"")||!CATEGORIES.has(event.category)||
     !["RSS","WEBSITE_INTELLIGENCE","OFFICIAL_API"].includes(event.feed_origin)||
@@ -80,6 +82,9 @@ async function validateOriginal(event,now){
     typeof event.parent_media_entity!=="string"||!PARENT.test(event.parent_media_entity)||
     !ROLE_CATEGORIES[event.source_role]?.has(event.category)||!HEX.test(event.original_page_sha256??""))
   fail("CANDIDATE_INVALID");
+ if(event.risk_context!==undefined&&(!isRiskStreamInternalCorroboration(event.risk_context)||
+    event.risk_context.country_iso3!==event.country_iso3||
+    event.risk_context.category!==event.category))fail("INTERNAL_CORROBORATION_INVALID");
  if(!Array.isArray(event.entities)||event.entities.length<1||event.entities.length>12||
     event.entities.some(value=>typeof value!=="string"||! /^[A-Z0-9:_-]{2,64}$/u.test(value))||
     new Set(event.entities).size!==event.entities.length||

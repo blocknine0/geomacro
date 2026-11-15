@@ -8,6 +8,9 @@ export const GEOMACRO_LICENSE_ID="GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1";
 export const GEOMACRO_DERIVED_RIGHTS="GEOMACRO_COMMERCIAL_DERIVED_INTELLIGENCE";
 const SCHEMA="geomacro.commercial-derived-risk-envelope.v1";
 const DOMAIN="geomacro.commercial-derived-risk-license.v1\n";
+const RIGHTS_DOMAIN="geomacro.commercial-rights.v1\n";
+export const COMMERCIAL_LICENSE_KEY_URL="https://api.geomacro.live/.well-known/geomacro-commercial-license-keys.json";
+export const COMMERCIAL_RIGHTS_SCHEMA="geomacro.commercial-rights.v1";
 const HASH=/^[a-f0-9]{64}$/u;
 const ALLOWED=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const enc=new TextEncoder();
@@ -40,6 +43,43 @@ async function pubkey(b64){
  return crypto.subtle.importKey("spki",raw,{name:"Ed25519"},false,["verify"]);
 }
 function sigB64(raw){return btoa(String.fromCharCode(...raw))}
+export async function commercialLicenseKeyId(publicSpkiB64){
+ await pubkey(publicSpkiB64);
+ const hash=await crypto.subtle.digest("SHA-256",decoded(publicSpkiB64));
+ return "geomacro-license-ed25519-"+Array.from(new Uint8Array(hash).slice(0,12),
+  x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function signedCommercialRights(licensePrivatePkcs8B64,licensePublicSpkiB64){
+ const statement={schema:COMMERCIAL_RIGHTS_SCHEMA,
+  issuer:"GeoMacro (https://geomacro.live)",
+  license_type:"GEOMACRO_COMMERCIAL_DERIVED_INTELLIGENCE_V1",
+  raw_sources_not_republished:true,licensed_source_text_included:false,
+  verification_key_url:COMMERCIAL_LICENSE_KEY_URL,
+  verification_key_id:await commercialLicenseKeyId(licensePublicSpkiB64),
+  signature_scheme:"Ed25519"};
+ const key=await crypto.subtle.importKey("pkcs8",decoded(licensePrivatePkcs8B64),
+  {name:"Ed25519"},false,["sign"]);
+ const signature=await crypto.subtle.sign("Ed25519",key,
+  bytes(RIGHTS_DOMAIN+canonicalLicensedJson(statement)));
+ return {...statement,signature_b64:sigB64(new Uint8Array(signature))};
+}
+export async function verifyCommercialRights(rights,trustedLicensePublicSpkiB64){
+ const keys=["schema","issuer","license_type","raw_sources_not_republished",
+  "licensed_source_text_included","verification_key_url","verification_key_id",
+  "signature_scheme","signature_b64"];
+ if(!exact(rights,keys)||rights.schema!==COMMERCIAL_RIGHTS_SCHEMA||
+  rights.issuer!=="GeoMacro (https://geomacro.live)"||
+  rights.license_type!=="GEOMACRO_COMMERCIAL_DERIVED_INTELLIGENCE_V1"||
+  rights.raw_sources_not_republished!==true||rights.licensed_source_text_included!==false||
+  rights.verification_key_url!==COMMERCIAL_LICENSE_KEY_URL||rights.signature_scheme!=="Ed25519"||
+  rights.verification_key_id!==await commercialLicenseKeyId(trustedLicensePublicSpkiB64))
+  fail("COMMERCIAL_RIGHTS_POLICY_INVALID");
+ const {signature_b64,...statement}=rights;
+ if(!await crypto.subtle.verify("Ed25519",await pubkey(trustedLicensePublicSpkiB64),
+  decoded(signature_b64),bytes(RIGHTS_DOMAIN+canonicalLicensedJson(statement))))
+  fail("COMMERCIAL_RIGHTS_SIGNATURE_INVALID");
+ return true;
+}
 export async function verifyCommercialSourceGro(record,groPublicSpkiB64,now=Date.now()){
  if(!record||!HASH.test(record.payload_sha256??"")||
    typeof record.payload_json!=="string"||record.payload_json.length>18000||
@@ -83,11 +123,14 @@ export async function verifyCommercialSourceGro(record,groPublicSpkiB64,now=Date
   (!Object.hasOwn(evidence,"strategic_corridors")||Array.isArray(evidence.strategic_corridors)&&
    evidence.strategic_corridors.length<=12&&
    evidence.strategic_corridors.every(v=>typeof v==="string"&&/^[A-Z]{3}>[A-Z]{3}$/u.test(v)));
- if(p.schema!=="geomacro.event-stream-gro.v1"||
-   !exact(p,["schema","subject","category","event_fingerprint","source_originals",
+ const groFields=["schema","subject","category","event_fingerprint","source_originals",
     "what_happened","why_it_matters","market_relevance","what_to_watch",
     "eligible_derived_score","evidence_and_confidence","generated_at","expires_at",
-    "execution_authorized","charged","certified_risk_index","customer_delivery_authorized"])||
+    "execution_authorized","charged","certified_risk_index","customer_delivery_authorized"];
+ if(p.schema!=="geomacro.event-stream-gro.v1"||
+   !(exact(p,groFields)||exact(p,[...groFields,"commercial_origin_gro_id"]))||
+   (Object.hasOwn(p,"commercial_origin_gro_id")&&
+    !HASH.test(p.commercial_origin_gro_id??""))||
    !safeEvidence||
    p.subject?.type!=="COUNTRY"||!isHot50RiskCountry(p.subject.id)||
    !ALLOWED.has(p.category)||
@@ -155,6 +198,7 @@ export async function issueGeoMacroCommercialLicense({
    "DERIVED_ANALYTICS","OPERATIONAL_ADVISORY_USE"],
   original_publisher_text_included:false,
   third_party_publisher_licensing_not_granted:true,
+  commercial_rights:await signedCommercialRights(licensePrivatePkcs8B64,licensePublicSpkiB64),
   subject:gro.subject,category:gro.category,
   tier:"STANDARD",event_fingerprint:gro.event_fingerprint,
   derived:{
@@ -212,6 +256,7 @@ export async function verifyGeoMacroCommercialLicense(envelope,{now=Date.now(),t
   proof.timestamp_utc!==p.timestamp_utc||
   !HASH.test(proof.payload_sha256??""))
   fail("ENVELOPE_POLICY_INVALID");
+ await verifyCommercialRights(p.commercial_rights,trustedLicensePublicSpkiB64);
  const source=await verifyCommercialSourceGro({
   gro_id:await licensedSha(JSON.stringify(JSON.parse(p.source_gro_payload_json).source_originals)),
   payload_json:p.source_gro_payload_json,

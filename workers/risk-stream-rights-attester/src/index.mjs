@@ -1,5 +1,6 @@
 import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipeline.mjs";
 import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
+import {isRiskStreamInternalCorroboration} from "../../control-plane/src/risk-stream-internal-corroboration.mjs";
 
 const MAX_BODY=32*1024;
 const text=new TextEncoder();
@@ -91,6 +92,9 @@ export async function attestRights(request,env,now=Date.now()){
      typeof event.source_id!=="string"||typeof event.publisher_root_domain!=="string"||
      typeof event.parent_media_entity!=="string"||typeof event.source_role!=="string")
    fail("CANDIDATE_INVALID");
+  if(event.risk_context!==undefined&&(!isRiskStreamInternalCorroboration(event.risk_context)||
+     event.risk_context.country_iso3!==event.country_iso3||
+     event.risk_context.category!==event.category))fail("INTERNAL_CORROBORATION_INVALID");
   const itemLicense=event.rights_verification?.item_license_evidence;
   if(typeof event.raw_payload!=="string"||event.raw_payload.length<16||
      event.raw_payload.length>8000||await sha(event.raw_payload)!==event.original_page_sha256)
