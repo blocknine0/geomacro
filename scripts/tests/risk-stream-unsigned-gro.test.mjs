@@ -6,9 +6,12 @@ import {DatabaseSync} from "node:sqlite";
 import {issueUnsignedDailyNewsBatch,makeUnsignedDailyNewsGro,
  readUnsignedDailyNewsGros,pruneUnsignedDailyNewsGros} from "../../workers/control-plane/src/risk-stream-unsigned-gro.mjs";
 globalThis.crypto??=webcrypto;
-const NOW=Date.parse("2026-11-14T12:00:00.000Z");
+// The SQL retention trigger compares expires_at with SQLite's real clock.
+// Keep the fixture on today's UTC date so an otherwise-valid row is not
+// mistaken for an expired row when the calendar advances.
+const NOW=Date.now();
 const signal={country_iso3:"IND",category:"GEOPOLITICS",event_fingerprint:"a".repeat(64),
- published_at:"2026-11-14T11:50:00.000Z",original_verified:false,
+ published_at:new Date(NOW-10*60*1000).toISOString(),original_verified:false,
  derived:{what:"Unverified SANCTIONS signal for IND"}};
 function database(){
  const db=new DatabaseSync(":memory:");

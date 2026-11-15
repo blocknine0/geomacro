@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {REVIEWABLE_ADDITIVE_SECRETS} from "../lib/canary-additive-binding-parity.mjs";
 
 const workflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
 const candidateWorkflow=readFileSync(new URL("../../.github/workflows/geomacro-optimized-worker-candidate.yml",import.meta.url),"utf8");
@@ -42,6 +43,10 @@ test("production deployment validates signer keypair, distinct attestations and 
  assert.match(workflow,/RISK_STREAM_DUAL_ATTESTERS_MUST_BE_DISTINCT/);
  assert.match(workflow,/RISK_STREAM_ARCHIVE_AES256_KEY_INVALID/);
  assert.match(workflow,/RISK_STREAM_SIGNER_DUAL_ATTESTER_AND_ARCHIVE_SECRETS_INSTALLED=true/);
+ for(const name of ["RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN","RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN"])
+  assert.match(workflow,new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`));
+ assert.match(workflow,/RISK_STREAM_ATTESTER_BEARER_REQUIRED_/);
+ assert.match(candidateBuilder,/CANDIDATE_RISK_STREAM_ATTESTER_BEARERS_MISSING_/);
 });
 
 test("candidate signing secrets may be added through the reviewed upload path",()=>{
@@ -49,6 +54,10 @@ test("candidate signing secrets may be added through the reviewed upload path",(
   "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64"];
  for(const name of names){
   assert.match(parity,new RegExp(`"${name}"`));
+  assert.match(workflow,new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`));
+ }
+ for(const name of ["RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN","RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN"]){
+  assert.ok(REVIEWABLE_ADDITIVE_SECRETS.includes(name));
   assert.match(workflow,new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`));
  }
  assert.match(candidateBuilder,/assertBaselineRiskStreamSigningBindings\(baseline,reviewedSecrets,env\)/);
