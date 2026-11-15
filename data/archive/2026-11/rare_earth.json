@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-14T10:06:59.052Z",
+  "updated_at": "2026-11-15T06:36:58.696Z",
   "signals": [
+    {
+      "id": "rare_earth-1d61d543",
+      "category": "rare_earth",
+      "title": "Geomacro finds Tianjin unveiled Ambitious Circular Economy Plan, Transforming Secondary Copper Industry Dynamics - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: Tianjin unveiled Ambitious Circular Economy Plan, Transforming Secondary Copper Industry Dynamics - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T04:40:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-ac4df7b9",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rare Earth Stocks Buy held Avoid 2025 Guide - Rare Earth Exchanges",
+      "what_changed": "A monitored source feed reports: Rare Earth Stocks Buy held Avoid 2025 Guide - Rare Earth Exchanges. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T03:13:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-42ecaee8",
       "category": "rare_earth",
