@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,randomBytes,sign} from "node:crypto";
 import {processRiskStreamBatch,enqueueRiskStreamEvents,consumeRiskStreamQueue,
- inspectRiskStreamCandidates,riskStreamOriginalClaims}
+ inspectRiskStreamCandidates,riskStreamOriginalClaims,deriveRiskStreamEligibleScore}
  from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 
 const digest=v=>createHash("sha256").update(v).digest("hex");
@@ -11,6 +11,23 @@ const spki=x=>x.publicKey.export({type:"spki",format:"der"}).toString("base64");
 const pkcs8=x=>x.privateKey.export({type:"pkcs8",format:"der"}).toString("base64");
 const prove=(payload,key,scope)=>sign(null,Buffer.from(scope+"\n"+payload),
  key.privateKey).toString("base64");
+test("signed eligible scores are transparent event-class heuristics across all three categories",()=>{
+ const cases=[
+  ["GEOPOLITICS","USA","Two reports confirm new sanctions on the country.","SANCTIONS",75],
+  ["MACRO_FX","IND","The central bank announced an interest rate policy change.","MONETARY_POLICY",48],
+  ["CRITICAL_MINERALS","CHL","A rare earth supply shock followed the mine closure.","MINERAL_SUPPLY_SHOCK",78]
+ ];
+ for(const [category,country,what,eventClass,score] of cases){
+  const value=deriveRiskStreamEligibleScore(category,country,what);
+  assert.equal(value.event_class,eventClass);
+  assert.equal(value.value_0_100,score);
+  assert.equal(value.score_semantics,"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE");
+  assert.equal(value.independent_accuracy_certified,false);
+  assert.equal(value.licensed_source_text_included,false);
+ }
+ assert.equal(deriveRiskStreamEligibleScore("GEOPOLITICS","USA","A generic test event"),null);
+ assert.equal(deriveRiskStreamEligibleScore("UNMAPPED","USA","Sanctions"),null);
+});
 class FakeDB {
  constructor(){
   this.evidence=new Map();this.gros=new Map();this.outbox=new Map();
