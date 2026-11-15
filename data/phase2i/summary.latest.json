@@ -5,9 +5,9 @@
   "registered_sources": 453,
   "new_http_requests": 18,
   "statuses": {
-    "WORKING": 172,
-    "NO_NEW_EVENT": 32,
-    "SOURCE_UNAVAILABLE": 11,
+    "WORKING": 171,
+    "NO_NEW_EVENT": 34,
+    "SOURCE_UNAVAILABLE": 10,
     "UNSUPPORTED_FORMAT": 21,
     "RIGHTS_PENDING": 0,
     "QUOTA_HELD": 0,
@@ -26,7 +26,7 @@
       "cells": 195,
       "registered_local_source_cells": 85,
       "no_local_source_cells": 110,
-      "live_fetched_local_source_cells": 70,
+      "live_fetched_local_source_cells": 71,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     },
