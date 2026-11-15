@@ -606,6 +606,15 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Emit only verified-original candidate sidecars through facts and rights attesters
+        if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+          CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+          RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
+          RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+        run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Record every actual source ID state and independently verified D1 ACK
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

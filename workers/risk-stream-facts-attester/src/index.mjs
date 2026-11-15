@@ -1,5 +1,7 @@
 import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipeline.mjs";
 import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
+import {isRiskStreamInternalCorroboration}
+ from "../../control-plane/src/risk-stream-internal-corroboration.mjs";
 
 const MAX_BODY=32*1024;
 const MAX_AGE=72*3600000;
@@ -70,7 +72,8 @@ async function validateOriginal(event,now){
   "event_fingerprint","entities","source_id","source_url","publisher_root_domain",
   "parent_media_entity","source_role","published_at","original_page_sha256",
   "derived","raw_payload","proof","rights_verification"];
- if(!exact(event,keys)||event.schema!=="geomacro.risk-stream-candidate.v1"||
+ const allowedKeys=event&&Object.hasOwn(event,"risk_context")?[...keys,"risk_context"]:keys;
+ if(!exact(event,allowedKeys)||event.schema!=="geomacro.risk-stream-candidate.v1"||
     event.kind!=="VERIFIED_ORIGINAL"||event.proof!==null||
     !/^[A-Z]{3}$/u.test(event.country_iso3??"")||!CATEGORIES.has(event.category)||
     !["RSS","WEBSITE_INTELLIGENCE","OFFICIAL_API"].includes(event.feed_origin)||
@@ -105,6 +108,10 @@ async function validateOriginal(event,now){
     !Number.isFinite(Date.parse(event.rights_verification.checked_at_utc))||
     !Number.isFinite(Date.parse(event.rights_verification.rights_expires_at_utc)))
   fail("RIGHTS_REVIEW_METADATA_INVALID");
+ if(Object.hasOwn(event,"risk_context")&&
+    (!isRiskStreamInternalCorroboration(event.risk_context)||
+     event.risk_context.country_iso3!==event.country_iso3||
+     event.risk_context.category!==event.category))fail("INTERNAL_CORROBORATION_INVALID");
  try{validateRiskStreamItemLicense(event.rights_verification.item_license_evidence,{
    status:"APPROVED",rights_evidence:{
     licence_url:event.rights_verification.item_license_evidence?.license_url,

@@ -147,28 +147,32 @@
       "url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "conflict"
+      "risk_category": "conflict",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "uk_hmt_ogl_official_atom",
       "url": "https://www.gov.uk/government/organisations/hm-treasury.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "macro_economics"
+      "risk_category": "macro_economics",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "uk_dbt_ogl_minerals_atom",
       "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "commodities"
+      "risk_category": "commodities",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "uk_desnz_ogl_minerals_atom",
       "url": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "commodities"
+      "risk_category": "commodities",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "india_pib_licensed_minerals_rss",
@@ -182,28 +186,32 @@
       "url": "https://www.gov.uk/government/organisations/ministry-of-defence.atom",
       "source_type": "official",
       "credibility_score": 0.955,
-      "risk_category": "conflict"
+      "risk_category": "conflict",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "uk_cabinet_ogl_security_atom",
       "url": "https://www.gov.uk/government/organisations/cabinet-office.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "conflict"
+      "risk_category": "conflict",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "uk_obr_ogl_macro_atom",
       "url": "https://www.gov.uk/government/organisations/office-for-budget-responsibility.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "macro_economics"
+      "risk_category": "macro_economics",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "uk_bist_ogl_minerals_atom",
       "url": "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
-      "risk_category": "commodities"
+      "risk_category": "commodities",
+      "risk_stream_item_licensed": true
     },
     {
       "name": "un_hq_official_press_rss",

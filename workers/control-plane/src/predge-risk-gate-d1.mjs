@@ -331,11 +331,26 @@ export async function readPredgePullLicense(env,parsed,now){
    approval?.validated_gro_sha256!==p?.source_gro_sha256||
    approval?.signed_release_receipt_sha256!==row.release_receipt_sha256||
    approval?.customer_entitlement_expires_at!==row.entitlement_expires_at)return null;
- const source=await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
-  "WHERE payload_sha256=? LIMIT 1").bind(p.source_gro_sha256).first();
+ // The signed envelope is bound to the separately authorized customer GRO;
+ // that row records its own commercial_origin_gro_id. Verify the source row
+ // against the independent review's source hash, then verify the licensed
+ // candidate row against the envelope's source_gro_sha256.
+ let licensedCandidatePayload;
+ try{licensedCandidatePayload=JSON.parse(p.source_gro_payload_json)}catch{return null;}
+ const commercialOriginGroId=licensedCandidatePayload?.commercial_origin_gro_id;
+ // New reviewer licenses bind the upstream source GRO by its ID. Older
+ // valid licenses bind the same source by its signed payload hash; retain
+ // that cryptographic fallback for existing licenses during migration.
+ const source=commercialOriginGroId?
+  await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+   "WHERE gro_id=? LIMIT 1").bind(commercialOriginGroId).first():
+  await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+   "WHERE payload_sha256=? LIMIT 1").bind(p.source_gro_sha256).first();
  const candidate=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
   "FROM risk_stream_signed_gro WHERE gro_id=? LIMIT 1").bind(row.gro_id).first();
- if(!source||!candidate||!HASH.test(candidate.payload_sha256??"")||
+ if(!source||source.payload_sha256!==approval?.source_gro_sha256||
+   !candidate||candidate.payload_sha256!==p.source_gro_sha256||!HASH.test(candidate.payload_sha256??"")||
+   candidate.payload_json!==p.source_gro_payload_json||
    await licensedSha(candidate.payload_json)!==candidate.payload_sha256)return null;
  let signedCandidate;try{signedCandidate=JSON.parse(candidate.payload_json)}catch{return null;}
  if(signedCandidate.customer_delivery_authorized!==true||
@@ -556,12 +571,18 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
    let result;
-   if(lockedTier==="complex_full"&&tierReady){
+   if(lockedTier==="complex_full"&&tierReady&&
+      !(paidEndpoint&&paidCommercialLicense)){
      const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
      result=evaluateRiskGate(parsed,gro,new Date(now));
      const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
      applyIntradayFlashDecision(result,flash);
    }else{
+     // The reviewed Addendum license is itself bound to the dual-attested
+     // signed commercial GRO and independently approved tier evidence. Use
+     // the queue-less derived decision already computed above for this paid
+     // tier; do not require the separate legacy country_gro_verified_hot
+     // table or its application-only TypeScript decision adapter.
      result=sharedDecision.result;
    }
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
