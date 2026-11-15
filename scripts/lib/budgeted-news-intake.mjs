@@ -1,5 +1,5 @@
 import {releaseWindowEvents} from './macro-release-calendar.mjs';
-const BUNDLE='https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle';
+const BUNDLE='https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/website-derived-news-bundle';
 export function intakeIsDue(policy,intervalMinutes,now,events=[]){
  if(![5,10,15,30,60].includes(intervalMinutes)||!Number.isFinite(now))throw Error('NEWS_INTAKE_CADENCE_INVALID');
  if(!policy)return true;

@@ -27,13 +27,6 @@ if(ROOT.length<32)throw Error("FIVE_MIN_NEWS_PROTECTED_D1_AUTH_REQUIRED");
 const token=createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
 const controlPlaneOrigin="https://geomacro-control-plane.daspallab202391.workers.dev";
 const endpoint=controlPlaneOrigin+"/v1/website-derived-news";
-const canonicalRead:typeof fetch=async(input,init)=>{
- if(String(input)!==controlPlaneOrigin+'/v1/public/website-derived-news-bundle')throw Error('FASTLANE_CANONICAL_BUNDLE_REQUIRED');
- const headers=new Headers(init?.headers);headers.set('Authorization','Bearer '+token);
- const response=await fetch(controlPlaneOrigin+'/v1/internal/website-derived-news-bundle',{...init,headers,cache:'no-store',redirect:'error'});
- if(response.headers.get('X-GeoMacro-Origin-Readback')!=='d1-canonical')throw Error('FASTLANE_CANONICAL_ORIGIN_NOT_VERIFIED');
- return response;
-};
 const categories=["geopolitics","macro","rare_earth"] as const;
 const workerPolicy=await requireDerivedNewsWorkerPolicy({
  fetchImpl:globalThis.fetch,url:controlPlaneOrigin+"/health",
@@ -65,7 +58,9 @@ if(!intakeIsDue(policyBody.policy,intakeInterval,runAt,(previousMacroState as {e
 // Fail closed if the bounded journal reader is unavailable.
 // Repair the bounded journal before reading: unrelated prior writers can
 // leave a 601st row, which the strict bundle correctly refuses to serve.
-const baseline=await readIntakeBaseline({fetchImpl:canonicalRead,readAll:fetchAllDerivedNews,now:Date.now(),repair:async()=>{
+const baseline=await readIntakeBaseline({fetchImpl:globalThis.fetch,
+ readAll:(fetchImpl,now)=>fetchAllDerivedNews(fetchImpl,now,{fresh:true,canonicalOriginToken:token}),
+ now:Date.now(),repair:async()=>{
  const initialSweep=await fetch(endpoint,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:[]}),signal:AbortSignal.timeout(12000)});
  if(!initialSweep.ok)throw Error("FASTLANE_INITIAL_RETENTION_SWEEP_FAILED");
 }});
@@ -190,9 +185,10 @@ if(allPublished.length){
   // journal bundle unreadable. It preserves native clocks and archive history.
   const prune=await fetch(endpoint,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:[]}),signal:AbortSignal.timeout(12000)});
   if(!prune.ok)throw Error("JOURNAL_RETENTION_SWEEP_FAILED");
-  // Read the SAME journal via its strict 250/500-page complete verified reader;
-  // don't report delivered only because D1 returned HTTP 200 on PUT.
-  const records=await fetchAllDerivedNews(canonicalRead,Date.now());
+  // Read the SAME journal through the authenticated one-query canonical D1
+  // bundle; don't fall back to public/page routes for write acceptance.
+  const records=await fetchAllDerivedNews(globalThis.fetch,Date.now(),
+   {fresh:true,canonicalOriginToken:token});
   const ids=new Set(records.map(s=>s.id));
   const retentionWithheld=allPublished.filter(s=>!ids.has(s.id)).length;
   if(retentionWithheld)console.log(JSON.stringify({schema:"geomacro.news-retention-held.v1",rows_not_retained:retentionWithheld,claimed_delivered:false}));
