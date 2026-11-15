@@ -86,6 +86,8 @@ export function buildHot50StandardFeasibility({crosswalk,priority,manifest,now=D
   country_count:countries.length,cell_count:cells.length,
   approved_source_count:approvedEntries.length,pending_source_count:pendingEntries.length,
   discovery_only_priority_candidate_count:priorityCandidateIds.length,
+  country_specific_feed_coverage_verified:false,
+  role_pairs_are_global_not_cell_mapping:true,
   source_rights_rule:"Only APPROVED manifest entries count; crosswalk and gap-priority candidates do not confer rights.",
   totals_by_category:totalsByCategory,
   feasible_cells:cells.filter(x=>x.status==="FEASIBLE"),
