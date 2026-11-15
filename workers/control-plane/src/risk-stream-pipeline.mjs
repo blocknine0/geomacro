@@ -357,21 +357,56 @@ async function categoryPolicies(db,items){
  for(const e of items)if(!policies.has(e.category))fail("CATEGORY_NOT_ACTIVATED");
  return policies;
 }
+export function deriveRiskStreamEligibleScore(category,countryIso3,what){
+ if(!["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].includes(category)||
+    !/^[A-Z]{3}$/u.test(countryIso3??""))return null;
+ const eventText=String(what??"").toUpperCase();
+ const scoreRules=category==="GEOPOLITICS"?[
+  [/\\b(?:WAR|ARMED CONFLICT|INVASION|MISSILE STRIKE|ATTACK)\\b/u,"CONFLICT",88],
+  [/\\bSANCTIONS?\\b/u,"SANCTIONS",75],
+  [/\\bEXPORT CONTROL\\b/u,"EXPORT_CONTROL",73],
+  [/\\bEXPORT BAN|\\bBAN ON EXPORT|\\bPROHIBITION\\b/u,"EXPORT_BAN",70],
+  [/\\bCHOKEPOINT|STRAIT CLOSURE|CANAL DISRUPTION|SHIPPING DISRUPTION\\b/u,"CHOKEPOINT_DISRUPTION",70]
+ ]:category==="MACRO_FX"?[
+  [/\\bSOVEREIGN DEFAULT|DEBT DEFAULT|DEBT DISTRESS\\b/u,"SOVEREIGN_STRESS",72],
+  [/\\bINFLATION|CPI SURGE|PRICE SHOCK\\b/u,"INFLATION",63],
+  [/\\bCURRENCY CRISIS|FX STRESS|FOREIGN EXCHANGE SHOCK\\b/u,"FX_STRESS",66],
+  [/\\bINTEREST RATE|MONETARY POLICY|CENTRAL BANK RATE\\b/u,"MONETARY_POLICY",48],
+  [/\\bTRADE RESTRICTION|TARIFF|TRADE POLICY\\b/u,"TRADE_POLICY",52]
+ ]:[
+  [/\\bCRITICAL MINERAL SUPPLY SHOCK|RARE EARTH SUPPLY SHOCK|MINE CLOSURE\\b/u,"MINERAL_SUPPLY_SHOCK",78],
+  [/\\bEXPORT CONTROL\\b/u,"EXPORT_CONTROL",73],
+  [/\\bEXPORT BAN|\\bBAN ON EXPORT|\\bPROHIBITION\\b/u,"EXPORT_BAN",70],
+  [/\\bCHOKEPOINT|STRAIT CLOSURE|CANAL DISRUPTION|SHIPPING DISRUPTION\\b/u,"CHOKEPOINT_DISRUPTION",70],
+  [/\\bMINERAL TRADE|CRITICAL MINERAL|RARE EARTH|LITHIUM|COBALT|NICKEL|GRAPHITE\\b/u,"MINERAL_TRADE",52]
+ ];
+ const eventRule=scoreRules.find(([pattern])=>pattern.test(eventText));
+ return eventRule?{country_iso3:countryIso3,category,
+  value_0_100:eventRule[2],event_class:eventRule[1],
+  provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
+  score_model_version:"risk-stream-event-class-v1",
+  score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+  derived_only:true,licensed_source_text_included:false,
+  independent_accuracy_certified:false}:null;
+}
 async function signGro(pair,env,now){
  const [a,b]=pair;
  const key=await signKey(env.RISK_STREAM_GRO_SIGN_PKCS8_B64);
  const verifyKey=await trustedKey(env.RISK_STREAM_GRO_VERIFY_SPKI_B64);
  const ids=[a.observation_id,b.observation_id].sort();
+ const score=deriveRiskStreamEligibleScore(a.category,a.country_iso3,
+  [a.derived?.what,b.derived?.what].join(" "));
  const payload={
   schema:"geomacro.event-stream-gro.v1",subject:{type:"COUNTRY",id:a.country_iso3},
   category:a.category,event_fingerprint:a.event_fingerprint,
   source_originals:ids,
   what_happened:a.derived.what,why_it_matters:a.derived.why,
   market_relevance:a.derived.market,what_to_watch:a.derived.watch,
+  eligible_derived_score:score,
   evidence_and_confidence:{corroborated_originals:2,
    independent_parent_entities:2,source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
    factual_confidence:"CORROBORATED_ORIGINALS",
-   risk_score_not_inferred:true,
+   risk_score_not_inferred:score===null,
    raw_sources_not_republished:true},
   generated_at:new Date(now).toISOString(),expires_at:new Date(now+3*3600000).toISOString(),
   execution_authorized:false,charged:false,
