@@ -5,12 +5,27 @@ import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
  reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS,diagnoseReviewedHot50BindingDelta}
  from "../lib/canary-additive-binding-parity.mjs";
 import {candidateConfig,verifyCandidateBindings} from "../ops/prepare-optimized-worker-candidate.mjs";
-import {checkSource,requireCanaryObservabilityPrerequisites,
+import {assessP95LatencyRegression,checkSource,requireCanaryObservabilityPrerequisites,
  verifiedLiveObservability} from "../canary-promoter.ts";
 import {classifyGraphQLHttpFailure,queryCloudflareAnalytics} from "../release-common.ts";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
 const added={name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"};
+test("p95 regression compares only two measured Worker samples and holds on a real regression",()=>{
+ const baseline={worker_metrics_status:"DELAYED_OR_EMPTY",worker_wall_time_p95_ms:null};
+ const unavailable={worker_metrics_status:"DELAYED_OR_EMPTY",worker_wall_time_p95_ms:null};
+ assert.equal(assessP95LatencyRegression(baseline,unavailable).status,
+  "SKIPPED_UNAVAILABLE");
+ const coldBaseline={worker_metrics_status:"VERIFIED",worker_wall_time_p95_ms:8};
+ const coldCandidate={worker_metrics_status:"DELAYED_OR_EMPTY",worker_wall_time_p95_ms:null};
+ assert.equal(assessP95LatencyRegression(coldBaseline,coldCandidate).reason,
+  "CANDIDATE_WORKER_P95_UNAVAILABLE");
+ assert.equal(assessP95LatencyRegression(coldBaseline,
+  {worker_metrics_status:"VERIFIED",worker_wall_time_p95_ms:7}).status,"PASS");
+ assert.throws(()=>assessP95LatencyRegression(coldBaseline,
+  {worker_metrics_status:"VERIFIED",worker_wall_time_p95_ms:9}),
+  /CANARY_P95_BASELINE_LATENCY_REGRESSION/u);
+});
 test("unchanged bindings remain accepted with no review",()=>{
  const x=assessReviewedAdditiveBindingParity(version([db]),version([db]));
  assert.equal(x.status,"PASS_BINDING_PARITY");
