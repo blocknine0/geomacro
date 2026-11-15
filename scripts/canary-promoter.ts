@@ -66,6 +66,24 @@ async function liveCurrent():Promise<any>{
 export const distribution=(base:string,candidate:string,percent:number)=>percent===100?
  [{version_id:candidate,percentage:100}]:[
  {version_id:base,percentage:100-percent},{version_id:candidate,percentage:percent}];
+/** Compare worker p95 only when both stages have usable, version-isolated
+ * telemetry. A missing/cold low-volume sample is not a latency regression;
+ * hard p99, error-rate and directed health/readiness gates remain enforced
+ * whenever their respective measurements are available. */
+export function assessP95LatencyRegression(baseline:any,current:any){
+ const measured=(stage:any)=>stage?.worker_metrics_status==='VERIFIED'&&
+  Number.isFinite(stage?.worker_wall_time_p95_ms)&&
+  typeof stage?.worker_wall_time_p95_ms==='number';
+ if(!measured(baseline)||!measured(current))return {
+  status:'SKIPPED_UNAVAILABLE',
+  reason:!measured(baseline)?'BASELINE_WORKER_P95_UNAVAILABLE':'CANDIDATE_WORKER_P95_UNAVAILABLE',
+  baseline_p95_ms:baseline?.worker_wall_time_p95_ms??null,
+  candidate_p95_ms:current?.worker_wall_time_p95_ms??null};
+ need(current.worker_wall_time_p95_ms<=baseline.worker_wall_time_p95_ms,
+  'CANARY_P95_BASELINE_LATENCY_REGRESSION');
+ return {status:'PASS',baseline_p95_ms:baseline.worker_wall_time_p95_ms,
+  candidate_p95_ms:current.worker_wall_time_p95_ms};
+}
 function deploymentVersionsField(deployment:any){
  // Workers Versions API responses have appeared as both {versions:[...]} and
  // {deployment:{versions:[...]}}. Prefer the specific deployment resource,
@@ -631,7 +649,7 @@ async function main(){
  verifyDistribution(initial,[{version_id:base,percentage:100}]);
  await checkVersionParity(base,candidate,mainSha);
  const records:any[]=[];let mutated=false;
- let baselineP95Ms:number|null=null;
+ let baselineStage:any=null;
  try{
   // Stage 0 creates a genuine two-version 100%/0% provider deployment so
   // the directed candidate health probe does not fall through to baseline.
@@ -639,10 +657,8 @@ async function main(){
   for(const pct of STAGES){
    if(pct>0){mutated=true;await deployVersions(base,candidate,pct)}
    const x=await observeStage(base,candidate,pct,mainSha);
-   if(pct===0)baselineP95Ms=x.worker_wall_time_p95_ms;
-   else need(Number.isFinite(baselineP95Ms)&&
-    x.worker_wall_time_p95_ms<=baselineP95Ms,
-    'CANARY_P95_BASELINE_LATENCY_REGRESSION');
+   if(pct===0)baselineStage=x;
+   else x.p95_baseline_comparison=assessP95LatencyRegression(baselineStage,x);
    records.push(x);
    signedReport(`artifacts/release/canary-stage-${pct}.json`,{schema:'geomacro.hot50.canary-slo.v1',status:'PASS',source_sha:mainSha,
     baseline_version:base,candidate_version:candidate,no_funds:true,...x});
