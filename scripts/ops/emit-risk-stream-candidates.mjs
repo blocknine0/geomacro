@@ -3,6 +3,7 @@ import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {prepareRiskStreamCandidate,buildCandidate} from "../lib/risk-stream-candidate-builder.mjs";
 import {pairRiskStreamOriginals} from "../lib/risk-stream-pairing.mjs";
+import {eventFingerprint} from "../lib/risk-stream-event-fingerprint.mjs";
 import {inspectRiskStreamCandidates} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {validateAttesterKeys,verifyIndependentAttestations}
  from "../lib/risk-stream-shadow-attesters.mjs";
@@ -80,7 +81,16 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
   const row=prepared[item.__risk_stream_candidate_index];
   if(!row)fail("PAIR_MEMBER_LOOKUP_FAILED");return row;
  }));
- const drafts=pairedRows.map(row=>row.candidate);
+ const pairedIndexes=new Set(pairedRows.map(row=>row.candidate));
+ // Keep fresh, individually rights-approved observations flowing even before
+ // a second public source arrives. The control-plane pipeline releases these
+ // as Basic-only unless its own independent evidence or redacted corroboration
+ // supports a higher tier.
+ const unpairedFingerprints=new Set(pairing.unpaired_event_fingerprints);
+ const basicRows=prepared.filter(row=>!pairedIndexes.has(row.candidate)&&
+  unpairedFingerprints.has(eventFingerprint(row.original)));
+ const acceptedRows=[...pairedRows,...basicRows];
+ const drafts=acceptedRows.map(row=>row.candidate);
  if(dryRun)return {status:"DRY_RUN",paired_events:pairing.pairs.length,
   candidate_count:drafts.length,contradictions:pairing.contradictions.length,
   item_license_skipped:itemLicenseSkipped,network_requests:0,posted_items:0};
@@ -103,9 +113,10 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
    headers:{Authorization:"Bearer "+controlPlaneToken,"Content-Type":"application/json"},
    body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft})},{sleepImpl});
   if(!validProof(answer?.proof))fail("ATTESTER_PROOF_INVALID");
-  const row=pairedRows.find(item=>item.candidate===draft);
+  const row=acceptedRows.find(item=>item.candidate===draft);
   const original=row?.original;if(!original)fail("ORIGINAL_BINDING_LOST");
-  const built=buildCandidate(original,sourceRegistry,now,{proof:answer.proof,rightsManifest});
+  const attestedOriginal=answer.risk_context?{...original,risk_context:answer.risk_context}:original;
+  const built=buildCandidate(attestedOriginal,sourceRegistry,now,{proof:answer.proof,rightsManifest});
   try{verifyIndependentAttestations(built,trustedAttesters.keys)}
   catch{fail("ATTESTER_SIGNATURE_VERIFICATION_FAILED")}
   const current=now instanceof Date?now.getTime():typeof now==="number"?now:Date.parse(now);

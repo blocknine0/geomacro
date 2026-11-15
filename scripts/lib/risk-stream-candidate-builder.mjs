@@ -3,6 +3,8 @@ import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {validateSourceRightsManifest} from "./risk-stream-source-rights-manifest.mjs";
 import {validateRiskStreamItemLicense} from "../../workers/control-plane/src/risk-stream-item-license-guard.mjs";
+import {isRiskStreamInternalCorroboration}
+ from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
 import {canonicalRiskStreamCategory,eventIdentityFields,normalizedEventIdentity}
  from "./risk-stream-event-fingerprint.mjs";
 
@@ -129,6 +131,12 @@ function prepare(normalized,registry,now,manifest){
   published_at:new Date(published).toISOString(),
   original_page_sha256:digest(payload),derived:normalizedDerived(normalized.derived,payload),
   raw_payload:payload,proof:null,rights_verification};
+ if(normalized.risk_context!==undefined){
+  if(!isRiskStreamInternalCorroboration(normalized.risk_context)||
+     normalized.risk_context.country_iso3!==countryIso3||
+     normalized.risk_context.category!==category)fail("INTERNAL_CORROBORATION_INVALID");
+  candidate.risk_context=normalized.risk_context;
+ }
  return candidate;
 }
 

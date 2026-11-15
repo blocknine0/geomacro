@@ -6,6 +6,8 @@ import {issueGeoMacroCommercialLicense,verifyGeoMacroCommercialLicense,
  from "../../workers/control-plane/src/risk-stream-commercial-license.mjs";
 import {dispatchLicensedCommercialOutbox,commercialDeliveryIsEnabled}
  from "../../workers/control-plane/src/risk-stream-commercial-outbox.mjs";
+import {buildRiskStreamDualAudience}
+ from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
 const now=Date.parse("2026-11-12T01:00:00Z");
 const b64=key=>key.export({format:"der",type:"spki"}).toString("base64");
 const pkcs8=key=>key.export({format:"der",type:"pkcs8"}).toString("base64");
@@ -13,6 +15,13 @@ const sha=s=>createHash("sha256").update(s).digest("hex");
 function fixture(){
  const groKey=generateKeyPairSync("ed25519"),
   licKey=generateKeyPairSync("ed25519"),releaseKey=generateKeyPairSync("ed25519");
+ const audience=buildRiskStreamDualAudience({category:"GEOPOLITICS",eventClass:"SANCTIONS",score:62,confidence:.7});
+ const score={country_iso3:"USA",category:"GEOPOLITICS",value_0_100:62,
+  event_class:"SANCTIONS",provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
+  score_model_version:"risk-stream-event-class-v1",
+  score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+  derived_only:true,licensed_source_text_included:false,independent_accuracy_certified:false,
+  raw_source_redacted:true,eligible_tiers:["basic_focused","standard","complex_full"],...audience};
  const p={schema:"geomacro.event-stream-gro.v1",
   subject:{type:"COUNTRY",id:"USA"},category:"GEOPOLITICS",
   event_fingerprint:sha("test-event"),
@@ -21,14 +30,10 @@ function fixture(){
   why_it_matters:"Sanctions affect the stated international economic exposure",
   market_relevance:"Quantification is derived separately from market data",
   what_to_watch:"Monitor enforcement changes and subsequent trade flows",
-  eligible_derived_score:{country_iso3:"USA",category:"GEOPOLITICS",value_0_100:62,
-   event_class:"SANCTIONS",provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
-   score_model_version:"risk-stream-event-class-v1",
-   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
-   derived_only:true,licensed_source_text_included:false,independent_accuracy_certified:false},
+  eligible_derived_score:score,
   evidence_and_confidence:{corroborated_originals:2,independent_parent_entities:2,
    source_rights_and_origins:"DUAL_MACHINE_ATTESTED",factual_confidence:"CORROBORATED_ORIGINALS",
-   risk_score_not_inferred:false,raw_sources_not_republished:true},
+   risk_score_not_inferred:false,raw_sources_not_republished:true,raw_source_redacted:true},
   generated_at:new Date(now-3600000).toISOString(),
   expires_at:new Date(now+3600000).toISOString(),
   customer_delivery_authorized:true,charged:false,
@@ -47,12 +52,34 @@ function fixture(){
   licensePrivatePkcs8B64:pkcs8(licKey.privateKey),
   licensePublicSpkiB64:b64(licKey.publicKey),
   releasePublicSpkiB64:b64(releaseKey.publicKey),approval:release,
-  eligibleDerivedScore:{country_iso3:"USA",category:"GEOPOLITICS",
-   value_0_100:62,provenance:"TWO_ORIGINALS",derived_only:true,
-   licensed_source_text_included:false,independent_accuracy_certified:false},
+  eligibleDerivedScore:score,
   now};
- return {inputs,release,licKey,groKey};
+ return {inputs,release,licKey,groKey,releaseKey};
 }
+function resignRelease(review,privateKey){
+ const {signature_b64:unused,...body}=review;
+ review.signature_b64=sign(null,Buffer.from(
+  "geomacro.commercial-independent-release-review.v1\n"+canonicalLicensedJson(body)),
+  privateKey).toString("base64");
+}
+test("one current rights-approved original can receive a Basic-only commercial license",async()=>{
+ const f=fixture(),source=JSON.parse(f.inputs.record.payload_json);
+ source.source_originals=[source.source_originals[0]];
+ source.evidence_and_confidence={...source.evidence_and_confidence,
+  corroborated_originals:1,independent_parent_entities:1,
+  factual_confidence:"SINGLE_VERIFIED_ORIGINAL"};
+ source.eligible_derived_score={...source.eligible_derived_score,
+  eligible_tiers:["basic_focused"]};
+ const json=JSON.stringify(source),hash=sha(json);
+ f.inputs.record={...f.inputs.record,payload_json:json,payload_sha256:hash,
+  signature_b64:sign(null,Buffer.from(json),f.groKey.privateKey).toString("base64")};
+ f.inputs.eligibleDerivedScore=source.eligible_derived_score;
+ f.inputs.approval.validated_gro_sha256=hash;
+ resignRelease(f.inputs.approval,f.releaseKey.privateKey);
+ const license=await issueGeoMacroCommercialLicense(f.inputs);
+ assert.deepEqual(license.payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
+ assert.equal(license.payload.eligible_derived_score.raw_source_redacted,true);
+});
 test("GeoMacro derived commercial licence has domain-separated pinned Ed25519 provenance",async()=>{
  const f=fixture();
  const e=await issueGeoMacroCommercialLicense(f.inputs);

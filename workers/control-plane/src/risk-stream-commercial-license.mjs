@@ -48,24 +48,62 @@ export async function verifyCommercialSourceGro(record,groPublicSpkiB64,now=Date
  if(!await crypto.subtle.verify("Ed25519",await pubkey(groPublicSpkiB64),
    decoded(record.signature_b64),bytes(record.payload_json)))fail("SOURCE_GRO_SIGNATURE_INVALID");
  let p;try{p=JSON.parse(record.payload_json)}catch{fail("SOURCE_GRO_JSON_INVALID")}
+ const evidence=p.evidence_and_confidence;
+ const baseEvidence=["corroborated_originals","independent_parent_entities",
+  "source_rights_and_origins","factual_confidence","risk_score_not_inferred",
+  "raw_sources_not_republished"];
+ const allowedEvidence=new Set([...baseEvidence,"raw_source_redacted",
+  "internal_corroboration","cross_category_synthesis","strategic_corridors"]);
+ const safeEvidence=exact(evidence,baseEvidence)||
+  evidence&&typeof evidence==="object"&&!Array.isArray(evidence)&&
+  baseEvidence.every(k=>Object.hasOwn(evidence,k))&&
+  Object.keys(evidence).every(k=>allowedEvidence.has(k))&&
+  (!Object.hasOwn(evidence,"raw_source_redacted")||evidence.raw_source_redacted===true)&&
+  (!Object.hasOwn(evidence,"internal_corroboration")||(()=>{
+   const x=evidence.internal_corroboration;
+   return exact(x,["signal_count","families","categories","corridors",
+    "max_severity_weight_0_100","max_corroboration_weight_0_1","raw_source_redacted"])&&
+    Number.isInteger(x.signal_count)&&x.signal_count>0&&x.signal_count<=12&&
+    Array.isArray(x.families)&&x.families.length>0&&
+    x.families.every(v=>["PRIVATE_OSINT","TELEGRAM_WATCH","DERIVED_BASELINE"].includes(v))&&
+    Array.isArray(x.categories)&&x.categories.every(v=>ALLOWED.has(v))&&
+    Array.isArray(x.corridors)&&x.corridors.every(v=>/^[A-Z]{3}>[A-Z]{3}$/u.test(v))&&
+    Number.isFinite(x.max_severity_weight_0_100)&&x.max_severity_weight_0_100>=0&&
+    x.max_severity_weight_0_100<=100&&
+    Number.isFinite(x.max_corroboration_weight_0_1)&&
+    x.max_corroboration_weight_0_1>=0&&x.max_corroboration_weight_0_1<=1&&
+    x.raw_source_redacted===true;
+  })())&&
+  (!Object.hasOwn(evidence,"cross_category_synthesis")||(()=>{
+   const x=evidence.cross_category_synthesis;
+   return exact(x,["verified","categories"])&&x.verified===true&&
+    Array.isArray(x.categories)&&x.categories.length>=2&&
+    x.categories.every(v=>ALLOWED.has(v));
+  })())&&
+  (!Object.hasOwn(evidence,"strategic_corridors")||Array.isArray(evidence.strategic_corridors)&&
+   evidence.strategic_corridors.length<=12&&
+   evidence.strategic_corridors.every(v=>typeof v==="string"&&/^[A-Z]{3}>[A-Z]{3}$/u.test(v)));
  if(p.schema!=="geomacro.event-stream-gro.v1"||
    !exact(p,["schema","subject","category","event_fingerprint","source_originals",
     "what_happened","why_it_matters","market_relevance","what_to_watch",
     "eligible_derived_score","evidence_and_confidence","generated_at","expires_at",
     "execution_authorized","charged","certified_risk_index","customer_delivery_authorized"])||
-   !exact(p.evidence_and_confidence,["corroborated_originals","independent_parent_entities",
-    "source_rights_and_origins","factual_confidence","risk_score_not_inferred",
-    "raw_sources_not_republished"])||
+   !safeEvidence||
    p.subject?.type!=="COUNTRY"||!isHot50RiskCountry(p.subject.id)||
    !ALLOWED.has(p.category)||
    p.execution_authorized!==false||p.charged!==false||
    p.certified_risk_index!==false||
    p.customer_delivery_authorized!==true||
-   !Array.isArray(p.source_originals)||p.source_originals.length!==2||
-   new Set(p.source_originals).size!==2||
+   !Array.isArray(p.source_originals)||p.source_originals.length<1||p.source_originals.length>3||
+   new Set(p.source_originals).size!==p.source_originals.length||
    !p.source_originals.every(s=>HASH.test(s))||
    p.evidence_and_confidence?.source_rights_and_origins!=="DUAL_MACHINE_ATTESTED"||
    p.evidence_and_confidence?.raw_sources_not_republished!==true||
+   p.evidence_and_confidence?.raw_source_redacted!==true||
+   p.eligible_derived_score?.raw_source_redacted!==true||
+   p.eligible_derived_score?.licensed_source_text_included!==false||
+   p.eligible_derived_score?.derived_only!==true||
+   p.eligible_derived_score?.independent_accuracy_certified!==false||
    !Number.isFinite(Date.parse(p.expires_at))||Date.parse(p.expires_at)<=now||
    !Number.isFinite(Date.parse(p.generated_at))||Date.parse(p.generated_at)>now+60000)
    fail("SOURCE_GRO_COMMERCIAL_OR_ORIGINALS_NOT_AUTHORIZED");
@@ -104,7 +142,8 @@ export async function issueGeoMacroCommercialLicense({
    !Number.isFinite(score.value_0_100)||score.value_0_100<0||
    score.value_0_100>100||score.provenance==="SEARCH_INDEX_ONLY"||
    score.derived_only!==true||score.licensed_source_text_included!==false||
-   score.independent_accuracy_certified===true)
+   score.independent_accuracy_certified!==false||score.licensed_source_text_included!==false||
+   score.derived_only!==true||score.raw_source_redacted!==true)
   fail("DERIVED_SCORE_UNVERIFIED");
  const base={
   schema:SCHEMA,license_id:GEOMACRO_LICENSE_ID,
@@ -124,6 +163,10 @@ export async function issueGeoMacroCommercialLicense({
    risk_score_0_100:score.value_0_100,
    risk_score_kind:"GEOMACRO_DERIVED_NOT_CERTIFIED_GRI",
   },
+  // Keep the complete machine and human audience payload inside the signed
+  // commercial envelope. This is derived GeoMacro content only; never source
+  // URLs, headlines, publisher identities, or article text.
+  eligible_derived_score:score,
   source_gro_sha256:record.payload_sha256,
   source_gro_payload_json:record.payload_json,
   source_gro_signature_b64:record.signature_b64,

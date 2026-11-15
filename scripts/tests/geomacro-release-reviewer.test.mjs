@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {webcrypto,createPublicKey,verify as verifySignature} from "node:crypto";
 import {canonicalLicensedJson} from "../../workers/control-plane/src/risk-stream-commercial-license.mjs";
+import {buildRiskStreamDualAudience}
+ from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
 import {fetch as reviewerFetch} from "../../workers/geomacro-release-reviewer/src/index.mjs";
 
 const enc=new TextEncoder();
@@ -17,20 +19,24 @@ const roles={GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]};
 
-async function fixture(category="GEOPOLITICS"){
+async function fixture(category="GEOPOLITICS",sourceCount=2){
  const now=Date.parse("2026-11-15T10:00:00.000Z");
  const groKeys=await webcrypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
  const reviewKeys=await webcrypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
+ const audience=buildRiskStreamDualAudience({category,score:37,confidence:0.7});
+ const eligibleTiers=sourceCount>1?["basic_focused","standard","complex_full"]:["basic_focused"];
  const score={country_iso3:"USA",category,value_0_100:37,
   provenance:"SIGNED_DERIVED_RISK_SCORE",derived_only:true,
-  licensed_source_text_included:false,independent_accuracy_certified:false};
+  licensed_source_text_included:false,independent_accuracy_certified:false,
+  raw_source_redacted:true,eligible_tiers:eligibleTiers,...audience};
  const gro={schema:"geomacro.event-stream-gro.v1",subject:{type:"COUNTRY",id:"USA"},category,
-  event_fingerprint:"a".repeat(64),source_originals:["b".repeat(64),"c".repeat(64)],
+  event_fingerprint:"a".repeat(64),source_originals:["b".repeat(64),"c".repeat(64)].slice(0,sourceCount),
   what_happened:"Two independent original sources report a test event.",
   why_it_matters:"This fixture exercises release review without asserting a real event.",
   market_relevance:"No actual market exposure is asserted by this synthetic fixture.",
   what_to_watch:"Wait for independently verifiable real-world confirmation.",
-  evidence_and_confidence:{source_rights_and_origins:"DUAL_MACHINE_ATTESTED",raw_sources_not_republished:true},
+  evidence_and_confidence:{source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
+   raw_sources_not_republished:true,raw_source_redacted:true},
   eligible_derived_score:score,
   generated_at:new Date(now-1000).toISOString(),expires_at:new Date(now+3600000).toISOString(),
   execution_authorized:false,charged:false,certified_risk_index:false,customer_delivery_authorized:false};
@@ -43,7 +49,7 @@ async function fixture(category="GEOPOLITICS"){
  const candidate={...gro,customer_delivery_authorized:true,commercial_origin_gro_id:sourceGroId};
  const candidateJson=JSON.stringify(candidate),candidateHash=await sha(candidateJson);
  const authorizedGroId=await sha("geomacro.authorized-gro.v1\n"+sourceGroId);
- const evidenceRows=roles[category].map((source_role,index)=>({
+ const evidenceRows=roles[category].slice(0,sourceCount).map((source_role,index)=>({
   observation_id:gro.source_originals[index],original_verified:1,
   publisher_root_domain:index?"publisher-b.example":"publisher-a.example",
   parent_media_entity:index?"publisher_b":"publisher_a",source_role,
@@ -84,6 +90,15 @@ test("reviewer signs only current, D1-backed release grants across all three cat
   const signature=Buffer.from(signature_b64,"base64");
   assert.equal(verifySignature(null,enc.encode("geomacro.commercial-independent-release-review.v1\n"+canonicalLicensedJson(approval)),key,signature),true);
  }
+});
+
+test("single approved original receives a Basic-only release grant",async()=>{
+ const f=await fixture("GEOPOLITICS",1);
+ const response=await reviewerFetch(request(f.body),f.env,f.now);
+ const result=await response.json();
+ assert.equal(response.status,200);
+ assert.equal(result.status,"REVIEW_APPROVED");
+ assert.deepEqual(result.grants[0].approval.eligible_tiers,["basic_focused"]);
 });
 
 test("reviewer remains held while protected release approval settings are off",async()=>{

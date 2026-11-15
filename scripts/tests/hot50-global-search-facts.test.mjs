@@ -80,7 +80,7 @@ test("Predge and Store adapter share the same facts-only tier generator; Store s
  const source=readFileSync("workers/control-plane/src/predge-risk-gate-d1.mjs","utf8");
  const storeSource=readFileSync("workers/control-plane/src/store-risk-gate.mjs","utf8");
  const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
- assert.match(source,/generateProgressiveRiskGateDecision\(parsed,facts,lockedTier/u);
+ assert.match(source,/generateProgressiveRiskGateDecision\(parsed,effectiveFacts,lockedTier/u);
  assert.match(storeSource,/generateProgressiveRiskGateDecision\(parsed,facts,tier/u);
  assert.match(index,/url\.pathname==="\/v2\/partner\/predge\/paid-risk-gate"[\s\S]{0,80}predgePaidRiskGateD1/u);
  assert.match(index,/url\.pathname==="\/v1\/store\/risk-gate"[\s\S]{0,80}storeRiskGateD1/u);

@@ -59,8 +59,8 @@ export function authorizedTelegramResearchSql(row,now=new Date()){
    "TELEGRAM_RESEARCH_SQL_ROW_INVALID");
  const id=sql(row.delivery_id),country=row.country_iso3?sql(row.country_iso3):"NULL";
  return "INSERT OR IGNORE INTO telegram_research_json "+
-   "(delivery_id,category,country_iso3,published_at,accepted_at) "+
-   "SELECT l.delivery_id,"+sql(row.category)+","+country+",l.published_at,"+sql(now.toISOString())+" "+
+   "(delivery_id,category,country_iso3,published_at,accepted_at,watch_event) "+
+   "SELECT l.delivery_id,"+sql(row.category)+","+country+",l.published_at,"+sql(now.toISOString())+","+sql(row.watch_event)+" "+
    "FROM telegram_private_unverified_leads l "+
    "JOIN telegram_signal_lead_queue q ON q.delivery_id=l.delivery_id "+
    "WHERE l.delivery_id="+id+" AND q.state='CONSUMED' "+
@@ -114,7 +114,7 @@ export async function publishTelegramPrivateResearch(summaryPath,now=new Date())
  let accepted=0;
  for(const row of leads){
    executeD1(authorizedTelegramResearchSql(row,now));
-   const readback=executeD1("SELECT delivery_id,category,country_iso3,published_at,"+
+   const readback=executeD1("SELECT delivery_id,category,country_iso3,published_at,watch_event,"+
      "verification_status,scoring_eligible,commercial_eligible "+
      "FROM telegram_research_json WHERE delivery_id="+sql(row.delivery_id)+" LIMIT 2;");
    assert(readback.length===1&&
@@ -122,6 +122,7 @@ export async function publishTelegramPrivateResearch(summaryPath,now=new Date())
      readback[0].category===row.category&&
      readback[0].country_iso3===row.country_iso3&&
      readback[0].published_at===row.published_at&&
+     readback[0].watch_event===row.watch_event&&
      readback[0].verification_status==="UNVERIFIED"&&
      Number(readback[0].scoring_eligible)===0&&
      Number(readback[0].commercial_eligible)===0,"TELEGRAM_RESEARCH_D1_READBACK_FAILED");
