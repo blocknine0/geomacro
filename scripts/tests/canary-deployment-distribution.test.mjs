@@ -29,6 +29,31 @@ test("0-percent candidate stays in the request while omitted zero rows normalize
  ]},distribution(BASE,CANDIDATE,0)),true);
 });
 
+test("POST responses without versions defer to live GET readback",async()=>{
+ let reads=0;
+ await deployVersions(BASE,CANDIDATE,5,{
+  providerApi:async()=>({deployment:{id:"deployment-created"}}),
+  readCurrent:async()=>{reads++;return {versions:[
+   {version_id:BASE,percentage:95},{version_id:CANDIDATE,percentage:5}
+  ]};},pause:async()=>{}
+ });
+ assert.equal(reads,1);
+ await deployBaseline(BASE,{
+  providerApi:async()=>({deployment:{id:"rollback-created"}}),
+  readCurrent:async()=>({deployment:{versions:[{version_id:BASE,percentage:100}]}}),
+  pause:async()=>{}
+ });
+});
+
+test("nested deployment versions are normalized and malformed explicit POST splits HOLD",async()=>{
+ const expected=distribution(BASE,CANDIDATE,5);
+ assert.equal(verifyDistribution({deployment:{versions:expected}},expected),true);
+ await assert.rejects(deployVersions(BASE,CANDIDATE,5,{
+  providerApi:async()=>({deployment:{versions:null}}),
+  readCurrent:async()=>({versions:expected}),pause:async()=>{}
+ }),/CANARY_REMOTE_SPLIT_MISMATCH/);
+});
+
 test("0-percent candidate must remain in a split response when Cloudflare returns it",()=>{
  const expected=distribution(BASE,CANDIDATE,0);
  assert.equal(verifyDistribution({versions:[

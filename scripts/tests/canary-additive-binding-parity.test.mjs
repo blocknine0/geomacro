@@ -5,7 +5,8 @@ import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
  reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS,diagnoseReviewedHot50BindingDelta}
  from "../lib/canary-additive-binding-parity.mjs";
 import {candidateConfig,verifyCandidateBindings} from "../ops/prepare-optimized-worker-candidate.mjs";
-import {requireCanaryObservabilityPrerequisites} from "../canary-promoter.ts";
+import {checkSource,requireCanaryObservabilityPrerequisites,
+ verifiedLiveObservability} from "../canary-promoter.ts";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
 const added={name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"};
@@ -107,8 +108,10 @@ test("exact-main upload contract passes with STREAM_MODE and reviewed signing se
  const reviewed=["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
   "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
   "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64","RISK_STREAM_INDEX_LEAD_BEARER",
+  "PREDGE_PAID_RISK_GATE_TOKEN",
   "RISK_STREAM_GRO_SIGN_PKCS8_B64","RISK_STREAM_GRO_VERIFY_SPKI_B64",
-  "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64"];
+  "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64",
+  "RISK_STREAM_AES256_KEY_B64"];
  const base={resources:{script_runtime:{compatibility_date:"2026-10-03",
   compatibility_flags:[]},bindings:[...streamBaseline,{name:"CONTROL_PLANE_TOKEN",
    type:"secret_text"}]}};
@@ -279,8 +282,101 @@ test("Lovable domain canary uses worker-level telemetry without a Cloudflare Zon
  assert.equal(requireCanaryObservabilityPrerequisites({
   CLOUDFLARE_ZONE_ID:"a".repeat(32)}),"ZONE_AND_WORKER");
  const promoter=readFileSync(new URL("../canary-promoter.ts",import.meta.url),"utf8");
- assert.match(promoter,/queryCloudflareAnalytics\(WORKER_GRAPH/);
+ assert.match(promoter,/query\(WORKER_GRAPH/);
  assert.match(promoter,/zone_http_5xx_unavailable_reason:zone\?null:'NO_CLOUDFLARE_ZONE_FOR_DOMAIN'/);
  assert.match(promoter,/CANARY_D1_SCHEMA_PROOF_NOT_ACCEPTED/);
  assert.match(promoter,/b2-physical-parity-certificate\.json/);
+});
+
+test("candidate override checks health SHA and the actual D1 readiness contract",async()=>{
+ const sha="a".repeat(40),candidate="11111111-1111-4111-8111-111111111111";
+ const seen=[];
+ const payloads=[{ok:true,deployed_source_sha:sha},{status:"ready",paid_launch_approved:false,
+  execution_authorized:false,checks:{database:true,audit_store:true,
+   isolated_partner_credential:true,progressive_decision_ed25519_signer_configured:true}}];
+ await checkSource(candidate,sha,async(url,init)=>{
+  seen.push({url,init});
+  return {status:200,json:async()=>payloads.shift()};
+ });
+ assert.match(seen[0].url,/\/health$/u);
+ assert.match(seen[1].url,/\/v1\/public\/risk-gate-d1-readiness$/u);
+ for(const item of seen){
+  assert.equal(item.init.headers["Cloudflare-Workers-Version-Overrides"],
+   `geomacro-control-plane="${candidate}"`);
+  assert.equal(item.init.redirect,"error");
+ }
+});
+
+test("no-zone Worker telemetry tolerates delayed samples but preserves fail-closed provider errors",async()=>{
+ let queryText="";
+ const delayed=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
+  "2026-11-15T00:15:00.000Z","11111111-1111-4111-8111-111111111111",true,{
+   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
+   query:async(query)=>{queryText=query;return {viewer:{accounts:[{workersInvocationsAdaptive:[]}]}};}
+  });
+ assert.equal(delayed,null);
+ assert.match(queryText,/workersInvocationsAdaptive/u);
+ assert.doesNotMatch(queryText,/zones\(/u);
+ const lowVolume=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
+  "2026-11-15T00:15:00.000Z","11111111-1111-4111-8111-111111111111",true,{
+   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
+   query:async()=>({viewer:{accounts:[{workersInvocationsAdaptive:[{
+    dimensions:{scriptVersion:"11111111-1111-4111-8111-111111111111"},
+    sum:{requests:12,errors:0},quantiles:{wallTimeP95:1000,wallTimeP99:2000}
+   }]}]}})
+  });
+ assert.equal(lowVolume,null);
+ const incomplete=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
+  "2026-11-15T00:15:00.000Z","11111111-1111-4111-8111-111111111111",true,{
+   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
+   query:async()=>({viewer:{accounts:[{workersInvocationsAdaptive:[{
+    dimensions:{scriptVersion:"11111111-1111-4111-8111-111111111111"},sum:{requests:0}
+   }]}]}})
+  });
+ assert.equal(incomplete,null);
+ const unavailable=await verifiedLiveObservability("2026-11-15T00:00:00Z",
+  "2026-11-15T00:15:00Z","11111111-1111-4111-8111-111111111111",true,{
+   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
+   query:async()=>{throw Error("RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE");}
+  });
+ assert.equal(unavailable,null);
+ await assert.rejects(verifiedLiveObservability("2026-11-15T00:00:00Z",
+  "2026-11-15T00:15:00Z","11111111-1111-4111-8111-111111111111",true,{
+   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
+   query:async()=>{throw Error("RELEASE_GRAPHQL_ACCESS_DENIED");}
+  }),/RELEASE_GRAPHQL_ACCESS_DENIED/u);
+});
+
+test("held versioned rollout timeout exceeds all six stage windows with setup margin",()=>{
+ const flow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+ assert.match(flow,/held-versioned-canary-rollout:[\s\S]{0,500}timeout-minutes: 150/u);
+ assert.equal(15+30+15+15+15+15,105);
+});
+
+test("all ten reviewed rollout secrets are wired into candidate creation and attestation",()=>{
+ const names=["GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
+  "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
+  "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64","RISK_STREAM_INDEX_LEAD_BEARER",
+  "RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64",
+  "RISK_STREAM_GRO_SIGN_PKCS8_B64","RISK_STREAM_GRO_VERIFY_SPKI_B64",
+  "PREDGE_PAID_RISK_GATE_TOKEN","RISK_STREAM_AES256_KEY_B64"];
+ const workflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+ const attest=readFileSync(new URL("../ops/attest-canary-additive-secrets.mjs",import.meta.url),"utf8");
+ for(const name of names){
+  assert.ok(REVIEWABLE_ADDITIVE_SECRETS.includes(name),`${name} missing from review allowlist`);
+  assert.match(workflow,new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`,"u"));
+ }
+ assert.match(attest,/REVIEWABLE_ADDITIVE_SECRETS/u);
+ assert.match(attest,/reviewed\.every\(s=>REVIEWABLE_ADDITIVE_SECRETS\.includes\(s\)\)/u);
+});
+
+test("--verify remains pinned to the reviewed 0204-0211 physical schema set",()=>{
+ const source=readFileSync(new URL("../apply-d1-migrations.ts",import.meta.url),"utf8");
+ const plan=readFileSync(new URL("../ops/protected-d1-repair-plan.mjs",import.meta.url),"utf8");
+ assert.match(source,/verifiedSql\(\);const mainSha=assertOfficialMain\(\)/u);
+ assert.match(source,/if\(apply\)\{/u);
+ assert.match(source,/const proof=await verifySchema\(db\.uuid\)/u);
+ assert.match(plan,/\['0204_d1_read_hotspot_optimization\.sql'/u);
+ assert.match(plan,/\['0211_p0b_daily_committed_count\.sql'/u);
+ assert.match(source,/found\.length===8&&REPAIR_PLANS\.every\(p=>found\.includes\(p\.file\)\)/u);
 });
