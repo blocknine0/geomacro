@@ -5,6 +5,7 @@
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 export const STEP3_MAX_EXISTING_ROWS_PER_TABLE=3000;
+export const STEP3_0212_PENDING_SOURCE_CAP=24000;
 export const STEP3_MIGRATIONS=Object.freeze([
  Object.freeze({
   id:"0204",file:"workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql",
@@ -19,7 +20,8 @@ export const STEP3_MIGRATIONS=Object.freeze([
    "website_derived_intelligence"]),
   sizeTables:Object.freeze([
    "private_osint_news_25h","private_osint_source_checks_24h",
-   "website_derived_intelligence"])
+   "website_derived_intelligence"]),
+  sizeTableRowCap:STEP3_MAX_EXISTING_ROWS_PER_TABLE
  }),
  Object.freeze({
   id:"0211",file:"workers/control-plane/migrations/0211_p0b_daily_committed_count.sql",
@@ -30,7 +32,8 @@ export const STEP3_MIGRATIONS=Object.freeze([
    trg_p0b_day_committed_clock_change:"trigger"
   }),
   integrityTables:Object.freeze(["p0b_committed_day_totals","ingestion_spool_queue"]),
-  sizeTables:Object.freeze(["ingestion_spool_queue"])
+  sizeTables:Object.freeze(["ingestion_spool_queue"]),
+  sizeTableRowCap:STEP3_MAX_EXISTING_ROWS_PER_TABLE
  }),
  Object.freeze({
   id:"0212",file:"workers/control-plane/staged-migrations/0212_d1_keyset_hourly_pending_census.sql",
@@ -47,7 +50,10 @@ export const STEP3_MIGRATIONS=Object.freeze([
   integrityTables:Object.freeze([
    "phase2h_pending_hourly_v1","phase2h_private_raw_news",
    "private_osint_news_25h","website_derived_intelligence"]),
-  sizeTables:Object.freeze(["phase2h_private_raw_news"])
+  sizeTables:Object.freeze(["phase2h_private_raw_news"]),
+  // Keep the rehearsal probe aligned with the separately reviewed 0212
+  // pending-source preflight; this is not a general DDL limit increase.
+  sizeTableRowCap:STEP3_0212_PENDING_SOURCE_CAP
  }),
  Object.freeze({
   id:"0213",file:"workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql",
@@ -58,7 +64,8 @@ export const STEP3_MIGRATIONS=Object.freeze([
    idx_phase2h_ref_ingest_clock_v1:"index"
   }),
   integrityTables:Object.freeze(["phase2h_raw_object_refs_v1"]),
-  sizeTables:Object.freeze([])
+  sizeTables:Object.freeze([]),
+  sizeTableRowCap:STEP3_MAX_EXISTING_ROWS_PER_TABLE
  })
 ]);
 const safeName=s=>/^[a-z][a-z0-9_]{1,75}$/u.test(s);
@@ -116,13 +123,18 @@ export function classifyStep3NativeHistory(manifests,rows){
 export function step3SizeProbeSQL(tables,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
  if(!Array.isArray(tables)||tables.length===0||
     tables.length>5||tables.some(x=>!safeName(x))||
-    !Number.isSafeInteger(cap)||cap<100||cap>3000)
+    !Number.isSafeInteger(cap)||cap<100||
+    cap>STEP3_0212_PENDING_SOURCE_CAP)
   fail("TABLE_SIZE_SCOPE_INVALID");
  return "SELECT "+tables.map((t,i)=>
   "EXISTS(SELECT 1 FROM "+t+" LIMIT 1 OFFSET "+cap+
   ") AS over_"+i).join(", ");
 }
 export function validateStep3SizeProbe(tables,results,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
+ if(!Array.isArray(tables)||tables.length===0||tables.length>5||
+    tables.some(x=>!safeName(x))||!Number.isSafeInteger(cap)||
+    cap<100||cap>STEP3_0212_PENDING_SOURCE_CAP)
+  fail("TABLE_SIZE_SCOPE_INVALID");
  if(!Array.isArray(results)||results.length!==1)fail("SIZE_PROOF_MISSING");
  const r=results[0];
  for(let i=0;i<tables.length;i++){
@@ -141,7 +153,6 @@ export function validateStep3SizeProbe(tables,results,cap=STEP3_MAX_EXISTING_ROW
  * is needed because the 0212 counter auditor has a separate bin limit.
  * Provider cost is measured and re-admitted by the protected caller.
  */
-export const STEP3_0212_PENDING_SOURCE_CAP=24000;
 export function step30212PendingSourcePreflightSQL(){
  const raw="phase2h_private_raw_news";
  const limited=(table,cap,condition="")=>

@@ -251,9 +251,10 @@ async function refreshedGate(report,stage){
 }
 function boundedInputs(config,step,report){
  if(!step.sizeTables.length)return;
- const sql=step3SizeProbeSQL(step.sizeTables);
+ const cap=step.sizeTableRowCap??3000;
+ const sql=step3SizeProbeSQL(step.sizeTables,cap);
  const r=q(config,sql,{maxRows:1});
- const x=validateStep3SizeProbe(step.sizeTables,r.rows);
+ const x=validateStep3SizeProbe(step.sizeTables,r.rows,cap);
  report.bounded_inputs??=[];
  report.bounded_inputs.push({...x,migration:step.id,
   provider_rows_read:r.readRows});
