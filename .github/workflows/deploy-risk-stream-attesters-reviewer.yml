@@ -1,0 +1,125 @@
+name: Deploy Risk Stream Attesters and Release Reviewer
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy-facts-attester:
+    if: github.repository == 'blocknine0/geomacro'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify facts keypair and deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FACTS_PKCS8: ${{ secrets.FACTS_ATTESTER_PKCS8_B64 }}
+          FACTS_SPKI: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
+          FACTS_BEARER: ${{ secrets.RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN }}
+        run: |
+          node - <<'NODE'
+          const crypto=require('node:crypto');
+          const priv=crypto.createPrivateKey({key:Buffer.from(process.env.FACTS_PKCS8,'base64'),format:'der',type:'pkcs8'});
+          const pub=crypto.createPublicKey({key:Buffer.from(process.env.FACTS_SPKI,'base64'),format:'der',type:'spki'});
+          if(priv.asymmetricKeyType!=='ed25519'||pub.asymmetricKeyType!=='ed25519'||
+             !crypto.createPublicKey(priv).export({format:'der',type:'spki'}).equals(pub.export({format:'der',type:'spki'}))||
+             !/^[A-Za-z0-9+/_=-]{32,256}$/.test(process.env.FACTS_BEARER||'')) throw Error('FACTS_ATTESTER_KEYPAIR_OR_BEARER_INVALID');
+          NODE
+          printf %s "$FACTS_PKCS8" | npx --yes wrangler@4.136.3 secret put FACTS_ATTESTER_PKCS8_B64 --config workers/risk-stream-facts-attester/wrangler.jsonc
+          printf %s "$FACTS_BEARER" | npx --yes wrangler@4.136.3 secret put FACTS_ATTESTER_BEARER_TOKEN --config workers/risk-stream-facts-attester/wrangler.jsonc
+          npx --yes wrangler@4.136.3 deploy --config workers/risk-stream-facts-attester/wrangler.jsonc
+  deploy-rights-attester:
+    if: github.repository == 'blocknine0/geomacro'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify rights keypair and deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RIGHTS_PKCS8: ${{ secrets.RIGHTS_ATTESTER_PKCS8_B64 }}
+          RIGHTS_SPKI: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+          RIGHTS_BEARER: ${{ secrets.RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN }}
+        run: |
+          node - <<'NODE'
+          const crypto=require('node:crypto');
+          const priv=crypto.createPrivateKey({key:Buffer.from(process.env.RIGHTS_PKCS8,'base64'),format:'der',type:'pkcs8'});
+          const pub=crypto.createPublicKey({key:Buffer.from(process.env.RIGHTS_SPKI,'base64'),format:'der',type:'spki'});
+          if(priv.asymmetricKeyType!=='ed25519'||pub.asymmetricKeyType!=='ed25519'||
+             !crypto.createPublicKey(priv).export({format:'der',type:'spki'}).equals(pub.export({format:'der',type:'spki'}))||
+             !/^[A-Za-z0-9+/_=-]{32,256}$/.test(process.env.RIGHTS_BEARER||'')) throw Error('RIGHTS_ATTESTER_KEYPAIR_OR_BEARER_INVALID');
+          NODE
+          printf %s "$RIGHTS_PKCS8" | npx --yes wrangler@4.136.3 secret put RIGHTS_ATTESTER_PKCS8_B64 --config workers/risk-stream-rights-attester/wrangler.jsonc
+          printf %s "$RIGHTS_BEARER" | npx --yes wrangler@4.136.3 secret put RIGHTS_ATTESTER_BEARER_TOKEN --config workers/risk-stream-rights-attester/wrangler.jsonc
+          npx --yes wrangler@4.136.3 deploy --config workers/risk-stream-rights-attester/wrangler.jsonc
+  deploy-release-reviewer:
+    if: github.repository == 'blocknine0/geomacro'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify independent review keypair and deploy Worker held
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          REVIEW_PRIVATE: ${{ secrets.GEOMACRO_RELEASE_REVIEW_PRIVATE_PKCS8_B64 }}
+          REVIEW_PUBLIC: ${{ secrets.GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64 }}
+          GRO_PUBLIC: ${{ secrets.RISK_STREAM_GRO_VERIFY_SPKI_B64 }}
+          RECEIPT_SHA: ${{ secrets.RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256 }}
+          LICENSE_PUBLIC: ${{ secrets.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64 }}
+          RELEASE_ENABLED: ${{ vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE || '0' }}
+          CANARY_CLEARED: ${{ vars.RISK_STREAM_CANARY_HOLD_CLEARED || '0' }}
+          ARCHIVE_APPROVED: ${{ vars.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED || '0' }}
+          PREDGE_ENTITLEMENT_VERIFIED: ${{ vars.PREDGE_PAID_CUSTOMER_ENTITLEMENT_VERIFIED || '0' }}
+          PREDGE_GO_LIVE_APPROVED: ${{ vars.PREDGE_PAID_GO_LIVE_APPROVED || '0' }}
+        run: |
+          node - <<'NODE'
+          const crypto=require('node:crypto');
+          const priv=crypto.createPrivateKey({key:Buffer.from(process.env.REVIEW_PRIVATE,'base64'),format:'der',type:'pkcs8'});
+          const pub=crypto.createPublicKey({key:Buffer.from(process.env.REVIEW_PUBLIC,'base64'),format:'der',type:'spki'});
+          const gro=crypto.createPublicKey({key:Buffer.from(process.env.GRO_PUBLIC,'base64'),format:'der',type:'spki'});
+          const license=crypto.createPublicKey({key:Buffer.from(process.env.LICENSE_PUBLIC,'base64'),format:'der',type:'spki'});
+          if(priv.asymmetricKeyType!=='ed25519'||pub.asymmetricKeyType!=='ed25519'||gro.asymmetricKeyType!=='ed25519'||
+             !crypto.createPublicKey(priv).export({format:'der',type:'spki'}).equals(pub.export({format:'der',type:'spki'}))||
+             pub.export({format:'der',type:'spki'}).equals(gro.export({format:'der',type:'spki'}))||
+             pub.export({format:'der',type:'spki'}).equals(license.export({format:'der',type:'spki'}))||
+             !/^[a-f0-9]{64}$/.test(process.env.RECEIPT_SHA||'')) throw Error('RELEASE_REVIEWER_KEYPAIR_OR_TRUST_CONFIGURATION_INVALID');
+          NODE
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const flags={GEOMACRO_COMMERCIAL_STREAM_RELEASE:process.env.RELEASE_ENABLED,
+            RISK_STREAM_CANARY_HOLD_CLEARED:process.env.CANARY_CLEARED,
+            RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:process.env.ARCHIVE_APPROVED,
+            PREDGE_PAID_CUSTOMER_ENTITLEMENT_VERIFIED:process.env.PREDGE_ENTITLEMENT_VERIFIED,
+            PREDGE_PAID_GO_LIVE_APPROVED:process.env.PREDGE_GO_LIVE_APPROVED};
+          if(Object.values(flags).some(value=>!['0','1'].includes(value))) throw Error('RELEASE_REVIEWER_FLAGS_INVALID');
+          const config=JSON.parse(fs.readFileSync('workers/geomacro-release-reviewer/wrangler.jsonc','utf8'));
+          Object.assign(config.vars,flags);
+          fs.writeFileSync('workers/geomacro-release-reviewer/wrangler.runtime.json',JSON.stringify(config));
+          NODE
+          printf %s "$REVIEW_PRIVATE" | npx --yes wrangler@4.136.3 secret put GEOMACRO_RELEASE_REVIEW_PRIVATE_PKCS8_B64 --config workers/geomacro-release-reviewer/wrangler.jsonc
+          printf %s "$REVIEW_PUBLIC" | npx --yes wrangler@4.136.3 secret put GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64 --config workers/geomacro-release-reviewer/wrangler.jsonc
+          printf %s "$GRO_PUBLIC" | npx --yes wrangler@4.136.3 secret put RISK_STREAM_GRO_VERIFY_SPKI_B64 --config workers/geomacro-release-reviewer/wrangler.jsonc
+          printf %s "$RECEIPT_SHA" | npx --yes wrangler@4.136.3 secret put RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256 --config workers/geomacro-release-reviewer/wrangler.jsonc
+          npx --yes wrangler@4.136.3 deploy --config workers/geomacro-release-reviewer/wrangler.runtime.json
