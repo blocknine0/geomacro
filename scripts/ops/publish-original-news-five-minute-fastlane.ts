@@ -59,6 +59,7 @@ if(!intakeIsDue(policyBody.policy,intakeInterval,runAt,(previousMacroState as {e
 // Repair the bounded journal before reading: unrelated prior writers can
 // leave a 601st row, which the strict bundle correctly refuses to serve.
 const baseline=await readIntakeBaseline({fetchImpl:globalThis.fetch,
+ bundleUrl:controlPlaneOrigin+"/v1/internal/website-derived-news-bundle",
  readAll:(fetchImpl,now)=>fetchAllDerivedNews(fetchImpl,now,{fresh:true,canonicalOriginToken:token}),
  now:Date.now(),repair:async()=>{
  const initialSweep=await fetch(endpoint,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:[]}),signal:AbortSignal.timeout(12000)});
