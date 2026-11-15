@@ -148,7 +148,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "conflict",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "uk_hmt_ogl_official_atom",
@@ -156,7 +157,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "macro_economics",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "uk_dbt_ogl_minerals_atom",
@@ -164,7 +166,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "commodities",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "uk_desnz_ogl_minerals_atom",
@@ -172,7 +175,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "commodities",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "india_pib_licensed_minerals_rss",
@@ -187,7 +191,8 @@
       "source_type": "official",
       "credibility_score": 0.955,
       "risk_category": "conflict",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "uk_cabinet_ogl_security_atom",
@@ -195,7 +200,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "conflict",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "uk_obr_ogl_macro_atom",
@@ -203,7 +209,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "macro_economics",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "uk_bist_ogl_minerals_atom",
@@ -211,7 +218,8 @@
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "commodities",
-      "risk_stream_item_licensed": true
+      "risk_stream_item_licensed": true,
+      "risk_stream_candidate_extension": "geomacro_risk_stream_candidate"
     },
     {
       "name": "un_hq_official_press_rss",
