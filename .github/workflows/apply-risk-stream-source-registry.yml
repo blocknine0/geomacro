@@ -44,12 +44,14 @@ jobs:
           node-version: "24"
       - name: Verify exact protected main revision and requested mode
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$MODE" = preflight -o "$MODE" = apply
           test "$EXPECTED_MAIN_SHA" = "$(git rev-parse HEAD)"
           test "$EXPECTED_MAIN_SHA" = "${GITHUB_SHA}"
-          test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
           test -n "$CLOUDFLARE_ACCOUNT_ID" -a -n "$CLOUDFLARE_API_TOKEN" -a -n "$CLOUDFLARE_BILLING_READ_TOKEN"
           if [ "$MODE" = apply ]; then
             test "$APPROVAL" = APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION
