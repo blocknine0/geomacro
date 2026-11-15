@@ -12,7 +12,7 @@ const token="ephemeral-test-bearer-token-value-0123456789";
 const manifest={schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[
  {source_id:"wire_primary",publisher_root_domain:"wire.test",parent_media_entity:"wire_parent",
   source_role:"GOVERNMENT_WIRE",categories:["GEOPOLITICS"],status:"APPROVED",
-  rights_evidence:{licence_url:"https://wire.test/licence",terms_url:"https://wire.test/terms",
+  rights_evidence:{licence_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",terms_url:"https://www.gov.uk/help/terms-conditions",
    reviewed_at:"2026-10-01T00:00:00.000Z",reviewer:"owner-reviewer",notes:"test-only reviewed fixture"},
   rights_expire_at:"2027-10-01"}
 ]};
@@ -31,12 +31,17 @@ const factsKeyPromise=crypto.subtle.importKey("spki",Buffer.from(factsPublic,"ba
 const rightsKeyPromise=crypto.subtle.importKey("spki",Buffer.from(rightsPublic,"base64"),
  {name:"Ed25519"},false,["verify"]);
 function fixture(overrides={}){
- const raw="Verified original article bytes; synthetic test fixture only.";
+ const raw="Verified original factual record; synthetic test fixture only. Open Government Licence v3 https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
  const normalized={category:"GEOPOLITICS",country_iso3:"USA",feed_origin:"RSS",
   event_identity:{country_iso3:"USA",event_type:"sanctions_policy",actor_id:"us_treasury",
    target_id:"foreign_bank",location_id:"washington_dc",occurred_at:"2026-11-14T10:00:00.000Z"},
   source_id:"wire_primary",source_url:"https://wire.test/news/item-1",
   published_at:"2026-11-14T11:30:00.000Z",raw_payload:raw,
+  item_license_evidence:{license_id:"UK_OGL_V3",license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+   terms_url:"https://www.gov.uk/help/terms-conditions",item_url:"https://wire.test/news/item-1",
+   item_license_marker:"Open Government Licence v3",publisher_owned_content_only:true,
+   third_party_exceptions:false,non_commercial:false,restricted_material:false,
+   factual_record_only:true,original_text_republished:false},
   derived:{what:"Treasury announced a new measure.",why:"The target is linked to enforcement.",
    market:"Banking access may tighten.",watch:"Watch implementation details."},...overrides};
  const registry=[{...registryRow}];
@@ -96,6 +101,30 @@ test("rights attester refuses unapproved and expired registry rows",async()=>{
   rights_expire_at:"2026-11-13"}),now);
  assert.equal(expired.status,403);
  assert.equal((await result(expired)).error,"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED");
+});
+
+test("both independent attesters refuse item-level noncommercial or third-party exceptions",async()=>{
+ const candidate=fixture();
+ candidate.rights_verification.item_license_evidence={
+  ...candidate.rights_verification.item_license_evidence,third_party_exceptions:true};
+ const facts=await attestFacts(request(candidate),{
+  FACTS_ATTESTER_BEARER_TOKEN:token,FACTS_ATTESTER_PKCS8_B64:factsPrivate},now);
+ const rights=await attestRights(request(candidate),rightsEnv(),now);
+ assert.equal(facts.status,400);
+ assert.equal((await result(facts)).error,"RISK_STREAM_ITEM_LICENSE_EXCEPTION_OR_REPUBLICATION_MARKER");
+ assert.equal(rights.status,400);
+ assert.equal((await result(rights)).error,"RISK_STREAM_ITEM_LICENSE_EXCEPTION_OR_REPUBLICATION_MARKER");
+ candidate.rights_verification.item_license_evidence={
+  ...candidate.rights_verification.item_license_evidence,
+  third_party_exceptions:false,non_commercial:true};
+ assert.equal((await attestFacts(request(candidate),{
+  FACTS_ATTESTER_BEARER_TOKEN:token,FACTS_ATTESTER_PKCS8_B64:factsPrivate},now)).status,400);
+});
+test("rights attester binds item-license markers to the hashed original payload",async()=>{
+ const candidate=fixture();candidate.raw_payload+=" changed after evidence extraction";
+ const response=await attestRights(request(candidate),rightsEnv(),now);
+ assert.equal(response.status,400);
+ assert.equal((await result(response)).error,"ORIGINAL_PAGE_HASH_MISMATCH");
 });
 
 test("missing key, missing read binding, and unauthorized calls fail closed",async()=>{

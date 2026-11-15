@@ -19,7 +19,14 @@ async function fixture(){
   source_originals:[sha("original-1"),sha("original-2")],
   what_happened:"A dated sanctions measure was announced",why_it_matters:"The measure may affect cross-border trade",
   market_relevance:"Derived exposure is assessed separately",what_to_watch:"Monitor enforcement and trade flows",
-  evidence_and_confidence:{source_rights_and_origins:"DUAL_MACHINE_ATTESTED",raw_sources_not_republished:true},
+  eligible_derived_score:{country_iso3:"USA",category:"GEOPOLITICS",value_0_100:62,
+   event_class:"SANCTIONS",provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
+   score_model_version:"risk-stream-event-class-v1",
+   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+   derived_only:true,licensed_source_text_included:false,independent_accuracy_certified:false},
+  evidence_and_confidence:{corroborated_originals:2,independent_parent_entities:2,
+   source_rights_and_origins:"DUAL_MACHINE_ATTESTED",factual_confidence:"CORROBORATED_ORIGINALS",
+   risk_score_not_inferred:false,raw_sources_not_republished:true},
   generated_at:new Date(now-60000).toISOString(),expires_at:new Date(now+3600000).toISOString(),
   customer_delivery_authorized:true,charged:false,execution_authorized:false,certified_risk_index:false};
  const sourceJson=JSON.stringify(source),sourceHash=sha(sourceJson);

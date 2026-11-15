@@ -211,34 +211,60 @@ describe("no-card original government structured data adapters",()=>{
     }
     expect(extractOpenData("usgs_mcs_pubs",{records:"invalid"},now)).toBeNull();
   });
-  it("free Critical Minerals remains readable via USGS Publications when three other issuers fail",async()=>{
+  it("accepts bounded official GA and World Bank mineral reference schemas without treating them as live events",()=>{
+    const ga=extractOpenData("ga_critical_minerals_mines",{
+      fields:[{name:"objectid",type:"esriFieldTypeOID"}],
+      features:[{attributes:{objectid:42}}],exceededTransferLimit:true,
+    },now);
+    expect(ga).toEqual({signals:[],credits:["Geoscience Australia (CC BY 4.0)"]});
+    expect(extractOpenData("ga_critical_minerals_mines",{
+      fields:[],features:[{attributes:{objectid:42}}],
+    },now)).toBeNull();
+    const worldBank=extractOpenData("world_bank_mineral_rents",[{page:1},[
+      {indicator:{id:"NY.GDP.MINR.RT.ZS"},date:"2024",value:0.12},
+      {indicator:{id:"NY.GDP.MINR.RT.ZS"},date:"2025",value:null},
+    ]],now);
+    expect(worldBank?.signals[0]).toMatchObject({
+      observation_type:"world_bank_mineral_rents_reference_period",
+      observation_period:"2024",clock_semantics:"reference_year",
+    });
+    expect(worldBank?.credits).toContain("World Bank (CC BY 4.0)");
+    expect(JSON.stringify(worldBank)).not.toContain("0.12");
+  });
+  it("reads UK DBT Atom with native publish dates and keeps topic discovery unscored",()=>{
+    const feed=`<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+      <title>New critical minerals export controls consultation</title>
+      <published>${new Date(now-60*60_000).toISOString()}</published>
+    </entry></feed>`;
+    const data=extractOpenData("uk_dbt_ogl_minerals_atom",feed,now);
+    expect(data?.signals).toHaveLength(1);
+    expect(data?.signals[0]).toMatchObject({
+      observation_type:"uk_dbt_minerals_publisher_topic",
+      clock_semantics:"publisher_publication",score:null,
+      independent_same_event_verification:false,
+    });
+    expect(JSON.stringify(data)).not.toContain("export controls consultation");
+    expect(extractOpenData("uk_dbt_ogl_minerals_atom",feed.replace("<published>","<updated>"),now)?.signals).toHaveLength(0);
+    expect(extractOpenData("uk_dbt_ogl_minerals_atom",feed.replace("critical minerals","sports"),now)?.signals).toHaveLength(0);
+  });
+  it("can keep a verified UK Atom source readable while the other four mineral providers fail",async()=>{
     const hit:string[]=[];
-    const source=vi.fn(async (input:RequestInfo|URL,init?:RequestInit)=>{
-      const url=new URL(String(input));
-      hit.push(url.hostname);
-      expect(init?.redirect).toBe("manual");
-      expect(init?.cache).toBe("no-store");
-      if(url.hostname==="pubs.usgs.gov"){
-        expect(url.searchParams.get("indexId")).toBe("mcs2026");
-        expect(url.searchParams.has("reportNumber")).toBe(false);
-        return Response.json({records:[{
-          indexId:"mcs2026",publicationYear:"2026",
-          title:"Mineral commodity summaries 2026",
-        }]},{headers:{"content-type":"application/json"}});
-      }
-      throw Error("PROVIDER_UNAVAILABLE");
+    const feed=`<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+      <title>Critical minerals policy update</title><published>${new Date(now-60_000).toISOString()}</published>
+    </entry></feed>`;
+    const source=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      const url=new URL(String(input));hit.push(url.hostname);
+      expect(init?.redirect).toBe("manual");expect(init?.cache).toBe("no-store");
+      if(url.hostname==="www.gov.uk")return new Response(feed,{headers:{"content-type":"application/atom+xml; charset=utf-8"}});
+      return new Response("unavailable",{status:403});
     }) as typeof fetch;
-    const result=await readCategoryOpenData("critical-minerals",{now,fetcher:source,
-      fallbackToD1:false});
-    expect(hit).toContain("pubs.usgs.gov");
+    const result=await readCategoryOpenData("critical-minerals",{now,fetcher:source,fallbackToD1:false});
+    expect(hit).toContain("www.gov.uk");
     expect(result.source_families_attempted).toBe(5);
     expect(result.source_families_readable).toBe(1);
-    expect(result.findings).toEqual(expect.arrayContaining([
-      expect.objectContaining({observation_type:"usgs_mcs_dataset_catalog",
-        observation_period:"2026",clock_semantics:"dataset_edition",score:null})
-    ]));
-    expect(result.chargeable).toBe(false);
-    expect(result.signed_gro_generated).toBe(false);
+    expect(result.findings[0]).toMatchObject({observation_type:"uk_dbt_minerals_publisher_topic",
+      clock_semantics:"publisher_publication",score:null});
+    expect(result.chargeable).toBe(false);expect(result.signed_gro_generated).toBe(false);
     expect(result.persistent_storage_written).toBe(false);
   });
   it("can identify unreadable provider families without exposing diagnostics by default",async()=>{
@@ -256,43 +282,11 @@ describe("no-card original government structured data adapters",()=>{
     ]));
     expect(JSON.stringify(diagnostic)).not.toMatch(/https?:\/\/|ogcapi\.bgs/iu);
   });
-  it("recovers the same edition from the first-party citation when JSON services fail",async()=>{
-    const html=`<html><h1>Mineral commodity summaries 2026</h1><table>
-      <tr><th>Publication Year</th><td>2026</td></tr>
-      <tr><th>DOI</th><td><a href="https://doi.org/10.3133/mcs2026">10.3133/mcs2026</a></td></tr>
-      <tr><th>Index ID</th><td>mcs2026</td></tr>
-      <tr><th>Record Source</th><td>USGS Publications Warehouse</td></tr>
-      </table></html>`;
-    const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
-      if(new URL(String(input)).hostname!=="www.usgs.gov")
-        return new Response("Unavailable",{status:403});
-      expect(init?.redirect).toBe("manual");
-      expect(init?.headers).toMatchObject({Accept:"text/html"});
-      return new Response(html,{headers:{"content-type":"text/html; charset=utf-8"}});
-    }) as typeof fetch;
-    const snapshot=await readCategoryOpenData("critical-minerals",{now,fetcher,fallbackToD1:false});
-    expect(snapshot.source_families_readable).toBe(1);
-    expect(snapshot.findings).toHaveLength(1);
-    expect(snapshot.findings[0]).toMatchObject({observation_type:"usgs_mcs_dataset_catalog",
-      observation_period:"2026",clock_semantics:"dataset_edition",score:null});
-    expect(snapshot.chargeable).toBe(false);
-    expect(JSON.stringify(snapshot)).not.toMatch(/https?:|<html|10\.3133/u);
-    const withBoth=await readCategoryOpenData("critical-minerals",{now,fallbackToD1:false,
-      fetcher:(async(input,init)=>new URL(String(input)).hostname==="pubs.usgs.gov"
-        ?Response.json({records:[{indexId:"mcs2026",publicationYear:"2026",
-          title:"Mineral commodity summaries 2026"}]})
-        :new URL(String(input)).hostname==="www.sciencebase.gov"
-        ?Response.json({id:"69837e43b66b01367d7ec7c7",
-          files:[{name:"MCS2026_Commodities_Data.csv"}]})
-        :fetcher(input,init)) as typeof fetch});
-    expect(withBoth.source_families_readable).toBe(3);
-    expect(withBoth.findings).toHaveLength(1);
-    for(const invalid of [html.replace("10.3133/mcs2026</a>","10.3133/mcs2025</a>"),
-      html.replace("<td>2026</td>","<td>2025</td>"),
-      html.replace("<td>mcs2026</td>","<td>mcs2025</td>"),
-      html.replace("<h1>Mineral commodity summaries 2026</h1>","<h1>Access denied</h1>"),
-      `<script>${html}</script>`, `<template>${html}</template>`])
-      expect(extractOpenData("usgs_mcs_publication",invalid,now)).toBeNull();
+  it("enforces the complete Atom feed envelope and publication timestamp",()=>{
+    const valid=`<feed><entry><title>Critical minerals policy</title><published>${new Date(now).toISOString()}</published></entry></feed>`;
+    expect(extractOpenData("uk_dbt_ogl_minerals_atom",valid,now)?.signals).toHaveLength(1);
+    expect(extractOpenData("uk_dbt_ogl_minerals_atom",valid.replace("<feed>","<feed><!DOCTYPE x>"),now)).toBeNull();
+    expect(extractOpenData("uk_dbt_ogl_minerals_atom",valid.replace("<published>","<updated>"),now)?.signals).toHaveLength(0);
   });
   it("verifies pinned USGS MCS edition catalog metadata without claiming CSV rows are loaded",()=>{
     const catalog={id:"69837e43b66b01367d7ec7c7",files:[

@@ -13,7 +13,7 @@ import type { CommercialIntelligenceCategory } from "./public-intelligence-sourc
 import {validOpenDataContext} from "./category-open-data-contract";
 
 type Domain = CommercialIntelligenceCategory;
-type Timing = "event_occurrence" | "catalog_added_day" | "reference_year" | "dataset_edition" |
+type Timing = "event_occurrence" | "publisher_publication" | "catalog_added_day" | "reference_year" | "dataset_edition" |
   "reference_month" | "reference_day" | "retrieval_snapshot" | "award_obligation_day";
 export type OpenDataSignal = {
   finding_key: string;
@@ -42,58 +42,54 @@ type Extracted = { signals: OpenDataSignal[]; credits: string[] };
 const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "usgs_earthquakes", category: "geopolitics",
     url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson",
-    maxBytes: 600_000, timeoutMs: 5_000, method: "GET" },
+    maxBytes: 600_000, timeoutMs: 12_000, method: "GET" },
   // Previously Supabase-ingested humanitarian data, now read-only and
   // explicitly annual; never presented as a real-time displacement event.
   { id: "unhcr_refugee_statistics", category: "geopolitics",
     url: "https://api.unhcr.org/population/v1/population/?yearFrom=2024&yearTo=2024&coo_all=true&coa_all=true&limit=5&page=1",
-    maxBytes: 190_000, timeoutMs: 6_000, method: "GET" },
+    maxBytes: 190_000, timeoutMs: 12_000, method: "GET" },
   { id: "noaa_nhc", category: "geopolitics",
     url: "https://www.nhc.noaa.gov/CurrentStorms.json",
-    maxBytes: 75_000, timeoutMs: 5_000, method: "GET" },
+    maxBytes: 75_000, timeoutMs: 12_000, method: "GET" },
   { id: "cisa_kev", category: "geopolitics",
     url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
-    maxBytes: 3_000_000, timeoutMs: 6_000, method: "GET" },
+    maxBytes: 3_000_000, timeoutMs: 12_000, method: "GET" },
   { id: "federal_register", category: "geopolitics",
     url: "https://www.federalregister.gov/api/v1/documents.json?conditions%5Bterm%5D=sanctions&per_page=5&order=newest",
-    maxBytes: 150_000, timeoutMs: 5_000, method: "GET" },
+    maxBytes: 150_000, timeoutMs: 12_000, method: "GET" },
   { id: "treasury_fiscaldata", category: "macro-fx",
     url: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/avg_interest_rates?page%5Bsize%5D=4&sort=-record_date",
-    maxBytes: 100_000, timeoutMs: 5_000, method: "GET" },
+    maxBytes: 100_000, timeoutMs: 12_000, method: "GET" },
   { id: "ecb_fx", category: "macro-fx",
     url: "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
-    maxBytes: 70_000, timeoutMs: 5_000, method: "GET", format: "xml" },
+    maxBytes: 70_000, timeoutMs: 12_000, method: "GET", format: "xml" },
   { id: "bls_cpi", category: "macro-fx",
     url: "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
-    maxBytes: 125_000, timeoutMs: 5_000, method: "GET" },
+    maxBytes: 125_000, timeoutMs: 12_000, method: "GET" },
   { id: "world_bank_wdi", category: "macro-fx",
     url: "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&source=2&per_page=7",
-    maxBytes: 100_000, timeoutMs: 5_000, method: "GET" },
-  // Existing BGS and USGS MCS provider families from legacy Supabase
-  // ingest scripts. Catalog year != observation date != newly mined output.
+    maxBytes: 100_000, timeoutMs: 12_000, method: "GET" },
+  // Historical BGS statistics; catalog year != observation date != newly
+  // mined output. All upstream budgets allow the measured 4–7s API latency.
   { id: "bgs_world_minerals", category: "critical-minerals",
     url: "https://ogcapi.bgs.ac.uk/collections/world-mineral-statistics/items?f=json&limit=5",
-    maxBytes: 190_000, timeoutMs: 6_000, method: "GET" },
-  { id: "usgs_mcs", category: "critical-minerals",
-    url: "https://www.sciencebase.gov/catalog/item/69837e43b66b01367d7ec7c7?format=json",
-    maxBytes: 400_000, timeoutMs: 6_000, method: "GET" },
-  // Same USGS MCS2026 report, separately verified through the official
-  // Publications Warehouse JSON service. This metadata-only read repairs
-  // ScienceBase outages, but not current mineral-event or signed GRI proof.
-  { id: "usgs_mcs_pubs", category: "critical-minerals",
-    // USGS filters reportNumber against series_number (2026), NOT index_id
-    // (mcs2026). Bind the canonical report using its exact index identity.
-    url: "https://pubs.usgs.gov/pubs-services/publication/?indexId=mcs2026&page_size=2",
-    maxBytes: 110_000, timeoutMs: 6_000, method: "GET" },
-  // First-party report landing page remains a separate transport when both
-  // ScienceBase and Publications Warehouse JSON are unavailable. Edition
-  // identity must match the visible citation, never an access-denied page.
-  { id: "usgs_mcs_publication", category: "critical-minerals",
-    url: "https://www.usgs.gov/publications/mineral-commodity-summaries-2026",
-    maxBytes: 384*1024, timeoutMs: 6_000, method: "GET", format: "html" },
+    maxBytes: 190_000, timeoutMs: 12_000, method: "GET" },
+  // The three USGS MCS URLs previously used here now return HTTP 403 from
+  // the production-compatible runner. Replace them with first-party public
+  // structured endpoints that have been live-probed, and keep their output
+  // explicitly historical/context-only. These are not original risk events.
+  { id: "ga_critical_minerals_mines", category: "critical-minerals",
+    url: "https://services.ga.gov.au/gis/rest/services/AustralianCriticalMineralsOperatingMinesAndDeposits/MapServer/4/query?where=1%3D1&outFields=objectid&returnGeometry=false&resultRecordCount=5&f=json",
+    maxBytes: 120_000, timeoutMs: 12_000, method: "GET" },
+  { id: "world_bank_mineral_rents", category: "critical-minerals",
+    url: "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MINR.RT.ZS?format=json&per_page=5",
+    maxBytes: 100_000, timeoutMs: 12_000, method: "GET" },
+  { id: "uk_dbt_ogl_minerals_atom", category: "critical-minerals",
+    url: "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    maxBytes: 100_000, timeoutMs: 12_000, method: "GET", format: "xml" },
   { id: "usaspending", category: "critical-minerals",
     url: "https://api.usaspending.gov/api/v2/search/spending_by_award/",
-    maxBytes: 180_000, timeoutMs: 6_000, method: "POST",
+    maxBytes: 180_000, timeoutMs: 12_000, method: "POST",
     body: JSON.stringify({
       filters: { keywords: ["critical minerals"], award_type_codes: ["A","B","C","D"] },
       fields: ["Award ID","Description","Base Obligation Date","Last Modified Date"],
@@ -204,6 +200,68 @@ function fromBgsMinerals(payload:unknown):Extracted|null {
     "Geomacro finds an official British Geological Survey mineral-statistics observation period.",
     "Mineral statistics are historical production/trade context; a critical-mineral event, forecast or supply disruption is not established."
   )]:[],credits:["British Geological Survey"]};
+}
+function fromGeoscienceAustraliaMinerals(payload:unknown):Extracted|null {
+  const data=payload as Record<string,unknown>;
+  if(!Array.isArray(data?.fields)||!Array.isArray(data?.features)||
+     data.features.length>5)return null;
+  const fields=new Set(data.fields.flatMap((field:unknown)=>{
+    const name=(field as Record<string,unknown>)?.name;
+    return typeof name==="string"&&/^[A-Za-z][A-Za-z0-9_]{0,63}$/u.test(name)?[name]:[];
+  }));
+  if(!fields.has("objectid")&&!fields.has("OBJECTID"))return null;
+  if(!data.features.every((feature:unknown)=>{
+    const attributes=(feature as Record<string,unknown>)?.attributes;
+    if(!attributes||typeof attributes!=="object"||Array.isArray(attributes))return false;
+    const record=attributes as Record<string,unknown>;
+    return Number.isSafeInteger(record.objectid??record.OBJECTID);
+  }))return null;
+  // Geoscience Australia's CC BY mine snapshot is historical reference data.
+  // Do not expose sample records or infer a live production event from it.
+  return {signals:[],credits:["Geoscience Australia (CC BY 4.0)"]};
+}
+function fromWorldBankMineralRents(payload:unknown):Extracted|null {
+  if(!Array.isArray(payload)||payload.length!==2||!Array.isArray(payload[1])||
+     payload[1].length>5)return null;
+  const years=payload[1].flatMap((value:unknown):string[]=>{
+    const row=value as Record<string,any>;
+    if(row?.indicator?.id!=="NY.GDP.MINR.RT.ZS"||
+       !/^\d{4}$/u.test(String(row?.date??""))||
+       (row?.value!==null&&(typeof row.value!=="number"||!Number.isFinite(row.value))))
+      return [];
+    return row.value===null?[]:[String(row.date)];
+  }).sort().reverse();
+  return {signals:years.length?[signal(
+    "world_bank_mineral_rents_reference_period","year:"+years[0],years[0],"reference_year",
+    "Geomacro detects an available World Bank mineral-rents reference period for the United States.",
+    "Annual mineral-rents data is historical national-accounts context, not a current price, export restriction, production change or supply shock."
+  )]:[],credits:["World Bank (CC BY 4.0)"]};
+}
+function fromUkDtbMineralsAtom(input:string,now:number):Extracted|null {
+  if(typeof input!=="string"||input.length>100_000||
+     !/<(?:[A-Za-z][\w.-]*:)?feed\b/iu.test(input)||
+     !/<\/(?:[A-Za-z][\w.-]*:)?feed\s*>/iu.test(input)||
+     /<!DOCTYPE|<!ENTITY/iu.test(input))return null;
+  const entries=[...input.matchAll(/<(?:[A-Za-z][\w.-]*:)?entry\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?entry\s*>/giu)]
+    .map(match=>match[1]);
+  if(entries.length>25)return null;
+  const recent=entries.flatMap(entry=>{
+    const titleMatch=/<(?:[A-Za-z][\w.-]*:)?title\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?title\s*>/iu.exec(entry);
+    const publishedMatch=/<(?:[A-Za-z][\w.-]*:)?published\b[^>]*>([^<]{1,64})<\/(?:[A-Za-z][\w.-]*:)?published\s*>/iu.exec(entry);
+    if(!titleMatch||!publishedMatch)return [];
+    const title=visiblePublisherText(titleMatch[1]).replace(/&(?:quot|apos);/giu," ");
+    const published=publishedMatch[1].trim(),ms=Date.parse(published);
+    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(published)||
+       !Number.isFinite(ms)||ms>now||now-ms>24*3600_000||
+       !/\b(?:critical minerals?|rare earths?|lithium|cobalt|nickel|graphite|gallium|germanium|tungsten|antimony)\b/iu.test(title))return [];
+    return [new Date(ms).toISOString()];
+  }).sort().reverse().slice(0,2);
+  return {signals:recent.map((published,index)=>signal(
+    "uk_dbt_minerals_publisher_topic",published+":"+index,published,
+    "publisher_publication",
+    "Geomacro detects a recent first-party UK Department for Business and Trade mineral-topic publication timestamp.",
+    "A publisher topic and its publication clock are discovery evidence only; they do not establish a country-specific mineral event, supply disruption or commercial eligibility."
+  )),credits:["UK Department for Business and Trade (Open Government Licence v3)"]};
 }
 function fromUsgsMcsCatalog(payload:unknown):Extracted|null {
   const data=payload as Record<string,unknown>;
@@ -412,6 +470,9 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
     case "cisa_kev":return fromCisa(body,now);
     case "unhcr_refugee_statistics":return fromUnhcrPopulation(body);
     case "bgs_world_minerals":return fromBgsMinerals(body);
+    case "ga_critical_minerals_mines":return fromGeoscienceAustraliaMinerals(body);
+    case "world_bank_mineral_rents":return fromWorldBankMineralRents(body);
+    case "uk_dbt_ogl_minerals_atom":return fromUkDtbMineralsAtom(body as string,now);
     case "usgs_mcs":return fromUsgsMcsCatalog(body);
     case "usgs_mcs_pubs":return fromUsgsMcsPubs(body);
     case "usgs_mcs_publication":return fromUsgsMcsPublication(body);

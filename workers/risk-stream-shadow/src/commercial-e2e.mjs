@@ -83,7 +83,15 @@ export async function runIsolatedCommercialE2E(env,{
   why_it_matters:"Tests the isolated licensed stream acceptance contract",
   market_relevance:"No actual market exposure or external rights claimed",
   what_to_watch:"Monitor shadow provider D1 and mocked HTTPS ACK only",
-  evidence_and_confidence:{source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
+  eligible_derived_score:{country_iso3:"USA",category:"GEOPOLITICS",value_0_100:42,
+    event_class:"SHADOW_SYNTHETIC",provenance:"SHADOW_SYNTHETIC_TWO_ORIGINALS",
+    score_model_version:"risk-stream-event-class-v1",
+    score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+    derived_only:true,licensed_source_text_included:false,
+    independent_accuracy_certified:false},
+  evidence_and_confidence:{corroborated_originals:2,independent_parent_entities:2,
+    source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
+    factual_confidence:"CORROBORATED_ORIGINALS",risk_score_not_inferred:false,
     raw_sources_not_republished:true},
   generated_at:iso(now),expires_at:iso(now+3600000),
   customer_delivery_authorized:true,execution_authorized:false,
@@ -94,7 +102,8 @@ export async function runIsolatedCommercialE2E(env,{
  const releaseHash=await licensedSha("shadow-commercial-release\n"+id);
  const clientId="shadow_test_"+id.slice(0,36);
  const score={country_iso3:"USA",category:"GEOPOLITICS",
-  value_0_100:42,provenance:"SHADOW_SYNTHETIC_TWO_ORIGINALS",
+  value_0_100:42,event_class:"SHADOW_SYNTHETIC",
+  provenance:"SHADOW_SYNTHETIC_TWO_ORIGINALS",
   derived_only:true,licensed_source_text_included:false,
   independent_accuracy_certified:false};
  const approval={schema:"geomacro.commercial-release-accepted.v1",

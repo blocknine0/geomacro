@@ -24,7 +24,7 @@ export function validOpenDataContext(v:any,category:string,now=Date.now()):boole
   if(!Number.isFinite(at)||at>now||now-at>3*60*60_000||JSON.stringify(v).length>48_000||/https?:\/\/|www\.|[<>]/iu.test(JSON.stringify(v)))return false;
   return v.findings.every((s:any)=>s&&typeof s==="object"&&Object.keys(s).length===signalKeys.length&&
     Object.keys(s).every(k=>signalKeys.includes(k))&&s.evidence_class==="official_open_data_unscored"&&
-    ["event_occurrence","catalog_added_day","reference_year","dataset_edition","reference_month","reference_day","retrieval_snapshot","award_obligation_day"].includes(s.clock_semantics)&&
+    ["event_occurrence","publisher_publication","catalog_added_day","reference_year","dataset_edition","reference_month","reference_day","retrieval_snapshot","award_obligation_day"].includes(s.clock_semantics)&&
     s.independent_same_event_verification===false&&s.score===null&&
     ["finding_key","observation_type","observation_period","geomacro_finds","why_it_matters"].every(k=>typeof s[k]==="string"&&s[k].length>0&&s[k].length<1400));
 }

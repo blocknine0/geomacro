@@ -19,6 +19,13 @@ test("signed eligible scores are transparent event-class heuristics across all t
  ];
  for(const [category,country,what,eventClass,score] of cases){
   const value=deriveRiskStreamEligibleScore(category,country,what);
+  assert.deepEqual(Object.fromEntries(["country_iso3","category","value_0_100",
+   "provenance","derived_only","licensed_source_text_included",
+   "independent_accuracy_certified"].map(key=>[key,value[key]])),{
+    country_iso3:country,category,value_0_100:score,
+    provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",derived_only:true,
+    licensed_source_text_included:false,independent_accuracy_certified:false
+   });
   assert.equal(value.event_class,eventClass);
   assert.equal(value.value_0_100,score);
   assert.equal(value.score_semantics,"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE");
@@ -27,6 +34,39 @@ test("signed eligible scores are transparent event-class heuristics across all t
  }
  assert.equal(deriveRiskStreamEligibleScore("GEOPOLITICS","USA","A generic test event"),null);
  assert.equal(deriveRiskStreamEligibleScore("UNMAPPED","USA","Sanctions"),null);
+});
+test("dual-attested originals produce signed eligible_derived_score objects in all three categories",async()=>{
+ const cases=[
+  {category:"GEOPOLITICS",roles:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],value:75},
+  {category:"MACRO_FX",roles:["OFFICIAL_STATISTICS","MARKET_PRICE"],value:48},
+  {category:"CRITICAL_MINERALS",roles:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"],value:78}
+ ];
+ for(const [index,item] of cases.entries()){
+  const c=ctx(),now=Date.now();
+  c.db.sources.get("gov").source_role=item.roles[0];
+  c.db.sources.get("region").source_role=item.roles[1];
+  const a=candidate(c,500+index,"gov",now,item.category);
+  const b=candidate(c,500+index,"region",now,item.category);
+  const result=await processRiskStreamBatch(c.env,[a,b],{
+   now,sleeper:async()=>{},random:()=>0
+  });
+  assert.equal(result.corroborated_and_signed,1,item.category);
+  const row=[...c.db.gros.values()][0],payload=JSON.parse(row.payload_json);
+  assert.deepEqual(payload.eligible_derived_score,{
+   country_iso3:"USA",category:item.category,value_0_100:item.value,
+   event_class:payload.eligible_derived_score.event_class,
+   provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
+   score_model_version:"risk-stream-event-class-v1",
+   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+   derived_only:true,licensed_source_text_included:false,
+   independent_accuracy_certified:false
+  });
+  const key=await crypto.subtle.importKey("spki",
+   Buffer.from(c.env.RISK_STREAM_GRO_VERIFY_SPKI_B64,"base64"),
+   {name:"Ed25519"},false,["verify"]);
+  assert.equal(await crypto.subtle.verify("Ed25519",key,
+   Buffer.from(row.signature_b64,"base64"),Buffer.from(row.payload_json)),true);
+ }
 });
 class FakeDB {
  constructor(){
@@ -45,7 +85,11 @@ class FakeDB {
    ["GEOPOLITICS",{category:"GEOPOLITICS",required_role_a:"GOVERNMENT_WIRE",
     required_role_b:"INDEPENDENT_REGIONAL",enabled:1}],
    ["FOOD_SECURITY",{category:"FOOD_SECURITY",required_role_a:"GOVERNMENT_WIRE",
-    required_role_b:"INDEPENDENT_REGIONAL",enabled:1}]
+    required_role_b:"INDEPENDENT_REGIONAL",enabled:1}],
+   ["MACRO_FX",{category:"MACRO_FX",required_role_a:"OFFICIAL_STATISTICS",
+    required_role_b:"MARKET_PRICE",enabled:1}],
+   ["CRITICAL_MINERALS",{category:"CRITICAL_MINERALS",required_role_a:"TRADE_CUSTOMS",
+    required_role_b:"INDEPENDENT_INDUSTRY",enabled:1}]
   ]);
  }
  prepare(sql){
@@ -152,11 +196,21 @@ function ctx(){
  return {db,r2,env,facts,rights,gro};
 }
 function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetMs=0){
- const original=source==="gov",raw="Original verified event report for "+
-  category+" "+i+" from "+source+"; direct independent original.";
+ const original=source==="gov",raw="Original verified event factual record for "+
+  category+" "+i+" from "+source+"; direct independent original. Open Government Licence v3 "+
+  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
  const entities=["COUNTRY:USA","EVENT:"+String(i).padStart(4,"0")];
+ const categoryRoles={GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
+  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
+  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]};
+ const roles=categoryRoles[category]??categoryRoles.GEOPOLITICS;
+ const what=category==="MACRO_FX"?
+  "The central bank announced an interest rate policy change":
+  category==="CRITICAL_MINERALS"?
+   "A rare earth supply shock followed the mine closure":
+   "New sanctions were announced for the country";
  const derived={
-  what:"Event "+i+" was reported by independent sources",
+  what,
   why:"A documented policy change could affect the specified country",
   market:"Impact remains unquantified until a verified market feed reports it",
   watch:"Monitor fresh original government and regional announcements"
@@ -169,9 +223,22 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
   source_id:source,source_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
   publisher_root_domain:original?"official.example":"regional.example",
   parent_media_entity:original?"government_official":"regional_newspaper",
-  source_role:original?"GOVERNMENT_WIRE":"INDEPENDENT_REGIONAL",
+  source_role:roles[original?0:1],
   published_at:new Date(now-30000+clockOffsetMs).toISOString(),
-  original_page_sha256:digest(raw),derived,raw_payload:raw,proof:null
+  original_page_sha256:digest(raw),derived,raw_payload:raw,proof:null,
+  rights_verification:{registry_source_id:source,registry_enabled:true,
+   registry_commercial_rights_approved:true,
+   authorization_reference:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ | https://www.gov.uk/help/terms-conditions",
+   independent_reviewer_id:"synthetic-test-fixture",checked_at_utc:new Date(now).toISOString(),
+   rights_expires_at_utc:new Date(now+365*86400000).toISOString(),
+   item_license_evidence:{license_id:"UK_OGL_V3",
+    license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    terms_url:"https://www.gov.uk/help/terms-conditions",
+    item_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
+    item_license_marker:"Open Government Licence v3",
+    publisher_owned_content_only:true,third_party_exceptions:false,
+    non_commercial:false,restricted_material:false,factual_record_only:true,
+    original_text_republished:false}}
  };
  const claims=riskStreamOriginalClaims(item);
  item.proof={

@@ -19,7 +19,8 @@ function fixture(){
   "CRITICAL_MINERALS","CRITICAL_MINERALS","CRITICAL_MINERALS"];
  return categories.flatMap((category,i)=>[0,1].map(j=>{
   const source_id="local_test_issuer_"+i+"_"+j;
-  const raw_payload="UNIT_TEST_ONLY_NOT_A_GENUINE_ORIGINAL_PUBLICATION_"+i+"_"+j;
+  const raw_payload="UNIT_TEST_ONLY_NOT_A_GENUINE_ORIGINAL_PUBLICATION_"+i+"_"+j+
+   " Open Government Licence v3 https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
   const event={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
    country_iso3:"USA",category,feed_origin:"OFFICIAL_API",
    event_key:"OFFLINE_TEST_EVENT_"+i,
@@ -36,9 +37,17 @@ function fixture(){
    raw_payload,proof:{},
    rights_verification:{registry_source_id:source_id,
     registry_enabled:true,registry_commercial_rights_approved:true,
-    authorization_reference:"UNIT_TEST_UNVERIFIED_OPERATOR_ONLY",
+    authorization_reference:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ | https://www.gov.uk/help/terms-conditions",
     independent_reviewer_id:"test_operator_not_independent",
-    checked_at_utc:time,rights_expires_at_utc:null}};
+    checked_at_utc:time,rights_expires_at_utc:null,
+    item_license_evidence:{license_id:"UK_OGL_V3",
+     license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+     terms_url:"https://www.gov.uk/help/terms-conditions",
+     item_url:"https://publisher"+i+j+".research.net/report",
+     item_license_marker:"Open Government Licence v3",
+     publisher_owned_content_only:true,third_party_exceptions:false,
+     non_commercial:false,restricted_material:false,factual_record_only:true,
+     original_text_republished:false}}};
   const claim=riskStreamOriginalClaims(event);
   event.proof.facts_signature_b64=sign(null,Buffer.from(
    "geomacro.machine-original-facts.v1\n"+claim),facts.privateKey).toString("base64");

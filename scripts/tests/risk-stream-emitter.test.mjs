@@ -11,8 +11,8 @@ const rightsManifest={schema:"geomacro.risk-stream-source-rights-reviewed.v1",en
 ].map(([source_id,publisher_root_domain,parent_media_entity,source_role])=>({
  source_id,publisher_root_domain,parent_media_entity,source_role,categories:["GEOPOLITICS"],
  status:"APPROVED",rights_expire_at:"2027-10-01",
- rights_evidence:{licence_url:"https://"+publisher_root_domain+"/licence",
-  terms_url:"https://"+publisher_root_domain+"/terms",reviewed_at:"2026-10-01T00:00:00.000Z",
+ rights_evidence:{licence_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  terms_url:"https://www.gov.uk/help/terms-conditions",reviewed_at:"2026-10-01T00:00:00.000Z",
   reviewer:"owner-reviewer",notes:"Reviewed legal terms for derived use."}
 }))};
 const sourceRegistry=rightsManifest.entries.map(entry=>({...entry,enabled:1,commercial_rights_approved:1}));
@@ -23,7 +23,13 @@ const originals=rightsManifest.entries.map((source,index)=>({category:"GEOPOLITI
  publisher_root_domain:source.publisher_root_domain,parent_media_entity:source.parent_media_entity,
  source_url:"https://"+source.publisher_root_domain+"/item",
  published_at:"2026-11-14T11:"+(index?"05":"00")+":00.000Z",
- raw_payload:"Original private fixture page bytes from source "+source.source_id+".",
+ raw_payload:"Original private fixture factual record from source "+source.source_id+
+  ". Open Government Licence v3 https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+ item_license_evidence:{license_id:"UK_OGL_V3",license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  terms_url:"https://www.gov.uk/help/terms-conditions",item_url:"https://"+source.publisher_root_domain+"/item",
+  item_license_marker:"Open Government Licence v3",publisher_owned_content_only:true,
+  third_party_exceptions:false,non_commercial:false,restricted_material:false,
+  factual_record_only:true,original_text_republished:false},
  derived:{what:"A measure was announced.",why:"It affects an institution.",
   market:"Market access could tighten.",watch:"Watch official implementation."},
  reporting_position:"confirms"}));

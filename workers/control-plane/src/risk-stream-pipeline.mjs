@@ -10,6 +10,7 @@ import {enqueueCommercialIssuerCandidate} from "./risk-stream-commercial-issuer.
 import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
 import {issueUnsignedDailyNewsBatch} from "./risk-stream-unsigned-gro.mjs";
 import {isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
+import {validateRiskStreamItemLicense} from "./risk-stream-item-license-guard.mjs";
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
@@ -64,7 +65,7 @@ export const riskStreamOriginalClaims=e=>JSON.stringify({
  source_id:e.source_id,source_url:e.source_url,publisher_root_domain:e.publisher_root_domain,
  parent_media_entity:e.parent_media_entity,source_role:e.source_role,
  published_at:e.published_at,original_page_sha256:e.original_page_sha256,
- derived:e.derived
+ derived:e.derived,item_license_evidence:e.rights_verification?.item_license_evidence
 });
 function validateCandidate(e,now){
  if(!e||e.schema!=="geomacro.risk-stream-candidate.v1"||
@@ -98,6 +99,21 @@ function validateCandidate(e,now){
  if(e.feed_origin==="GDELT_INDEX"&&e.kind!=="INDEX_ONLY")
   fail("INDEX_ONLY_DISCOVERY_NOT_ORIGINAL");
  if(e.kind==="VERIFIED_ORIGINAL"){
+  const rights=e.rights_verification;
+  if(!exact(rights,["registry_source_id","registry_enabled",
+     "registry_commercial_rights_approved","authorization_reference",
+     "independent_reviewer_id","checked_at_utc","rights_expires_at_utc",
+     "item_license_evidence"])||rights.registry_source_id!==e.source_id||
+     rights.registry_enabled!==true||rights.registry_commercial_rights_approved!==true||
+     typeof rights.authorization_reference!=="string"||
+     !Number.isFinite(Date.parse(rights.checked_at_utc))||
+     !Number.isFinite(Date.parse(rights.rights_expires_at_utc)))
+   fail("RIGHTS_REVIEW_METADATA_INVALID");
+  try{validateRiskStreamItemLicense(rights.item_license_evidence,{
+    status:"APPROVED",rights_evidence:{licence_url:rights.item_license_evidence?.license_url,
+     terms_url:rights.item_license_evidence?.terms_url}},
+    {sourceUrl:e.source_url,sourceDomain:e.publisher_root_domain,rawPayload:e.raw_payload})}
+  catch(error){fail(String(error?.message??"ITEM_LICENSE_INVALID"))}
   if(!exact(e.proof,["facts_signature_b64","rights_signature_b64"])||
      typeof e.raw_payload!=="string"||e.raw_payload.length<16||
      e.raw_payload.length>8000||encode(e.raw_payload).byteLength>8000)
