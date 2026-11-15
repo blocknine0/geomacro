@@ -8,7 +8,7 @@
     {
       "binding": "SOURCE_REGISTRY_READONLY",
       "database_name": "geomacro-control-plane",
-      "database_id": "REPLACE_WITH_GEOMACRO_CONTROL_PLANE_D1_ID"
+      "database_id": "db057ca9-9f6e-4957-ac28-144f3b798f9b"
     }
   ]
 }
