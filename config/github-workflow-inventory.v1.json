@@ -226,6 +226,7 @@
     "hot50-news-daily-gro-ci.yml",
     "hot50-production-activation-proof.yml",
     "hot50-provider-readonly-contract.yml",
+    "hot50-risk-stream-daily-audit.yml",
     "imf-oecd-native-period.yml",
     "industry-scale-security-gate.yml",
     "ingest-reliefweb-live.yml",

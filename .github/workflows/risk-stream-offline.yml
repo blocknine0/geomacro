@@ -54,6 +54,7 @@ jobs:
           node --check workers/control-plane/src/risk-stream-commercial-license.mjs
           node --check workers/control-plane/src/risk-stream-commercial-outbox.mjs
           node --check workers/control-plane/src/risk-stream-commercial-issuer.mjs
+          node --check workers/control-plane/src/risk-stream-item-license-guard.mjs
           node --check workers/risk-stream-shadow/src/commercial-e2e.mjs
           node --check workers/risk-stream-shadow-ack/src/index.mjs
           node --check workers/risk-stream-facts-attester/src/index.mjs
@@ -85,6 +86,7 @@ jobs:
           node --check scripts/ops/register-risk-stream-source.mjs
           node --check scripts/ops/hot50-standard-feasibility.mjs
           node --check scripts/tests/risk-stream-source-rights-manifest.test.mjs
+          node --check scripts/tests/risk-stream-item-license-guard.test.mjs
           node --check scripts/lib/risk-stream-event-fingerprint.mjs
           node --check scripts/lib/risk-stream-candidate-builder.mjs
           node --check scripts/lib/risk-stream-pairing.mjs

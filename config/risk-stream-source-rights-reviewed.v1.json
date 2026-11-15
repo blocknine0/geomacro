@@ -60,7 +60,9 @@
       "publisher_root_domain": "gov.uk",
       "parent_media_entity": "uk_hm_treasury",
       "source_role": "OFFICIAL_STATISTICS",
-      "categories": ["MACRO_FX"],
+      "categories": [
+        "MACRO_FX"
+      ],
       "status": "APPROVED",
       "rights_evidence": {
         "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
@@ -76,7 +78,9 @@
       "publisher_root_domain": "gov.uk",
       "parent_media_entity": "uk_department_for_energy_security_and_net_zero",
       "source_role": "TRADE_CUSTOMS",
-      "categories": ["CRITICAL_MINERALS"],
+      "categories": [
+        "CRITICAL_MINERALS"
+      ],
       "status": "APPROVED",
       "rights_evidence": {
         "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
@@ -92,7 +96,9 @@
       "publisher_root_domain": "gov.uk",
       "parent_media_entity": "uk_ministry_of_defence",
       "source_role": "GOVERNMENT_WIRE",
-      "categories": ["GEOPOLITICS"],
+      "categories": [
+        "GEOPOLITICS"
+      ],
       "status": "APPROVED",
       "rights_evidence": {
         "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
@@ -108,7 +114,9 @@
       "publisher_root_domain": "gov.uk",
       "parent_media_entity": "uk_cabinet_office",
       "source_role": "GOVERNMENT_WIRE",
-      "categories": ["GEOPOLITICS"],
+      "categories": [
+        "GEOPOLITICS"
+      ],
       "status": "APPROVED",
       "rights_evidence": {
         "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
@@ -124,7 +132,9 @@
       "publisher_root_domain": "gov.uk",
       "parent_media_entity": "uk_department_for_business_innovation_science_and_trade",
       "source_role": "TRADE_CUSTOMS",
-      "categories": ["CRITICAL_MINERALS"],
+      "categories": [
+        "CRITICAL_MINERALS"
+      ],
       "status": "APPROVED",
       "rights_evidence": {
         "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
@@ -134,6 +144,168 @@
         "notes": "Repo OGL registry documents the BIST first-party Atom candidate under OGL v3. Limit to Crown copyright material; attribute and link the publisher, label derived work, exclude credited third-party material. Registry approval is conditional on all main commercial gates. Annual registry re-review horizon ends on rights_expire_at; this administrative horizon is not represented as a legal expiry of OGL v3."
       },
       "rights_expire_at": "2027-11-14"
+    },
+    {
+      "source_id": "global_voices_original_cc_by_3",
+      "publisher_root_domain": "globalvoices.org",
+      "parent_media_entity": "global_voices",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "categories": [
+        "GEOPOLITICS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://creativecommons.org/licenses/by/3.0/",
+        "terms_url": "https://globalvoices.org/about/global-voices-attribution-policy/",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Conditional on item-level CC BY 3.0 marker and publisher-origin verification. The publisher states its own content is CC BY unless otherwise marked and requires attribution. Admit factual derived records only; exclude third-party text, photos, video, audio, embeds, and any item with exceptions or a different license."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "worldbank_commodity_prices_cc_by_4",
+      "publisher_root_domain": "worldbank.org",
+      "parent_media_entity": "world_bank_commodity_markets",
+      "source_role": "MARKET_PRICE",
+      "categories": [
+        "MACRO_FX"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+        "terms_url": "https://datacatalog.worldbank.org/search/dataset/0038238/commodity-prices-history-and-projections",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Limited to the named Commodity Prices dataset whose metadata identifies CC BY 4.0. Require item metadata to identify this dataset and its license; exclude third-party series or any item with different terms. Store attributed factual values and derived summaries only, not dataset files or expressive source text."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "geoscience_australia_ccby",
+      "publisher_root_domain": "ga.gov.au",
+      "parent_media_entity": "geoscience_australia",
+      "source_role": "INDEPENDENT_INDUSTRY",
+      "categories": [
+        "CRITICAL_MINERALS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+        "terms_url": "https://www.ga.gov.au/copyright",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "Geoscience Australia copyright notice applies CC BY 4.0 to its own materials except listed exceptions and third-party material. Admit only factual records with item-level CC BY 4.0 evidence; exclude exceptions, third-party content, and all expressive text."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "gdelt_v2_factual_events",
+      "publisher_root_domain": "gdeltproject.org",
+      "parent_media_entity": "gdelt_project",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "categories": [
+        "GEOPOLITICS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.gdeltproject.org/about.html",
+        "terms_url": "https://www.gdeltproject.org/about.html",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "GDELT event/actor facts metadata only. Do not admit GDELT DOC headlines, article text, summaries, or third-party source content. Factual event fields only; the source URL is a provenance pointer."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "un_reliefweb_api_ccby",
+      "publisher_root_domain": "reliefweb.int",
+      "parent_media_entity": "un_ocha_reliefweb",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "categories": [
+        "GEOPOLITICS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+        "terms_url": "https://reliefweb.int/terms-conditions",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "ReliefWeb API terms do not grant blanket rights to underlying reports. Admit only individual items whose API record explicitly verifies CC BY 4.0 and publisher ownership; skip all third-party exceptions, non-CC-BY items, headlines/text, and unknown licenses."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "ecb_fx_reference_rates",
+      "publisher_root_domain": "ecb.europa.eu",
+      "parent_media_entity": "european_central_bank",
+      "source_role": "MARKET_PRICE",
+      "categories": [
+        "MACRO_FX"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.ecb.europa.eu/home/html/disclaimer.en.html",
+        "terms_url": "https://www.ecb.europa.eu/home/html/disclaimer.en.html",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "Restricted to ECB reference statistics and rates under the stated reuse conditions. Preserve source attribution; keep source values unmodified in the signed input; do not redistribute source papers, expressive text, or third-party series. The signed commercial output contains derived facts only."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "us_fed_h10_public_domain",
+      "publisher_root_domain": "federalreserve.gov",
+      "parent_media_entity": "us_federal_reserve",
+      "source_role": "MARKET_PRICE",
+      "categories": [
+        "MACRO_FX"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.usa.gov/government-works",
+        "terms_url": "https://www.federalreserve.gov/aboutthefed/contact-us-topics.htm",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "US Federal Reserve Board-authored factual H.10 rate data is treated as US Government work under 17 U.S.C. § 105, subject to the Board disclaimer exceptions. Exclude third-party material, images, and any separately copyrighted content."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "usgs_minerals_public_domain",
+      "publisher_root_domain": "usgs.gov",
+      "parent_media_entity": "us_geological_survey",
+      "source_role": "INDEPENDENT_INDUSTRY",
+      "categories": [
+        "CRITICAL_MINERALS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.usa.gov/government-works",
+        "terms_url": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "USGS-authored factual mineral statistics and data are US Government works under 17 U.S.C. § 105. Exclude third-party images, credited content, and separately copyrighted materials identified by USGS."
+      },
+      "rights_expire_at": "2027-11-15"
+    },
+    {
+      "source_id": "eu_jrc_rmis_ccby",
+      "publisher_root_domain": "europa.eu",
+      "parent_media_entity": "european_commission_jrc",
+      "source_role": "INDEPENDENT_INDUSTRY",
+      "categories": [
+        "CRITICAL_MINERALS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+        "terms_url": "https://commission.europa.eu/legal-notice_en",
+        "reviewed_at": "2026-11-15T00:00:00.000Z",
+        "reviewer": "owner-reviewed-open-license-registry",
+        "notes": "European Commission legal notice permits reuse of Commission-owned content under CC BY 4.0 subject to attribution and exceptions. Admit only item-verified Commission-owned RMIS factual records; exclude third-party/exception-marked material and expressive source text."
+      },
+      "rights_expire_at": "2027-11-15"
     },
     {
       "source_id": "example_gov_wire",
