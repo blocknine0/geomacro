@@ -53,8 +53,22 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
  factsPublicB64=process.env.RISK_STREAM_MACHINE_FACTS_SPKI_B64,
  rightsPublicB64=process.env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64,
  fetchImpl=fetch,sleepImpl=wait,rightsManifest}={}){
- const prepared=originals.map(original=>({original,candidate:
-  prepareRiskStreamCandidate(original,sourceRegistry,now,{rightsManifest})}));
+ // An excluded item must not poison an otherwise eligible batch, and must
+ // never reach either attester or D1. Only item-license exclusions are
+ // skippable here; structural, registry, event-identity, and clock failures
+ // remain batch-fatal so callers cannot silently turn malformed inputs into
+ // accepted production records.
+ const prepared=[];let itemLicenseSkipped=0;
+ for(const original of originals){
+  try{prepared.push({original,candidate:
+   prepareRiskStreamCandidate(original,sourceRegistry,now,{rightsManifest})})}
+  catch(error){
+   if(/^RISK_STREAM_ITEM_LICENSE_/u.test(String(error?.message??""))){
+    itemLicenseSkipped++;continue;
+   }
+   throw error;
+  }
+ }
  const trustedRecords=prepared.map(({original,candidate},index)=>({...original,
   source_id:candidate.source_id,source_role:candidate.source_role,
   publisher_root_domain:candidate.publisher_root_domain,
@@ -69,7 +83,10 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
  const drafts=pairedRows.map(row=>row.candidate);
  if(dryRun)return {status:"DRY_RUN",paired_events:pairing.pairs.length,
   candidate_count:drafts.length,contradictions:pairing.contradictions.length,
-  network_requests:0,posted_items:0};
+  item_license_skipped:itemLicenseSkipped,network_requests:0,posted_items:0};
+ if(drafts.length===0)return {status:"NO_ELIGIBLE_ITEMS",paired_events:0,
+  candidate_count:0,contradictions:pairing.contradictions.length,
+  item_license_skipped:itemLicenseSkipped,network_requests:0,posted_items:0};
  if(typeof controlPlaneUrl!=="string"||!controlPlaneToken)fail("SEND_CONFIGURATION_MISSING");
  let trustedAttesters;
  try{trustedAttesters=validateAttesterKeys(factsPublicB64,rightsPublicB64)}
@@ -105,7 +122,7 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
  }
  return {status:"POSTED",paired_events:pairing.pairs.length,
   candidate_count:candidates.length,contradictions:pairing.contradictions.length,
-  posted_items:candidates.length};
+  item_license_skipped:itemLicenseSkipped,posted_items:candidates.length};
 }
 
 function argValue(args,name){const index=args.indexOf(name);return index<0?null:args[index+1]??null}

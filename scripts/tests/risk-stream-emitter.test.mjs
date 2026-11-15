@@ -43,6 +43,37 @@ test("dry run validates pair and makes no HTTP request",async()=>{
  assert.equal(calls,0);
 });
 
+test("item-level noncommercial and third-party exceptions are skipped before either attester",async()=>{
+ const blocked=[
+  {...originals[0],item_license_evidence:{...originals[0].item_license_evidence,
+   non_commercial:true}},
+  {...originals[1],item_license_evidence:{...originals[1].item_license_evidence,
+   third_party_exceptions:true}}
+ ];
+ let calls=0;
+ const result=await emitRiskStreamCandidates({originals:[...originals,...blocked],
+  sourceRegistry,rightsManifest,now,dryRun:true,
+  factsPublicB64:"",rightsPublicB64:"",fetchImpl:async()=>{calls++;throw Error("unexpected")}});
+ assert.equal(result.status,"DRY_RUN");
+ assert.equal(result.candidate_count,2);
+ assert.equal(result.item_license_skipped,2);
+ assert.equal(calls,0);
+});
+
+test("a batch containing only excluded items stops without attestation or D1",async()=>{
+ let calls=0;
+ const result=await emitRiskStreamCandidates({originals:[
+  {...originals[0],item_license_evidence:{...originals[0].item_license_evidence,
+   non_commercial:true}}
+ ],sourceRegistry,rightsManifest,now,dryRun:false,
+  controlPlaneUrl:"https://control.invalid",controlPlaneToken:"root-test-token",
+  fetchImpl:async()=>{calls++;throw Error("unexpected")}});
+ assert.equal(result.status,"NO_ELIGIBLE_ITEMS");
+ assert.equal(result.item_license_skipped,1);
+ assert.equal(result.posted_items,0);
+ assert.equal(calls,0);
+});
+
 test("send mode obtains genuine stubbed signatures then posts exact worker batch",async()=>{
  const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
  const paths=[],batches=[],delays=[];let throttled=false;
