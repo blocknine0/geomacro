@@ -56,6 +56,86 @@
       "rights_expire_at": "2027-11-14"
     },
     {
+      "source_id": "uk_hmt_ogl_official_atom",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_hm_treasury",
+      "source_role": "OFFICIAL_STATISTICS",
+      "categories": ["MACRO_FX"],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "terms_url": "https://www.gov.uk/help/terms-conditions",
+        "reviewed_at": "2026-11-14T17:17:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Repo OGL registry documents HM Treasury first-party Atom under OGL v3. Limit to Crown copyright material; attribute and link the publisher, label derived work, exclude credited third-party material. Registry approval is conditional on all main commercial gates. Annual registry re-review horizon ends on rights_expire_at; this administrative horizon is not represented as a legal expiry of OGL v3."
+      },
+      "rights_expire_at": "2027-11-14"
+    },
+    {
+      "source_id": "uk_desnz_ogl_minerals_atom",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_department_for_energy_security_and_net_zero",
+      "source_role": "TRADE_CUSTOMS",
+      "categories": ["CRITICAL_MINERALS"],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "terms_url": "https://www.gov.uk/help/terms-conditions",
+        "reviewed_at": "2026-11-14T17:17:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Repo OGL registry documents DESNZ first-party Atom under OGL v3. Limit to Crown copyright material; attribute and link the publisher, label derived work, exclude credited third-party material. Registry approval is conditional on all main commercial gates. Annual registry re-review horizon ends on rights_expire_at; this administrative horizon is not represented as a legal expiry of OGL v3."
+      },
+      "rights_expire_at": "2027-11-14"
+    },
+    {
+      "source_id": "uk_mod_ogl_security_atom",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_ministry_of_defence",
+      "source_role": "GOVERNMENT_WIRE",
+      "categories": ["GEOPOLITICS"],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "terms_url": "https://www.gov.uk/help/terms-conditions",
+        "reviewed_at": "2026-11-14T17:17:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Repo OGL registry documents UK Ministry of Defence first-party Atom under OGL v3. Limit to Crown copyright material; attribute and link the publisher, label derived work, exclude credited third-party material. Registry approval is conditional on all main commercial gates. Annual registry re-review horizon ends on rights_expire_at; this administrative horizon is not represented as a legal expiry of OGL v3."
+      },
+      "rights_expire_at": "2027-11-14"
+    },
+    {
+      "source_id": "uk_cabinet_ogl_security_atom",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_cabinet_office",
+      "source_role": "GOVERNMENT_WIRE",
+      "categories": ["GEOPOLITICS"],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "terms_url": "https://www.gov.uk/help/terms-conditions",
+        "reviewed_at": "2026-11-14T17:17:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Repo OGL registry documents UK Cabinet Office first-party Atom under OGL v3. Limit to Crown copyright material; attribute and link the publisher, label derived work, exclude credited third-party material. Registry approval is conditional on all main commercial gates. Annual registry re-review horizon ends on rights_expire_at; this administrative horizon is not represented as a legal expiry of OGL v3."
+      },
+      "rights_expire_at": "2027-11-14"
+    },
+    {
+      "source_id": "uk_bist_ogl_minerals_atom",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_department_for_business_innovation_science_and_trade",
+      "source_role": "TRADE_CUSTOMS",
+      "categories": ["CRITICAL_MINERALS"],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "terms_url": "https://www.gov.uk/help/terms-conditions",
+        "reviewed_at": "2026-11-14T17:17:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Repo OGL registry documents the BIST first-party Atom candidate under OGL v3. Limit to Crown copyright material; attribute and link the publisher, label derived work, exclude credited third-party material. Registry approval is conditional on all main commercial gates. Annual registry re-review horizon ends on rights_expire_at; this administrative horizon is not represented as a legal expiry of OGL v3."
+      },
+      "rights_expire_at": "2027-11-14"
+    },
+    {
       "source_id": "example_gov_wire",
       "publisher_root_domain": "example.invalid",
       "parent_media_entity": "example-government-publisher",

@@ -107,6 +107,23 @@ export function assertBaselineRiskStreamSigningBindings(baseline,reviewedSecrets
   throw Error('CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING_'+missing.join('_'));
  return true;
 }
+export function assertRiskStreamAttesterBearerBindings(baseline,reviewedSecrets=[],env=process.env){
+ const required=['RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN',
+  'RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN'];
+ const rows=baseline?.resources?.bindings;
+ if(!Array.isArray(rows))throw Error('CANDIDATE_BASELINE_BINDINGS_UNREADABLE');
+ if(!Array.isArray(reviewedSecrets))throw Error('CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID');
+ const byName=new Map(rows.map(row=>[row.name,row]));
+ const missing=required.filter(name=>{
+  const existing=byName.get(name);
+  if(existing)return existing.type!=='secret_text';
+  return !(reviewedSecrets.includes(name)&&
+   /^[A-Za-z0-9+/_=-]{32,256}$/.test(String(env[name]??'')));
+ });
+ if(missing.length)
+  throw Error('CANDIDATE_RISK_STREAM_ATTESTER_BEARERS_MISSING_'+missing.join('_'));
+ return true;
+}
 /**
  * Wrangler's structured machine output identifies the ONE version created
  * by THIS upload. A historical SHA match or "latest" page is never enough:
@@ -167,6 +184,10 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   (reviewedSecrets.includes(name)&&typeof env[name]==='string'&&env[name].trim().length>0);
  const missingRiskSigningSecrets=requiredRiskSigningSecrets.filter(name=>!candidateHasSigningSecret(name));
  const reviewerService=env.GEOMACRO_RELEASE_REVIEWER_SERVICE??'';
+ const researchOn=env.RISK_STREAM_ACTIVE==='1'&&
+  env.STREAM_INGESTION_ENABLED==='true'&&env.STREAM_MODE==='PRODUCTION'&&
+  env.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==='1';
+ if(researchOn)assertRiskStreamAttesterBearerBindings(baseline,reviewedSecrets,env);
  const issuerSecretNames=['GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64',
   'GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64',
   'GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64','RISK_STREAM_GRO_SIGN_PKCS8_B64',

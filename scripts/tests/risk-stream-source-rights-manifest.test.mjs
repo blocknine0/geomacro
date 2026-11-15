@@ -54,11 +54,14 @@ test("production registry workflow accepts Cloudflare D1 uuid or id with strict 
 test("shipped manifest approves only repository-documented OGL sources and retains pending examples",()=>{
  const manifest=readJson("config/risk-stream-source-rights-reviewed.v1.json");
  const result=validateSourceRightsManifest(manifest,now);
- assert.equal(result.approvedEntries.length,3);
+ assert.equal(result.approvedEntries.length,8);
  assert.equal(result.pendingEntries.length,3);
  assert.ok(result.pendingEntries.every(x=>x.rights_evidence.notes.includes("EXAMPLE - NOT REVIEWED")));
  assert.deepEqual(result.approvedEntries.map(x=>x.source_id).sort(),[
-  "uk_dbt_ogl_minerals_atom","uk_fcdo_ogl_official_atom","uk_obr_ogl_macro_atom"]);
+  "uk_bist_ogl_minerals_atom","uk_cabinet_ogl_security_atom",
+  "uk_dbt_ogl_minerals_atom","uk_desnz_ogl_minerals_atom",
+  "uk_fcdo_ogl_official_atom","uk_hmt_ogl_official_atom",
+  "uk_mod_ogl_security_atom","uk_obr_ogl_macro_atom"]);
  const ogl=readJson("config/official-ogl-atom-sources.json");
  assert.ok(result.approvedEntries.every(x=>
   (()=>{const source=ogl.sources.find(y=>y.source_id===x.source_id);return Boolean(
@@ -135,9 +138,9 @@ test("dry-run and apply never write PENDING entries",()=>{
 test("shipped approvals plan cleanly for provider preflight and apply",()=>{
  const manifest=readJson("config/risk-stream-source-rights-reviewed.v1.json");
  const plan=buildSourceRegistrationPlan(manifest,now);
- assert.equal(plan.approvedEntries.length,3);
+ assert.equal(plan.approvedEntries.length,8);
  assert.equal(plan.pendingEntries.length,3);
- assert.equal(plan.statements.length,3);
+ assert.equal(plan.statements.length,8);
  const schemas=[
   {type:"table",name:"risk_stream_sources",sql:"CREATE TABLE risk_stream_sources (commercial_rights_approved INTEGER,parent_media_entity TEXT,rights_expire_at TEXT)"},
   {type:"table",name:"risk_stream_category_policy",sql:"CREATE TABLE risk_stream_category_policy (required_role_a TEXT,required_role_b TEXT)"},
@@ -149,7 +152,7 @@ test("shipped approvals plan cleanly for provider preflight and apply",()=>{
   env:{D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc"},
   runWrangler:()=>JSON.stringify([{results:schemas}]),root:ROOT,now});
  assert.deepEqual(preflight,{mode:"preflight",provider_schema_verified:true,
-  approved_sources_planned:3,pending_sources_ignored:3});
+  approved_sources_planned:8,pending_sources_ignored:3});
  const runWrangler=args=>{
   const sql=args.at(-1);
   if(sql.startsWith("SELECT "))return JSON.stringify([{results:
@@ -163,7 +166,7 @@ test("shipped approvals plan cleanly for provider preflight and apply",()=>{
  const applied=runSourceRegistration({manifest,apply:true,
   env:{CONFIRM:"APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION",
    D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc"},runWrangler,root:ROOT,now});
- assert.deepEqual(applied,{mode:"apply",written:3,readback_verified:true,pending_ignored:3});
+ assert.deepEqual(applied,{mode:"apply",written:8,readback_verified:true,pending_ignored:3});
 });
 
 test("approved apply upserts approved rows and verifies every readback column",()=>{

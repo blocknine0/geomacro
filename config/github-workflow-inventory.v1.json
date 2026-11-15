@@ -134,6 +134,7 @@
     "deploy-public-risk-indices-edge.yml",
     "deploy-risk-indices-edge.yml",
     "deploy-risk-key-registry-base-sepolia.yml",
+    "deploy-risk-stream-attesters-reviewer.yml",
     "deploy-telegram-signal-supabase.yml",
     "deploy-web-candidate.yml",
     "derive-risk-object-public-key.yml",

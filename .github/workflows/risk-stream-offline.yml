@@ -25,8 +25,10 @@ on:
       - 'workers/risk-stream-shadow-ack/**'
       - 'workers/risk-stream-facts-attester/**'
       - 'workers/risk-stream-rights-attester/**'
+      - 'workers/geomacro-release-reviewer/**'
       - 'scripts/tests/risk-stream-shadow-ack-handshake.test.mjs'
       - 'scripts/tests/risk-stream-attesters.test.mjs'
+      - 'scripts/tests/geomacro-release-reviewer.test.mjs'
       - 'scripts/tests/risk-stream-*.test.mjs'
       - '.github/workflows/risk-stream-offline.yml'
   workflow_dispatch:
@@ -56,6 +58,7 @@ jobs:
           node --check workers/risk-stream-shadow-ack/src/index.mjs
           node --check workers/risk-stream-facts-attester/src/index.mjs
           node --check workers/risk-stream-rights-attester/src/index.mjs
+          node --check workers/geomacro-release-reviewer/src/index.mjs
           node --check workers/control-plane/src/risk-stream-index-listener.mjs
           node --check scripts/tests/risk-stream-seven-day-chain.test.mjs
           node --check scripts/tests/risk-stream-commercial-migration.test.mjs
@@ -93,7 +96,8 @@ jobs:
           node --check scripts/tests/risk-stream-feed-export.test.mjs
           node --check scripts/tests/risk-stream-attesters.test.mjs
           node --check scripts/tests/risk-stream-attester-bridge.test.mjs
+          node --check scripts/tests/geomacro-release-reviewer.test.mjs
           node --check scripts/ops/ingest-direct-global-corridors.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
-        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs scripts/tests/risk-stream-source-rights-manifest.test.mjs scripts/tests/risk-stream-event-fingerprint.test.mjs scripts/tests/risk-stream-candidate-builder.test.mjs scripts/tests/risk-stream-pairing.test.mjs scripts/tests/risk-stream-emitter.test.mjs scripts/tests/risk-stream-feed-export.test.mjs scripts/tests/risk-stream-attesters.test.mjs scripts/tests/risk-stream-attester-bridge.test.mjs
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs scripts/tests/risk-stream-source-rights-manifest.test.mjs scripts/tests/risk-stream-event-fingerprint.test.mjs scripts/tests/risk-stream-candidate-builder.test.mjs scripts/tests/risk-stream-pairing.test.mjs scripts/tests/risk-stream-emitter.test.mjs scripts/tests/risk-stream-feed-export.test.mjs scripts/tests/risk-stream-attesters.test.mjs scripts/tests/risk-stream-attester-bridge.test.mjs scripts/tests/geomacro-release-reviewer.test.mjs

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersionIdFromWranglerEvents,
- assertBaselineRiskStreamSigningBindings} from '../ops/prepare-optimized-worker-candidate.mjs';
+ assertBaselineRiskStreamSigningBindings,assertRiskStreamAttesterBearerBindings}
+ from '../ops/prepare-optimized-worker-candidate.mjs';
 import {reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS}
  from '../lib/canary-additive-binding-parity.mjs';
 const sha='a'.repeat(40);
@@ -169,6 +170,22 @@ test('signed Risk Gate secrets may be inherited or introduced as reviewed non-em
  const wrong={resources:{bindings:names.map(name=>({name,type:'plain_text',text:'x'}))}};
  assert.throws(()=>assertBaselineRiskStreamSigningBindings(wrong,names,reviewedEnv),
   /CANDIDATE_RISK_STREAM_SIGNING_SECRETS_MISSING/);
+});
+
+test('production research candidate requires both reviewed attester bridge bearer secrets',()=>{
+ const names=['RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN',
+  'RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN'];
+ const empty={resources:{bindings:[{name:'DB',type:'d1'}]}};
+ const env=Object.fromEntries(names.map(name=>[name,'x'.repeat(48)]));
+ assert.equal(assertRiskStreamAttesterBearerBindings(empty,names,env),true);
+ for(const name of names){
+  assert.throws(()=>assertRiskStreamAttesterBearerBindings(empty,names.filter(x=>x!==name),env),
+   new RegExp('CANDIDATE_RISK_STREAM_ATTESTER_BEARERS_MISSING_'+name));
+  assert.throws(()=>assertRiskStreamAttesterBearerBindings(empty,names,{...env,[name]:'short'}),
+   new RegExp('CANDIDATE_RISK_STREAM_ATTESTER_BEARERS_MISSING_'+name));
+ }
+ assert.equal(assertRiskStreamAttesterBearerBindings({resources:{bindings:
+  names.map(name=>({name,type:'secret_text'}))}}),true);
 });
 
 // The new version must carry real new secrets in the SAME immutable code upload.
