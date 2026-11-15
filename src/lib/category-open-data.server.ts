@@ -36,6 +36,8 @@ type Provider = {
   format?: "xml" | "json" | "html";
   body?: string;
 };
+type ProviderProbe = { source_id:string; readable:boolean; data:Extracted|null;
+  state:string; http_status:number|null };
 type Extracted = { signals: OpenDataSignal[]; credits: string[] };
 const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "usgs_earthquakes", category: "geopolitics",
@@ -99,7 +101,7 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
     }) },
 ]);
 const CACHE_MS = 120_000;
-const cache = new Map<Domain,{ until: number; value: Promise<ReturnType<typeof buildSnapshot>> }>();
+const cache = new Map<string,{ until: number; value: Promise<ReturnType<typeof buildSnapshot>> }>();
 const NOW_MAX_SKEW = 5 * 60_000;
 function dateOnly(s: unknown): string | null {
   if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/u.test(s)) return null;
@@ -444,8 +446,7 @@ async function boundedJson(r:Response,maxBytes:number,format:"json"|"xml"|"html"
   }catch{return null;}
   finally{await reader.cancel().catch(()=>undefined);}
 }
-async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):
-  Promise<{readable:boolean;data:Extracted|null}> {
+async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):Promise<ProviderProbe> {
   try {
     const response=await fetchWithoutRedirectUsing(fetcher,spec.url,{
       method:spec.method,redirect:"error",cache:"no-store",
@@ -456,20 +457,27 @@ async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):
       ...(spec.body?{body:spec.body}:{}),
       signal:AbortSignal.timeout(spec.timeoutMs),
     });
+    if(!response.ok)return {source_id:spec.id,readable:false,data:null,
+      state:response.status===429?"RATE_LIMITED":response.status>=500?"UPSTREAM_5XX":"HTTP_REJECTED",
+      http_status:response.status};
     const contentType=response.headers.get("content-type")??"";
     if(spec.format==="html"
       ? !/^text\/html(?:;|$)/iu.test(contentType)
       : spec.format==="xml"
       ? !/^(?:application|text)\/(?:xml|[a-z0-9.+-]+\+xml)(?:;|$)/iu.test(contentType)
       : !/^application\/(?:json|geo\+json)(?:;|$)/iu.test(contentType))
-      return {readable:false,data:null};
+      return {source_id:spec.id,readable:false,data:null,state:"CONTENT_TYPE_UNEXPECTED",
+        http_status:response.status};
     const body=await boundedJson(response,spec.maxBytes,spec.format??"json");
     const parsed=body===null?null:spec.id==="ecb_fx"
       ? fromEcbXml(body as string,now) : extractOpenData(spec.id,body,now);
-    return {readable:parsed!==null,data:parsed};
-  }catch{return {readable:false,data:null};}
+    return {source_id:spec.id,readable:parsed!==null,data:parsed,
+      state:parsed!==null?"READABLE":"FORMAT_OR_CONTENT_UNQUALIFIED",http_status:response.status};
+  }catch(error){return {source_id:spec.id,readable:false,data:null,
+    state:error instanceof Error&&error.name==="TimeoutError"?"TIMEOUT":"NETWORK_OR_PARSE_ERROR",
+    http_status:null};}
 }
-function buildSnapshot(category:Domain,rows:{readable:boolean;data:Extracted|null}[],at:number){
+function buildSnapshot(category:Domain,rows:ProviderProbe[],at:number,includeSourceDiagnostics=false){
   const out=[...new Map(rows.flatMap(x=>x.data?.signals??[])
     .map(item=>[item.finding_key,item])).values()];
   const credits=[...new Set(rows.flatMap(x=>x.data?.credits??[]))];
@@ -496,28 +504,32 @@ function buildSnapshot(category:Domain,rows:{readable:boolean;data:Extracted|nul
     chargeable:false,
     paid_delivery_authorized:false,
     persistent_storage_written:false,
+    ...(includeSourceDiagnostics?{source_family_diagnostics:rows.map(({source_id,readable,state,http_status})=>
+      ({source_id,readable,state,http_status}))}:{}),
   };
 }
 export async function readCategoryOpenData(
-  category:Domain,{now=Date.now(),fetcher=fetch,fallbackToD1=true}:{now?:number;fetcher?:typeof fetch;fallbackToD1?:boolean}={}
+  category:Domain,{now=Date.now(),fetcher=fetch,fallbackToD1=true,includeSourceDiagnostics=false}:
+    {now?:number;fetcher?:typeof fetch;fallbackToD1?:boolean;includeSourceDiagnostics?:boolean}={}
 ){
   if(!["geopolitics","macro-fx","critical-minerals"].includes(category)||
       !Number.isFinite(now))throw Error("OPEN_DATA_CATEGORY_INVALID");
   const selected=UPSTREAMS.filter(x=>x.category===category);
   if(fetcher!==fetch){
     const responses=await Promise.all(selected.map(x=>fetchOne(x,now,fetcher)));
-    const value=buildSnapshot(category,responses,now);
+    const value=buildSnapshot(category,responses,now,includeSourceDiagnostics);
     return fallbackToD1&&value.source_families_readable===0?readD1ContextFallback(category,value,now,fetcher):value;
   }
-  const cached=cache.get(category);
+  const cacheKey=category+(includeSourceDiagnostics?":diagnostics":"");
+  const cached=cache.get(cacheKey);
   if(cached&&cached.until>now)return cached.value;
   const value=Promise.all(selected.map(x=>fetchOne(x,now,fetch))).then(async x=>{
-    const value=buildSnapshot(category,x,now);
+    const value=buildSnapshot(category,x,now,includeSourceDiagnostics);
     return fallbackToD1&&value.source_families_readable===0?readD1ContextFallback(category,value,now,fetch):value;
   }).catch(e=>{
-    cache.delete(category);throw e;
+    cache.delete(cacheKey);throw e;
   });
-  cache.set(category,{until:now+CACHE_MS,value});
+  cache.set(cacheKey,{until:now+CACHE_MS,value});
   return value;
 }
 async function readD1ContextFallback(category:Domain,unavailable:ReturnType<typeof buildSnapshot>,now:number,fetcher:typeof fetch){
