@@ -41,6 +41,11 @@ describe("public endpoint integration contract", () => {
     expect(baseline.required_modules).toEqual(["macro_monetary"]);
     expect(planOfficialGeomacroToolCall(examples.agent)?.tool).toBe("macro_fx_query");
     expect(() => quoteGeomacroUsdcCapabilityPreflight(examples.price_preflight)).not.toThrow();
+    expect(endpoints.find(endpoint=>endpoint.id==="risk_gate")).toMatchObject({
+      path:"/api/v1/risk-gate",methods:["POST"],
+    });
+    expect(paths["/api/v1/risk-gate"].post.requestBody.content["application/json"].example)
+      .toMatchObject({category:"MACRO_FX",country_iso3:"IND",tier:"STANDARD"});
   });
   it("documents valid schema bounds and the baseline-only preflight instead of arbitrary objects", () => {
     const query = paths["/api/v1/intelligence/query"].post.requestBody.content["application/json"];

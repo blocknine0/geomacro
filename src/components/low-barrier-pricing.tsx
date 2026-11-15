@@ -24,6 +24,7 @@ export function LowBarrierPricing() {
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Start small. Scale when you need to.</h2>
         <p className="mt-3 text-sm text-muted-foreground">
           Each purchase grants up to 30 days of prepaid access; manual renewal, not automatic PayPal billing.
+          Credit math is 1 credit = $0.01 USD; Risk Gate requests use 15 / 20 / 30 credits for Focused / Standard / Complex.
           Credits support qualified intelligence access once checkout and API entitlements are enabled.
           No self-service charges or credit allocation are activated during the prelaunch preview.
         </p>

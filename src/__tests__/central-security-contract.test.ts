@@ -57,6 +57,7 @@ afterEach(() => {
 describe("Geomacro central security route boundary", () => {
   it("puts every current paid rail behind the payment security class", () => {
     expect(classifyCentralSecurityRoute("/api/v1/intelligence/query", "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute("/api/v1/risk-gate", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/x402/risk", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/goat/pilot/order", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/goat/pilot/status", "POST")).toBe("payment");

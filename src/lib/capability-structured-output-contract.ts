@@ -187,7 +187,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     },
   },
   risk_gate_bundle:{
-    // Buyer-facing Basic / Focused ($0.10). The legacy variant ID remains
+    // Buyer-facing Basic / Focused ($0.15). The legacy variant ID remains
     // stable for old clients; a provisional estimate is never called verified.
     existing_proof_preflight:{
       subject_scope:"country_or_corridor",response_kind:"risk_gate_evaluation",

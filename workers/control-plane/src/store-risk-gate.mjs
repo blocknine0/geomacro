@@ -90,6 +90,7 @@ export async function storeRiskGateD1(request,env,now=Date.now()){
   source_origin_agnostic_commercial_seal:true,request_id:parsed.request_id,
   risk_gate:result,tier:parsed.tier,billing_mode:"GEOMACRO_STORE_MONTHLY_RECHARGE",
   charge_usdc:(chargeCents/100).toFixed(2),charge_cents:chargeCents,
+  credit_equivalent:chargeable?chargeCents:0,
   billable:chargeable,resale_permitted:false,execution_authorized:false,
   entry_status:chargeable?"DELIVERED":"INSUFFICIENT_EVIDENCE",
   ...(chargeable?{}:{entry_status:"INSUFFICIENT_EVIDENCE",charge_usdc:"0.00"})};

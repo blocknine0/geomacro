@@ -102,9 +102,10 @@ export function publicGeomacroPaidPricingManifest(){
     all_public_endpoint_labels_use_geomacro_domain:true as const,
     official_api:{
       intelligence:formatGeomacroApiDisplayPath("/api/v1/intelligence/query"),
-      geopolitics:formatGeomacroApiDisplayPath("/api/v1/intelligence/geopolitics"),
-      macro_fx:formatGeomacroApiDisplayPath("/api/v1/intelligence/macro-fx"),
-      critical_minerals:formatGeomacroApiDisplayPath("/api/v1/intelligence/critical-minerals"),
+      risk_gate:formatGeomacroApiDisplayPath("/api/v1/risk-gate"),
+      geopolitics:formatGeomacroApiDisplayPath("/api/v1/risk-gate"),
+      macro_fx:formatGeomacroApiDisplayPath("/api/v1/risk-gate"),
+      critical_minerals:formatGeomacroApiDisplayPath("/api/v1/risk-gate"),
       agent:formatGeomacroApiDisplayPath("/api/v1/agent"),
       x402_nonpayable_price_preflight:formatGeomacroApiDisplayPath("/api/v1/payments/preflight"),
       settlement_network_discovery:formatGeomacroApiDisplayPath("/api/v1/payments/networks"),
@@ -113,9 +114,10 @@ export function publicGeomacroPaidPricingManifest(){
     // and path without trying to send GEOMACRO as a request method.
     official_api_transport_legacy:{
       intelligence:"POST /api/v1/intelligence/query",
-      geopolitics:"POST /api/v1/intelligence/geopolitics",
-      macro_fx:"POST /api/v1/intelligence/macro-fx",
-      critical_minerals:"POST /api/v1/intelligence/critical-minerals",
+      risk_gate:"POST /api/v1/risk-gate (category: geopolitics | macro-fx | critical-minerals)",
+      geopolitics:"POST /api/v1/risk-gate (category=GEOPOLITICS)",
+      macro_fx:"POST /api/v1/risk-gate (category=MACRO_FX)",
+      critical_minerals:"POST /api/v1/risk-gate (category=CRITICAL_MINERALS)",
       agent:"POST /api/v1/agent",
       x402_nonpayable_price_preflight:"POST /api/v1/payments/preflight",
       settlement_network_discovery:"GET /api/v1/payments/networks",

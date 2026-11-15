@@ -39,7 +39,7 @@ export type SignedProgressiveRiskGateEnvelope = {
   request_hash: string;
   tier: ProgressiveRiskGateTier;
   tier_activation_matrix: RiskGateTierActivationMatrix;
-  price_per_call_usd: 0.10 | 0.15 | 0.25;
+  price_per_call_usd: 0.15 | 0.20 | 0.30;
   risk_gate: RiskGateResponse;
   context: {
     subject: RiskGateRequest["subject"];

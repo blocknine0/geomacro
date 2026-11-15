@@ -31,13 +31,13 @@ describe("capability prices selected only from verified canonical plans (NO FUND
     const gate=plan({topics:["risk_gate"],intent:"risk_gate",
       risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"}});
     expect(resolveVerifiedPublishedPlanPrice(gate,proof)).toMatchObject({
-      capability:"risk_gate_bundle",variant:"existing_proof_preflight",amount_atomic:"100000",
+      capability:"risk_gate_bundle",variant:"existing_proof_preflight",amount_atomic:"150000",
       included_signed_object_charge:"INCLUDED_NO_DOUBLE_CHARGE"});
     expect(resolveVerifiedPublishedPlanPrice(gate,{...proof,signed_object_lifecycle:"new"})).toMatchObject({
-      variant:"standard",amount_atomic:"150000"});
+      variant:"standard",amount_atomic:"200000"});
     expect(resolveVerifiedPublishedPlanPrice(plan({topics:["risk_gate","macro_risk","conflict_geopolitics","critical_minerals"],
       intent:"risk_gate", risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"},
-      detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"250000"});
+      detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"300000"});
   });
   it("prices Basic observed-source Risk Gate without falsely requiring Ed25519",()=>{
     const basic=plan({topics:["risk_gate"],intent:"risk_gate",
@@ -47,7 +47,7 @@ describe("capability prices selected only from verified canonical plans (NO FUND
       signed_object_lifecycle:"none" as const};
     expect(resolveVerifiedPublishedPlanPrice(basic,observed)).toMatchObject({
       capability:"risk_gate_bundle",variant:"existing_proof_preflight",
-      amount_atomic:"100000",amount_usdc:"0.10",
+      amount_atomic:"150000",amount_usdc:"0.15",
     });
     expect(()=>resolveVerifiedPublishedPlanPrice(plan({
       topics:["risk_gate"],intent:"risk_gate",

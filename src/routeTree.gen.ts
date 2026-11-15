@@ -61,6 +61,7 @@ import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-
 import { Route as ApiV1AgentRouteImport } from './routes/api.v1.agent'
 import { Route as ApiV1FindsRouteImport } from './routes/api.v1.finds'
 import { Route as ApiV1PricingRouteImport } from './routes/api.v1.pricing'
+import { Route as ApiV1RiskGateRouteImport } from './routes/api.v1.risk-gate'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
@@ -350,6 +351,11 @@ const ApiV1PricingRoute = ApiV1PricingRouteImport.update({
   path: '/api/v1/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1RiskGateRoute = ApiV1RiskGateRouteImport.update({
+  id: '/api/v1/risk-gate',
+  path: '/api/v1/risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402IntelligenceRoute = ApiX402IntelligenceRouteImport.update({
   id: '/api/x402/intelligence',
   path: '/api/x402/intelligence',
@@ -553,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
+  '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -634,6 +641,7 @@ export interface FileRoutesByTo {
   '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
+  '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -716,6 +724,7 @@ export interface FileRoutesById {
   '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
+  '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -799,6 +808,7 @@ export interface FileRouteTypes {
     | '/api/v1/agent'
     | '/api/v1/finds'
     | '/api/v1/pricing'
+    | '/api/v1/risk-gate'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
@@ -880,6 +890,7 @@ export interface FileRouteTypes {
     | '/api/v1/agent'
     | '/api/v1/finds'
     | '/api/v1/pricing'
+    | '/api/v1/risk-gate'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
@@ -961,6 +972,7 @@ export interface FileRouteTypes {
     | '/api/v1/agent'
     | '/api/v1/finds'
     | '/api/v1/pricing'
+    | '/api/v1/risk-gate'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
@@ -1043,6 +1055,7 @@ export interface RootRouteChildren {
   ApiV1AgentRoute: typeof ApiV1AgentRoute
   ApiV1FindsRoute: typeof ApiV1FindsRoute
   ApiV1PricingRoute: typeof ApiV1PricingRoute
+  ApiV1RiskGateRoute: typeof ApiV1RiskGateRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
@@ -1438,6 +1451,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/risk-gate': {
+      id: '/api/v1/risk-gate'
+      path: '/api/v1/risk-gate'
+      fullPath: '/api/v1/risk-gate'
+      preLoaderRoute: typeof ApiV1RiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/intelligence': {
       id: '/api/x402/intelligence'
       path: '/api/x402/intelligence'
@@ -1683,6 +1703,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1AgentRoute: ApiV1AgentRoute,
   ApiV1FindsRoute: ApiV1FindsRoute,
   ApiV1PricingRoute: ApiV1PricingRoute,
+  ApiV1RiskGateRoute: ApiV1RiskGateRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,

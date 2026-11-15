@@ -4,9 +4,9 @@ import {unifiedRiskGateEvaluate} from './unified-risk-gate.mjs';
 import {persistRiskGateAuditReceipt} from './risk-gate-audit-receipt.mjs';
 
 const TIERS=Object.freeze({
- basic_focused:{capability:'risk_gate_basic_focused',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_basic_focused,label:'BASIC_0_10'},
- standard:{capability:'risk_gate_standard',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_standard,label:'STANDARD_0_15'},
- complex_full:{capability:'risk_gate_complex_full',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_complex_full,label:'COMPLEX_0_25'},
+ basic_focused:{capability:'risk_gate_basic_focused',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_basic_focused,label:'BASIC_0_15'},
+ standard:{capability:'risk_gate_standard',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_standard,label:'STANDARD_0_20'},
+ complex_full:{capability:'risk_gate_complex_full',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_complex_full,label:'COMPLEX_0_30'},
 });
 const REQUEST_ID=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
 const HASH=/^[a-f0-9]{64}$/;

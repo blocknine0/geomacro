@@ -5,7 +5,7 @@ import {GEOMACRO_CREDIT_CONTRACT_VERSION,GEOMACRO_CREDIT_COSTS,GEOMACRO_NEW_SALE
 export const CUSTOMER_CREDIT_CONTRACT=GEOMACRO_CREDIT_CONTRACT_VERSION;
 export const CUSTOMER_CREDIT_COSTS=GEOMACRO_CREDIT_COSTS;
 export const CUSTOMER_RISK_GATE_USAGE_USD_CENTS=Object.freeze({
-  risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25,
+  risk_gate_basic_focused:15,risk_gate_standard:20,risk_gate_complex_full:30,
 });
 const CUSTOMER_ENTITLEMENT_UNITS=CUSTOMER_CREDIT_COSTS;
 // GRI retired for new sales; Risk Gate is not public launch eligible.

@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 50562)
+Total output lines: 5380
+
 {
   "openapi": "3.1.0",
   "info": {
@@ -1113,2882 +1116,7 @@
                           "client_request_id": {
                             "type": "string",
                             "minLength": 4,
-                            "maxLength": 128
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          }
-                        },
-                        "required": [
-                          "question"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "answer_question"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "question": {
-                            "type": "string",
-                            "minLength": 3,
-                            "maxLength": 1000
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "question"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "geopolitics_query"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "country_iso3": {
-                            "type": "string",
-                            "pattern": "^[A-Z]{3}$",
-                            "description": "ISO 3166-1 alpha-3 country code."
-                          },
-                          "question": {
-                            "type": "string",
-                            "minLength": 3,
-                            "maxLength": 2000
-                          },
-                          "fulfillment_mode": {
-                            "type": "string",
-                            "enum": [
-                              "live_on_demand",
-                              "published_only"
-                            ],
-                            "default": "live_on_demand"
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "country_iso3",
-                          "question"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "macro_fx_query"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "country_iso3": {
-                            "type": "string",
-                            "pattern": "^[A-Z]{3}$",
-                            "description": "ISO 3166-1 alpha-3 country code."
-                          },
-                          "question": {
-                            "type": "string",
-                            "minLength": 3,
-                            "maxLength": 2000
-                          },
-                          "fulfillment_mode": {
-                            "type": "string",
-                            "enum": [
-                              "live_on_demand",
-                              "published_only"
-                            ],
-                            "default": "live_on_demand"
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "country_iso3",
-                          "question"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "critical_minerals_query"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "country_iso3": {
-                            "type": "string",
-                            "pattern": "^[A-Z]{3}$",
-                            "description": "ISO 3166-1 alpha-3 country code."
-                          },
-                          "question": {
-                            "type": "string",
-                            "minLength": 3,
-                            "maxLength": 2000
-                          },
-                          "fulfillment_mode": {
-                            "type": "string",
-                            "enum": [
-                              "live_on_demand",
-                              "published_only"
-                            ],
-                            "default": "live_on_demand"
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "country_iso3",
-                          "question"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "country_risk"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "country_iso3": {
-                            "type": "string",
-                            "pattern": "^[A-Z]{3}$",
-                            "description": "ISO 3166-1 alpha-3 country code."
-                          },
-                          "domains": {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "enum": [
-                                "geopolitics",
-                                "macro",
-                                "critical_minerals"
-                              ]
-                            },
-                            "default": [
-                              "geopolitics",
-                              "macro",
-                              "critical_minerals"
-                            ]
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "country_iso3"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "corridor_risk"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "origin_country_iso3": {
-                            "type": "string",
-                            "pattern": "^[A-Z]{3}$",
-                            "description": "ISO 3166-1 alpha-3 country code."
-                          },
-                          "destination_country_iso3": {
-                            "type": "string",
-                            "pattern": "^[A-Z]{3}$",
-                            "description": "ISO 3166-1 alpha-3 country code."
-                          },
-                          "domains": {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "enum": [
-                                "geopolitics",
-                                "macro",
-                                "critical_minerals"
-                              ]
-                            },
-                            "default": [
-                              "geopolitics",
-                              "macro",
-                              "critical_minerals"
-                            ]
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "origin_country_iso3",
-                          "destination_country_iso3"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "change_since_last_verified"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "subject": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "country"
-                                  },
-                                  "country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "country_iso3"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "corridor"
-                                  },
-                                  "origin_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  },
-                                  "destination_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "origin_country_iso3",
-                                  "destination_country_iso3"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ]
-                          },
-                          "domains": {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "enum": [
-                                "geopolitics",
-                                "macro",
-                                "critical_minerals"
-                              ]
-                            },
-                            "default": [
-                              "geopolitics",
-                              "macro",
-                              "critical_minerals"
-                            ]
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "subject"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "why_changed"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "subject": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "country"
-                                  },
-                                  "country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "country_iso3"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "corridor"
-                                  },
-                                  "origin_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  },
-                                  "destination_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "origin_country_iso3",
-                                  "destination_country_iso3"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ]
-                          },
-                          "domains": {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "enum": [
-                                "geopolitics",
-                                "macro",
-                                "critical_minerals"
-                              ]
-                            },
-                            "default": [
-                              "geopolitics",
-                              "macro",
-                              "critical_minerals"
-                            ]
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "subject"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "three_domain_state"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "subject": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "country"
-                                  },
-                                  "country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "country_iso3"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "corridor"
-                                  },
-                                  "origin_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  },
-                                  "destination_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "origin_country_iso3",
-                                  "destination_country_iso3"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ]
-                          },
-                          "domains": {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "enum": [
-                                "geopolitics",
-                                "macro",
-                                "critical_minerals"
-                              ]
-                            },
-                            "default": [
-                              "geopolitics",
-                              "macro",
-                              "critical_minerals"
-                            ]
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          }
-                        },
-                        "required": [
-                          "subject"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  },
-                  {
-                    "properties": {
-                      "tool": {
-                        "const": "risk_gate_decision_context"
-                      },
-                      "arguments": {
-                        "type": "object",
-                        "properties": {
-                          "subject": {
-                            "oneOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "country"
-                                  },
-                                  "country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "country_iso3"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "const": "corridor"
-                                  },
-                                  "origin_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  },
-                                  "destination_country_iso3": {
-                                    "type": "string",
-                                    "pattern": "^[A-Z]{3}$",
-                                    "description": "ISO 3166-1 alpha-3 country code."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "origin_country_iso3",
-                                  "destination_country_iso3"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ]
-                          },
-                          "domains": {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true,
-                            "items": {
-                              "type": "string",
-                              "enum": [
-                                "geopolitics",
-                                "macro",
-                                "critical_minerals"
-                              ]
-                            },
-                            "default": [
-                              "geopolitics",
-                              "macro",
-                              "critical_minerals"
-                            ]
-                          },
-                          "max_age_seconds": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 94608000
-                          },
-                          "detail": {
-                            "type": "string",
-                            "enum": [
-                              "compact",
-                              "standard",
-                              "full"
-                            ],
-                            "default": "standard"
-                          },
-                          "client_request_id": {
-                            "type": "string",
-                            "minLength": 4,
-                            "maxLength": 128
-                          },
-                          "policy_preset": {
-                            "type": "string",
-                            "enum": [
-                              "balanced",
-                              "cautious",
-                              "strict"
-                            ],
-                            "default": "balanced"
-                          },
-                          "action_type": {
-                            "type": "string",
-                            "enum": [
-                              "treasury_payment",
-                              "vendor_payment",
-                              "agent_payment",
-                              "exposure_review"
-                            ]
-                          },
-                          "amount_usdc": {
-                            "type": "number",
-                            "exclusiveMinimum": 0,
-                            "maximum": 1000000000
-                          }
-                        },
-                        "required": [
-                          "subject",
-                          "action_type"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  }
-                ]
-              },
-              "examples": {
-                "store_product_query": {
-                  "summary": "Request an exact active Geomacro Store product and price variant through the canonical evidence-qualified x402 engine. Never supplies rights, signatures or payment authorization.",
-                  "value": {
-                    "tool": "store_product_query",
-                    "arguments": {
-                      "fulfillment_mode": "published_only",
-                      "delivery_tier": "structural_baseline",
-                      "product": {
-                        "capability": "structural_country_digest",
-                        "variant": "standard"
-                      },
-                      "subjects": [
-                        {
-                          "type": "country",
-                          "country_iso3": "USA"
-                        }
-                      ],
-                      "topics": [
-                        "critical_minerals"
-                      ],
-                      "detail": "compact"
-                    }
-                  }
-                },
-                "paid_structured_answer": {
-                  "summary": "One question to a founder-priced GeoMacro structured intelligence product: deterministic multilingual SKU selection, qualified OSINT/news-derived market watch, canonical USDC x402 payment challenge and exact immutable JSON delivery. Signed Risk Objects require authentic GeoMacro Ed25519 proof. Risk Gate is Coming Soon; no raw news, direct execution or unsupported paid charge.",
-                  "value": {
-                    "tool": "paid_structured_answer",
-                    "arguments": {
-                      "question": "What is the potential market impact of critical minerals supply in India?"
-                    }
-                  }
-                },
-                "geopolitics_query": {
-                  "summary": "Geomacro Geopolitics Agent: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.",
-                  "value": {
-                    "tool": "geopolitics_query",
-                    "arguments": {
-                      "country_iso3": "IND",
-                      "question": "What are the current geopolitical risks for India?"
-                    }
-                  }
-                },
-                "macro_fx_query": {
-                  "summary": "Geomacro Macro / FX Agent: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.",
-                  "value": {
-                    "tool": "macro_fx_query",
-                    "arguments": {
-                      "country_iso3": "IND",
-                      "question": "What are the current macro and FX risks for India?"
-                    }
-                  }
-                },
-                "critical_minerals_query": {
-                  "summary": "Geomacro Critical Minerals Agent: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.",
-                  "value": {
-                    "tool": "critical_minerals_query",
-                    "arguments": {
-                      "country_iso3": "IND",
-                      "question": "What are the current critical minerals risks for India?"
-                    }
-                  }
-                },
-                "country_risk": {
-                  "summary": "Return current derived Geomacro country risk across selected commercial domains. Never returns raw upstream data or source identity.",
-                  "value": {
-                    "tool": "country_risk",
-                    "arguments": {
-                      "country_iso3": "IND",
-                      "domains": [
-                        "geopolitics",
-                        "macro",
-                        "critical_minerals"
-                      ]
-                    }
-                  }
-                },
-                "corridor_risk": {
-                  "summary": "Return directional derived corridor risk using the canonical Geomacro intelligence layer.",
-                  "value": {
-                    "tool": "corridor_risk",
-                    "arguments": {
-                      "origin_country_iso3": "USA",
-                      "destination_country_iso3": "CHN",
-                      "domains": [
-                        "geopolitics",
-                        "macro",
-                        "critical_minerals"
-                      ]
-                    }
-                  }
-                },
-                "change_since_last_verified": {
-                  "summary": "Explain material change since the previous published verified Geomacro state for a country or directional corridor.",
-                  "value": {
-                    "tool": "change_since_last_verified",
-                    "arguments": {
-                      "subject": {
-                        "type": "country",
-                        "country_iso3": "DEU"
-                      },
-                      "domains": [
-                        "geopolitics",
-                        "macro",
-                        "critical_minerals"
-                      ]
-                    }
-                  }
-                },
-                "why_changed": {
-                  "summary": "Return the derived Geomacro cause and drivers behind the latest verified risk-state change.",
-                  "value": {
-                    "tool": "why_changed",
-                    "arguments": {
-                      "subject": {
-                        "type": "country",
-                        "country_iso3": "BRA"
-                      },
-                      "domains": [
-                        "geopolitics",
-                        "macro",
-                        "critical_minerals"
-                      ]
-                    }
-                  }
-                },
-                "three_domain_state": {
-                  "summary": "Return current geopolitical, macro/FX and critical-minerals state from one canonical Geomacro truth.",
-                  "value": {
-                    "tool": "three_domain_state",
-                    "arguments": {
-                      "subject": {
-                        "type": "country",
-                        "country_iso3": "ZAF"
-                      }
-                    }
-                  }
-                },
-                "risk_gate_decision_context": {
-                  "summary": "Return non-executing Risk Gate decision context grounded in current verified Geomacro intelligence.",
-                  "value": {
-                    "tool": "risk_gate_decision_context",
-                    "arguments": {
-                      "subject": {
-                        "type": "country",
-                        "country_iso3": "IND"
-                      },
-                      "action_type": "exposure_review",
-                      "policy_preset": "balanced"
-                    }
-                  }
-                },
-                "answer_question": {
-                  "summary": "Turn a natural-language question mentioning one or more unambiguous countries into an exact priced Intelligence Query. Uses the canonical source, freshness, commercial-rights, signed-proof and x402 settlement gates; never accepts a client price and never charges when unavailable.",
-                  "value": {
-                    "tool": "answer_question",
-                    "arguments": {
-                      "question": "What is the inflation risk in Brazil?"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Only when underlying independently verified contract permits it; 200 is not implied by discovery."
-          },
-          "400": {
-            "description": "Invalid or unsupported query"
-          },
-          "402": {
-            "description": "Only after canonical deliverability and payment preflight, not a blanket price offer"
-          },
-          "409": {
-            "description": "Request conflict or recovery required; do not authorize a second payment"
-          },
-          "413": {
-            "description": "Request exceeds this endpoint's byte limit"
-          },
-          "415": {
-            "description": "application/json required"
-          },
-          "422": {
-            "description": "Not eligible or insufficient original evidence/rights"
-          },
-          "429": {
-            "description": "Rate limited; honor Retry-After if present and back off without auto-paying"
-          },
-          "503": {
-            "description": "Unavailable or unverified data runtime; no paid delivery"
-          }
-        }
-      }
-    },
-    "/api/v1/intelligence/query": {
-      "get": {
-        "operationId": "discoverCanonicalIntelligence",
-        "summary": "Canonical resource discovery; explicit views describe separate research and source status",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Read the response scope and clocks; success does not establish commercial eligibility."
-          },
-          "400": {
-            "description": "Invalid query parameters"
-          },
-          "429": {
-            "description": "Rate limited; back off without automatic payment"
-          },
-          "503": {
-            "description": "Required runtime or product unavailable"
-          }
-        }
-      },
-      "post": {
-        "summary": "GEOMACRO Intelligence API",
-        "operationId": "QuerycanonicalGeomacropaidintelligence",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "subjects"
-                ],
-                "description": "Provide topics, intent or a classifiable question. Subject routing does not establish current verified coverage.",
-                "properties": {
-                  "product": {
-                    "oneOf": [
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "focused"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "existing_valid_signed"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant",
-                          "issued_after"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "newly_qualified_signed"
-                          },
-                          "issued_after": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature."
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "existing_proof_preflight"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  "schema_version": {
-                    "const": "geomacro.agent-query.v1"
-                  },
-                  "subjects": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 25,
-                    "items": {
-                      "oneOf": [
-                        {
-                          "type": "object",
-                          "required": [
-                            "type",
-                            "country_iso3"
-                          ],
-                          "properties": {
-                            "type": {
-                              "const": "country"
-                            },
-                            "country_iso3": {
-                              "type": "string",
-                              "pattern": "^[A-Z]{3}$",
-                              "example": "IND"
-                            }
-                          }
-                        },
-                        {
-                          "type": "object",
-                          "required": [
-                            "type",
-                            "origin_country_iso3",
-                            "destination_country_iso3"
-                          ],
-                          "properties": {
-                            "type": {
-                              "const": "corridor"
-                            },
-                            "origin_country_iso3": {
-                              "type": "string",
-                              "pattern": "^[A-Z]{3}$",
-                              "example": "IND"
-                            },
-                            "destination_country_iso3": {
-                              "type": "string",
-                              "pattern": "^[A-Z]{3}$",
-                              "example": "IND"
-                            }
-                          },
-                          "description": "Origin and destination must differ."
-                        }
-                      ]
-                    }
-                  },
-                  "question": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 2000
-                  },
-                  "response_locale": {
-                    "type": "string",
-                    "enum": [
-                      "en",
-                      "bn",
-                      "hi"
-                    ],
-                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
-                  },
-                  "topics": {
-                    "type": "array",
-                    "maxItems": 16,
-                    "items": {
-                      "enum": [
-                        "sovereign_risk",
-                        "macro_risk",
-                        "fx_external_risk",
-                        "sanctions_restrictions",
-                        "conflict_geopolitics",
-                        "trade_corridor",
-                        "energy_commodities",
-                        "critical_minerals",
-                        "political_governance",
-                        "banking_financial_system",
-                        "food_agriculture",
-                        "natural_hazards",
-                        "hot_topics",
-                        "risk_gate",
-                        "risk_object",
-                        "gri_context"
-                      ]
-                    }
-                  },
-                  "intent": {
-                    "enum": [
-                      "single_subject",
-                      "comparison",
-                      "ranking_filter",
-                      "corridor",
-                      "change_since",
-                      "audit",
-                      "risk_gate"
-                    ]
-                  },
-                  "ranking": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "metric"
-                    ],
-                    "properties": {
-                      "metric": {
-                        "const": "risk_object_score"
-                      },
-                      "order": {
-                        "enum": [
-                          "high_to_low",
-                          "low_to_high"
-                        ],
-                        "default": "high_to_low"
-                      },
-                      "limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 25
-                      }
-                    }
-                  },
-                  "change": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "baseline"
-                    ],
-                    "properties": {
-                      "baseline": {
-                        "const": "previous_published"
-                      }
-                    }
-                  },
-                  "as_of": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "max_age_seconds": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 94608000,
-                    "description": "May only tighten the source-native module freshness policy."
-                  },
-                  "evidence": {
-                    "enum": [
-                      "required",
-                      "summary"
-                    ],
-                    "default": "required"
-                  },
-                  "detail": {
-                    "enum": [
-                      "compact",
-                      "standard",
-                      "full"
-                    ],
-                    "default": "standard"
-                  },
-                  "fulfillment_mode": {
-                    "enum": [
-                      "published_only",
-                      "live_on_demand"
-                    ],
-                    "default": "published_only"
-                  },
-                  "delivery_tier": {
-                    "enum": [
-                      "signed_risk_intelligence",
-                      "structural_baseline"
-                    ],
-                    "default": "signed_risk_intelligence"
-                  },
-                  "risk_gate_context": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "action_type"
-                    ],
-                    "properties": {
-                      "policy_preset": {
-                        "enum": [
-                          "balanced",
-                          "cautious",
-                          "strict"
-                        ],
-                        "default": "balanced"
-                      },
-                      "action_type": {
-                        "enum": [
-                          "treasury_payment",
-                          "vendor_payment",
-                          "agent_payment",
-                          "exposure_review"
-                        ]
-                      },
-                      "amount_usdc": {
-                        "type": "number",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000000000
-                      }
-                    }
-                  },
-                  "client_request_id": {
-                    "type": "string",
-                    "minLength": 4,
-                    "maxLength": 128
-                  }
-                }
-              },
-              "example": {
-                "subjects": [
-                  {
-                    "type": "country",
-                    "country_iso3": "IND"
-                  }
-                ],
-                "topics": [
-                  "macro_risk",
-                  "fx_external_risk"
-                ],
-                "question": "What are the macro and FX risks for India?",
-                "fulfillment_mode": "published_only",
-                "detail": "standard"
-              }
-            }
-          }
-        },
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Only when underlying independently verified contract permits it; 200 is not implied by discovery."
-          },
-          "400": {
-            "description": "Invalid or unsupported query"
-          },
-          "402": {
-            "description": "Only after canonical deliverability and payment preflight, not a blanket price offer"
-          },
-          "409": {
-            "description": "Request conflict or recovery required; do not authorize a second payment"
-          },
-          "413": {
-            "description": "Request exceeds this endpoint's byte limit"
-          },
-          "415": {
-            "description": "application/json required"
-          },
-          "422": {
-            "description": "Not eligible or insufficient original evidence/rights"
-          },
-          "429": {
-            "description": "Rate limited; honor Retry-After if present and back off without auto-paying"
-          },
-          "503": {
-            "description": "Unavailable or unverified data runtime; no paid delivery"
-          }
-        },
-        "description": "Use optional product={capability,variant} for an exact Store contract. Structural products require delivery_tier=structural_baseline; full profiles require two or more dimensions. A newly qualified signed object requires a recent issued_after cutoff and an actual verified publisher output. No signer or raw source is created by this request."
-      }
-    },
-    "/api/v1/intelligence/geopolitics": {
-      "get": {
-        "operationId": "discoverGeopoliticsCategory",
-        "summary": "Discover category metadata or explicit unscored research views",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Read the response scope and clocks; success does not establish commercial eligibility."
-          },
-          "400": {
-            "description": "Invalid query parameters"
-          },
-          "429": {
-            "description": "Rate limited; back off without automatic payment"
-          },
-          "503": {
-            "description": "Required runtime or product unavailable"
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "finds",
-                "latest",
-                "open-data",
-                "combined"
-              ]
-            },
-            "description": "Omit for payment-resource discovery; these research views do not produce signed GROs."
-          }
-        ]
-      },
-      "post": {
-        "summary": "GEOMACRO Geopolitics API",
-        "operationId": "Querygeopoliticsscopedintelligence",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "subjects"
-                ],
-                "description": "Country-only category query; topics are bound by the server. Question must remain within the category.",
-                "properties": {
-                  "product": {
-                    "oneOf": [
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "focused"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "existing_valid_signed"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant",
-                          "issued_after"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "newly_qualified_signed"
-                          },
-                          "issued_after": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature."
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "existing_proof_preflight"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  "schema_version": {
-                    "const": "geomacro.agent-query.v1"
-                  },
-                  "subjects": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "type",
-                        "country_iso3"
-                      ],
-                      "properties": {
-                        "type": {
-                          "const": "country"
-                        },
-                        "country_iso3": {
-                          "type": "string",
-                          "pattern": "^[A-Z]{3}$",
-                          "example": "IND"
-                        }
-                      }
-                    }
-                  },
-                  "question": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 2000
-                  },
-                  "response_locale": {
-                    "type": "string",
-                    "enum": [
-                      "en",
-                      "bn",
-                      "hi"
-                    ],
-                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
-                  },
-                  "topics": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "uniqueItems": true,
-                    "items": {
-                      "enum": [
-                        "conflict_geopolitics"
-                      ]
-                    }
-                  },
-                  "intent": {
-                    "const": "single_subject"
-                  },
-                  "ranking": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "metric"
-                    ],
-                    "properties": {
-                      "metric": {
-                        "const": "risk_object_score"
-                      },
-                      "order": {
-                        "enum": [
-                          "high_to_low",
-                          "low_to_high"
-                        ],
-                        "default": "high_to_low"
-                      },
-                      "limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 25
-                      }
-                    }
-                  },
-                  "change": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "baseline"
-                    ],
-                    "properties": {
-                      "baseline": {
-                        "const": "previous_published"
-                      }
-                    }
-                  },
-                  "as_of": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "max_age_seconds": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 94608000,
-                    "description": "May only tighten the source-native module freshness policy."
-                  },
-                  "evidence": {
-                    "enum": [
-                      "required",
-                      "summary"
-                    ],
-                    "default": "required"
-                  },
-                  "detail": {
-                    "enum": [
-                      "compact",
-                      "standard",
-                      "full"
-                    ],
-                    "default": "standard"
-                  },
-                  "fulfillment_mode": {
-                    "enum": [
-                      "published_only",
-                      "live_on_demand"
-                    ],
-                    "default": "live_on_demand"
-                  },
-                  "delivery_tier": {
-                    "enum": [
-                      "signed_risk_intelligence",
-                      "structural_baseline"
-                    ],
-                    "default": "signed_risk_intelligence"
-                  },
-                  "risk_gate_context": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "action_type"
-                    ],
-                    "properties": {
-                      "policy_preset": {
-                        "enum": [
-                          "balanced",
-                          "cautious",
-                          "strict"
-                        ],
-                        "default": "balanced"
-                      },
-                      "action_type": {
-                        "enum": [
-                          "treasury_payment",
-                          "vendor_payment",
-                          "agent_payment",
-                          "exposure_review"
-                        ]
-                      },
-                      "amount_usdc": {
-                        "type": "number",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000000000
-                      }
-                    }
-                  },
-                  "client_request_id": {
-                    "type": "string",
-                    "minLength": 4,
-                    "maxLength": 128
-                  }
-                }
-              },
-              "example": {
-                "subjects": [
-                  {
-                    "type": "country",
-                    "country_iso3": "IND"
-                  }
-                ],
-                "question": "What are the geopolitical risks for India?",
-                "fulfillment_mode": "published_only",
-                "detail": "standard"
-              }
-            }
-          }
-        },
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Only when underlying independently verified contract permits it; 200 is not implied by discovery."
-          },
-          "400": {
-            "description": "Invalid or unsupported query"
-          },
-          "402": {
-            "description": "Only after canonical deliverability and payment preflight, not a blanket price offer"
-          },
-          "409": {
-            "description": "Request conflict or recovery required; do not authorize a second payment"
-          },
-          "413": {
-            "description": "Request exceeds this endpoint's byte limit"
-          },
-          "415": {
-            "description": "application/json required"
-          },
-          "422": {
-            "description": "Not eligible or insufficient original evidence/rights"
-          },
-          "429": {
-            "description": "Rate limited; honor Retry-After if present and back off without auto-paying"
-          },
-          "503": {
-            "description": "Unavailable or unverified data runtime; no paid delivery"
-          }
-        }
-      }
-    },
-    "/api/v1/intelligence/macro-fx": {
-      "get": {
-        "operationId": "discoverMacroFxCategory",
-        "summary": "Discover category metadata or explicit unscored research views",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Read the response scope and clocks; success does not establish commercial eligibility."
-          },
-          "400": {
-            "description": "Invalid query parameters"
-          },
-          "429": {
-            "description": "Rate limited; back off without automatic payment"
-          },
-          "503": {
-            "description": "Required runtime or product unavailable"
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "finds",
-                "latest",
-                "open-data",
-                "combined"
-              ]
-            },
-            "description": "Omit for payment-resource discovery; these research views do not produce signed GROs."
-          }
-        ]
-      },
-      "post": {
-        "summary": "GEOMACRO Macro/FX API",
-        "operationId": "QuerymacroFXscopedintelligence",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "subjects"
-                ],
-                "description": "Country-only category query; topics are bound by the server. Question must remain within the category.",
-                "properties": {
-                  "product": {
-                    "oneOf": [
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "focused"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "existing_valid_signed"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant",
-                          "issued_after"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "newly_qualified_signed"
-                          },
-                          "issued_after": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature."
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "existing_proof_preflight"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  "schema_version": {
-                    "const": "geomacro.agent-query.v1"
-                  },
-                  "subjects": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "type",
-                        "country_iso3"
-                      ],
-                      "properties": {
-                        "type": {
-                          "const": "country"
-                        },
-                        "country_iso3": {
-                          "type": "string",
-                          "pattern": "^[A-Z]{3}$",
-                          "example": "IND"
-                        }
-                      }
-                    }
-                  },
-                  "question": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 2000
-                  },
-                  "response_locale": {
-                    "type": "string",
-                    "enum": [
-                      "en",
-                      "bn",
-                      "hi"
-                    ],
-                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
-                  },
-                  "topics": {
-                    "type": "array",
-                    "minItems": 2,
-                    "maxItems": 2,
-                    "uniqueItems": true,
-                    "items": {
-                      "enum": [
-                        "macro_risk",
-                        "fx_external_risk"
-                      ]
-                    }
-                  },
-                  "intent": {
-                    "const": "single_subject"
-                  },
-                  "ranking": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "metric"
-                    ],
-                    "properties": {
-                      "metric": {
-                        "const": "risk_object_score"
-                      },
-                      "order": {
-                        "enum": [
-                          "high_to_low",
-                          "low_to_high"
-                        ],
-                        "default": "high_to_low"
-                      },
-                      "limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 25
-                      }
-                    }
-                  },
-                  "change": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "baseline"
-                    ],
-                    "properties": {
-                      "baseline": {
-                        "const": "previous_published"
-                      }
-                    }
-                  },
-                  "as_of": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "max_age_seconds": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 94608000,
-                    "description": "May only tighten the source-native module freshness policy."
-                  },
-                  "evidence": {
-                    "enum": [
-                      "required",
-                      "summary"
-                    ],
-                    "default": "required"
-                  },
-                  "detail": {
-                    "enum": [
-                      "compact",
-                      "standard",
-                      "full"
-                    ],
-                    "default": "standard"
-                  },
-                  "fulfillment_mode": {
-                    "enum": [
-                      "published_only",
-                      "live_on_demand"
-                    ],
-                    "default": "live_on_demand"
-                  },
-                  "delivery_tier": {
-                    "enum": [
-                      "signed_risk_intelligence",
-                      "structural_baseline"
-                    ],
-                    "default": "signed_risk_intelligence"
-                  },
-                  "risk_gate_context": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "action_type"
-                    ],
-                    "properties": {
-                      "policy_preset": {
-                        "enum": [
-                          "balanced",
-                          "cautious",
-                          "strict"
-                        ],
-                        "default": "balanced"
-                      },
-                      "action_type": {
-                        "enum": [
-                          "treasury_payment",
-                          "vendor_payment",
-                          "agent_payment",
-                          "exposure_review"
-                        ]
-                      },
-                      "amount_usdc": {
-                        "type": "number",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000000000
-                      }
-                    }
-                  },
-                  "client_request_id": {
-                    "type": "string",
-                    "minLength": 4,
-                    "maxLength": 128
-                  }
-                }
-              },
-              "example": {
-                "subjects": [
-                  {
-                    "type": "country",
-                    "country_iso3": "IND"
-                  }
-                ],
-                "question": "What are the macro and FX risks for India?",
-                "fulfillment_mode": "published_only",
-                "detail": "standard"
-              }
-            }
-          }
-        },
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Only when underlying independently verified contract permits it; 200 is not implied by discovery."
-          },
-          "400": {
-            "description": "Invalid or unsupported query"
-          },
-          "402": {
-            "description": "Only after canonical deliverability and payment preflight, not a blanket price offer"
-          },
-          "409": {
-            "description": "Request conflict or recovery required; do not authorize a second payment"
-          },
-          "413": {
-            "description": "Request exceeds this endpoint's byte limit"
-          },
-          "415": {
-            "description": "application/json required"
-          },
-          "422": {
-            "description": "Not eligible or insufficient original evidence/rights"
-          },
-          "429": {
-            "description": "Rate limited; honor Retry-After if present and back off without auto-paying"
-          },
-          "503": {
-            "description": "Unavailable or unverified data runtime; no paid delivery"
-          }
-        }
-      }
-    },
-    "/api/v1/intelligence/critical-minerals": {
-      "get": {
-        "operationId": "discoverCriticalMineralsCategory",
-        "summary": "Discover category metadata or explicit unscored research views",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Read the response scope and clocks; success does not establish commercial eligibility."
-          },
-          "400": {
-            "description": "Invalid query parameters"
-          },
-          "429": {
-            "description": "Rate limited; back off without automatic payment"
-          },
-          "503": {
-            "description": "Required runtime or product unavailable"
-          }
-        },
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "finds",
-                "latest",
-                "open-data",
-                "combined"
-              ]
-            },
-            "description": "Omit for payment-resource discovery; these research views do not produce signed GROs."
-          }
-        ]
-      },
-      "post": {
-        "summary": "GEOMACRO Critical Minerals API",
-        "operationId": "Querycriticalmineralsscopedintelligence",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "subjects"
-                ],
-                "description": "Country-only category query; topics are bound by the server. Question must remain within the category.",
-                "properties": {
-                  "product": {
-                    "oneOf": [
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_digest"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_country_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "structural_corridor_profile"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "focused"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "intelligence_query"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "existing_valid_signed"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant",
-                          "issued_after"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "signed_risk_object"
-                          },
-                          "variant": {
-                            "const": "newly_qualified_signed"
-                          },
-                          "issued_after": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature."
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "existing_proof_preflight"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "standard"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "capability",
-                          "variant"
-                        ],
-                        "properties": {
-                          "capability": {
-                            "const": "risk_gate_bundle"
-                          },
-                          "variant": {
-                            "const": "complex_multi_source"
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  "schema_version": {
-                    "const": "geomacro.agent-query.v1"
-                  },
-                  "subjects": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "type",
-                        "country_iso3"
-                      ],
-                      "properties": {
-                        "type": {
-                          "const": "country"
-                        },
-                        "country_iso3": {
-                          "type": "string",
-                          "pattern": "^[A-Z]{3}$",
-                          "example": "IND"
-                        }
-                      }
-                    }
-                  },
-                  "question": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 2000
-                  },
-                  "response_locale": {
-                    "type": "string",
-                    "enum": [
-                      "en",
-                      "bn",
-                      "hi"
-                    ],
-                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
-                  },
-                  "topics": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "uniqueItems": true,
-                    "items": {
-                      "enum": [
-                        "critical_minerals"
-                      ]
-                    }
-                  },
-                  "intent": {
-                    "const": "single_subject"
-                  },
-                  "ranking": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "metric"
-                    ],
-                    "properties": {
-                      "metric": {
-                        "const": "risk_object_score"
-                      },
-                      "order": {
-                        "enum": [
-                          "high_to_low",
-                          "low_to_high"
-                        ],
-                        "default": "high_to_low"
-                      },
-                      "limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 25
-                      }
-                    }
-                  },
-                  "change": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "baseline"
-                    ],
-                    "properties": {
-                      "baseline": {
-                        "const": "previous_published"
-                      }
-                    }
-                  },
-                  "as_of": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "max_age_seconds": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 94608000,
-                    "description": "May only tighten the source-native module freshness policy."
-                  },
-                  "evidence": {
-                    "enum": [
-                      "required",
-                      "summary"
-                    ],
-                    "default": "required"
-                  },
-                  "detail": {
-                    "enum": [
-                      "compact",
-                      "standard",
-                      "full"
-                    ],
-                    "default": "standard"
-                  },
-                  "fulfillment_mode": {
-                    "enum": [
-                      "published_only",
-                      "live_on_demand"
-                    ],
-                    "default": "live_on_demand"
-                  },
-                  "delivery_tier": {
-                    "enum": [
-                      "signed_risk_intelligence",
-                      "structural_baseline"
-                    ],
-                    "default": "signed_risk_intelligence"
-                  },
-                  "risk_gate_context": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "action_type"
-                    ],
-                    "properties": {
-                      "policy_preset": {
-                        "enum": [
-                          "balanced",
-                          "cautious",
-                          "strict"
-                        ],
-                        "default": "balanced"
-                      },
-                      "action_type": {
-                        "enum": [
-                          "treasury_payment",
-                          "vendor_payment",
-                          "agent_payment",
-                          "exposure_review"
-                        ]
-                      },
-                      "amount_usdc": {
-                        "type": "number",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000000000
-                      }
-                    }
-                  },
-                  "client_request_id": {
-                    "type": "string",
-                    "minLength": 4,
-                    "maxLength": 128
-                  }
-                }
-              },
-              "example": {
-                "subjects": [
-                  {
-                    "type": "country",
-                    "country_iso3": "IND"
-                  }
-                ],
-                "question": "What are the critical minerals risks for India?",
-                "fulfillment_mode": "published_only",
-                "detail": "standard"
-              }
-            }
-          }
-        },
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Only when underlying independently verified contract permits it; 200 is not implied by discovery."
-          },
-          "400": {
-            "description": "Invalid or unsupported query"
-          },
-          "402": {
-            "description": "Only after canonical deliverability and payment preflight, not a blanket price offer"
+         …28562 tokens truncated…nly after canonical deliverability and payment preflight, not a blanket price offer"
           },
           "409": {
             "description": "Request conflict or recovery required; do not authorize a second payment"
@@ -4593,9 +1721,7 @@
   "x-geomacro": {
     "official_api_display_names": {
       "intelligence": "GEOMACRO Intelligence API",
-      "geopolitics": "GEOMACRO Geopolitics API",
-      "macro_fx": "GEOMACRO Macro/FX API",
-      "critical_minerals": "GEOMACRO Critical Minerals API",
+      "risk_gate": "GEOMACRO Commercial Risk Gate API",
       "agent": "GEOMACRO AI Agent API"
     },
     "official_api_catalog": [
@@ -4606,22 +1732,10 @@
         "path": "/api/v1/intelligence/query"
       },
       {
-        "id": "geopolitics",
-        "name": "GEOMACRO Geopolitics API",
+        "id": "risk_gate",
+        "name": "GEOMACRO Commercial Risk Gate API",
         "method": "POST",
-        "path": "/api/v1/intelligence/geopolitics"
-      },
-      {
-        "id": "macro_fx",
-        "name": "GEOMACRO Macro/FX API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/macro-fx"
-      },
-      {
-        "id": "critical_minerals",
-        "name": "GEOMACRO Critical Minerals API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/critical-minerals"
+        "path": "/api/v1/risk-gate"
       },
       {
         "id": "agent",
@@ -4630,6 +1744,11 @@
         "path": "/api/v1/agent"
       }
     ],
+    "official_api_display_urls": {
+      "intelligence": "geomacro.live /api/v1/intelligence/query",
+      "risk_gate": "geomacro.live /api/v1/risk-gate",
+      "agent": "geomacro.live /api/v1/agent"
+    },
     "public_endpoint_catalog": [
       {
         "id": "intelligence",
@@ -4641,43 +1760,20 @@
           "POST"
         ],
         "purpose": "Country, corridor and multi-topic queries through the shared engine.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
+        "access": "GET discovery; POST requires per-request eligibility and x402.",
+        "display_url": "geomacro.live /api/v1/intelligence/query"
       },
       {
-        "id": "geopolitics",
-        "name": "GEOMACRO Geopolitics API",
+        "id": "risk_gate",
+        "name": "GEOMACRO Commercial Risk Gate API",
         "method": "POST",
-        "path": "/api/v1/intelligence/geopolitics",
+        "path": "/api/v1/risk-gate",
         "methods": [
-          "GET",
           "POST"
         ],
-        "purpose": "Country queries within this category; canonical evidence and payment checks.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
-      },
-      {
-        "id": "macro_fx",
-        "name": "GEOMACRO Macro/FX API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/macro-fx",
-        "methods": [
-          "GET",
-          "POST"
-        ],
-        "purpose": "Country queries within this category; canonical evidence and payment checks.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
-      },
-      {
-        "id": "critical_minerals",
-        "name": "GEOMACRO Critical Minerals API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/critical-minerals",
-        "methods": [
-          "GET",
-          "POST"
-        ],
-        "purpose": "Country queries within this category; canonical evidence and payment checks.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
+        "purpose": "One signed Risk Gate endpoint for geopolitics, macro/FX or critical minerals, selected by category.",
+        "access": "POST requires a customer API key, per-request evidence eligibility and commercial checks.",
+        "display_url": "geomacro.live /api/v1/risk-gate"
       },
       {
         "id": "agent",
@@ -4689,7 +1785,8 @@
           "POST"
         ],
         "purpose": "Discover tools; POST a tool and arguments envelope.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
+        "access": "GET discovery; POST requires per-request eligibility and x402.",
+        "display_url": "geomacro.live /api/v1/agent"
       },
       {
         "id": "availability",
@@ -4700,7 +1797,8 @@
         ],
         "path": "/api/v1/intelligence/availability",
         "purpose": "Structural baseline preflight. Legacy: one country/topic; explicit Store product: country/corridor digest or full multidimension profile.",
-        "access": "No funds; not current signed risk."
+        "access": "No funds; not current signed risk.",
+        "display_url": "geomacro.live /api/v1/intelligence/availability"
       },
       {
         "id": "pricing",
@@ -4710,7 +1808,8 @@
         ],
         "path": "/api/v1/pricing",
         "purpose": "Exact capability prices and output contracts.",
-        "access": "Public catalog; not a payment offer."
+        "access": "Public catalog; not a payment offer.",
+        "display_url": "geomacro.live /api/v1/pricing"
       },
       {
         "id": "networks",
@@ -4720,7 +1819,8 @@
         ],
         "path": "/api/v1/payments/networks",
         "purpose": "Base, Arc and Polygon native USDC rails.",
-        "access": "Discovery; activation checked separately."
+        "access": "Discovery; activation checked separately.",
+        "display_url": "geomacro.live /api/v1/payments/networks"
       },
       {
         "id": "price_preflight",
@@ -4730,7 +1830,8 @@
         ],
         "path": "/api/v1/payments/preflight",
         "purpose": "Preview a capability, variant and network amount.",
-        "access": "No funds; does not prove deliverability."
+        "access": "No funds; does not prove deliverability.",
+        "display_url": "geomacro.live /api/v1/payments/preflight"
       },
       {
         "id": "outputs",
@@ -4740,7 +1841,8 @@
         ],
         "path": "/api/intelligence/capabilities",
         "purpose": "view=outputs for fields or view=license for terms.",
-        "access": "Public discovery."
+        "access": "Public discovery.",
+        "display_url": "geomacro.live /api/intelligence/capabilities"
       },
       {
         "id": "finds",
@@ -4750,7 +1852,8 @@
         ],
         "path": "/api/v1/finds",
         "purpose": "Derived cards; domain=geopolitics, macro or rare_earth.",
-        "access": "No funds; unscored research, not a signed risk product."
+        "access": "No funds; unscored research, not a signed risk product.",
+        "display_url": "geomacro.live /api/v1/finds"
       },
       {
         "id": "live_structured",
@@ -4761,17 +1864,8 @@
         ],
         "path": "/api/v1/intelligence/live-structured",
         "purpose": "Official observations and open-data measurements by category, country or supported numeric question.",
-        "access": "No funds; reference periods may precede retrieval."
-      },
-      {
-        "id": "risk_indices",
-        "name": "Public Risk Indices",
-        "methods": [
-          "GET"
-        ],
-        "path": "/api/public/risk-indices",
-        "purpose": "Public category indices with publication delay and verification status.",
-        "access": "Website research; current values may be unavailable."
+        "access": "No funds; reference periods may precede retrieval.",
+        "display_url": "geomacro.live /api/v1/intelligence/live-structured"
       },
       {
         "id": "keys",
@@ -4781,7 +1875,8 @@
         ],
         "path": "/api/risk-object-keys",
         "purpose": "Public keys and key lifecycle metadata.",
-        "access": "Public verification metadata."
+        "access": "Public verification metadata.",
+        "display_url": "geomacro.live /api/risk-object-keys"
       },
       {
         "id": "health",
@@ -4791,7 +1886,8 @@
         ],
         "path": "/api/health",
         "purpose": "Runtime status; deep=1 checks product dependencies.",
-        "access": "Diagnostics; HTTP 200 alone is not a payable offer."
+        "access": "Diagnostics; HTTP 200 alone is not a payable offer.",
+        "display_url": "geomacro.live /api/health"
       },
       {
         "id": "mcp",
@@ -4801,7 +1897,8 @@
         ],
         "path": "/api/mcp",
         "purpose": "JSON-RPC initialize, tools/list and tools/call.",
-        "access": "Tool-specific proof verification or governed x402 delivery."
+        "access": "Tool-specific proof verification or governed x402 delivery.",
+        "display_url": "geomacro.live /api/mcp"
       },
       {
         "id": "a2a",
@@ -4811,17 +1908,18 @@
         ],
         "path": "/api/a2a",
         "purpose": "Agent card and protocol routes.",
-        "access": "Discovery; tasks follow their own authentication."
+        "access": "Discovery; tasks follow their own authentication.",
+        "display_url": "geomacro.live /api/a2a"
       }
     ],
     "branding_does_not_change_http_method": true,
-    "pricing_version": "geomacro.capability-usdc.v1",
+    "pricing_version": "geomacro.capability-usdc.v2",
     "pricing": [
       {
         "capability": "structural_country_digest",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_country_digest",
             "variant": "standard",
             "amount_usdc": "0.02",
@@ -4831,29 +1929,33 @@
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "structural_corridor_digest",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_corridor_digest",
             "variant": "standard",
-            "amount_usdc": "0.05",
-            "amount_atomic": "50000",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "structural_country_profile",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_country_profile",
             "variant": "standard",
             "amount_usdc": "0.03",
@@ -4863,103 +1965,101 @@
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "structural_corridor_profile",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_corridor_profile",
             "variant": "standard",
-            "amount_usdc": "0.08",
-            "amount_atomic": "80000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "intelligence_query",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "intelligence_query",
             "variant": "focused",
+            "amount_usdc": "0.02",
+            "amount_atomic": "20000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "NOT_APPLICABLE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "intelligence_query",
+            "variant": "standard",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "NOT_APPLICABLE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "intelligence_query",
+            "variant": "complex_multi_source",
             "amount_usdc": "0.05",
             "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "intelligence_query",
-            "variant": "standard",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "NOT_APPLICABLE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "intelligence_query",
-            "variant": "complex_multi_source",
-            "amount_usdc": "0.15",
-            "amount_atomic": "150000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "signed_risk_object",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "signed_risk_object",
             "variant": "existing_valid_signed",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "NOT_APPLICABLE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "signed_risk_object",
+            "variant": "newly_qualified_signed",
             "amount_usdc": "0.05",
             "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "signed_risk_object",
-            "variant": "newly_qualified_signed",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "risk_gate_bundle",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "existing_proof_preflight",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "risk_gate_bundle",
-            "variant": "standard",
             "amount_usdc": "0.15",
             "amount_atomic": "150000",
             "currency": "USDC",
@@ -4967,17 +2067,29 @@
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "risk_gate_bundle",
+            "variant": "standard",
+            "amount_usdc": "0.20",
+            "amount_atomic": "200000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "complex_multi_source",
-            "amount_usdc": "0.25",
-            "amount_atomic": "250000",
+            "amount_usdc": "0.30",
+            "amount_atomic": "300000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "COMING_SOON",
+        "new_sales_allowed": false
       }
     ],
     "locked_pricing_endpoint": "/api/v1/pricing",
@@ -5286,6 +2398,13 @@
           }
         },
         "additionalProperties": true
+      }
+    },
+    "securitySchemes": {
+      "BearerApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "GeoMacro customer API key"
       }
     }
   }

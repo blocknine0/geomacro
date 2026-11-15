@@ -11,7 +11,9 @@ const canonical = officialGeomacroAgentOpenApi();
 const legacyPaths = Object.fromEntries(Object.entries(previous.paths)
   .filter(([key]) => key.startsWith("/api/x402/")));
 const spec = { ...canonical, paths: { ...legacyPaths, ...canonical.paths },
-  components: previous.components,
+  components: { ...previous.components, ...canonical.components,
+    securitySchemes: { ...previous.components?.securitySchemes,
+      ...canonical.components?.securitySchemes } },
 };
 const query = spec.components.schemas.AdaptiveQuery;
 query.properties.detail.enum = ["compact", "standard", "full"];

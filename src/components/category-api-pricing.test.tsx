@@ -5,38 +5,39 @@ import { CategoryApiPricing } from "./category-api-pricing";
 import { GEOMACRO_CAPABILITY_PRICES } from "@/lib/capability-pricing-catalog";
 
 describe("three-category API pricing presentation", () => {
-  it("defaults to endpoint discovery without the paused Store price schedule",()=>{
+  it("defaults to endpoint discovery without hiding the unified endpoint",()=>{
     const html=renderToStaticMarkup(createElement(CategoryApiPricing));
     expect((html.match(/data-api-id=/g)??[])).toHaveLength(3);
     expect(html).not.toContain('data-price-usdc=');
     expect(html).not.toContain('href="#product-catalog"');
-    expect(html).toContain('Self-service per-delivery');
+    expect(html).toContain("geomacro.live /api/v1/risk-gate");
   });
-  it("shows all three canonical category endpoints with the same approved intelligence-query prices", () => {
+  it("shows three category rows on one canonical endpoint with Predge-parity Risk Gate pricing", () => {
     const html = renderToStaticMarkup(createElement(CategoryApiPricing, {showPrices:true}));
     expect((html.match(/data-api-id=/g) ?? [])).toHaveLength(3);
     expect(html).toContain('data-api-id="geopolitics"');
     expect(html).toContain("GEOMACRO Geopolitics API");
-    expect(html).toContain("geomacro.live /api/v1/intelligence/geopolitics");
+    expect(html).toContain("geomacro.live /api/v1/risk-gate");
     expect(html).toContain('data-api-id="macro_fx"');
     expect(html).toContain("GEOMACRO Macro/FX API");
-    expect(html).toContain("geomacro.live /api/v1/intelligence/macro-fx");
+    expect(html).toContain("data-risk-gate-category=\"macro-fx\"");
     expect(html).toContain('data-api-id="critical_minerals"');
     expect(html).toContain("GEOMACRO Critical Minerals API");
-    expect(html).toContain("geomacro.live /api/v1/intelligence/critical-minerals");
-    for (const [variant, amount] of Object.entries(GEOMACRO_CAPABILITY_PRICES.intelligence_query)) {
+    expect(html).toContain("data-risk-gate-category=\"critical-minerals\"");
+    expect(html.match(/geomacro\.live \/api\/v1\/risk-gate/g)?.length).toBeGreaterThanOrEqual(3);
+    for (const [variant, amount] of Object.entries(GEOMACRO_CAPABILITY_PRICES.risk_gate_bundle)) {
       expect((html.match(new RegExp(`data-variant="${variant}" data-price-usdc="${amount}"`, "g")) ?? []))
         .toHaveLength(3);
     }
+    expect(html).toContain("data-prepaid-credit-costs=\"15,20,30\"");
+    expect(html).toContain("Official GEOMACRO Commercial Risk Gate");
+    expect(html).toContain("Ed25519 GRO provenance");
   });
 
-  it("explains shared billing and does not claim a published price activates payment", () => {
+  it("explains category parameters and keeps payment activation gated", () => {
     const html = renderToStaticMarkup(createElement(CategoryApiPricing));
-    expect(html).toContain("no category surcharge");
-    expect(html).toContain("not three separate merchant resources or separate charges");
-    expect(html).toContain("GEOMACRO Intelligence API");
-    expect(html).toContain("geomacro.live /api/v1/intelligence/query");
-    expect(html).not.toContain("POST ");
-    expect(html).toContain("Production USDC payments remain locked pending separate approval.");
+    expect(html).toContain("category: geopolitics | macro-fx | critical-minerals");
+    expect(html).toContain("country_iso3");
+    expect(html).toContain("payment activation remains separately gated");
   });
 });

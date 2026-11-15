@@ -9,6 +9,11 @@ export const GEOMACRO_CREDIT_COSTS=Object.freeze({
  structural_corridor_digest:5,structural_country_profile:8,
  structural_corridor_profile:12,signed_risk_object:10,risk_gate_bundle:15,
 });
+/** Risk Gate equivalents at the published one-cent-per-credit rate. These
+ * are tier metadata; live debit/checkout remains separately gated. */
+export const GEOMACRO_RISK_GATE_CREDIT_COSTS=Object.freeze({
+ basic_focused:15,standard:20,complex_full:30,
+});
 /** Advertised capabilities are NOT permission to activate unavailable sales. */
 export const GEOMACRO_NEW_SALE_TIER_CAPABILITIES=Object.freeze({
  starter_dev:Object.freeze(["intelligence_query","structural_country_digest","structural_country_profile"]),

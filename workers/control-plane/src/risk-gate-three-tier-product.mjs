@@ -15,14 +15,14 @@ import {productActivationTriggers} from "./risk-gate-activation-triggers.mjs";
 export const RISK_GATE_PRODUCT_SCHEMA="geomacro.risk-gate-commercial-three-tier.v1";
 export const RISK_GATE_PRODUCT_TIERS=Object.freeze({
  basic_focused:Object.freeze({tier:"BASIC_FOCUSED",legacy_variant:"existing_proof_preflight",
-  display_name:"Basic / Focused",usd_per_call:"0.10",usdc_atomic:"100000",
+  display_name:"Basic / Focused",usd_per_call:"0.15",usdc_atomic:"150000",credit_equivalent:15,
   requirement:"SINGLE_OBSERVED_SOURCE",confidence:"LOW",verification:"PROVISIONAL"}),
  standard:Object.freeze({tier:"STANDARD",legacy_variant:"standard",
-  display_name:"Standard",usd_per_call:"0.15",usdc_atomic:"150000",
+  display_name:"Standard",usd_per_call:"0.20",usdc_atomic:"200000",credit_equivalent:20,
   requirement:"THREE_CATEGORY_INDEPENDENT_CORROBORATION",
   confidence:"MEDIUM",verification:"VERIFIED"}),
  complex_full:Object.freeze({tier:"COMPLEX_FULL",legacy_variant:"complex_multi_source",
-  display_name:"Complex / Full",usd_per_call:"0.25",usdc_atomic:"250000",
+  display_name:"Complex / Full",usd_per_call:"0.30",usdc_atomic:"300000",credit_equivalent:30,
   requirement:"SIGNED_GRO_B2_READBACK_AND_SEVEN_DAY_HISTORY",
   confidence:"HIGH",verification:"CRYPTO_SIGNED"}),
 });
@@ -172,6 +172,7 @@ export function composeRiskGateThreeTierResponse({
   tier_name:product.display_name,
   price:{currency:"USD",usd_per_call:product.usd_per_call,
    usdc_atomic_at_1_usdc_per_usd:product.usdc_atomic,
+   credit_equivalent:product.credit_equivalent,
    billing_unit:"PER_SUCCESSFUL_DELIVERY"},
   subject,evaluated_at:new Date(now).toISOString(),
   execution_authorized:false,charged:false,
