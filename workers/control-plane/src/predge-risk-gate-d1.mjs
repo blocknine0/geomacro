@@ -337,8 +337,15 @@ export async function readPredgePullLicense(env,parsed,now){
  // candidate row against the envelope's source_gro_sha256.
  let licensedCandidatePayload;
  try{licensedCandidatePayload=JSON.parse(p.source_gro_payload_json)}catch{return null;}
- const source=await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
-  "WHERE gro_id=? LIMIT 1").bind(licensedCandidatePayload?.commercial_origin_gro_id??"").first();
+ const commercialOriginGroId=licensedCandidatePayload?.commercial_origin_gro_id;
+ // New reviewer licenses bind the upstream source GRO by its ID. Older
+ // valid licenses bind the same source by its signed payload hash; retain
+ // that cryptographic fallback for existing licenses during migration.
+ const source=commercialOriginGroId?
+  await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+   "WHERE gro_id=? LIMIT 1").bind(commercialOriginGroId).first():
+  await env.DB.prepare("SELECT gro_id,payload_sha256 FROM risk_stream_signed_gro "+
+   "WHERE payload_sha256=? LIMIT 1").bind(p.source_gro_sha256).first();
  const candidate=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
   "FROM risk_stream_signed_gro WHERE gro_id=? LIMIT 1").bind(row.gro_id).first();
  if(!source||source.payload_sha256!==approval?.source_gro_sha256||

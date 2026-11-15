@@ -39,12 +39,16 @@ async function fixture(category="GEOPOLITICS",eligibleTiers=["basic_focused","st
   generated_at:new Date(now-60000).toISOString(),expires_at:new Date(now+3600000).toISOString(),
   customer_delivery_authorized:true,charged:false,execution_authorized:false,certified_risk_index:false};
  const sourceJson=JSON.stringify(source),sourceHash=sha(sourceJson);
- const record={gro_id:sha("source-gro-id"),payload_json:sourceJson,payload_sha256:sourceHash,
+ const sourceRecord={gro_id:sha("source-gro-id"),payload_json:sourceJson,payload_sha256:sourceHash,
   signature_b64:sign(null,Buffer.from(sourceJson),gro.privateKey).toString("base64")};
+ const candidate={...source,commercial_origin_gro_id:sourceRecord.gro_id};
+ const candidateJson=JSON.stringify(candidate),candidateHash=await licensedSha(candidateJson);
+ const record={...sourceRecord,payload_json:candidateJson,payload_sha256:candidateHash,
+  signature_b64:sign(null,Buffer.from(candidateJson),gro.privateKey).toString("base64")};
  const approval={schema:"geomacro.commercial-release-accepted.v1",
   client_id:"predge-paid-risk-gate-addendum-v2",production_release_verified:true,
   independent_source_rights_verified:true,customer_entitlement_verified:true,go_live_approved:true,
-  canary_hold_cleared:true,validated_gro_sha256:sourceHash,
+  canary_hold_cleared:true,source_gro_sha256:sourceHash,validated_gro_sha256:candidateHash,
   signed_release_receipt_sha256:sha("release-receipt"),reviewed_at:new Date(now-1000).toISOString(),
   customer_entitlement_expires_at:new Date(now+1800000).toISOString(),eligible_tiers:eligibleTiers};
  const unsigned={...approval};
@@ -54,9 +58,6 @@ async function fixture(category="GEOPOLITICS",eligibleTiers=["basic_focused","st
   groPublicSpkiB64:spki(gro.publicKey),licensePrivatePkcs8B64:pkcs8(license.privateKey),
   licensePublicSpkiB64:spki(license.publicKey),releasePublicSpkiB64:spki(release.publicKey),
   eligibleDerivedScore,approval,now});
- const candidate={...source,customer_delivery_authorized:true,
-  commercial_origin_gro_id:record.gro_id};
- const candidateJson=JSON.stringify(candidate),candidateHash=await licensedSha(candidateJson);
  const candidateRow={payload_json:candidateJson,payload_sha256:candidateHash,
   signature_b64:sign(null,Buffer.from(candidateJson),gro.privateKey).toString("base64")};
  const row={gro_id:await licensedSha("geomacro.authorized-gro.v1\n"+record.gro_id),
@@ -72,8 +73,10 @@ async function fixture(category="GEOPOLITICS",eligibleTiers=["basic_focused","st
   RISK_STREAM_GRO_VERIFY_SPKI_B64:spki(gro.publicKey),DB:{prepare(sql){
    return {bind(...args){this.args=args;return this},async first(){
     if(sql.includes("FROM risk_stream_predge_pull_licenses"))return row;
-    if(sql.includes("WHERE payload_sha256=?"))return {gro_id:record.gro_id,payload_sha256:sourceHash};
-    if(sql.includes("WHERE gro_id=?"))return candidateRow;
+    if(sql.includes("WHERE payload_sha256=?"))return {gro_id:sourceRecord.gro_id,payload_sha256:sourceHash};
+    if(sql.includes("WHERE gro_id=?")&&this.args[0]===sourceRecord.gro_id)
+     return {gro_id:sourceRecord.gro_id,payload_sha256:sourceHash};
+    if(sql.includes("WHERE gro_id=?")&&this.args[0]===row.gro_id)return candidateRow;
     throw Error("UNEXPECTED_D1_QUERY");
    }};
   }}};
