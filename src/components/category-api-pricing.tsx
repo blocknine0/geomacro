@@ -17,8 +17,9 @@ const VARIANTS = [
   { id: "complex_multi_source", label: "Complex multi-source (COMPLEX)", tier: "complex_full" },
 ] as const;
 
-const RISK_GATE_API = GEOMACRO_OFFICIAL_API_CATALOG.find((candidate) => candidate.id === "risk_gate");
-if (!RISK_GATE_API) throw new Error("Missing canonical Geomacro Risk Gate API");
+const RISK_GATE_API_PATH: string = GEOMACRO_OFFICIAL_API_CATALOG.find(
+  (candidate) => candidate.id === "risk_gate",
+)?.path ?? (() => { throw new Error("Missing canonical Geomacro Risk Gate API"); })();
 
 /** Public price display only. Category aliases share the canonical query engine and payment resource. */
 export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) {
@@ -62,7 +63,7 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
                     Official commercial Risk Gate · category: {api.category}
                   </span>
                   <code className="mt-2 block break-all text-xs font-medium text-primary">
-                    geomacro.live {RISK_GATE_API.path}
+                    geomacro.live {RISK_GATE_API_PATH}
                   </code>
                 </th>
                 {showPrices && VARIANTS.map((variant) => (
