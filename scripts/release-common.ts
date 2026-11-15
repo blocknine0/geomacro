@@ -122,6 +122,15 @@ export function classifyGraphQLFailure(body:unknown):string{
   return 'RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE';
  return 'RELEASE_GRAPHQL_PROVIDER_ERRORS';
 }
+/** Classify HTTP-level GraphQL telemetry failures without echoing provider data. */
+export function classifyGraphQLHttpFailure(status:number):string{
+ if(status===401||status===403)return 'RELEASE_GRAPHQL_ACCESS_DENIED';
+ if(status===429)return 'RELEASE_GRAPHQL_RATE_OR_COST_LIMIT';
+ if(status>=500&&status<=599)return 'RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE';
+ if(Number.isSafeInteger(status)&&status>=100&&status<=599)
+  return `RELEASE_GRAPHQL_UNVERIFIED_${status}`;
+ return 'RELEASE_GRAPHQL_RESPONSE_INVALID';
+}
 export type VerifiedGraphQLCredential='CLOUDFLARE_BILLING_READ_TOKEN'|'CLOUDFLARE_API_TOKEN';
 export async function queryCloudflareAnalytics(
  query:string,variables:Record<string,unknown>,
@@ -132,13 +141,22 @@ export async function queryCloudflareAnalytics(
  need(credential==='CLOUDFLARE_BILLING_READ_TOKEN'||credential==='CLOUDFLARE_API_TOKEN',
   'RELEASE_GRAPHQL_CREDENTIAL_NOT_ALLOWED');
  const token=envString(credential,20);
- const res=await fetch('https://api.cloudflare.com/client/v4/graphql',{
-  method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000),
-  headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Accept:'application/json'},
-  body:JSON.stringify({query,variables})
- });const body=await res.json().catch(()=>null);
+ let res:Response;
+ try{
+  res=await fetch('https://api.cloudflare.com/client/v4/graphql',{
+   method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000),
+   headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Accept:'application/json'},
+   body:JSON.stringify({query,variables})
+  });
+ }catch{
+  // Network and timeout details can contain provider or request information;
+  // expose only a fixed diagnostic suitable for the no-Zone fallback.
+  throw Error('RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE');
+ }
+ const body=await res.json().catch(()=>null);
  if(Array.isArray(body?.errors)&&body.errors.length)throw Error(classifyGraphQLFailure(body));
- need(res.ok&&!res.redirected&&body?.data,`RELEASE_GRAPHQL_UNVERIFIED_${res.status}`);
+ if(!res.ok||res.redirected)throw Error(classifyGraphQLHttpFailure(res.status));
+ need(body?.data,'RELEASE_GRAPHQL_RESPONSE_INVALID');
  return body.data;
 }
 export async function queryD1(databaseId:string,sql:string):Promise<{rows:any[];meta:any}>{
