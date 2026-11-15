@@ -24,12 +24,29 @@ describe("remaining source stages run without frozen Supabase",()=>{
     const f=fixture();const r=await runSupabaseFreeSourceRuntime({...f,now});
     expect(r.d1_exact_readback_verified).toBe(true);expect(r.source_reads_healthy).toBe(true);
     expect(f.rows.size).toBe(4);expect(f.readOpen).toHaveBeenCalledTimes(3);
-    expect(f.readOpen.mock.calls.every(c=>c[1].fallbackToD1===false)).toBe(true);
+    expect(f.readOpen.mock.calls.every(c=>c[1].fallbackToD1===false&&
+      c[1].includeSourceDiagnostics===true)).toBe(true);
     const env=workerEnv(f.rows),status=await (await getSourceRuntimeStatus(env,at)).json();
     expect(status.status).toBe("ALL_CATEGORY_LANES_READABLE");expect(status.gdelt_index_clock_is_original_publication).toBe(false);
     for(const category of ["geopolitics","macro-fx","critical-minerals"])
       expect((await getSourceRuntimeContext(env,category,at)).status).toBe(200);
     expect((await getSourceRuntimeStatus(env,at+3*3600_000+1)).status).toBe(503);
+  });
+  it("reports the exact failed reader privately without persisting it into public context",async()=>{
+    const f=fixture();
+    f.readOpen=vi.fn(async(category:string)=>({...context(category),
+      source_family_diagnostics:category==="critical-minerals"?[
+        {source_id:"bgs_world_minerals",readable:false,state:"TIMEOUT",http_status:null},
+      ]:[]})) as any;
+    const report=await runSupabaseFreeSourceRuntime({...f,now});
+    expect(report.source_family_failures).toEqual([{
+      category:"rare_earth",source_id:"bgs_world_minerals",state:"TIMEOUT",http_status:null,
+    }]);
+    expect(JSON.stringify(report)).not.toMatch(/https?:\/\/|www\./u);
+    expect(f.rows.get("rare_earth").payload.context).not.toHaveProperty("source_family_diagnostics");
+    expect(f.rows.get("summary").payload.report.source_family_failures).toEqual(report.source_family_failures);
+    const publicStatus=await (await getSourceRuntimeStatus(workerEnv(f.rows),at)).json();
+    expect(JSON.stringify(publicStatus)).not.toContain("bgs_world_minerals");
   });
   it("retains a valid prior context with its old clock when upstream fails, and exposes degradation",async()=>{
     const f=fixture();await runSupabaseFreeSourceRuntime({...f,now});

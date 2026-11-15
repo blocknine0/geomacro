@@ -241,6 +241,21 @@ describe("no-card original government structured data adapters",()=>{
     expect(result.signed_gro_generated).toBe(false);
     expect(result.persistent_storage_written).toBe(false);
   });
+  it("can identify unreadable provider families without exposing diagnostics by default",async()=>{
+    const fetcher=vi.fn(async(input:RequestInfo|URL)=>{
+      const host=new URL(String(input)).hostname;
+      return new Response("unavailable",{status:host==="ogcapi.bgs.ac.uk"?503:403});
+    }) as typeof fetch;
+    const ordinary=await readCategoryOpenData("critical-minerals",{now,fetcher,fallbackToD1:false});
+    expect(ordinary.source_families_readable).toBe(0);
+    expect(ordinary).not.toHaveProperty("source_family_diagnostics");
+    const diagnostic=await readCategoryOpenData("critical-minerals",{now,fetcher,
+      fallbackToD1:false,includeSourceDiagnostics:true});
+    expect(diagnostic.source_family_diagnostics).toEqual(expect.arrayContaining([
+      {source_id:"bgs_world_minerals",readable:false,state:"UPSTREAM_5XX",http_status:503},
+    ]));
+    expect(JSON.stringify(diagnostic)).not.toMatch(/https?:\/\/|ogcapi\.bgs/iu);
+  });
   it("recovers the same edition from the first-party citation when JSON services fail",async()=>{
     const html=`<html><h1>Mineral commodity summaries 2026</h1><table>
       <tr><th>Publication Year</th><td>2026</td></tr>

@@ -41,8 +41,13 @@ export async function runSupabaseFreeSourceRuntime({state,fetchImpl=fetch,now=ne
     if([401,403,429].includes(response.status))blockedHosts.add(url.hostname);
     return response;
   }) as typeof fetch;
-  const contextPromise=Promise.all(Object.entries(CATEGORIES).map(async([scope,category])=>({scope,category,
-    context:await readOpen(category,{now:at,fetcher:safeFetch,fallbackToD1:false})})));
+  const contextPromise=Promise.all(Object.entries(CATEGORIES).map(async([scope,category])=>{
+    const result=await readOpen(category,{now:at,fetcher:safeFetch,fallbackToD1:false,
+      includeSourceDiagnostics:true});
+    const {source_family_diagnostics,...context}=result as typeof result&{
+      source_family_diagnostics?:Array<{source_id:string;readable:boolean;state:string;http_status:number|null}>};
+    return {scope,category,context,source_family_diagnostics:source_family_diagnostics??[]};
+  }));
   const [contexts,event,discovery]=await Promise.all([
     contextPromise,eventRead({fetchImpl:safeFetch,now}),
     discoveryRead({now,gkgProbe:opts=>probeGdeltGkgBulk({...opts,fetchImpl:safeFetch}),
@@ -75,11 +80,15 @@ export async function runSupabaseFreeSourceRuntime({state,fetchImpl=fetch,now=ne
     x.context.source_families_unavailable===0&&
     x.context.source_families_readable===x.context.source_families_attempted&&
     Array.isArray(x.context.findings)&&x.context.findings.length===0);
+  const sourceFamilyFailures=contexts.flatMap(({scope,source_family_diagnostics})=>
+    source_family_diagnostics.filter(row=>row.readable===false).map(row=>({
+      category:scope,source_id:row.source_id,state:row.state,http_status:row.http_status})));
   const report={schema:"geomacro.supabase-free-source-runtime.v1",checked_at:now.toISOString(),
     replacements:SOURCE_RUNTIME_REPLACEMENTS,
     gdelt_event:event,gdelt_gkg:gkg,
     contexts:contexts.map(({scope,context})=>({category:scope,source_families_attempted:context.source_families_attempted,
       source_families_readable:context.source_families_readable,derived_context_count:context.findings.length})),
+    source_family_failures:sourceFamilyFailures,
     state_storage:"cloudflare_d1_derived_only",raw_records_persisted:false,supabase_requests:supabaseAttempts,
     b2_requests:0,payments:0,scored:false,independent_reviewed:false,chargeable:false,
     ...(sourceQuiet?{release_qualification:{
