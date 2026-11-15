@@ -1,286 +1,118 @@
-import {describe,expect,it} from "vitest";
-import {readFileSync} from "node:fs";
-import {deriveStatelessSignals} from "../lib/stateless-intelligence-model";
-import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "../../scripts/lib/global-official-release-feeds.mjs";
-import {FIVE_MINUTE_NEWS_FASTLANE,FIVE_MINUTE_NEWS_FALLBACK,
- FASTLANE_MAX_FALLBACK_READS_PER_RUN,FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN,decideFiveMinuteFallbackCategories,
- recentFastlaneReleaseCount,selectFiveMinuteFallback,FIVE_MINUTE_NEWS_FALLBACK_ROTATION,
- readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíëOxN‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉĞí‘•ÍÉ¥‰”±•áÁ•Ğ±¥Ñô™É½´€‰Ù¥Ñ•ÍĞˆì)¥µÁ½ÉĞíÉ•…‘¥±•Må¹ô™É½´€‰¹½‘”é™Ìˆì)¥µÁ½ÉĞí‘•É¥Ù•MÑ…Ñ•±•ÍÍM¥¹…±Íô™É½´€ˆ¸¸½±¥ˆ½ÍÑ…Ñ•±•ÍÌµ¥¹Ñ•±±¥•¹”µµ½‘•°ˆì)¥µÁ½ÉĞí1=	1}=%%1}I1M}Mô™É½´€ˆ¸¸¼¸¸½ÍÉ¥ÁÑÌ½±¥ˆ½±½‰…°µ½™™¥¥…°µÉ•±•…Í”µ™••‘Ì¹µ©Ìˆì)¥µÁ½ÉĞí%Y}5%9UQ}9]M}MQ19±%Y}5%9UQ}9]M}11	,°(MQ19}5a}11	-}IM}AI}IU8±MQ19}5a}AI%5Ie}M}AI}IU8±‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì°(É••¹Ñ…ÍÑ±…¹•I•±•…Í•½Õ¹Ğ±Í•±•Ñ¥Ù•5¥¹ÕÑ•…±±‰…¬±%Y}5%9UQ}9]M}11	-}I=QQ%=8°(É•…‘¥Ù•5¥¹ÕÑ•9•İÍ…ÍÑ±…¹•ô™É½´€ˆ¸¸½±¥ˆ½ÍÑ…Ñ•±•ÍÌµÁÕ‰±¥Œµ¥¹Ñ•±±¥•¹”¹Í•ÉÙ•Èˆì()½¹ÍĞÉ•…ô¡ÀéÍÑÉ¥¹œ¤ôùÉ•…‘¥±•Må¹Œ¡À°‰ÕÑ˜àˆ¤ì)½¹ÍĞQLõl‰•½Á½±¥Ñ¥Ìˆ°‰µ…É¼ˆ°‰É…É•}•…ÉÑ ‰tì)‘•ÍÉ¥‰” ‰‰½Õ¹‘•™¥Ù”µµ¥¹ÕÑ”%IMPµAIQd¹•İÌ™…ÍÑ±…¹”ˆ° ¤ôùì(¥Ğ ‰Á¥¹ÌÍ¥áÑ••¸‰½Õ¹‘•½™™¥¥…°½É¥¥¹…°É•±•…Í”™••‘Ì…É½ÍÌÑ¡É•”‘½µ…¥¹Ìˆ±…Íå¹Œ ¤ôùì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¤¹Ñ½!…Ù•1•¹Ñ  ÄØ¤ì(€€•áÁ•Ğ¡MQ19}5a}AI%5Ie}M}AI}IU8¤¹Ñ½	” ÄØ¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹µ…À¡àôùà¹…Ñ•½Éä¤¤¹Ñ½ÅÕ…°¡l(€€€€€‰•½Á½±¥Ñ¥Ìˆ°‰•½Á½±¥Ñ¥Ìˆ°‰•½Á½±¥Ñ¥Ìˆ°‰•½Á½±¥Ñ¥Ìˆ°‰•½Á½±¥Ñ¥Ìˆ°(€€€€€‰µ…É¼ˆ°‰µ…É¼ˆ°‰µ…É¼ˆ°‰µ…É¼ˆ°‰µ…É¼ˆ°‰µ…É¼ˆ°(€€€€€‰É…É•}•…ÉÑ ˆ°‰É…É•}•…ÉÑ ˆ°‰É…É•}•…ÉÑ ˆ°‰É…É•}•…ÉÑ ˆ°‰É…É•}•…ÉÑ ‰t¤ì(€€•áÁ•Ğ¡¹•ÜM•Ğ¡%Y}5%9UQ}9]M}MQ19¹µ…À¡àôùà¹¥¤¤¹Í¥é”¤¹Ñ½	” ÄØ¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹µ…À¡àôùà¹¥¤¤¹Ñ½ÅÕ…°¡l(€€€€€‰Õ¹}¹•İÌˆ°‰Õ­}™‘¼ˆ°‰Õ¹}ÁÉ•ÍÍ}±½‰…°ˆ°‰•Õ}½Õ¹¥±}ÁÉ•ÍÍ}½É¥¥¹…°ˆ°‰…¹…‘…}™½É•¥¹}ÍÑ…Ñ•µ•¹ÑÌˆ°(€€€€€‰™•‘}ÁÉ•ÍÌˆ°‰İÑ½}ÑÉ…‘•}½É¥¥¹…±}ÉÍÌˆ°‰•‰}ÁÉ•ÍÌˆ°‰‰½}ÁÉ•ÍÍ}±½‰…°ˆ°(€€€€€‰‰¥Í}ÁÉ•ÍÌˆ°‰½ÙÕ­}±½‰…±}•½¹½µäˆ°(€€€€€‰¹É…¹}É•±•…Í•Ìˆ°‰ÕÍ}‘½•}¹•İÍ}µ¥¹•É…±Ìˆ°‰‰}µ¥¹•É…±Í}±½‰…°ˆ°(€€€€€‰Õ­}‘‰Ğˆ°‰½ÙÕ­}±½‰…±}µ¥¹•É…±Ì‰t¤ì(€€½¹ÍĞ½±±•Ñ½ÈõÉ•… ‰ÍÉŒ½±¥ˆ½ÍÑ…Ñ•±•ÍÌµÁÕ‰±¥Œµ¥¹Ñ•±±¥•¹”¹Í•ÉÙ•È¹ÑÌˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰½™™¥¥…±M½ÕÉ•Ì¹™¥±Ñ•È¡ÌôùÌ¹¥ôôõ¥€˜˜Ì¹…Ñ•½Éäôôõ…Ñ•½Éä¤ˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰%Y}5%9UQ}9]M}MQ19¹±•¹Ñ ùMQ19}5a}AI%5Ie}M}AI}IU8ˆ¤ì(€€€¼¼… Í•±•Ñ••¹ÑÉäµÕÍĞÉ•Í½±Ù”Ñ¼…¸•á…Ğ•á¥ÍÑ¥¹œ¥ÍÍÕ•ÈÉ•…‘•È¸(€€€¼¼9¼Íå¹‘¥…Ñ•½Ñ¡¥ÉµÁ…ÉÑä¹•İÌ½ÈÁ…¥™•••¹‘Á½¥¹Ğ¥Ì¥¹ÑÉ½‘Õ•¸(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹™¥±Ñ•È¡àôùà¹¥¹ÍÑ…ÉÑÍ]¥Ñ  ‰¹é}‰••¡¥Ù•|ˆ¤¤¤¹Ñ½!…Ù•1•¹Ñ  À¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹Í½µ”¡àôùà¹¥ôôô‰…¹…‘…}™½É•¥¹}ÍÑ…Ñ•µ•¹ÑÌˆ¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹Í½µ”¡àôùà¹¥ôôô‰‰¥Í}ÁÉ•ÍÌˆ¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹Í½µ”¡àôùà¹¥ôôô‰Õ­}‘‰Ğˆ¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹Í½µ”¡àôùà¹¥ôôô‰•Õ}½Õ¹¥±}ÁÉ•ÍÍ}½É¥¥¹…°ˆ¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹Í½µ”¡àôùà¹¥ôôô‰½ÙÕ­}±½‰…±}µ¥¹•É…±Ìˆ¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}MQ19¹Í½µ”¡àôùà¹¥ôôô‰½ÙÕ­}±½‰…±}•½¹½µäˆ¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰É•…‘½Ù½¹Ñ•¹Ñ=É¥¥¹…±…Ñ”ˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰%Y}5%9UQ}9]M}MQ19¹±•¹Ñ ùMQ19}5a}AI%5Ie}M}AI}IU8ˆ¤ì(€€™½È¡½¹ÍĞ¥½˜l‰Õ¹}ÁÉ•ÍÍ}±½‰…°ˆ°‰‰½}ÁÉ•ÍÍ}±½‰…°ˆ°‰‰}µ¥¹•É…±Í}±½‰…°‰t¥ì(€€€€½¹ÍĞ•¹ÑÉäõ1=	1}=%%1}I1M}L¹™¥¹ ¡àéí¥éÍÑÉ¥¹ô¤ôùà¹¥ôôõ¥¤ì(€€€€•áÁ•Ğ¡•¹ÑÉäü¹ÁÉ½‘ÕÑ¥½¹}ÕÁ‘…Ñ•}É•…‘•È¤¹Ñ½	”¡ÑÉÕ”¤ì(€€€€•áÁ•Ğ¡•¹ÑÉäü¹™½Éµ…Ğ¤¹Ñ½	” ‰ÉÍÌˆ¤ì(€€€€•áÁ•Ğ¡•¹ÑÉäü¹ÕÉ°¤¹Ñ½5…Ñ  ½y¡ÑÑÁÌép½p¼¼¤ì(€€€€•áÁ•Ğ¡•¹ÑÉäü¹Á½±±}µ¥¹ÕÑ•Ì¤¹Ñ½	” ÌÀ¤ì(€€€€•áÁ•Ğ¡•¹ÑÉäü¹Á…Ñ ¤¹Ñ½	•%¹ÍÑ…¹•=˜¡I•áÀ¤ì(€€ô(€€€¼¼U8AÉ•ÍÌ€¬U89•İÌ…É”¹½ĞÑİ¼¥¹‘•Á•¹‘•¹Ğ½É…¹¥é…Ñ¥½¹Ìì™…ÍÑ±…¹”(€€€¼¼ÑÉ…¹ÍÁ½ÉĞ¥Ì½¹±ä½É¥¥¹…°µÍ½ÕÉ”‘¥Í½Ù•Éä°¹•Ù•È½ÉÉ½‰½É…Ñ¥½¸¸(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰¹½Ğ¥¹‘•Á•¹‘•¹Ğˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰½¹ÍĞ½™™¥¥…±M½ÕÉ•Ìõl¸¸¹M=UIL°¸¸¹1=	1}M=UIMtˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰½¹ÍĞ‰…Ñ¡•Ìõ…İ…¥ĞAÉ½µ¥Í”¹…±°¡Í•±•Ñ•¹µ…Àˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰‘•É¥Ù•MÑ…Ñ•±•ÍÍM¥¹…±Ì¡…¹‘¥‘…Ñ•Ì±¹½Ü±íµ…áM¥¹…±Íô¤ˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹Ñ½½¹Ñ…¥¸ ‰É•…‘M½ÕÉ”¡Í½ÕÉ”±¹½Ü¤ˆ¤ì(€€•áÁ•Ğ¡½±±•Ñ½È¤¹¹½Ğ¹Ñ½½¹Ñ…¥¸ ‰ÁÕ‰±¥Í¡•É¥Ù•‘MÑ½É¥•Ì ˆ¤ì(€€…İ…¥Ğ•áÁ•Ğ¡É•…‘¥Ù•5¥¹ÕÑ•9•İÍ…ÍÑ±…¹”¡9…8¤¤¹É•©•ÑÌ¹Ñ½Q¡É½Ü (€€€€€‰=I%%91}MQ19}1=-}=I}	UQ}%9Y1%ˆ¤ì(€€…İ…¥Ğ•áÁ•Ğ¡É•…‘¥Ù•5¥¹ÕÑ•9•İÍ…ÍÑ±…¹”¡…Ñ”¹¹½Ü ¤°ÄÀÀ¤¤¹É•©•ÑÌ¹Ñ½Q¡É½Ü (€€€€€‰=I%%91}MQ19}1=-}=I}	UQ}%9Y1%ˆ¤ì(ô¤ì(¥Ğ ‰ÉÕ¹Ìé•É¼•áÑÉ„½™™¥¥…°É•ÅÕ•ÍÑÌ™½È¡•…±Ñ¡äÁÉ¥µ…É¥•Ì…¹½¹”Í•Á…É…Ñ•±äÁ¥¹¹•½É¥¥¸™½È½µÁ±•Ñ”½ÕÑ…”ˆ° ¤ôùì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}11	,¤¹Ñ½ÅÕ…°¡l(€€€€í…Ñ•½Éäè‰•½Á½±¥Ñ¥Ìˆ±¥è‰Õ¹•¹•Ù…}ÁÉ•ÍÍ}±½‰…°‰ô°(€€€€í…Ñ•½Éäè‰µ…É¼ˆ±¥è‰‰½©}ÁÉ•ÍÍ}±½‰…°‰ô°(€€€€í…Ñ•½Éäè‰É…É•}•…ÉÑ ˆ±¥è‰¥•…}µ¥¹•É…±Í}±½‰…°‰ô°(€€t¤ì(€€•áÁ•Ğ¡MQ19}5a}11	-}IM}AI}IU8¤¹Ñ½	” Ì¤ì(€€•áÁ•Ğ¡¹•ÜM•Ğ¡%Y}5%9UQ}9]M}11	,¹µ…À¡àôùà¹¥¤¤¹Í¥é”¤¹Ñ½	” Ì¤ì(€€•áÁ•Ğ¡%Y}5%9UQ}9]M}11	,¹•Ù•Éä¡àôø(€€€€€…%Y}5%9UQ}9]M}MQ19¹Í½µ”¡äôùä¹…Ñ•½Éäôôõà¹…Ñ•½Éä˜™ä¹¥ôôõà¹¥¤¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€€½¹ÍĞÁÉ¥µ…Éäõ%Y}5%9UQ}9]M}MQ19¹µ…À¡àôø¡ì(€€€€…Ñ•½Éäéà¹…Ñ•½Éä±¡•…±Ñ¡äéÑÉÕ”°(€€ô¤¤ì(€€•áÁ•Ğ¡‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡ÁÉ¥µ…Éä¤¤¹Ñ½ÅÕ…°¡mt¤ì(€€€¼¼=¹”™…¥±•½É¥¥¸¥Ì¹•Ù•ÈÑÉ•…Ñ•…Ì…¸•¹Ñ¥É”…Ñ•½Éä½ÕÑ…”¸(€€ÁÉ¥µ…ÉålÁt¹¡•…±Ñ¡äõ™…±Í”ì(€€•áÁ•Ğ¡‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡ÁÉ¥µ…Éä¤¤¹Ñ½ÅÕ…°¡mt¤ì(€€ÁÉ¥µ…ÉålÅt¹¡•…±Ñ¡äõ™…±Í”ì(€€•áÁ•Ğ¡‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡ÁÉ¥µ…Éä¤¤¹Ñ½ÅÕ…°¡mt¤ì(€€ÁÉ¥µ…ÉålÉt¹¡•…±Ñ¡äõ™…±Í”ì€¼¼U8AÉ•ÍÌ¥ÌÑ¡¥É°‰ÕĞT½Õ¹¥°€¬…¹…‘„ÍÑ¥±°İ½É¬¸(€€•áÁ•Ğ¡‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡ÁÉ¥µ…Éä¤¤¹Ñ½ÅÕ…°¡mt¤ì(€€ÁÉ¥µ…ÉålÍt¹¡•…±Ñ¡äõ™…±Í”ì(€€ÁÉ¥µ…ÉålÑt¹¡•…±Ñ¡äõ™…±Í”ì(€€•áÁ•Ğ¡‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡ÁÉ¥µ…Éä¤¤¹Ñ½ÅÕ…°¡l‰•½Á½±¥Ñ¥Ì‰t¤ì(€€€¼¼M¥àµ…É¼…¹™¥Ù”µ¥¹•É…°ÁÉ¥µ…É¥•ÌµÕÍĞ•… 10™…¥°‰•™½É”Ñ¡”(€€€¼¼Í¥¹±”…‘‘¥Ñ¥½¹…°…Ñ•½Éä™…±±‰…¬¥ÌÁ•Éµ¥ÑÑ•¸(€€™½È¡±•Ğ¤ôÔí¤ğÄØí¤¬¬¥ÁÉ¥µ…Éåm¥t¹¡•…±Ñ¡äõ™…±Í”ì(€€•áÁ•Ğ¡‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡ÁÉ¥µ…Éä¤¤¹Ñ½ÅÕ…°¡QL¤ì(€€•áÁ•Ğ  ¤ôù‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡mí…Ñ•½Éäè‰Õ¹…ÁÁÉ½Ù•ˆ±¡•…±Ñ¡äéÑÉÕ•õt¤¤(€€€€€¹Ñ½Q¡É½Ü ‰=I%%91}MQ19}AI%5Ie}!1Q!}%9Y1%ˆ¤ì(€€•áÁ•Ğ  ¤ôù‘•¥‘•¥Ù•5¥¹ÕÑ•…±±‰…­…Ñ•½É¥•Ì¡mí…Ñ•½Éäè‰µ…É¼ˆ±¡•…±Ñ¡äéÕ¹‘•™¥¹•…Ì…¹åõt¤¤(€€€€€¹Ñ½Q¡É½Ü ‰=I%%91}MQ19}AI%5Ie}!1Q!}%9Y1%ˆ¤ì(€€½¹ÍĞƒm=âÚ$z{-®éÜj×X]ØZ]™XYš]™SZ[]S™]ÜÑ˜\İ[™J›İËŒ[™Yš[™YÜ™XY[›™YÛİ\˜ÙN˜\Ş[˜ÈÛİ\˜ÙOOÂˆ™XYËœ\Ú
+Ûİ\˜ÙKšY
+NÂˆ™]\›ˆÚX[NYKØ[™Y]\ÎœÛİ\˜ÙKšYOOH˜›Ú—Ü™\Ü×ÙÛØ˜[ÖŞÂˆ]Nˆ˜[šÈÙˆ˜\[ˆ[››İ[˜Ù\È[Û™]\HÛXŞH[\™\İ˜]\È‹ˆ\XÛU\›ˆšÎ‹ËİİİË˜›Ú‹›Ü‹šœÙ[‹Û[ÜËÛİ]ÛÚËÌŒ‹Ûİ]ŒLŒËšH‹X›\ÚY]›™]È]J›İËLŒ
+ŒÌ
+KÒTÓÔİš[™Ê
+KˆÛİ\˜ÙRYœÛİ\˜ÙKšYØ]YÛÜNˆ›XXÜ›È‹Ü™Y]œÛİ\˜ÙK˜Ü™Y]ˆWN–×_NÂˆ_JNÂˆ^Xİ
+™XYÊKÒ]™S[™İ
+NJNÂˆ^Xİ
+™]ÈÙ]
+™XYÊKœÚ^™JKĞ™JNJNÂˆÛÛœİXXÜ›Ï\™\ÜË™š[™
+Oœ‹˜Ø]YÛÜOOOH›XXÜ›ÈŠHNÂˆ^Xİ
+XXÜ›ËœÚYÛ˜[ÊKÒ]™S[™İ
+JNÂˆ^Xİ
+XXÜ›Ëœš[X\WÚX[WÙ™YYØÛİ[
+KĞ™JŠNÂˆ^Xİ
+XXÜ›ËšX[WÙ™YYØÛİ[
+KĞ™JÊNÂˆ^Xİ
+XXÜ›Ë™˜[˜XÚ×Ü™X\ÛÛŠKĞ™J““×Ô‘PÑS•ÔUPSQ–RS‘×Ô’SPT–WÔ‘SPTÑHŠNÂˆ^Xİ
+XXÜ›Ëœš[X\WÜX›\Ú\—Üİ]\ÊKÒ]™S[™İ
+ŠNÂˆ^Xİ
+XXÜ›Ëœš[X\WÜX›\Ú\—Üİ]\ÏË™]™\JOœ™XXÚX›I‰œ™XÙ[Ü™[X\ÙWØÛİ[OOL
+JKĞ™JYJNÂˆ^Xİ
+XXÜ›Ë™˜[˜XÚ×ÜX›\Ú\—Üİ]\ÊKÑ\]X[
+ŞÚYˆ˜›Ú—Ü™\Ü×ÙÛØ˜[‹™XXÚX›NYK˜]]™WØØ[™Y]WØÛİ[Œ_WJNÂˆ^Xİ
+XXÜ›ËœÚYÛ˜[ÖÌKœX›\ÚYØ]
+KĞ™J™]È]J›İËLŒ
+ŒÌ
+KÒTÓÔİš[™Ê
+JNÂˆ^Xİ
+”ÓÓ‹œİš[™ÚYJ™\ÜÊJK››İĞÛÛZ[ŠšÎ‹ËÈŠNÂˆJNÂˆ]
+œ™]Z[œÈ][X[KX]\]ZY]İ]\ÈÚ[ˆH›İ[™Y[\›˜]]™H[ÛÈ˜Z[È‹\Ş[˜Ê
+OOÂˆÛÛœİ™XYÎœİš[™Ö×OV×NÂˆÛÛœİ›İÏQ]Kœ\œÙJŒŒ‹LLLŒÕLŒŒˆŠNÂˆÛÛœİ˜[˜XÚÒYÏ[™]ÈÙ]
 
-const read=(p:string)=>readFileSync(p,"utf8");
-const CATS=["geopolitics","macro","rare_earth"];
-describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("pins sixteen bounded official original release feeds across three domains",async()=>{
-   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(16);
-   expect(FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN).toBe(16);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual([
-     "geopolitics","geopolitics","geopolitics","geopolitics","geopolitics",
-     "macro","macro","macro","macro","macro","macro",
-     "rare_earth","rare_earth","rare_earth","rare_earth","rare_earth"]);
-   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(16);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
-     "un_news","uk_fcdo","un_press_global","eu_council_press_original","canada_foreign_statements",
-     "fed_press","wto_trade_original_rss","ecb_press","boc_press_global",
-     "bis_press","govuk_global_economy",
-     "nrcan_releases","us_doe_news_minerals","bc_minerals_global",
-     "uk_dbt","govuk_global_minerals"]);
-   const collector=read("src/lib/stateless-public-intelligence.server.ts");
-   expect(collector).toContain("officialSources.filter(s=>s.id===id && s.category===category)");
-   expect(collector).toContain("FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN");
-   // Each selected entry must resolve to an exact existing issuer reader.
-   // No syndicated/third-party news or paid feed endpoint is introduced.
-   expect(FIVE_MINUTE_NEWS_FASTLANE.filter(x=>x.id.startsWith("nz_beehive_"))).toHaveLength(0);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="canada_foreign_statements")).toBe(true);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="bis_press")).toBe(true);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="uk_dbt")).toBe(true);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="eu_council_press_original")).toBe(true);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="govuk_global_minerals")).toBe(true);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="govuk_global_economy")).toBe(true);
-   expect(collector).toContain("readGovContentOriginalDate");
-   expect(collector).toContain("FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN");
-   for(const id of ["un_press_global","boc_press_global","bc_minerals_global"]){
-     const entry=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((x:{id:string})=>x.id===id);
-     expect(entry?.production_update_reader).toBe(true);
-     expect(entry?.format).toBe("rss");
-     expect(entry?.url).toMatch(/^https:\/\//);
-     expect(entry?.poll_minutes).toBe(30);
-     expect(entry?.path).toBeInstanceOf(RegExp);
-   }
-   // UN Press + UN News are not two independent organizations; fastlane
-   // transport is only original-source discovery, never corroboration.
-   expect(collector).toContain("not independent");
-   expect(collector).toContain("const officialSources=[...SOURCES,...GLOBAL_SOURCES]");
-   expect(collector).toContain("const batches=await Promise.all(selected.map");
-   expect(collector).toContain("deriveStatelessSignals(candidates,now,{maxSignals})");
-   expect(collector).toContain("readSource(source,now)");
-   expect(collector).not.toContain("publishDerivedStories(");
-   await expect(readFiveMinuteNewsFastlane(NaN)).rejects.toThrow(
-     "ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
-   await expect(readFiveMinuteNewsFastlane(Date.now(),100)).rejects.toThrow(
-     "ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
- });
- it("runs zero extra official requests for healthy primaries and one separately pinned origin for complete outage",()=>{
-   expect(FIVE_MINUTE_NEWS_FALLBACK).toEqual([
-     {category:"geopolitics",id:"ungeneva_press_global"},
-     {category:"macro",id:"boj_press_global"},
-     {category:"rare_earth",id:"iea_minerals_global"},
-   ]);
-   expect(FASTLANE_MAX_FALLBACK_READS_PER_RUN).toBe(3);
-   expect(new Set(FIVE_MINUTE_NEWS_FALLBACK.map(x=>x.id)).size).toBe(3);
-   expect(FIVE_MINUTE_NEWS_FALLBACK.every(x=>
-     !FIVE_MINUTE_NEWS_FASTLANE.some(y=>y.category===x.category&&y.id===x.id))).toBe(true);
-   const primary=FIVE_MINUTE_NEWS_FASTLANE.map(x=>({
-     category:x.category,healthy:true,
-   }));
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
-   // One failed origin is never treated as an entire category outage.
-   primary[0].healthy=false;
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
-   primary[1].healthy=false;
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
-   primary[2].healthy=false; // UN Press is third, but EU Council + Canada still work.
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
-   primary[3].healthy=false;
-   primary[4].healthy=false;
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(["geopolitics"]);
-   // Six macro and five mineral primaries must each ALL fail before the
-   // single additional category fallback is permitted.
-   for(let i=5;i<16;i++)primary[i].healthy=false;
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(CATS);
-   expect(()=>decideFiveMinuteFallbackCategories([{category:"unapproved",healthy:true}]))
-     .toThrow("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
-   expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:undefined as any}]))
-     .toThrow("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
-   const impl=read("src/lib/stateless-public-intelligence.server.ts");
-   expect(impl).toContain("const fallbackCategories=decideFiveMinuteFallbackCategories(");
-   expect(impl).toContain("fallbackSelected.length>FASTLANE_MAX_FALLBACK_READS_PER_RUN");
-   expect(impl).toContain("officialSources.filter(s=>s.id===entry.id&&s.category===entry.category)");
-   expect(impl).toContain("const fallbackBatches=await Promise.all(");
-   expect(impl).toContain("p.category===category?[fallbackBatches[i]]:[]");
- });
- it("leaves native original time mandatory without added delay",()=>{
-   const at=Date.parse("2026-10-20T12:00:00.000Z");
-   const source={
-     title:"Federal Reserve announces new sanctions on interest rates",
-     articleUrl:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261020a.htm",
-     publishedAt:new Date(at).toISOString(),sourceId:"fed_press",
-     category:"macro" as const,credit:"Federal Reserve Board",
-   };
-   // Only a synthetic time-bound unit test, never a claimed actual release.
-   const early=deriveStatelessSignals([source],at-1);
-   expect(early).toEqual([]);
-   const ontime=deriveStatelessSignals([source],at);
-   expect(ontime).toHaveLength(1);
-   for(const s of ontime){
-     expect(s.same_event_corrob_verified).toBe(false);
-     expect(s.severity).toBeNull();
-     expect(s.published_at).toBe(source.publishedAt);
-     expect(s.sources_credited).not.toEqual([]);
-     expect(JSON.stringify(s)).not.toContain(source.articleUrl);
-     expect(JSON.stringify(s)).not.toContain(source.title);
-   }
- });
- it("schedules best-effort 5-minute existing-source publishing, never paid APIs or B2",()=>{
-   const wf=read(".github/workflows/five-minute-original-news-fastlane.yml");
-   const pub=read("scripts/ops/publish-original-news-five-minute-fastlane.ts");
-   expect(wf).toContain('cron: "2-57/5 * * * *"');
-   expect(wf).toContain("environment: production");
-   expect(wf).toContain("cancel-in-progress: false");
-   expect(wf).toContain("geomacro-five-minute-original-news-fastlane-");
-   expect(wf).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
-   expect(wf).not.toContain("COINBASE_X402_MAINNET_ACK");
-   expect(wf).not.toContain("SUPABASE_URL");
-   expect(wf).not.toContain("B2_KEY_ID");
-   expect(pub).toContain("readFiveMinuteNewsFastlane(runAt,20,");
-   expect(pub).toContain("reconcilePrivateDerivedSourceRefs");
-   expect(wf).toContain('bun scripts/ops/persist-private-source-handoffs.ts');
-   expect(pub).toContain('configured_categories:3,pinned_original_publishers:FIVE_MINUTE_NEWS_FASTLANE.length');
-   expect(pub).toContain('FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length');
-   expect(pub).toContain("report.healthy_feed_count<1");
-   expect(pub).toContain("report.feed_count>expectedOrigins+1");
-   expect(pub).toContain("conditional_fallback_attempted:report.feed_count>expectedOrigins");
-   expect(pub).toContain("primary_publisher_status:report.primary_publisher_status??[]");
-   expect(pub).toContain("fallback_publisher_status:report.fallback_publisher_status??[]");
-   expect(pub).toContain("fallback_for_primary_outage_or_no_recent_release:true");
-   expect(pub).toContain("const baseline=await readIntakeBaseline({fetchImpl:canonicalRead");
-   expect(pub).toContain("!existingIds.has(s.id)");
-   expect(pub).toContain("fetchAllDerivedNews(canonicalRead,Date.now())");
-   expect(pub).toContain("exact_first_writer_attribution_verified:false");
-   expect(pub).toContain("measurement_is_true_first_insert_utc:false");
-   expect(pub).toContain("FASTLANE_D1_FULL_JOURNAL_READBACK_FAILED");
-   expect(pub).toContain("original_exact_publications_verified");
-   expect(pub).toContain("exact_publications_outside_target_at_d1_readback");
-   expect(pub).toContain('latency_objective_minutes:20');
-   expect(pub).toContain('github_schedule_guaranteed:false');
-   expect(pub).toContain('source_portfolio_exhaustive_195x3:false');
-   expect(pub).toContain('raw_upstream_delivered:false');
-   expect(pub).toContain('b2_requests:0,supabase_requests:0');
-   expect(pub).toContain('x402_charges:0');
-   expect(pub).not.toContain("COINBASE_X402_MAINNET_ACK");
-   expect(pub).not.toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY");
-   expect(pub).not.toContain("https://api.gdeltproject.org");
- });
- it("tries one alternative when reachable primary feeds contain no recent qualifying release",()=>{
-   const primary=FIVE_MINUTE_NEWS_FASTLANE.map(x=>({category:x.category,healthy:true,recent_releases:0}));
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(CATS);
-   primary.find(x=>x.category==="macro")!.recent_releases=1;
-   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(["geopolitics","rare_earth"]);
-   expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:true,recent_releases:-1}])).toThrow();
-   expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:true,recent_releases:NaN}])).toThrow();
- });
- it("counts just-published source-native exact releases without added delay",()=>{
-   const now=Date.parse("2026-10-23T12:00:00Z");
-   const source={title:"Federal Reserve announces monetary policy interest rates",
-     articleUrl:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261023a.htm",
-     publishedAt:new Date(now-20*60_000).toISOString(),sourceId:"fed_press",
-     category:"macro" as const,credit:"Federal Reserve Board"};
-   expect(recentFastlaneReleaseCount([source],now)).toBe(1);
-   for(const age of [-60_000,61*60_000])
-     expect(recentFastlaneReleaseCount([{...source,publishedAt:new Date(now-age).toISOString()}],now)).toBe(0);
-   expect(recentFastlaneReleaseCount([{...source,datePrecision:"day" as const,publishedAt:"2026-10-23T00:00:00Z"}],now)).toBe(0);
- });
- it("recovers a quiet category through the real bounded collector without a polling cascade",async()=>{
-   const initial=Date.parse("2026-10-23T12:00:00Z");
-   const now=Array.from({length:10},(_,i)=>initial+i*300_000).find(at=>
-     selectFiveMinuteFallback("macro",at).id==="boj_press_global")!;
-   expect(now).toBeDefined();
-   const reads:string[]=[];
-   const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
-     reads.push(source.id);
-     return {healthy:true,candidates:source.id==="boj_press_global"?[{
-       title:"Bank of Japan announces monetary policy interest rates",
-       articleUrl:"https://www.boj.or.jp/en/mopo/outlook/2026/out261023.htm",publishedAt:new Date(now-20*60_000).toISOString(),
-       sourceId:source.id,category:"macro",credit:source.credit,
-     }]:[]};
-   }});
-   expect(reads).toHaveLength(19);
-   expect(new Set(reads).size).toBe(19);
-   const macro=reports.find(r=>r.category==="macro")!;
-   expect(macro.signals).toHaveLength(1);
-   expect(macro.primary_healthy_feed_count).toBe(6);
-   expect(macro.healthy_feed_count).toBe(7);
-   expect(macro.fallback_reason).toBe("NO_RECENT_QUALIFYING_PRIMARY_RELEASE");
-   expect(macro.primary_publisher_status).toHaveLength(6);
-   expect(macro.primary_publisher_status?.every(x=>x.reachable&&x.recent_release_count===0)).toBe(true);
-   expect(macro.fallback_publisher_status).toEqual([{id:"boj_press_global",reachable:true,native_candidate_count:1}]);
-   expect(macro.signals[0].published_at).toBe(new Date(now-20*60_000).toISOString());
-   expect(JSON.stringify(reports)).not.toContain("https://");
- });
- it("retains truthful healthy-but-quiet status when the bounded alternative also fails",async()=>{
-   const reads:string[]=[];
-   const now=Date.parse("2026-10-23T12:00:00Z");
-   const fallbackIds=new Set((CATS as Array<keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION>)
-     .map(category=>selectFiveMinuteFallback(category,now).id));
-   const reports=await readFiveMinuteNewsFastlane(now,20,undefined,
-     {readPinnedSource:async source=>{
-       reads.push(source.id);
-       if(fallbackIds.has(source.id as any))throw Error("SYNTHETIC_PROVIDER_UNAVAILABLE");
-       return {healthy:true,candidates:[]};
-     }});
-   expect(reads).toHaveLength(19);
-   expect(reports.every(r=>r.status==="no_eligible_original_releases"&&r.signals.length===0)).toBe(true);
-   expect(reports.every(r=>r.healthy_feed_count===r.primary_healthy_feed_count)).toBe(true);
-   expect(reports.every(r=>r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
-   expect(reports.every(r=>r.primary_publisher_status?.length===
-     FIVE_MINUTE_NEWS_FASTLANE.filter(p=>p.category===r.category).length)).toBe(true);
-   expect(reports.every(r=>r.fallback_publisher_status?.length===1 &&
-     r.fallback_publisher_status[0].reachable===false)).toBe(true);
-   expect(JSON.stringify(reports)).not.toContain("https://");
- });
- it("rotates remaining distinct official origins across quiet categories with one alternative each",async()=>{
-   const additions={
-     geopolitics:["ungeneva_press_global","uk_ofsi_sanctions"],
-     macro:["un_news_economy","boj_press_global"],
-     rare_earth:["un_news_minerals","iea_minerals_global"],
-   } as const;
-   const source=read("src/lib/stateless-public-intelligence.server.ts");
-   expect(source).toContain("const batches=await Promise.all(selected.map");
-   expect(source).toContain("fallbackSelected.length>FASTLANE_MAX_FALLBACK_READS_PER_RUN");
-   for(const category of CATS as Array<keyof typeof additions>){
-     const ids=FIVE_MINUTE_NEWS_FALLBACK_ROTATION[category];
-     for(const id of additions[category]){
-       expect(ids).toContain(id);
-       expect(!FIVE_MINUTE_NEWS_FASTLANE.some(p=>p.id===id)).toBe(true);
-     }
-     const start=Math.floor(Date.parse("2026-10-24T12:00:00Z")/300000)*300000;
-     const selected=Array.from({length:ids.length},(_,i)=>selectFiveMinuteFallback(category,start+i*300000).id);
-     expect(new Set(selected)).toEqual(new Set(ids));
-   }
-   const now=Date.parse("2026-10-24T12:00:00Z"),readIds:string[]=[];
-   const run=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
-     readIds.push(source.id);return {healthy:true,candidates:[]};
-   }});
-   expect(readIds).toHaveLength(19);
-   expect(new Set(readIds).size).toBe(19);
-   expect(run).toHaveLength(3);
-   expect(run.every(row=>row.signals.length===0 && row.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
-   // Changes to this existing reader also need to wake the cloud producer.
-   expect(read(".github/workflows/five-minute-original-news-fastlane.yml")
-     .split("src/lib/stateless-public-intelligence.server.ts").length-1).toBeGreaterThanOrEqual(2);
-   expect(read(".github/workflows/website-derived-news-continuity.yml"))
-     .toContain('src/lib/stateless-public-intelligence.server.ts');
- });
- it("rotates existing alternatives under the same one-fallback-per-category budget",()=>{
-   const now=Date.parse("2026-10-23T12:00:00Z");
-   for(const category of ["geopolitics","macro","rare_earth"] as const){
-     const ids=FIVE_MINUTE_NEWS_FALLBACK_ROTATION[category];
-     expect(new Set(Array.from({length:ids.length},(_,i)=>selectFiveMinuteFallback(category,now+i*5*60_000).id)))
-       .toEqual(new Set(ids));
-     expect(selectFiveMinuteFallback(category,now+60_000)).toEqual(selectFiveMinuteFallback(category,now));
-     expect(ids.every(id=>!FIVE_MINUTE_NEWS_FASTLANE.some(p=>p.category===category&&p.id===id))).toBe(true);
-   }
-   expect(()=>selectFiveMinuteFallback("macro",NaN)).toThrow();
- });
- it.each([1,2])("resolves every rotated publisher through existing approved registry at slot %s",async slot=>{
-   const now=Date.parse("2026-10-23T12:00:00Z")+slot*5*60_000,reads:string[]=[];
-   const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
-     reads.push(source.id);return {healthy:true,candidates:[]};
-   }});
-   expect(reads).toHaveLength(19);
-   expect(new Set(reads).size).toBe(19);
-   for(const category of ["geopolitics","macro","rare_earth"] as const)
-     expect(reads).toContain(selectFiveMinuteFallback(category,now).id);
-   expect(reports).toHaveLength(3);
-   expect(reports.every(r=>r.signals.length===0&&r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
- });
-});
+ĞUÈ\È\œ˜^OÙ^[Ùˆ\[Ùˆ’U‘WÓRS•UWÓ‘UÔ×ÑSPÒ×Ô“ÕUSÓŠBˆ›X\
+Ø]YÛÜOOœÙ[Xİš]™SZ[]Q˜[˜XÚÊØ]YÛÜK›İÊKšY
+JNÂˆÛÛœİ™\ÜÏX]ØZ]™XYš]™SZ[]S™]ÜÑ˜\İ[™J›İËŒ[™Yš[™YˆÜ™XY[›™YÛİ\˜ÙN˜\Ş[˜ÈÛİ\˜ÙOOÂˆ™XYËœ\Ú
+Ûİ\˜ÙKšY
+NÂˆYŠ˜[˜XÚÒYËš\ÊÛİ\˜ÙKšY\È[JJ]›İÈ\œ›ÜŠ”ÖS•UP×Ô“Õ’QT—ÕSURSP“HŠNÂˆ™]\›ˆÚX[NYKØ[™Y]\Î–×_NÂˆ_JNÂˆ^Xİ
+™XYÊKÒ]™S[™İ
+NJNÂˆ^Xİ
+™\ÜË™]™\JOœ‹œİ]\ÏOOH››×Ù[YÚX›WÛÜšYÚ[˜[Ü™[X\Ù\È‰‰œ‹œÚYÛ˜[Ë›[™İOOL
+JKĞ™JYJNÂˆ^Xİ
+™\ÜË™]™\JOœ‹šX[WÙ™YYØÛİ[OO\‹œš[X\WÚX[WÙ™YYØÛİ[
+JKĞ™JYJNÂˆ^Xİ
+™\ÜË™]™\JOœ‹™˜[˜XÚ×Ü™X\ÛÛOOH““×Ô‘PÑS•ÔUPSQ–RS‘×Ô’SPT–WÔ‘SPTÑHŠJKĞ™JYJNÂˆ^Xİ
+™\ÜË™]™\JOœ‹œš[X\WÜX›\Ú\—Üİ]\ÏË›[™İOOBˆ’U‘WÓRS•UWÓ‘UÔ×ÑTÕS‘K™š[\ŠOœ˜Ø]YÛÜOOO\‹˜Ø]YÛÜJK›[™İ
+JKĞ™JYJNÂˆ^Xİ
+™\ÜË™]™\JOœ‹™˜[˜XÚ×ÜX›\Ú\—Üİ]\ÏË›[™İOOLH	‰‚ˆ‹™˜[˜XÚ×ÜX›\Ú\—Üİ]\ÖÌKœ™XXÚX›OOOY˜[ÙJJKĞ™JYJNÂˆ^Xİ
+”ÓÓ‹œİš[™ÚYJ™\ÜÊJK››İĞÛÛZ[ŠšÎ‹ËÈŠNÂˆJNÂˆ]
+œ›İ]\È™[XZ[š[™È\İ[˜İÙ™šXÚX[ÜšYÚ[œÈXÜ›ÜÜÈ]ZY]Ø]YÛÜšY\ÈÚ]Û™H[\›˜]]™HXXÚ‹\Ş[˜Ê
+OOÂˆÛÛœİY][ÛœÏ^ÂˆÙ[ÜÛ]XÜÎ–È[™Ù[™]˜WÜ™\Ü×ÙÛØ˜[‹Z×ÛÙœÚWÜØ[˜İ[ÛœÈ—KˆXXÜ›Î–È[—Û™]Ü×ÙXÛÛ›Û^H‹˜›Ú—Ü™\Ü×ÙÛØ˜[—Kˆ˜\™WÙX\–È[—Û™]Ü×ÛZ[™\˜[È‹šYXWÛZ[™\˜[×ÙÛØ˜[—KˆH\ÈÛÛœİÂˆÛÛœİÛİ\˜ÙO\™XY
+œÜ˜ËÛX‹Üİ][\ÜË\X›XËZ[[YÙ[˜ÙKœÙ\™\‹ÈŠNÂˆ^Xİ
+Ûİ\˜ÙJKĞÛÛZ[Š˜ÛÛœİ˜]Ú\ÏX]ØZ]›ÛZ\ÙK˜[
+Ù[XİY›X\ŠNÂˆ^Xİ
+Ûİ\˜ÙJKĞÛÛZ[Š™˜[˜XÚÔÙ[XİY›[™İ‘TÕS‘WÓPVÑSPÒ×Ô‘PQ×ÔT—Ô•SˆŠNÂˆ›ÜŠÛÛœİØ]YÛÜHÙˆĞUÈ\È\œ˜^OÙ^[Ùˆ\[ÙˆY][ÛœÏŠ^ÂˆÛÛœİYÏQ’U‘WÓRS•UWÓ‘UÔ×ÑSPÒ×Ô“ÕUSÓ–ØØ]YÛÜWNÂˆ›ÜŠÛÛœİYÙˆY][ÛœÖØØ]YÛÜWJ^Âˆ^Xİ
+YÊKĞÛÛZ[ŠY
+NÂˆ^Xİ
+Q’U‘WÓRS•UWÓ‘UÔ×ÑTÕS‘KœÛÛYJOœšYOOZY
+JKĞ™JYJNÂˆBˆÛÛœİİ\SX]™›ÛÜŠ]Kœ\œÙJŒŒ‹LLLLŒŒˆŠKÌÌ
+JŒÌÂˆÛÛœİÙ[XİYP\œ˜^K™œ›ÛJÛ[™İšYË›[™İK
+ËJOOœÙ[Xİš]™SZ[]Q˜[˜XÚÊØ]YÛÜKİ\
+ÚJŒÌ
+KšY
+NÂˆ^Xİ
+™]ÈÙ]
+Ù[XİY
+JKÑ\]X[
+™]ÈÙ]
+YÊJNÂˆBˆÛÛœİ›İÏQ]Kœ\œÙJŒŒ‹LLLLŒŒˆŠK™XYYÎœİš[™Ö×OV×NÂˆÛÛœİ[X]ØZ]™XYš]™SZ[]S™]ÜÑ˜\İ[™J›İËŒ[™Yš[™YÜ™XY[›™YÛİ\˜ÙN˜\Ş[˜ÈÛİ\˜ÙOOÂˆ™XYYËœ\Ú
+Ûİ\˜ÙKšY
+NÜ™]\›ˆÚX[NYKØ[™Y]\Î–×_NÂˆ_JNÂˆ^Xİ
+™XYYÊKÒ]™S[™İ
+NJNÂˆ^Xİ
+™]ÈÙ]
+™XYYÊKœÚ^™JKĞ™JNJNÂˆ^Xİ
+[ŠKÒ]™S[™İ
+ÊNÂˆ^Xİ
+[‹™]™\J›İÏOœ›İËœÚYÛ˜[Ë›[™İOOL	‰ˆ›İË™˜[˜XÚ×Ü™X\ÛÛOOH““×Ô‘PÑS•ÔUPSQ–RS‘×Ô’SPT–WÔ‘SPTÑHŠJKĞ™JYJNÂˆËÈÚ[™Ù\ÈÈ\È^\İ[™È™XY\ˆ[ÛÈ™YYÈØZÙHHÛİY›ÙXÙ\‹‚ˆ^Xİ
+™XY
+‹™Ú]X‹İÛÜšÙ›İÜËÙš]™K[Z[]K[ÜšYÚ[˜[[™]ÜËY˜\İ[™K[[ŠBˆœÜ]
+œÜ˜ËÛX‹Üİ][\ÜË\X›XËZ[[YÙ[˜ÙKœÙ\™\‹ÈŠK›[™İLJKĞ™QÜ™X]\•[“Ü‘\]X[
+ŠNÂˆ^Xİ
+™XY
+‹™Ú]X‹İÛÜšÙ›İÜËİÙXœÚ]KY\š]™Y[™]ÜËXÛÛ[Z]K[[ŠJBˆĞÛÛZ[Š	ÜÜ˜ËÛX‹Üİ][\ÜË\X›XËZ[[YÙ[˜ÙKœÙ\™\‹ÉÊNÂˆJNÂˆ]
+œ›İ]\È^\İ[™È[\›˜]]™\È[™\ˆHØ[YHÛ™KY˜[˜XÚË\\‹XØ]YÛÜHYÙ]‹
+
+OOÂˆÛÛœİ›İÏQ]Kœ\œÙJŒŒ‹LLLŒÕLŒŒˆŠNÂˆ›ÜŠÛÛœİØ]YÛÜHÙˆÈ™Ù[ÜÛ]XÜÈ‹›XXÜ›È‹œ˜\™WÙX\—H\ÈÛÛœİ
+^ÂˆÛÛœİYÏQ’U‘WÓRS•UWÓ‘UÔ×ÑSPÒ×Ô“ÕUSÓ–ØØ]YÛÜWNÂˆ^Xİ
+™]ÈÙ]
+\œ˜^K™œ›ÛJÛ[™İšYË›[™İK
+ËJOOœÙ[Xİš]™SZ[]Q˜[˜XÚÊØ]YÛÜK›İÊÚJJŒÌ
+KšY
+JJBˆÑ\]X[
+™]ÈÙ]
+YÊJNÂˆ^Xİ
+Ù[Xİš]™SZ[]Q˜[˜XÚÊØ]YÛÜK›İÊÍŒÌ
+JKÑ\]X[
+Ù[Xİš]™SZ[]Q˜[˜XÚÊØ]YÛÜK›İÊJNÂˆ^Xİ
+YË™]™\JYOˆQ’U‘WÓRS•UWÓ‘UÔ×ÑTÕS‘KœÛÛYJOœ˜Ø]YÛÜOOOXØ]YÛÜI‰œšYOOZY
+JJKĞ™JYJNÂˆBˆ^Xİ
+
+
+OOœÙ[Xİš]™SZ[]Q˜[˜XÚÊ›XXÜ›È‹˜SŠJKÕ›İÊ
+NÂˆJNÂˆ]™XXÚ
+ÌK—JJœ™\ÛÛ™\È]™\H›İ]YX›\Ú\ˆ›İYÚ^\İ[™È\›İ™Y™YÚ\İH]Ûİ	\È‹\Ş[˜ÈÛİOÂˆÛÛœİ›İÏQ]Kœ\œÙJŒŒ‹LLLŒÕLŒŒˆŠJÜÛİ
+JŒÌ™XYÎœİš[™Ö×OV×NÂˆÛÛœİ™\ÜÏX]ØZ]™XYš]™SZ[]S™]ÜÑ˜\İ[™J›İËŒ[™Yš[™YÜ™XY[›™YÛİ\˜ÙN˜\Ş[˜ÈÛİ\˜ÙOOÂˆ™XYËœ\Ú
+Ûİ\˜ÙKšY
+NÜ™]\›ˆÚX[NYKØ[™Y]\Î–×_NÂˆ_JNÂˆ^Xİ
+™XYÊKÒ]™S[™İ
+NJNÂˆ^Xİ
+™]ÈÙ]
+™XYÊKœÚ^™JKĞ™JNJNÂˆ›ÜŠÛÛœİØ]YÛÜHÙˆÈ™Ù[ÜÛ]XÜÈ‹›XXÜ›È‹œ˜\™WÙX\—H\ÈÛÛœİ
+Bˆ^Xİ
+™XYÊKĞÛÛZ[ŠÙ[Xİš]™SZ[]Q˜[˜XÚÊØ]YÛÜK›İÊKšY
+NÂˆ^Xİ
+™\ÜÊKÒ]™S[™İ
+ÊNÂˆ^Xİ
+™\ÜË™]™\JOœ‹œÚYÛ˜[Ë›[™İOOL	‰œ‹™˜[˜XÚ×Ü™X\ÛÛOOH““×Ô‘PÑS•ÔUPSQ–RS‘×Ô’SPT–WÔ‘SPTÑHŠJKĞ™JYJNÂˆJNÂŸJNÂ
