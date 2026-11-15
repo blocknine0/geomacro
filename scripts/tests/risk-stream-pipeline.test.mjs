@@ -196,8 +196,9 @@ function ctx(){
  return {db,r2,env,facts,rights,gro};
 }
 function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetMs=0){
- const original=source==="gov",raw="Original verified event report for "+
-  category+" "+i+" from "+source+"; direct independent original.";
+ const original=source==="gov",raw="Original verified event factual record for "+
+  category+" "+i+" from "+source+"; direct independent original. Open Government Licence v3 "+
+  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
  const entities=["COUNTRY:USA","EVENT:"+String(i).padStart(4,"0")];
  const categoryRoles={GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
   MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
@@ -224,7 +225,20 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
   parent_media_entity:original?"government_official":"regional_newspaper",
   source_role:roles[original?0:1],
   published_at:new Date(now-30000+clockOffsetMs).toISOString(),
-  original_page_sha256:digest(raw),derived,raw_payload:raw,proof:null
+  original_page_sha256:digest(raw),derived,raw_payload:raw,proof:null,
+  rights_verification:{registry_source_id:source,registry_enabled:true,
+   registry_commercial_rights_approved:true,
+   authorization_reference:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ | https://www.gov.uk/help/terms-conditions",
+   independent_reviewer_id:"synthetic-test-fixture",checked_at_utc:new Date(now).toISOString(),
+   rights_expires_at_utc:new Date(now+365*86400000).toISOString(),
+   item_license_evidence:{license_id:"UK_OGL_V3",
+    license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    terms_url:"https://www.gov.uk/help/terms-conditions",
+    item_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
+    item_license_marker:"Open Government Licence v3",
+    publisher_owned_content_only:true,third_party_exceptions:false,
+    non_commercial:false,restricted_material:false,factual_record_only:true,
+    original_text_republished:false}}
  };
  const claims=riskStreamOriginalClaims(item);
  item.proof={

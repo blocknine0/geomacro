@@ -8,12 +8,12 @@ const now=Date.parse("2026-11-14T12:00:00.000Z");
 const rightsManifest={schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[
  {source_id:"wire_primary",publisher_root_domain:"wire.test",parent_media_entity:"wire_parent",
   source_role:"GOVERNMENT_WIRE",categories:["GEOPOLITICS"],status:"APPROVED",
-  rights_evidence:{licence_url:"https://wire.test/licence",terms_url:"https://wire.test/terms",
+  rights_evidence:{licence_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",terms_url:"https://www.gov.uk/help/terms-conditions",
    reviewed_at:"2026-10-01T00:00:00.000Z",reviewer:"owner-reviewer",notes:"Reviewed legal terms for derived use."},
   rights_expire_at:"2027-10-01"},
  {source_id:"regional_primary",publisher_root_domain:"regional.test",parent_media_entity:"regional_parent",
   source_role:"INDEPENDENT_REGIONAL",categories:["GEOPOLITICS"],status:"APPROVED",
-  rights_evidence:{licence_url:"https://regional.test/licence",terms_url:"https://regional.test/terms",
+  rights_evidence:{licence_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",terms_url:"https://www.gov.uk/help/terms-conditions",
    reviewed_at:"2026-10-01T00:00:00.000Z",reviewer:"owner-reviewer",notes:"Reviewed legal terms for derived use."},
   rights_expire_at:"2027-10-01"}
 ]};
@@ -23,7 +23,12 @@ function original(overrides={}){
   event_identity:{country_iso3:"USA",event_type:"sanctions_policy",actor_id:"us_treasury",
    target_id:"foreign_bank",location_id:"washington_dc",occurred_at:"2026-11-14T10:00:00.000Z"},
   source_id:"wire_primary",source_url:"https://wire.test/news/item-1",
-  published_at:"2026-11-14T11:30:00.000Z",raw_payload:"Verified original article bytes, private fixture.",
+  published_at:"2026-11-14T11:30:00.000Z",raw_payload:"Verified original factual record. Open Government Licence v3 https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  item_license_evidence:{license_id:"UK_OGL_V3",license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+   terms_url:"https://www.gov.uk/help/terms-conditions",item_url:"https://wire.test/news/item-1",
+   item_license_marker:"Open Government Licence v3",publisher_owned_content_only:true,
+   third_party_exceptions:false,non_commercial:false,restricted_material:false,
+   factual_record_only:true,original_text_republished:false},
   derived:{what:"Treasury announced a new measure.",why:"The target is linked to enforcement.",
    market:"Banking access may tighten.",watch:"Watch implementation details."},reporting_position:"confirms",
   ...overrides};
@@ -66,4 +71,27 @@ test("pending registry source, expired rights, GDELT, stale and future clocks fa
   /ORIGINAL_CLOCK_INVALID/u);
  assert.throws(()=>prepareRiskStreamCandidate(original({published_at:"2026-11-14T12:01:00.000Z"}),sourceRegistry,now,{rightsManifest}),
   /ORIGINAL_CLOCK_INVALID/u);
+});
+
+test("item-level license exclusions fail closed before candidate admission",()=>{
+ for(const change of [
+  {third_party_exceptions:true},{non_commercial:true},{restricted_material:true},
+  {factual_record_only:false},{original_text_republished:true},
+  {license_id:"UNKNOWN_LICENSE"},{license_url:"https://publisher.example/license"}
+ ]){
+  const input=original({item_license_evidence:{...original().item_license_evidence,...change}});
+  assert.throws(()=>prepareRiskStreamCandidate(input,sourceRegistry,now,{rightsManifest}),
+   /RISK_STREAM_ITEM_LICENSE_/u);
+ }
+ const missing=original();delete missing.item_license_evidence;
+ assert.throws(()=>prepareRiskStreamCandidate(missing,sourceRegistry,now,{rightsManifest}),
+  /RISK_STREAM_ITEM_LICENSE_EVIDENCE_SCHEMA_INVALID/u);
+ const restricted=original({raw_payload:original().raw_payload+" All rights reserved."});
+ assert.throws(()=>prepareRiskStreamCandidate(restricted,sourceRegistry,now,{rightsManifest}),
+  /ITEM_TEXT_SIGNALS_RESTRICTION/u);
+ const headline="Treasury announced sanctions against several foreign banks";
+ const copied=original({raw_payload:original().raw_payload+" "+headline,
+  derived:{...original().derived,what:headline}});
+ assert.throws(()=>prepareRiskStreamCandidate(copied,sourceRegistry,now,{rightsManifest}),
+  /SOURCE_TEXT_REUSE_DETECTED/u);
 });

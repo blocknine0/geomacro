@@ -12,6 +12,8 @@ const HASH=/^[a-f0-9]{64}$/u;
 const ALLOWED=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const enc=new TextEncoder();
 const fail=c=>{throw Error("GEOMACRO_LICENSE_"+c)};
+const exact=(object,keys)=>object&&typeof object==="object"&&!Array.isArray(object)&&
+ Object.keys(object).sort().join("|")===keys.slice().sort().join("|");
 const bytes=s=>enc.encode(s);
 export function canonicalLicensedJson(value){
  if(value===null||typeof value==="boolean"||typeof value==="string")return JSON.stringify(value);
@@ -47,6 +49,13 @@ export async function verifyCommercialSourceGro(record,groPublicSpkiB64,now=Date
    decoded(record.signature_b64),bytes(record.payload_json)))fail("SOURCE_GRO_SIGNATURE_INVALID");
  let p;try{p=JSON.parse(record.payload_json)}catch{fail("SOURCE_GRO_JSON_INVALID")}
  if(p.schema!=="geomacro.event-stream-gro.v1"||
+   !exact(p,["schema","subject","category","event_fingerprint","source_originals",
+    "what_happened","why_it_matters","market_relevance","what_to_watch",
+    "eligible_derived_score","evidence_and_confidence","generated_at","expires_at",
+    "execution_authorized","charged","certified_risk_index","customer_delivery_authorized"])||
+   !exact(p.evidence_and_confidence,["corroborated_originals","independent_parent_entities",
+    "source_rights_and_origins","factual_confidence","risk_score_not_inferred",
+    "raw_sources_not_republished"])||
    p.subject?.type!=="COUNTRY"||!isHot50RiskCountry(p.subject.id)||
    !ALLOWED.has(p.category)||
    p.execution_authorized!==false||p.charged!==false||

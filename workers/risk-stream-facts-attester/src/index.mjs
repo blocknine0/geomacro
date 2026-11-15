@@ -1,4 +1,5 @@
 import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipeline.mjs";
+import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
 
 const MAX_BODY=32*1024;
 const MAX_AGE=72*3600000;
@@ -91,7 +92,8 @@ async function validateOriginal(event,now){
   fail("RAW_PAYLOAD_INVALID");
  if(!exact(event.rights_verification,["registry_source_id","registry_enabled",
     "registry_commercial_rights_approved","authorization_reference",
-    "independent_reviewer_id","checked_at_utc","rights_expires_at_utc"])||
+    "independent_reviewer_id","checked_at_utc","rights_expires_at_utc",
+    "item_license_evidence"])||
     event.rights_verification.registry_source_id!==event.source_id||
     event.rights_verification.registry_enabled!==true||
     event.rights_verification.registry_commercial_rights_approved!==true||
@@ -103,6 +105,12 @@ async function validateOriginal(event,now){
     !Number.isFinite(Date.parse(event.rights_verification.checked_at_utc))||
     !Number.isFinite(Date.parse(event.rights_verification.rights_expires_at_utc)))
   fail("RIGHTS_REVIEW_METADATA_INVALID");
+ try{validateRiskStreamItemLicense(event.rights_verification.item_license_evidence,{
+   status:"APPROVED",rights_evidence:{
+    licence_url:event.rights_verification.item_license_evidence?.license_url,
+    terms_url:event.rights_verification.item_license_evidence?.terms_url}},
+   {sourceUrl:event.source_url,sourceDomain:event.publisher_root_domain,rawPayload:event.raw_payload})}
+ catch(error){fail(String(error?.message??"ITEM_LICENSE_INVALID"))}
  checkedUrl(event.source_url,event.publisher_root_domain);
  if(typeof event.published_at!=="string"||
     !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(event.published_at))

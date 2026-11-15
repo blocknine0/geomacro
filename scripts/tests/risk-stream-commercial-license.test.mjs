@@ -21,8 +21,14 @@ function fixture(){
   why_it_matters:"Sanctions affect the stated international economic exposure",
   market_relevance:"Quantification is derived separately from market data",
   what_to_watch:"Monitor enforcement changes and subsequent trade flows",
-  evidence_and_confidence:{source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
-   raw_sources_not_republished:true},
+  eligible_derived_score:{country_iso3:"USA",category:"GEOPOLITICS",value_0_100:62,
+   event_class:"SANCTIONS",provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
+   score_model_version:"risk-stream-event-class-v1",
+   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+   derived_only:true,licensed_source_text_included:false,independent_accuracy_certified:false},
+  evidence_and_confidence:{corroborated_originals:2,independent_parent_entities:2,
+   source_rights_and_origins:"DUAL_MACHINE_ATTESTED",factual_confidence:"CORROBORATED_ORIGINALS",
+   risk_score_not_inferred:false,raw_sources_not_republished:true},
   generated_at:new Date(now-3600000).toISOString(),
   expires_at:new Date(now+3600000).toISOString(),
   customer_delivery_authorized:true,charged:false,
@@ -75,6 +81,15 @@ test("modified commercial score, unknown signing key and forged release signatur
  const t=fixture();
  t.inputs.approval.signature_b64=sign(null,Buffer.from("forge"),t.groKey.privateKey).toString("base64");
  await assert.rejects(issueGeoMacroCommercialLicense(t.inputs),/RELEASE_REVIEW_SIGNATURE_INVALID/);
+});
+test("commercial source GRO rejects any raw headline or publisher-text extension",async()=>{
+ const f=fixture(),source=JSON.parse(f.inputs.record.payload_json);
+ source.publisher_headline="COPYRIGHTED_HEADLINE_SENTINEL";
+ const payload=JSON.stringify(source);
+ f.inputs.record={...f.inputs.record,payload_json:payload,payload_sha256:sha(payload),
+  signature_b64:sign(null,Buffer.from(payload),f.groKey.privateKey).toString("base64")};
+ await assert.rejects(issueGeoMacroCommercialLicense(f.inputs),
+  /SOURCE_GRO_COMMERCIAL_OR_ORIGINALS_NOT_AUTHORIZED/u);
 });
 test("unsigned release, unverified rights, hold, and non-commercial GRO refuse licence issuance",async()=>{
  const f=fixture();

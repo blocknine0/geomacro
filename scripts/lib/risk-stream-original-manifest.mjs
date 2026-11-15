@@ -5,6 +5,8 @@
  */
 import {validateAttesterKeys,verifyIndependentAttestations}
  from "./risk-stream-shadow-attesters.mjs";
+import {validateRiskStreamItemLicense}
+ from "../../workers/control-plane/src/risk-stream-item-license-guard.mjs";
 const ROLES={
  GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
@@ -64,6 +66,12 @@ export function validateRealOriginalManifest(events,{
     (Number.isFinite(Date.parse(rv.rights_expires_at_utc))&&
      Date.parse(rv.rights_expires_at_utc)>now.getTime())),
    "RIGHTS_OPERATOR_REVIEW_METADATA_MISSING_OR_STALE");
+  try{validateRiskStreamItemLicense(rv.item_license_evidence,{
+    status:"APPROVED",rights_evidence:{
+     licence_url:rv.item_license_evidence?.license_url,
+     terms_url:rv.item_license_evidence?.terms_url}},
+    {sourceUrl:e.source_url,sourceDomain:e.publisher_root_domain,rawPayload:e.raw_payload})}
+  catch{need(false,"ITEM_LICENSE_OR_EXCLUSION_EVIDENCE_INVALID")}
   // Cryptographic verification covers the exact original-facts claim,
   // not any unsigned rights_verification metadata supplied by an operator.
   verifyIndependentAttestations(e,keys);

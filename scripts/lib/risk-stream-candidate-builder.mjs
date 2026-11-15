@@ -2,6 +2,7 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {validateSourceRightsManifest} from "./risk-stream-source-rights-manifest.mjs";
+import {validateRiskStreamItemLicense} from "../../workers/control-plane/src/risk-stream-item-license-guard.mjs";
 import {canonicalRiskStreamCategory,eventIdentityFields,normalizedEventIdentity}
  from "./risk-stream-event-fingerprint.mjs";
 
@@ -44,11 +45,26 @@ function normalizeUrl(value,root){
   fail("SOURCE_URL_UNREGISTERED");
  return url.href;
 }
-function normalizedDerived(value){
+function normalizeCopyCheck(value){
+ return String(value??"").replace(/<[^>]*>/gu," ").replace(/&(?:nbsp|amp|lt|gt|quot);/giu," ")
+  .normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim().split(/\s+/u).filter(Boolean);
+}
+function normalizedDerived(value,rawPayload){
  if(!exact(value,["what","why","market","watch"])||
   Object.values(value).some(text=>typeof text!=="string"||text.length<6||text.length>360||
    /(?:https?:\/\/|ftp:\/\/|mailto:|www\.)|<[^>]+>|[\r\n]/iu.test(text)))
   fail("DERIVED_FIELDS_INVALID");
+ const original=normalizeCopyCheck(rawPayload);
+ for(const text of Object.values(value)){
+  const tokens=normalizeCopyCheck(text);
+  const gramSize=Math.min(5,tokens.length);
+  if(gramSize>=3){
+   const phrases=new Set();
+   for(let i=0;i<=original.length-gramSize;i++)phrases.add(original.slice(i,i+gramSize).join(" "));
+   for(let i=0;i<=tokens.length-gramSize;i++)
+    if(phrases.has(tokens.slice(i,i+gramSize).join(" ")))fail("SOURCE_TEXT_REUSE_DETECTED");
+  }
+ }
  return {what:value.what,why:value.why,market:value.market,watch:value.watch};
 }
 function prepare(normalized,registry,now,manifest){
@@ -91,6 +107,8 @@ function prepare(normalized,registry,now,manifest){
     Buffer.byteLength(payload,"utf8")>8000)fail("ORIGINAL_PAYLOAD_INVALID");
  const identity=eventIdentityFields(normalized);
  const rightsEvidence=rights.rights_evidence;
+ const itemLicense=validateRiskStreamItemLicense(normalized.item_license_evidence,rights,
+  {sourceUrl:normalized.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:payload});
  const reference=[rightsEvidence.licence_url,rightsEvidence.terms_url].join(" | ");
  if(reference.length<8||reference.length>512)fail("RIGHTS_REFERENCE_INVALID");
  const rights_verification={
@@ -99,7 +117,8 @@ function prepare(normalized,registry,now,manifest){
   authorization_reference:reference,
   independent_reviewer_id:rightsEvidence.reviewer,
   checked_at_utc:rightsEvidence.reviewed_at,
-  rights_expires_at_utc:rights.rights_expire_at+"T00:00:00.000Z"
+  rights_expires_at_utc:rights.rights_expire_at+"T00:00:00.000Z",
+  item_license_evidence:itemLicense
  };
  const candidate={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
   country_iso3:countryIso3,category,
@@ -108,7 +127,7 @@ function prepare(normalized,registry,now,manifest){
   publisher_root_domain:rights.publisher_root_domain,
   parent_media_entity:rights.parent_media_entity,source_role:rights.source_role,
   published_at:new Date(published).toISOString(),
-  original_page_sha256:digest(payload),derived:normalizedDerived(normalized.derived),
+  original_page_sha256:digest(payload),derived:normalizedDerived(normalized.derived,payload),
   raw_payload:payload,proof:null,rights_verification};
  return candidate;
 }

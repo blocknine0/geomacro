@@ -1,7 +1,10 @@
 import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipeline.mjs";
+import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
 
 const MAX_BODY=32*1024;
 const text=new TextEncoder();
+const hex=bytes=>Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+const sha=async value=>hex(await crypto.subtle.digest("SHA-256",text.encode(value)));
 const fail=code=>{throw Error(code)};
 function constantTimeEqual(a,b){
  if(typeof a!=="string"||typeof b!=="string"||a.length>256||b.length>256)return false;
@@ -88,6 +91,13 @@ export async function attestRights(request,env,now=Date.now()){
      typeof event.source_id!=="string"||typeof event.publisher_root_domain!=="string"||
      typeof event.parent_media_entity!=="string"||typeof event.source_role!=="string")
    fail("CANDIDATE_INVALID");
+  const itemLicense=event.rights_verification?.item_license_evidence;
+  if(typeof event.raw_payload!=="string"||event.raw_payload.length<16||
+     event.raw_payload.length>8000||await sha(event.raw_payload)!==event.original_page_sha256)
+   fail("ORIGINAL_PAGE_HASH_MISMATCH");
+  validateRiskStreamItemLicense(itemLicense,{status:"APPROVED",rights_evidence:{
+   licence_url:itemLicense?.license_url,terms_url:itemLicense?.terms_url}},
+   {sourceUrl:event.source_url,sourceDomain:event.publisher_root_domain,rawPayload:event.raw_payload});
   row=await registrySource(env,event.source_id);
   if(!sourceMatches(event,row,now))fail("SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED");
   key=await signingKey(env);
