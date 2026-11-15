@@ -50,7 +50,11 @@ export async function stagePredgePullLicense(env,{groId,envelope,approval,now}){
  if(p?.tier!=="STANDARD"||p?.authorized_redistribution!==true||
     p?.original_publisher_text_included!==false||
     p?.execution_authorized!==false||p?.charged!==false||
-    !proof?.authorized_redistribution||!HEX.test(proof?.payload_sha256??""))
+    !proof?.authorized_redistribution||!HEX.test(proof?.payload_sha256??"")||
+    !Array.isArray(approval?.eligible_tiers)||approval.eligible_tiers.length<1||
+    !approval.eligible_tiers.every(x=>["basic_focused","standard","complex_full"].includes(x))||
+    !Array.isArray(p?.eligible_derived_score?.eligible_tiers)||
+    JSON.stringify(approval.eligible_tiers)!==JSON.stringify(p.eligible_derived_score.eligible_tiers))
   deny("PREDGE_PULL_LICENSE_INVALID");
  const licenseId=await licensedSha(PREDGE_PULL_CLIENT_ID+"\n"+groId+"\n"+proof.payload_sha256);
  const json=JSON.stringify(envelope),createdAt=iso(now);
@@ -116,11 +120,16 @@ async function verifyInternalGro(db,groId,env,now){
     p.execution_authorized!==false||p.certified_risk_index!==false||
     p.evidence_and_confidence?.source_rights_and_origins!=="DUAL_MACHINE_ATTESTED"||
     p.evidence_and_confidence?.raw_sources_not_republished!==true||
+    p.evidence_and_confidence?.raw_source_redacted!==true||
+    p.eligible_derived_score?.raw_source_redacted!==true||
+    p.eligible_derived_score?.licensed_source_text_included!==false||
+    p.eligible_derived_score?.derived_only!==true||
+    p.eligible_derived_score?.independent_accuracy_certified!==false||
     p.subject?.type!=="COUNTRY"||p.subject?.id!==row.country_iso3||
     p.category!==row.category||p.event_fingerprint!==row.event_fingerprint||
     !categoryRoles[p.category]||
-    !Array.isArray(p.source_originals)||p.source_originals.length!==2||
-    new Set(p.source_originals).size!==2||
+    !Array.isArray(p.source_originals)||p.source_originals.length<1||p.source_originals.length>3||
+    new Set(p.source_originals).size!==p.source_originals.length||
     !p.source_originals.every(x=>HEX.test(x))||
     Date.parse(row.expires_at)<=now||Date.parse(p.expires_at)<=now)
   deny("INTERNAL_GRO_NOT_ELIGIBLE");
@@ -134,15 +143,29 @@ async function verifyInternalGro(db,groId,env,now){
   .bind(JSON.stringify(p.source_originals),p.event_fingerprint,
    p.category,p.subject.id).all();
  const rows=evidence?.results??[];
- if(rows.length!==2||rows.some(e=>e.original_verified!==1||
+ if(rows.length!==p.source_originals.length||rows.some(e=>e.original_verified!==1||
     e.enabled!==1||e.commercial_rights_approved!==1||
     !Number.isFinite(Date.parse(e.rights_expire_at))||
     Date.parse(e.rights_expire_at)<=now)||
-    new Set(rows.map(e=>e.publisher_root_domain)).size!==2||
-    new Set(rows.map(e=>e.parent_media_entity)).size!==2||
-    rows.map(e=>e.source_role).sort().join("|")!==
-      [...categoryRoles[p.category]].sort().join("|"))
+    new Set(rows.map(e=>e.publisher_root_domain)).size!==rows.length||
+    new Set(rows.map(e=>e.parent_media_entity)).size!==rows.length)
   deny("INDEPENDENT_ORIGINAL_RIGHTS_NOT_CURRENT");
+ const independentPair=rows.length>=2;
+ const internal= p.evidence_and_confidence?.internal_corroboration;
+ const hasInternal=internal?.raw_source_redacted===true&&
+    Number.isInteger(internal.signal_count)&&internal.signal_count>0&&
+    Array.isArray(internal.families)&&internal.families.some(x=>
+     ["PRIVATE_OSINT","TELEGRAM_WATCH","DERIVED_BASELINE"].includes(x));
+ const cross= p.evidence_and_confidence?.cross_category_synthesis?.verified===true&&
+    Array.isArray(p.evidence_and_confidence.cross_category_synthesis.categories)&&
+    p.evidence_and_confidence.cross_category_synthesis.categories.length>=2||
+    p.evidence_and_confidence?.strategic_corridor_synthesis?.verified===true&&
+    Array.isArray(p.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids)&&
+    p.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids.length>=2;
+ const expectedTiers=["basic_focused",...(independentPair||hasInternal?["standard"]:[]),
+   ...(independentPair||cross?["complex_full"]:[])];
+ if(JSON.stringify(p.eligible_derived_score?.eligible_tiers)!==JSON.stringify(expectedTiers))
+  deny("GRO_TIER_EVIDENCE_INVALID");
  return {row,p};
 }
 export async function issueReviewedCommercialCandidate(env,sourceGroId,{
@@ -189,7 +212,8 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
      approval.client_id!==g.client_id||
      approval.eligible_derived_score_sha256!==
        await licensedSha(canonicalLicensedJson(score))||
-     approval.validated_gro_sha256!==candidateHash)
+     approval.validated_gro_sha256!==candidateHash||
+     JSON.stringify(approval.eligible_tiers)!==JSON.stringify(score?.eligible_tiers))
    deny("REVIEW_NOT_BOUND_TO_SOURCE_CLIENT_SCORE");
   // This validates independent reviewer Ed25519 approval, signed candidate
   // hash, entitlements, score, rights and expiry BEFORE any database mutation.

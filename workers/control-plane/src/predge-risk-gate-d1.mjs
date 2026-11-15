@@ -14,6 +14,8 @@ import {predgePaidRiskGateTerms,predgeSingleEndBuyerBinding,
  from "./predge-paid-risk-gate-contract.mjs";
 import {canonicalLicensedJson,licensedSha,verifyGeoMacroCommercialLicense}
  from "./risk-stream-commercial-license.mjs";
+import {buildRiskStreamDualAudience,validRiskStreamDualAudience}
+ from "./risk-stream-dual-audience.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -321,6 +323,11 @@ export async function readPredgePullLicense(env,parsed,now){
    approval?.client_id!==PREDGE_PULL_CLIENT_ID||
    approval?.customer_entitlement_verified!==true||approval?.go_live_approved!==true||
    approval?.canary_hold_cleared!==true||
+   !Array.isArray(approval?.eligible_tiers)||!approval.eligible_tiers.includes(parsed.tier)||
+   !Array.isArray(p?.eligible_derived_score?.eligible_tiers)||
+   !p.eligible_derived_score.eligible_tiers.includes(parsed.tier)||
+   JSON.stringify(approval.eligible_tiers)!==JSON.stringify(p.eligible_derived_score.eligible_tiers)||
+   !validRiskStreamDualAudience(p?.eligible_derived_score)||
    approval?.validated_gro_sha256!==p?.source_gro_sha256||
    approval?.signed_release_receipt_sha256!==row.release_receipt_sha256||
    approval?.customer_entitlement_expires_at!==row.entitlement_expires_at)return null;
@@ -344,7 +351,8 @@ export async function readPredgePullLicense(env,parsed,now){
   if(!await crypto.subtle.verify("Ed25519",groKey,b64bytes(candidate.signature_b64),
     encoder.encode(candidate.payload_json)))return null;
  }catch{return null;}
- return {gro_id:row.gro_id,envelope,license_payload_sha256:verified.payload_sha256};
+ return {gro_id:row.gro_id,envelope,license_payload_sha256:verified.payload_sha256,
+  eligible_derived_score:p.eligible_derived_score,eligible_tiers:approval.eligible_tiers};
 }
 async function paidReplayAlreadyConsumed(db,{client,requestId,requestHash,verdictId,scopeLockId}){
  const ledger=await db.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
@@ -488,8 +496,14 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      sevenDayRollupIsReady(env,parsed.subject,now),
    ]);
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
- const sharedDecision=generateProgressiveRiskGateDecision(parsed,facts,lockedTier,
-   Boolean(gro),sevenDayRollupReady,now);
+ const licensedTier=paidCommercialLicense?.eligible_tiers?.includes(lockedTier)===true;
+ const effectiveFacts=paidEndpoint&&licensedTier?{...facts,
+  distinct_events:Math.max(1,facts.distinct_events),
+  standard_ready:lockedTier==="basic_focused"?facts.standard_ready:true,
+  corroboration_sources_count:Math.max(1,facts.corroboration_sources_count)}:facts;
+ const sharedDecision=generateProgressiveRiskGateDecision(parsed,effectiveFacts,lockedTier,
+   Boolean(gro),sevenDayRollupReady,now,
+   paidEndpoint&&paidCommercialLicense?.eligible_tiers?.includes("complex_full")===true);
  const tierActivationMatrix=sharedDecision.tierActivationMatrix;
  const complexReady=tierActivationMatrix.complex.active===true;
  const tierReady=sharedDecision.tierReady&&(!paidEndpoint||Boolean(paidCommercialLicense));
@@ -576,6 +590,20 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      source_origin_agnostic_commercial_seal:true,
      request_hash:requestHash,risk_gate:result,context,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     ...(paidCommercialLicense?(()=>{
+       const score=paidCommercialLicense.eligible_derived_score;
+       const posture={CONTINUE:"CONTINUE",REDUCE_EXPOSURE:"REDUCE_LIMIT",
+        REQUIRE_HUMAN_APPROVAL:"REQUIRE_APPROVAL",BLOCK:"PAUSE"}[result.decision]??"PAUSE";
+       const ttl=Math.max(60,Math.min(604800,Math.floor(
+        (Date.parse(paidCommercialLicense.envelope.payload.expires_at)-now)/1000)));
+       const audience=buildRiskStreamDualAudience({category:score.category,
+        eventClass:score.event_class??"UNCLASSIFIED",score:result.risk.score,
+        confidence:result.risk.confidence,horizonHours:24,ttlSeconds:ttl,
+        actionPosture:posture,
+        contagionCorridors:score.agent_decision?.contagion_corridors??[]});
+       return {eligible_derived_score:score,agent_decision:audience.agent_decision,
+        analyst_brief:audience.analyst_brief,raw_source_redacted:true};
+      })():{}),
      ...(paidEndpoint?{license_scope:{licensee:"predge",...PREDGE_SINGLE_END_BUYER_LICENSE,
        bound_end_buyer_id:paidContext.endBuyerId,bound_subject_id:parsed.subject.id,
        bound_category:parsed.category,bound_market_id:paidContext.marketId,

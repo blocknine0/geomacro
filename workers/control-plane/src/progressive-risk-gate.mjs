@@ -136,11 +136,14 @@ export async function readProgressiveFacts(db, subject, now=Date.now(), requeste
     standard_ready: (countries === ids.length && sourceCount >= 2) || legacyNative>=2,
   };
 }
-export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady) {
+export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady,
+ commercialEvidenceApproved=false) {
   const standard = facts.standard_ready === true;
-  // Progressive delivery is monotone in verified authority, not in the
-  // presence of a signed object alone. An absent 7-day history is HOLD.
-  const complex = standard && signedGroReady === true && sevenDayRollupReady === true;
+  // The free/progressive complex tier still requires a verified seven-day
+  // chain. Paid Addendum Complex may instead use the separately signed
+  // reviewer result that proves two independent current licensed originals.
+  const complex = standard && ((signedGroReady === true && sevenDayRollupReady === true) ||
+    commercialEvidenceApproved === true);
   return {
     basic:{active:true,status:"ACTIVE"},
     standard:{
@@ -152,6 +155,7 @@ export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady
       active:complex,status:complex?"ACTIVE":"LOCKED",
       signed_gro_ready:Boolean(signedGroReady),
       seven_day_rollup_ready:Boolean(sevenDayRollupReady),
+      commercial_independent_evidence_approved:commercialEvidenceApproved===true,
       ...(!complex ? {missing:[
         ...(!standard?["TWO_DISTINCT_PUBLISHERS_SAME_EVENT_WITHIN_72H"]:[]),
         ...(!signedGroReady?["CURRENT_VERIFIED_SIGNED_GRO"]:[]),
@@ -247,9 +251,10 @@ export function provisionalRiskGate(parsed,facts,now=Date.now()) {
 /** Shared Basic/Standard decision builder used by partner and Store adapters.
  * It consumes only admitted fact counts; it never promotes raw source rights. */
 export function generateProgressiveRiskGateDecision(parsed,facts,tier,
- signedGroReady=false,sevenDayRollupReady=false,now=Date.now()){
+ signedGroReady=false,sevenDayRollupReady=false,now=Date.now(),
+ commercialEvidenceApproved=false){
  const tierActivationMatrix=progressiveTierMatrix(facts,Boolean(signedGroReady),
-  Boolean(sevenDayRollupReady));
+  Boolean(sevenDayRollupReady),Boolean(commercialEvidenceApproved));
  const tierReady=tier==="basic_focused"?facts.distinct_events>0:
   tier==="standard"?tierActivationMatrix.standard.active===true:
   tier==="complex_full"?tierActivationMatrix.complex.active===true:false;

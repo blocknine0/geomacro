@@ -11,6 +11,9 @@ import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
 import {issueUnsignedDailyNewsBatch} from "./risk-stream-unsigned-gro.mjs";
 import {isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
 import {validateRiskStreamItemLicense} from "./risk-stream-item-license-guard.mjs";
+import {buildRiskStreamDualAudience} from "./risk-stream-dual-audience.mjs";
+import {isRiskStreamInternalCorroboration,summarizeRiskStreamInternalCorroboration}
+ from "./risk-stream-internal-corroboration.mjs";
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
@@ -65,7 +68,8 @@ export const riskStreamOriginalClaims=e=>JSON.stringify({
  source_id:e.source_id,source_url:e.source_url,publisher_root_domain:e.publisher_root_domain,
  parent_media_entity:e.parent_media_entity,source_role:e.source_role,
  published_at:e.published_at,original_page_sha256:e.original_page_sha256,
- derived:e.derived,item_license_evidence:e.rights_verification?.item_license_evidence
+ derived:e.derived,item_license_evidence:e.rights_verification?.item_license_evidence,
+ risk_context:e.risk_context??null
 });
 function validateCandidate(e,now){
  if(!e||e.schema!=="geomacro.risk-stream-candidate.v1"||
@@ -114,6 +118,9 @@ function validateCandidate(e,now){
      terms_url:rights.item_license_evidence?.terms_url}},
     {sourceUrl:e.source_url,sourceDomain:e.publisher_root_domain,rawPayload:e.raw_payload})}
   catch(error){fail(String(error?.message??"ITEM_LICENSE_INVALID"))}
+  if(e.risk_context!==undefined&&(!isRiskStreamInternalCorroboration(e.risk_context)||
+     e.risk_context.country_iso3!==e.country_iso3||e.risk_context.category!==e.category))
+   fail("INTERNAL_CORROBORATION_INVALID");
   if(!exact(e.proof,["facts_signature_b64","rights_signature_b64"])||
      typeof e.raw_payload!=="string"||e.raw_payload.length<16||
      e.raw_payload.length>8000||encode(e.raw_payload).byteLength>8000)
@@ -155,11 +162,11 @@ function originalSources(group,policy){
       a.publisher_root_domain===b.publisher_root_domain||
       a.parent_media_entity===b.parent_media_entity||
       !a.entities.some(x=>b.entities.includes(x)))continue;
-   if(!policy.every(role=>[a.source_role,b.source_role].includes(role)))continue;
    return [a,b];
   }
  }
- return null;
+ return candidates.find(x=>x.original_verified===1)?
+  [candidates.find(x=>x.original_verified===1)]:null;
 }
 export async function inspectRiskStreamCandidates(items,now=Date.now()){
  if(!Array.isArray(items)||items.length<1||items.length>10)fail("QUEUE_BATCH_INVALID");
@@ -373,7 +380,9 @@ async function categoryPolicies(db,items){
  for(const e of items)if(!policies.has(e.category))fail("CATEGORY_NOT_ACTIVATED");
  return policies;
 }
-export function deriveRiskStreamEligibleScore(category,countryIso3,what){
+export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
+ eligibleTiers=["basic_focused"],internalCorroboration=null,confidence=0.65
+}={}){
  if(!["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].includes(category)||
     !/^[A-Z]{3}$/u.test(countryIso3??""))return null;
  const eventText=String(what??"").toUpperCase();
@@ -397,21 +406,38 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what){
   [/\bMINERAL TRADE|CRITICAL MINERAL|RARE EARTH|LITHIUM|COBALT|NICKEL|GRAPHITE\b/u,"MINERAL_TRADE",52]
  ];
  const eventRule=scoreRules.find(([pattern])=>pattern.test(eventText));
- return eventRule?{country_iso3:countryIso3,category,
+ if(!eventRule)return null;
+ const audience=buildRiskStreamDualAudience({category,eventClass:eventRule[1],
+  score:eventRule[2],confidence});
+ return {country_iso3:countryIso3,category,
   value_0_100:eventRule[2],event_class:eventRule[1],
   provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
   score_model_version:"risk-stream-event-class-v1",
   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
   derived_only:true,licensed_source_text_included:false,
-  independent_accuracy_certified:false}:null;
+  independent_accuracy_certified:false,eligible_tiers:[...eligibleTiers],
+  raw_source_redacted:true,...(internalCorroboration?{internal_corroboration:internalCorroboration}:{}),
+  ...audience};
 }
-async function signGro(pair,env,now){
+async function signGro(pair,env,now,requiredRoles=POLICIES[pair[0].category]){
  const [a,b]=pair;
  const key=await signKey(env.RISK_STREAM_GRO_SIGN_PKCS8_B64);
  const verifyKey=await trustedKey(env.RISK_STREAM_GRO_VERIFY_SPKI_B64);
- const ids=[a.observation_id,b.observation_id].sort();
+ const ids=pair.map(x=>x.observation_id).sort();
+ const context=summarizeRiskStreamInternalCorroboration(pair
+  .map(x=>x.risk_context).filter(Boolean));
+ // originalSources() already proves the observations are independent, current,
+ // rights-approved records. Tier readiness depends on that evidence, not on
+ // which of two valid publisher roles happens to be present in this event.
+ const independentPair=Boolean(b);
+ const tierEligibility=["basic_focused",
+  ...(independentPair||context.signal_count>0?["standard"]:[]),
+  ...(independentPair?["complex_full"]:[])];
  const score=deriveRiskStreamEligibleScore(a.category,a.country_iso3,
-  [a.derived?.what,b.derived?.what].join(" "));
+  pair.map(x=>x.derived?.what).join(" "),{
+   eligibleTiers:tierEligibility,internalCorroboration:context.signal_count?context:null,
+   confidence:context.signal_count?Math.min(0.9,0.55+context.max_corroboration_weight_0_1*0.35):
+    b?0.75:0.45});
  const payload={
   schema:"geomacro.event-stream-gro.v1",subject:{type:"COUNTRY",id:a.country_iso3},
   category:a.category,event_fingerprint:a.event_fingerprint,
@@ -419,11 +445,16 @@ async function signGro(pair,env,now){
   what_happened:a.derived.what,why_it_matters:a.derived.why,
   market_relevance:a.derived.market,what_to_watch:a.derived.watch,
   eligible_derived_score:score,
-  evidence_and_confidence:{corroborated_originals:2,
-   independent_parent_entities:2,source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
-   factual_confidence:"CORROBORATED_ORIGINALS",
+  evidence_and_confidence:{corroborated_originals:pair.length,
+   independent_parent_entities:new Set(pair.map(x=>x.parent_media_entity)).size,
+   source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
+   factual_confidence:b?"CORROBORATED_ORIGINALS":"SINGLE_VERIFIED_ORIGINAL",
    risk_score_not_inferred:score===null,
-   raw_sources_not_republished:true},
+   raw_sources_not_republished:true,raw_source_redacted:true,
+   ...(context.signal_count?{internal_corroboration:context}:{}),
+   ...(context.categories.length>1?{cross_category_synthesis:{verified:true,
+    categories:context.categories}}:{}),
+   ...(context.corridors.length?{strategic_corridors:context.corridors}:{})},
   generated_at:new Date(now).toISOString(),expires_at:new Date(now+3*3600000).toISOString(),
   execution_authorized:false,charged:false,
   certified_risk_index:false,customer_delivery_authorized:false
@@ -528,6 +559,9 @@ export async function processRiskStreamBatch(env,items,{
   }
  }
  const grouped=await loadCorroborated(env.DB,distinct,now,opts);
+ const currentContext=new Map(distinct.map(x=>[x.observation_id,x.risk_context??null]));
+ for(const group of grouped.values())for(const row of group)
+  row.risk_context=currentContext.get(row.observation_id)??null;
  const signed=[],signedEventKeys=new Set();
  for(const [key,group] of grouped){
   const [country,category]=key.split("|");
@@ -535,7 +569,7 @@ export async function processRiskStreamBatch(env,items,{
      key.endsWith("|"+x.event_fingerprint)))continue;
   const pair=originalSources(group,policy.get(category));
   if(!pair)continue;
-  const gro=await signGro(pair,env,now);
+  const gro=await signGro(pair,env,now,policy.get(category));
   await persistSignedGro(env.DB,gro,{...opts,verifyKey:env.RISK_STREAM_GRO_VERIFY_SPKI_B64});
   // Original GRO stays customer_delivery_authorized=false. A distinct GRO
   // can be licensed only after independent reviewer signature and D1 rights.

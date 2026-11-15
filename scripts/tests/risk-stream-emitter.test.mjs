@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {generateKeyPairSync,sign} from "node:crypto";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
+import {normalizeRiskStreamInternalCorroboration} from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
 
 const now=Date.parse("2026-11-14T12:00:00.000Z");
 const rightsManifest={schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[
@@ -36,11 +37,26 @@ const originals=rightsManifest.entries.map((source,index)=>({category:"GEOPOLITI
 
 test("dry run validates pair and makes no HTTP request",async()=>{
  let calls=0;
- const result=await emitRiskStreamCandidates({originals,sourceRegistry,rightsManifest,now,
+ const originalsWithPrivate=[{...originals[0],risk_context:normalizeRiskStreamInternalCorroboration({
+  source_kind:"PRIVATE_OSINT",country_iso3:"USA",category:"GEOPOLITICS",
+  text:"Sanctions watch, private headline and URL https://osint.invalid/secret",
+  severity_weight:61,corroboration_weight:.55,corridors:["USA>IND"]})},originals[1]];
+ const result=await emitRiskStreamCandidates({originals:originalsWithPrivate,sourceRegistry,rightsManifest,now,
   fetchImpl:async()=>{calls++;throw Error("unexpected")}});
  assert.equal(result.status,"DRY_RUN");
  assert.equal(result.candidate_count,2);
  assert.equal(calls,0);
+});
+
+test("one current rights-approved original is emitted as a Basic-only candidate before a second wire arrives",async()=>{
+ const [single]=originals.map((value,index)=>({...value,
+  event_identity:{...value.event_identity,actor_id:"us_treasury"},
+  published_at:"2026-11-14T11:00:00.000Z"})).slice(0,1);
+ const result=await emitRiskStreamCandidates({originals:[single],sourceRegistry,
+  rightsManifest,now,dryRun:true});
+ assert.equal(result.status,"DRY_RUN");
+ assert.equal(result.candidate_count,1);
+ assert.equal(result.paired_events,0);
 });
 
 test("item-level noncommercial and third-party exceptions are skipped before either attester",async()=>{
@@ -97,7 +113,11 @@ test("send mode obtains genuine stubbed signatures then posts exact worker batch
   const body=JSON.parse(options.body);batches.push(body);
   return {ok:true,status:202,json:async()=>({ok:true,accepted:body.items.length,commercial_delivery:false})};
  };
- const result=await emitRiskStreamCandidates({originals,sourceRegistry,rightsManifest,now,
+ const originalsWithPrivate=[{...originals[0],risk_context:normalizeRiskStreamInternalCorroboration({
+  source_kind:"PRIVATE_OSINT",country_iso3:"USA",category:"GEOPOLITICS",
+  text:"Sanctions watch, private headline and URL https://osint.invalid/secret",
+  severity_weight:61,corroboration_weight:.55,corridors:["USA>IND"]})},originals[1]];
+ const result=await emitRiskStreamCandidates({originals:originalsWithPrivate,sourceRegistry,rightsManifest,now,
   dryRun:false,
   controlPlaneUrl:"https://control.invalid",controlPlaneToken:"root-test-token",
  factsPublicB64:facts.publicKey.export({format:"der",type:"spki"}).toString("base64"),
@@ -111,4 +131,9 @@ test("send mode obtains genuine stubbed signatures then posts exact worker batch
  assert.equal(batches[0].schema,"geomacro.risk-stream-ingest-batch.v1");
  assert.equal(batches[0].items.length,2);
  assert.equal(batches[0].items[0].event_fingerprint,batches[0].items[1].event_fingerprint);
+ const privateContext=batches[0].items.find(item=>item.risk_context)?.risk_context;
+ assert.equal(privateContext?.origin_kind,"PRIVATE_OSINT");
+ assert.equal(privateContext?.event_code,"SANCTIONS");
+ assert.equal(privateContext?.raw_source_redacted,true);
+ assert.doesNotMatch(JSON.stringify(batches),/osint\.invalid|private headline|secret/iu);
 });

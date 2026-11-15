@@ -4,6 +4,7 @@
  * entitlement, matching release receipt, current signed GRO, or explicit
  * derived score means no grant. It never reads or returns publisher text.
  */
+import {validRiskStreamDualAudience} from "../../control-plane/src/risk-stream-dual-audience.mjs";
 const CLIENT="predge-paid-risk-gate-addendum-v2";
 const DOMAIN="geomacro.commercial-independent-release-review.v1\n";
 const HEX=/^[a-f0-9]{64}$/u;
@@ -62,7 +63,11 @@ function validScore(score,gro){
   Number.isFinite(score.value_0_100)&&score.value_0_100>=0&&score.value_0_100<=100&&
   typeof score.provenance==="string"&&score.provenance.length>=8&&
   score.derived_only===true&&score.licensed_source_text_included===false&&
-  score.independent_accuracy_certified===false;
+  score.independent_accuracy_certified===false&&
+  score.raw_source_redacted===true&&
+  Array.isArray(score.eligible_tiers)&&score.eligible_tiers.length>=1&&
+  score.eligible_tiers.every(x=>["basic_focused","standard","complex_full"].includes(x))&&
+  validRiskStreamDualAudience(score);
 }
 async function review(body,env,now){
  if(!enabled(env))return {schema:"geomacro.commercial-review-result.v1",grants:[],status:"HOLD_RELEASE_OR_ENTITLEMENT_UNAVAILABLE"};
@@ -71,7 +76,8 @@ async function review(body,env,now){
    body.client_id!==CLIENT||!HEX.test(body.source_gro_id??"")||
    !HEX.test(body.source_gro_sha256??"")||!HEX.test(body.proposed_gro_id??"")||
    !HEX.test(body.proposed_gro_sha256??"")||
-   !Array.isArray(body.original_observation_ids)||body.original_observation_ids.length!==2||
+   !Array.isArray(body.original_observation_ids)||body.original_observation_ids.length<1||
+   body.original_observation_ids.length>3||
    !body.original_observation_ids.every(x=>HEX.test(x))||
    typeof body.source_gro_payload_json!=="string"||body.source_gro_payload_json.length>16000||
    typeof body.source_gro_signature_b64!=="string")
@@ -88,24 +94,40 @@ async function review(body,env,now){
    gro.execution_authorized!==false||gro.charged!==false||gro.customer_delivery_authorized!==false||
    gro.evidence_and_confidence?.source_rights_and_origins!=="DUAL_MACHINE_ATTESTED"||
    gro.evidence_and_confidence?.raw_sources_not_republished!==true||
+   gro.evidence_and_confidence?.raw_source_redacted!==true||
    !Number.isFinite(Date.parse(gro.expires_at))||Date.parse(gro.expires_at)<=now)
   throw Error("GRO_CLAIMS_INVALID");
  const groKey=await crypto.subtle.importKey("spki",decode(env.RISK_STREAM_GRO_VERIFY_SPKI_B64),{name:"Ed25519"},false,["verify"]);
  if(!await crypto.subtle.verify("Ed25519",groKey,decode(body.source_gro_signature_b64),text.encode(body.source_gro_payload_json)))
   throw Error("GRO_SIGNATURE_INVALID");
- const rolePairs={GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
-  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
-  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]};
  const evidence=await env.DB.prepare("SELECT e.observation_id,e.original_verified,e.publisher_root_domain,e.parent_media_entity,e.source_role,s.enabled,s.commercial_rights_approved,s.rights_expire_at FROM risk_stream_evidence e JOIN risk_stream_sources s ON s.source_id=e.source_id WHERE e.observation_id IN (SELECT value FROM json_each(?)) AND e.event_fingerprint=? AND e.category=? AND e.country_iso3=? LIMIT 3")
   .bind(JSON.stringify(body.original_observation_ids),gro.event_fingerprint,gro.category,gro.subject.id).all();
  const evidenceRows=evidence?.results??[];
- if(evidenceRows.length!==2||evidenceRows.some(row=>row.original_verified!==1||
+ if(evidenceRows.length!==body.original_observation_ids.length||evidenceRows.some(row=>row.original_verified!==1||
    row.enabled!==1||row.commercial_rights_approved!==1||
    !Number.isFinite(Date.parse(row.rights_expire_at))||Date.parse(row.rights_expire_at)<=now)||
-   new Set(evidenceRows.map(row=>row.publisher_root_domain)).size!==2||
-   new Set(evidenceRows.map(row=>row.parent_media_entity)).size!==2||
-   evidenceRows.map(row=>row.source_role).sort().join("|")!==rolePairs[gro.category].slice().sort().join("|"))
+   new Set(evidenceRows.map(row=>row.publisher_root_domain)).size!==evidenceRows.length||
+   new Set(evidenceRows.map(row=>row.parent_media_entity)).size!==evidenceRows.length)
   return {schema:"geomacro.commercial-review-result.v1",grants:[],status:"HOLD_CURRENT_INDEPENDENT_SOURCE_RIGHTS_UNVERIFIED"};
+ // Every row above is independently rooted, current and commercially
+ // approved. A second independent verified observation is enough evidence;
+ // a category's preferred role pair remains a sourcing target, not a
+ // customer-delivery blocker.
+ const independentPair=evidenceRows.length>=2;
+ const corroboration=gro.evidence_and_confidence?.internal_corroboration;
+ const internalSupport=corroboration?.raw_source_redacted===true&&
+   Number.isInteger(corroboration.signal_count)&&corroboration.signal_count>0&&
+   Array.isArray(corroboration.families)&&corroboration.families.some(x=>
+    ["PRIVATE_OSINT","TELEGRAM_WATCH","DERIVED_BASELINE"].includes(x));
+ const crossSynthesis=gro.evidence_and_confidence?.cross_category_synthesis?.verified===true&&
+   Array.isArray(gro.evidence_and_confidence.cross_category_synthesis.categories)&&
+   gro.evidence_and_confidence.cross_category_synthesis.categories.length>=2||
+   gro.evidence_and_confidence?.strategic_corridor_synthesis?.verified===true&&
+   Array.isArray(gro.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids)&&
+   gro.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids.length>=2;
+ const eligibleTiers=["basic_focused",
+   ...(independentPair||internalSupport?["standard"]:[]),
+   ...(independentPair||crossSynthesis?["complex_full"]:[])];
  const candidate={...gro,customer_delivery_authorized:true,commercial_origin_gro_id:body.source_gro_id};
  const candidateJson=JSON.stringify(candidate);
  if(await sha(candidateJson)!==body.proposed_gro_sha256||
@@ -114,6 +136,8 @@ async function review(body,env,now){
  const score=body.eligible_derived_score;
  if(!validScore(score,gro)||canonical(gro.eligible_derived_score)!==canonical(score))
   return {schema:"geomacro.commercial-review-result.v1",grants:[],status:"HOLD_EXPLICIT_DERIVED_SCORE_REQUIRED"};
+ if(canonical(score.eligible_tiers)!==canonical(eligibleTiers))
+  return {schema:"geomacro.commercial-review-result.v1",grants:[],status:"HOLD_TIER_EVIDENCE_MISMATCH"};
  const receipt=env.RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256;
  const entitlement=await env.DB.prepare("SELECT client_id,enabled,entitlement_expires_at,release_receipt_sha256 FROM risk_stream_commercial_subscriptions WHERE client_id=? LIMIT 1").bind(CLIENT).first();
  const expires=Date.parse(entitlement?.entitlement_expires_at??"");
@@ -131,7 +155,8 @@ async function review(body,env,now){
   validated_gro_sha256:body.proposed_gro_sha256,
   eligible_derived_score_sha256:await sha(canonical(score)),
   signed_release_receipt_sha256:receipt,reviewed_at:new Date(now).toISOString(),
-  customer_entitlement_expires_at:entitlement.entitlement_expires_at};
+  customer_entitlement_expires_at:entitlement.entitlement_expires_at,
+  eligible_tiers:eligibleTiers};
  const approvalPayload=canonical(approval);
  approval.signature_b64=b64(await crypto.subtle.sign("Ed25519",signer,
   text.encode(DOMAIN+approvalPayload)));

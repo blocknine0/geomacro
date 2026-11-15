@@ -4,6 +4,8 @@ import {createHash,generateKeyPairSync,randomBytes,sign} from "node:crypto";
 import {processRiskStreamBatch,enqueueRiskStreamEvents,consumeRiskStreamQueue,
  inspectRiskStreamCandidates,riskStreamOriginalClaims,deriveRiskStreamEligibleScore}
  from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
+import {normalizeRiskStreamInternalCorroboration}
+ from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
 
 const digest=v=>createHash("sha256").update(v).digest("hex");
 const signing=()=>generateKeyPairSync("ed25519");
@@ -52,21 +54,53 @@ test("dual-attested originals produce signed eligible_derived_score objects in a
   });
   assert.equal(result.corroborated_and_signed,1,item.category);
   const row=[...c.db.gros.values()][0],payload=JSON.parse(row.payload_json);
-  assert.deepEqual(payload.eligible_derived_score,{
-   country_iso3:"USA",category:item.category,value_0_100:item.value,
-   event_class:payload.eligible_derived_score.event_class,
-   provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
-   score_model_version:"risk-stream-event-class-v1",
-   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
-   derived_only:true,licensed_source_text_included:false,
-   independent_accuracy_certified:false
-  });
+  assert.equal(payload.eligible_derived_score.country_iso3,"USA");
+  assert.equal(payload.eligible_derived_score.category,item.category);
+  assert.equal(payload.eligible_derived_score.value_0_100,item.value);
+  assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+   ["basic_focused","standard","complex_full"]);
+  assert.equal(payload.eligible_derived_score.raw_source_redacted,true);
+  assert.equal(payload.eligible_derived_score.agent_decision.risk_score_0_100,item.value);
+  assert.equal(payload.eligible_derived_score.analyst_brief.risk_mechanism.length>20,true);
+  assert.doesNotMatch(JSON.stringify(payload.eligible_derived_score),/https?:\/\/|headline|publisher|channel/iu);
   const key=await crypto.subtle.importKey("spki",
    Buffer.from(c.env.RISK_STREAM_GRO_VERIFY_SPKI_B64,"base64"),
    {name:"Ed25519"},false,["verify"]);
   assert.equal(await crypto.subtle.verify("Ed25519",key,
    Buffer.from(row.signature_b64,"base64"),Buffer.from(row.payload_json)),true);
  }
+});
+test("one independently dual-attested primary plus redacted Private OSINT features qualifies Standard only",async()=>{
+ const c=ctx(),now=Date.now(),item=candidate(c,991,"gov",now);
+ item.risk_context=normalizeRiskStreamInternalCorroboration({
+  source_kind:"PRIVATE_OSINT",country_iso3:item.country_iso3,category:item.category,
+  text:"FX stress and sovereign debt distress observed in a private monitor; private title, URL, and publisher omitted",
+  severity_weight:68,corroboration_weight:0.7,corridors:["USA>IND"]
+ });
+ const claims=riskStreamOriginalClaims(item);
+ item.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
+ item.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
+ const out=await processRiskStreamBatch(c.env,[item],{now,sleeper:async()=>{},random:()=>0});
+ assert.equal(out.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.equal(payload.source_originals.length,1);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused","standard"]);
+ assert.equal(payload.evidence_and_confidence.internal_corroboration.raw_source_redacted,true);
+ assert.deepEqual(payload.evidence_and_confidence.internal_corroboration.families,["PRIVATE_OSINT"]);
+ assert.deepEqual(payload.eligible_derived_score.agent_decision.contagion_corridors,[]);
+ assert.doesNotMatch(JSON.stringify(payload),/private title|publisher omitted|https?:\/\/|headline/iu);
+});
+
+test("two independent rights-approved originals qualify Standard and Complex without mandatory role-pair matching",async()=>{
+ const c=ctx(),now=Date.now();
+ c.db.sources.get("region").source_role="GOVERNMENT_WIRE";
+ const a=candidate(c,1901,"gov",now),b=candidate(c,1901,"region",now+1000,"GEOPOLITICS",0,"GOVERNMENT_WIRE");
+ const out=await processRiskStreamBatch(c.env,[a,b],{now:now+2000,sleeper:async()=>{},random:()=>0});
+ assert.equal(out.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.equal(payload.source_originals.length,2);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+  ["basic_focused","standard","complex_full"]);
 });
 class FakeDB {
  constructor(){
@@ -195,7 +229,7 @@ function ctx(){
   RISK_STREAM_GRO_VERIFY_SPKI_B64:spki(gro)};
  return {db,r2,env,facts,rights,gro};
 }
-function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetMs=0){
+function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetMs=0,roleOverride=null){
  const original=source==="gov",raw="Original verified event factual record for "+
   category+" "+i+" from "+source+"; direct independent original. Open Government Licence v3 "+
   "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
@@ -223,7 +257,7 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
   source_id:source,source_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
   publisher_root_domain:original?"official.example":"regional.example",
   parent_media_entity:original?"government_official":"regional_newspaper",
-  source_role:roles[original?0:1],
+  source_role:roleOverride??roles[original?0:1],
   published_at:new Date(now-30000+clockOffsetMs).toISOString(),
   original_page_sha256:digest(raw),derived,raw_payload:raw,proof:null,
   rights_verification:{registry_source_id:source,registry_enabled:true,
@@ -290,14 +324,16 @@ test("idempotent redrive reuses same signed GRO and outbox despite later clock",
  assert.equal(c.db.gros.size,1);
  assert.equal(c.db.outbox.size,1);
 });
-test("unverified GDELT indexed hints never corroborate commercial originals",async()=>{
+test("unverified GDELT indexed hints cannot elevate single originals beyond Basic",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,1,"gov",now),b=candidate(c,1,"region",now);
  b.kind="INDEX_ONLY";b.feed_origin="GDELT_INDEX";b.proof=null;b.raw_payload=null;
  const result=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
  assert.equal(result.index_only,1);
- assert.equal(result.corroborated_and_signed,0);
- assert.equal(c.db.gros.size,0);
+ assert.equal(result.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.deepEqual(payload.source_originals,[payload.source_originals[0]]);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
 });
 test("machine rights signature cannot be substituted by facts attestation",async()=>{
  const c=ctx(),now=Date.now(),a=candidate(c,2,"gov",now);
@@ -314,7 +350,7 @@ test("preapproved dynamic category routes without any Hot50 hardcoded country-co
  assert.equal(r.corroborated_and_signed,1);
  assert.equal([...c.db.gros.values()][0].category,"FOOD_SECURITY");
 });
-test("publisher-parent independence is mandatory even when domains differ",async()=>{
+test("publisher-parent independence is mandatory for Standard and Complex, not Basic",async()=>{
  const c=ctx(),now=Date.now();
  c.db.sources.get("region").parent_media_entity="government_official";
  const a=candidate(c,4,"gov",now),b=candidate(c,4,"region",now);
@@ -323,14 +359,20 @@ test("publisher-parent independence is mandatory even when domains differ",async
  b.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
  b.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
  const result=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
- assert.equal(result.corroborated_and_signed,0);
+ assert.equal(result.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.deepEqual(payload.source_originals.length,1);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
 });
-test("52-hour separated original publications cannot pass 48-hour same-event window",async()=>{
+test("52-hour separated originals remain separate Basic observations",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,5,"gov",now,"GEOPOLITICS",-52*3600000);
  const b=candidate(c,5,"region",now);
  const result=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
- assert.equal(result.corroborated_and_signed,0);
+ assert.equal(result.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.equal(payload.source_originals.length,1);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
 });
 test("unapproved publisher commercial rights HOLD before canonical write",async()=>{
  const c=ctx(),now=Date.now();
@@ -419,7 +461,7 @@ test("distinct original wording corroborates the same attested event key without
  assert.equal(result.corroborated_and_signed,1);
  assert.equal(c.db.gros.size,1);
 });
-test("matching entities but different attested event keys never corroborate",async()=>{
+test("matching entities but different attested event keys stay separate Basic observations",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,502,"gov",now),b=candidate(c,502,"region",now);
  b.event_key="EVENT_DIFFERENT_0502";
@@ -432,11 +474,12 @@ test("matching entities but different attested event keys never corroborate",asy
  const result=await processRiskStreamBatch(c.env,[a,b],{
   now,sleeper:async()=>{},random:()=>0
  });
- assert.equal(result.corroborated_and_signed,0);
- assert.equal(c.db.gros.size,0);
+ assert.equal(result.corroborated_and_signed,2);
+ assert.equal(c.db.gros.size,2);
+ assert.ok([...c.db.gros.values()].every(row=>JSON.parse(row.payload_json).source_originals.length===1));
 });
 
-test("bounded secondary news index is queried, matched by entities, but cannot certify unsigned originals",async()=>{
+test("bounded secondary news index never contributes source evidence while one original yields Basic",async()=>{
  const c=ctx(),now=Date.now(),a=candidate(c,503,"gov",now);
  c.db.secondaryIndex=[{country_iso3:"USA",category:"geopolitics",
   event_fingerprint:"f".repeat(64),publisher_domain:"regional.example",
@@ -444,8 +487,10 @@ test("bounded secondary news index is queried, matched by entities, but cannot c
  const result=await processRiskStreamBatch(c.env,[a],{now,sleeper:async()=>{},random:()=>0});
  assert.equal(result.secondary_index_same_entity_hint_count,1);
  assert.equal(result.secondary_index_publisher_hints_never_certification,true);
- assert.equal(result.corroborated_and_signed,0);
- assert.equal(c.db.gros.size,0);
+ assert.equal(result.corroborated_and_signed,1);
+ assert.equal(c.db.gros.size,1);
+ assert.deepEqual(JSON.parse([...c.db.gros.values()][0].payload_json).eligible_derived_score.eligible_tiers,
+  ["basic_focused"]);
 });
 
 test("real GDELT index-only shadow path cannot require or mint independent rights signatures",async()=>{

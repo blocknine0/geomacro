@@ -7,26 +7,35 @@ import {readPredgePullLicense}
  from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 import {stagePredgePullLicense}
  from "../../workers/control-plane/src/risk-stream-commercial-issuer.mjs";
+import {buildRiskStreamDualAudience}
+ from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
 
 const now=Date.parse("2026-11-14T12:00:00Z"),sha=s=>createHash("sha256").update(s).digest("hex");
 const spki=k=>k.export({format:"der",type:"spki"}).toString("base64");
 const pkcs8=k=>k.export({format:"der",type:"pkcs8"}).toString("base64");
-async function fixture(){
+async function fixture(category="GEOPOLITICS",eligibleTiers=["basic_focused","standard","complex_full"]){
  const gro=generateKeyPairSync("ed25519"),license=generateKeyPairSync("ed25519"),
   release=generateKeyPairSync("ed25519");
+ const scoreByCategory={GEOPOLITICS:{value:62,event:"SANCTIONS",text:"Sanctions"},
+  MACRO_FX:{value:66,event:"FX_STRESS",text:"FX stress"},
+  CRITICAL_MINERALS:{value:78,event:"MINERAL_SUPPLY_SHOCK",text:"Critical mineral supply shock"}};
+ const categoryScore=scoreByCategory[category];
+ const eligibleDerivedScore={country_iso3:"USA",category,value_0_100:categoryScore.value,
+  event_class:categoryScore.event,provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
+  score_model_version:"risk-stream-event-class-v1",
+  score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
+  derived_only:true,licensed_source_text_included:false,independent_accuracy_certified:false,
+  eligible_tiers:eligibleTiers,raw_source_redacted:true,
+  ...buildRiskStreamDualAudience({category,eventClass:categoryScore.event,score:categoryScore.value,confidence:0.7})};
  const source={schema:"geomacro.event-stream-gro.v1",subject:{type:"COUNTRY",id:"USA"},
-  category:"GEOPOLITICS",event_fingerprint:sha("event"),
+  category,event_fingerprint:sha("event"),
   source_originals:[sha("original-1"),sha("original-2")],
-  what_happened:"A dated sanctions measure was announced",why_it_matters:"The measure may affect cross-border trade",
+  what_happened:`A dated ${categoryScore.text} observation was verified`,why_it_matters:"The measure may affect cross-border trade",
   market_relevance:"Derived exposure is assessed separately",what_to_watch:"Monitor enforcement and trade flows",
-  eligible_derived_score:{country_iso3:"USA",category:"GEOPOLITICS",value_0_100:62,
-   event_class:"SANCTIONS",provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
-   score_model_version:"risk-stream-event-class-v1",
-   score_semantics:"EVENT_CLASS_HEURISTIC_NOT_A_VERIFIED_COUNTRY_RISK_SCORE",
-   derived_only:true,licensed_source_text_included:false,independent_accuracy_certified:false},
+  eligible_derived_score:eligibleDerivedScore,
   evidence_and_confidence:{corroborated_originals:2,independent_parent_entities:2,
    source_rights_and_origins:"DUAL_MACHINE_ATTESTED",factual_confidence:"CORROBORATED_ORIGINALS",
-   risk_score_not_inferred:false,raw_sources_not_republished:true},
+   risk_score_not_inferred:false,raw_sources_not_republished:true,raw_source_redacted:true},
   generated_at:new Date(now-60000).toISOString(),expires_at:new Date(now+3600000).toISOString(),
   customer_delivery_authorized:true,charged:false,execution_authorized:false,certified_risk_index:false};
  const sourceJson=JSON.stringify(source),sourceHash=sha(sourceJson);
@@ -37,23 +46,21 @@ async function fixture(){
   independent_source_rights_verified:true,customer_entitlement_verified:true,go_live_approved:true,
   canary_hold_cleared:true,validated_gro_sha256:sourceHash,
   signed_release_receipt_sha256:sha("release-receipt"),reviewed_at:new Date(now-1000).toISOString(),
-  customer_entitlement_expires_at:new Date(now+1800000).toISOString()};
+  customer_entitlement_expires_at:new Date(now+1800000).toISOString(),eligible_tiers:eligibleTiers};
  const unsigned={...approval};
  approval.signature_b64=sign(null,Buffer.from("geomacro.commercial-independent-release-review.v1\n"+
   canonicalLicensedJson(unsigned)),release.privateKey).toString("base64");
  const envelope=await issueGeoMacroCommercialLicense({record,
   groPublicSpkiB64:spki(gro.publicKey),licensePrivatePkcs8B64:pkcs8(license.privateKey),
   licensePublicSpkiB64:spki(license.publicKey),releasePublicSpkiB64:spki(release.publicKey),
-  eligibleDerivedScore:{country_iso3:"USA",category:"GEOPOLITICS",value_0_100:62,
-   provenance:"TWO_ORIGINALS",derived_only:true,licensed_source_text_included:false,
-   independent_accuracy_certified:false},approval,now});
+  eligibleDerivedScore,approval,now});
  const candidate={...source,customer_delivery_authorized:true,
   commercial_origin_gro_id:record.gro_id};
  const candidateJson=JSON.stringify(candidate),candidateHash=await licensedSha(candidateJson);
  const candidateRow={payload_json:candidateJson,payload_sha256:candidateHash,
   signature_b64:sign(null,Buffer.from(candidateJson),gro.privateKey).toString("base64")};
  const row={gro_id:await licensedSha("geomacro.authorized-gro.v1\n"+record.gro_id),
-  country_iso3:"USA",category:"GEOPOLITICS",
+  country_iso3:"USA",category,
   license_envelope_json:JSON.stringify(envelope),
   release_approval_json:JSON.stringify(approval),
   license_payload_sha256:envelope.license_proof.payload_sha256,
@@ -102,6 +109,22 @@ test("reviewer-approved Predge license stages durably to the pull table with rea
  await assert.rejects(stagePredgePullLicense(env,{groId:row.gro_id,
   envelope:JSON.parse(row.license_envelope_json),approval:{...approval,canary_hold_cleared:false},now}),
   /PREDGE_PULL_ENTITLEMENT_OR_RELEASE_UNVERIFIED/u);
+});
+
+test("all three categories and Addendum v2 tiers verify against signed reviewer licenses",async()=>{
+ for(const [category,requestCategory] of [["GEOPOLITICS","geopolitics"],
+  ["MACRO_FX","macro"],["CRITICAL_MINERALS","critical_minerals"]]){
+  const {env,row}=await fixture(category);
+  for(const tier of ["basic_focused","standard","complex_full"]){
+   const result=await readPredgePullLicense(env,{...parsed,tier,category:requestCategory},now);
+   assert.equal(result.gro_id,row.gro_id,`${category} ${tier}`);
+   assert.equal(result.eligible_derived_score.category,category);
+   assert.deepEqual(result.eligible_tiers,["basic_focused","standard","complex_full"]);
+   assert.equal(result.eligible_derived_score.raw_source_redacted,true);
+   assert.equal(typeof result.eligible_derived_score.agent_decision.action_posture,"string");
+   assert.equal(typeof result.eligible_derived_score.analyst_brief.risk_mechanism,"string");
+  }
+ }
 });
 
 test("one reviewer-bound redistribution license supports all Addendum v2 product tiers",async()=>{

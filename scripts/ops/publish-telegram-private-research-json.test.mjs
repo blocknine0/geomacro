@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {DatabaseSync} from "node:sqlite";
 import {verifyAuthorizedTelegramResearchLead,authorizedTelegramResearchSql} from "./publish-telegram-private-research-json.mjs";
 import {readPrivateTelegramResearchJson} from "../../workers/control-plane/src/telegram-research-json.mjs";
 
@@ -25,7 +27,26 @@ test("accepted signed-B2/D1 handoff produces country- and domain-tagged private-
  assert.match(sql,/q.state='CONSUMED'/);
  assert.match(sql,/l.verification_status='UNVERIFIED'/);
  assert.match(sql,/q.b2_sha256=l.b2_sha256/);
+ assert.match(sql,/watch_event/);
  assert.doesNotMatch(sql,/CREATE|source_url|raw_payload|INSERT INTO reusable_news_items|UPDATE.*commercial_eligible/);
+});
+test("Telegram watch-event migration stores only the closed Hot50 event enum with an indexed read path",()=>{
+ const db=new DatabaseSync(":memory:");
+ try{
+  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0003_telegram_signal_checkpoint.sql",import.meta.url),"utf8"));
+  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql",import.meta.url),"utf8"));
+  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql",import.meta.url),"utf8"));
+  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0027_telegram_authorized_research_json.sql",import.meta.url),"utf8"));
+  const migration=readFileSync(new URL("../../workers/control-plane/migrations/0223_telegram_watch_event_features.sql",import.meta.url),"utf8");
+  db.exec(migration);
+  const columns=db.prepare("PRAGMA table_info(telegram_research_json)").all().map(row=>row.name);
+  assert.ok(columns.includes("watch_event"));
+  const indexes=db.prepare("PRAGMA index_list(telegram_research_json)").all().map(row=>row.name);
+  assert.ok(indexes.includes("idx_telegram_research_hot50_watch"));
+  assert.throws(()=>db.prepare("INSERT INTO telegram_research_json(delivery_id,category,published_at,accepted_at,watch_event) VALUES(?,?,?,?,?)")
+   .run("x".repeat(52),"geopolitics","2026-11-15T00:00:00Z","2026-11-15T00:00:00Z","publisher_name"),/CHECK constraint failed/u);
+  assert.doesNotMatch(migration,/headline|source_url|publisher|channel_name|raw_payload/iu);
+ }finally{db.close()}
 });
 test("fake commercial authorization, raw source URL, copied headline and stale/expired data refused",()=>{
  const changes=[

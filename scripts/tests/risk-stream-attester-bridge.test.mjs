@@ -31,6 +31,75 @@ test("control-plane bridge calls each private service binding with its own beare
  assert.ok(calls.every(call=>call.body.proof===null&&call.body.raw_payload===undefined));
 });
 
+test("enabled internal corroboration reads only bounded private features and signs a redacted context",async()=>{
+ const calls=[],signature=Buffer.alloc(64).toString("base64");
+ const item={schema:"geomacro.reusable-news-json.v1",id:"news-"+"a".repeat(64),
+  id_is_cryptographic_proof:false,category:"geopolitics",country_iso3:"USA",
+  source:{publisher_name:null,original_url:null,original_published_at:new Date(Date.now()-60000).toISOString()},
+  facts:{event_types:["sanctions"],action_terms:["sanctions"],named_organizations:[],
+   numeric_mentions:[],fact_extraction_status:"MACHINE_EXTRACTED_UNVERIFIED"},
+  usage_rights:{declared_source_license:"unknown",declaration_is_verified:false,
+   article_specific_permission_verified:false,commercial_reuse_authorized:false,
+   attribution_and_scope_review_required:true,factual_analysis_only:true},
+  verification:{original_page_verified:false,independent_event_verified:false,
+   facts_reviewed:false,source_licence_verified:false},
+  delivery:{raw_article_included:false,raw_headline_included:false,
+   downstream_paid_product_authorized:false,signing_authorized:false,user_submission_persisted:false}};
+ const binding=(name,field)=>({async fetch(request){
+  const body=await request.json();calls.push({name,body});
+  return Response.json({ok:true,proof:{[field]:signature}});
+ }});
+ const draft={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
+  country_iso3:"USA",category:"GEOPOLITICS",derived:{what:"Verified sanctions action"},proof:null};
+ const makeRequest=()=>new Request("https://control.internal/v1/internal/risk-stream/attest",{
+  method:"POST",headers:{"content-type":"application/json"},
+  body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft})});
+ const env={RISK_STREAM_PRIVATE_OSINT_CORROBORATION_ENABLED:"1",
+  RISK_STREAM_FACTS_ATTESTER:binding("facts","facts_signature_b64"),
+  RISK_STREAM_RIGHTS_ATTESTER:binding("rights","rights_signature_b64"),
+  RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN:"facts-bearer-test-token-0123456789",
+  RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN:"rights-bearer-test-token-0123456789",
+  DB:{prepare(sql){return {bind(...args){
+   assert.equal(args[0],"USA");assert.equal(args[1],"geopolitics");return this;
+  },all:async()=>sql.includes("private_osint_news_25h")?
+   ({results:[{projection_json:JSON.stringify(item)}]}):({results:[]})}}}};
+ const response=await attestRiskStreamOriginal(makeRequest(),env);
+ assert.equal(response.status,200);
+ const body=await response.json();
+ assert.equal(body.risk_context.origin_kind,"PRIVATE_OSINT");
+ assert.equal(body.risk_context.event_code,"SANCTIONS");
+ assert.equal(body.risk_context.raw_source_redacted,true);
+ assert.ok(calls.every(call=>call.body.risk_context.event_code==="SANCTIONS"));
+ assert.doesNotMatch(JSON.stringify({body,calls}),/publisher\.name|headline|private title|https?:\/\//iu);
+ draft.derived.what="Verified inflation update";
+ const unrelated=await attestRiskStreamOriginal(makeRequest(),env);
+ assert.equal((await unrelated.json()).risk_context,null,
+  "country/category-only overlap must not qualify unrelated private context");
+});
+
+test("Telegram watch event contributes only when its closed event matches the verified original",async()=>{
+ const signature=Buffer.alloc(64).toString("base64");
+ const binding=field=>({async fetch(){return Response.json({ok:true,proof:{[field]:signature}})}});
+ const draft={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
+  country_iso3:"USA",category:"GEOPOLITICS",derived:{what:"Sanctions action"},proof:null};
+ const env={RISK_STREAM_PRIVATE_OSINT_CORROBORATION_ENABLED:"1",
+  RISK_STREAM_FACTS_ATTESTER:binding("facts_signature_b64"),
+  RISK_STREAM_RIGHTS_ATTESTER:binding("rights_signature_b64"),
+  RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN:"facts-bearer-test-token-0123456789",
+  RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN:"rights-bearer-test-token-0123456789",
+  DB:{prepare(sql){return {bind(){return this},all:async()=>({results:
+   sql.includes("telegram_research_json")?[{watch_event:"sanctions"}]:[]})}}}};
+ const response=await attestRiskStreamOriginal(new Request("https://control.internal/v1/internal/risk-stream/attest",{
+  method:"POST",headers:{"content-type":"application/json"},
+  body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft})}),env);
+ const body=await response.json();
+ assert.equal(response.status,200);
+ assert.equal(body.risk_context.origin_kind,"TELEGRAM_WATCH");
+ assert.equal(body.risk_context.event_code,"SANCTIONS");
+ assert.equal(body.risk_context.raw_source_redacted,true);
+ assert.doesNotMatch(JSON.stringify(body),/headline|channel_name|https?:\/\//iu);
+});
+
 test("bridge refuses missing bindings, invalid request, or malformed signatures",async()=>{
  const candidate={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",proof:null};
  const makeRequest=draft=>new Request("https://control.internal/v1/internal/risk-stream/attest",{
@@ -41,6 +110,12 @@ test("bridge refuses missing bindings, invalid request, or malformed signatures"
  assert.equal(absent.status,503);
  const malformed=await attestRiskStreamOriginal(makeRequest({...candidate,proof:{}}),{});
  assert.equal(malformed.status,400);
+ const forgedContext=await attestRiskStreamOriginal(makeRequest({...candidate,
+  risk_context:{schema:"geomacro.risk-stream-internal-corroboration.v1",
+   country_iso3:"USA",category:"GEOPOLITICS",event_code:"SANCTIONS",
+   severity_weight_0_100:100,corroboration_weight_0_1:1,origin_kind:"TELEGRAM_WATCH",
+   corridors:[],raw_source_redacted:true}}),{});
+ assert.equal(forgedContext.status,400);
  const badSignature=await attestRiskStreamOriginal(makeRequest(candidate),{
   RISK_STREAM_FACTS_ATTESTER:{fetch:async()=>Response.json({ok:true,
    proof:{facts_signature_b64:"bad"}})},

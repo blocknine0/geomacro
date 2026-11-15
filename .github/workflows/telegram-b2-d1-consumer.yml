@@ -18,6 +18,7 @@ on:
       - "scripts/ops/check-telegram-b2-d1-admission.mjs"
       - "workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql"
       - "workers/control-plane/migrations/0027_telegram_authorized_research_json.sql"
+      - "workers/control-plane/migrations/0223_telegram_watch_event_features.sql"
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "workers/control-plane/src/hot50-telegram-watch-filter.mjs"
       - "scripts/tests/telegram-hot50-watch-filter.test.mjs"
@@ -27,6 +28,7 @@ on:
       - "config/telegram-private-signal-bridge.json"
       - "workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql"
       - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
+      - "workers/control-plane/migrations/0223_telegram_watch_event_features.sql"
       - "src/__tests__/telegram-b2-d1-consumer-contract.test.ts"
   push:
     branches: [main]

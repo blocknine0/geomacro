@@ -6,7 +6,7 @@ import {generateKeyPairSync,webcrypto,verify as verifyEd25519,createHash,createH
 import {admitProgressiveRiskFacts,projectUnverifiedProgressiveObservations} from "../../workers/control-plane/src/news-intake-policy.mjs";
 import {
   readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,
-  signProgressiveDecision,canonicalProgressiveJson,sevenDayRollupIsReady,
+  generateProgressiveRiskGateDecision,signProgressiveDecision,canonicalProgressiveJson,sevenDayRollupIsReady,
 } from "../../workers/control-plane/src/progressive-risk-gate.mjs";
 
 if(!globalThis.crypto)Object.defineProperty(globalThis,"crypto",{value:webcrypto});
@@ -152,6 +152,19 @@ test("Complex cannot become active or billable without Standard, current signed 
  assert.equal(ready.complex.active,true);
  assert.equal(ready.complex.status,"ACTIVE");
  assert.equal(Object.hasOwn(ready.complex,"missing"),false);
+});
+
+test("reviewer-approved independent current evidence enables paid Complex without changing the free seven-day gate",()=>{
+ const facts={standard_ready:true,corroboration_sources_count:2};
+ assert.equal(progressiveTierMatrix(facts,true,false).complex.active,false);
+ const paid=progressiveTierMatrix(facts,false,false,true);
+ assert.equal(paid.complex.active,true);
+ assert.equal(paid.complex.commercial_independent_evidence_approved,true);
+ const free=generateProgressiveRiskGateDecision({request_id:"free",subject:{type:"country",id:"IND"},policy:{policy_id:"p",policy_version:"v"}},facts,"complex_full",false,false,NOW,false);
+ assert.equal(free.tierReady,false);
+ const commercial=generateProgressiveRiskGateDecision({request_id:"paid",subject:{type:"country",id:"IND"},policy:{policy_id:"p",policy_version:"v"}},facts,"complex_full",false,false,NOW,true);
+ assert.equal(commercial.tierReady,true);
+ assert.equal(commercial.result.execution_authorized,false);
 });
 
 test("Google-index attribution never becomes verified source corroboration",async()=>{
