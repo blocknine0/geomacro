@@ -9,6 +9,9 @@ const candidateBuilder=readFileSync(new URL("../ops/prepare-optimized-worker-can
 const parity=readFileSync(new URL("../lib/canary-additive-binding-parity.mjs",import.meta.url),"utf8");
 const example=readFileSync(new URL("../../workers/control-plane/wrangler.example.jsonc",import.meta.url),"utf8");
 const issuer=readFileSync(new URL("../../workers/control-plane/src/risk-stream-commercial-issuer.mjs",import.meta.url),"utf8");
+const reviewer=readFileSync(new URL("../../workers/geomacro-release-reviewer/src/index.mjs",import.meta.url),"utf8");
+const reviewerDeploy=readFileSync(new URL("../../.github/workflows/deploy-risk-stream-attesters-reviewer.yml",import.meta.url),"utf8");
+const rightsAttesterConfig=readFileSync(new URL("../../workers/risk-stream-rights-attester/wrangler.jsonc",import.meta.url),"utf8");
 
 test("stream activation is read from protected production vars in both deployment paths",()=>{
  for(const name of ["RISK_STREAM_ACTIVE","STREAM_INGESTION_ENABLED","STREAM_MODE",
@@ -78,6 +81,17 @@ test("commercial reviewer binding is dynamic, independently keyed and fail-close
  assert.match(issuer,/export function commercialIssuerEnabled\(env\)/);
  assert.match(issuer,/typeof env\.GEOMACRO_RELEASE_REVIEWER\?\.fetch==="function"/);
  assert.doesNotMatch(example,/"binding": "GEOMACRO_RELEASE_REVIEWER"/);
+ assert.match(reviewer,/geomacro\.commercial-independent-release-review\.v1/);
+ assert.match(reviewer,/GEOMACRO_RELEASE_REVIEW_PRIVATE_PKCS8_B64/);
+ assert.match(reviewer,/PREDGE_PAID_CUSTOMER_ENTITLEMENT_VERIFIED==="1"/);
+ assert.match(reviewer,/RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED==="1"/);
+ assert.match(reviewer,/FROM risk_stream_commercial_subscriptions/);
+ assert.match(reviewer,/FROM risk_stream_evidence/);
+ assert.match(reviewerDeploy,/workers\/risk-stream-facts-attester\/wrangler\.jsonc/);
+ assert.match(reviewerDeploy,/workers\/risk-stream-rights-attester\/wrangler\.jsonc/);
+ assert.match(reviewerDeploy,/workers\/geomacro-release-reviewer\/wrangler\.runtime\.json/);
+ assert.match(reviewerDeploy,/vars\.PREDGE_PAID_GO_LIVE_APPROVED \|\| '0'/);
+ assert.match(rightsAttesterConfig,/"database_id": "db057ca9-9f6e-4957-ac28-144f3b798f9b"/);
 });
 
 test("held canary retains the exact binding-delta receipt and preflights zone SLO identity",()=>{
