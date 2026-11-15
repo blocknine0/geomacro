@@ -321,7 +321,9 @@ jobs:
     needs: d1-v2-canary-release-hold
     if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.d1-v2-canary-release-hold.outputs.hold_present == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 115
+    # The six observed windows total 105 minutes; leave room for protected
+    # preflight, telemetry polling and rollback without killing Stage 100%.
+    timeout-minutes: 150
     environment: production
     permissions:
       contents: read

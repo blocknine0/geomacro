@@ -532,7 +532,10 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  assert.match(runner,/if\(step\.id==="0204"\)/u);
  assert.match(runner,/admitStep30204SupportedIntegrity\(integrity\)/u);
- assert.match(runner,/report\.composite_integrity_rows_read>3000000/u);
+ assert.match(runner,/report\.composite_integrity_rows_read>STEP3_MAX_MIGRATION_READ_ROWS/u);
+ assert.match(runner,/report\.counter_0211_rows_read>STEP3_MAX_MIGRATION_READ_ROWS/u);
+ assert.match(runner,/report\.census_0212_rows_read>STEP3_MAX_MIGRATION_READ_ROWS/u);
+ assert.match(runner,/maximum_approved_migration_estimated_rows_read/u);
  assert.match(runner,/auditStep3AllIndexesCurrentRows\(table,/u);
  assert.match(runner,/FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY/u);
  assert.match(runner,/else if\(step\.id==="0212"\)/u);

@@ -16,7 +16,8 @@ import {existsSync,mkdirSync,mkdtempSync,readFileSync,writeFileSync} from "node:
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {checkD1PaidMonthlyHeadroom,D1_PAID_HEADROOM_HOLD}
+import {checkD1PaidMonthlyHeadroom,D1_PAID_HEADROOM_HOLD,
+ D1_PAID_MONTHLY_POLICY}
  from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
@@ -74,6 +75,11 @@ import {STEP3_MIGRATIONS,step3SqlManifests,
 const ROOT="artifacts/release",LOG=ROOT+"/d1-step3-migration-execution.json";
 const SIGNED_PRODUCTION_PATH=ROOT+"/step3-production-physical-pass.json";
 const HOLD_FILE="config/d1-hotspot-v2-canary.hold";
+// One physical-integrity proof family may consume no more read rows than the
+// already reviewed per-migration paid estimate. Fresh account-wide headroom
+// and the independent monthly reserve are rechecked before/after each step.
+const STEP3_MAX_MIGRATION_READ_ROWS=
+ D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_read;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const SHA=/^[a-f0-9]{40}$/u;
 const fail=code=>{throw Error("STEP3_"+code)};
@@ -380,7 +386,7 @@ function checkIndexAndSchema(config,step,report){
     const r=q(config,sql,{maxRows});
     report.composite_integrity_rows_read??=0;
     report.composite_integrity_rows_read+=r.readRows;
-    if(report.composite_integrity_rows_read>3000000)
+    if(report.composite_integrity_rows_read>STEP3_MAX_MIGRATION_READ_ROWS)
      fail("SUPPORTED_0204_INDEX_AUDIT_READ_CAP_EXCEEDED");
     return r.rows;
    });
@@ -417,7 +423,7 @@ function checkIndexAndSchema(config,step,report){
    // Full-volume SQLite-side set parity may touch every source row
    // for each of 7 indexes, but the backend's actual billed reads are
    // metered and capped. An unexpectedly costly query fails Stage 2.
-   if(report.counter_0211_rows_read>3000000)
+   if(report.counter_0211_rows_read>STEP3_MAX_MIGRATION_READ_ROWS)
     fail("SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
   };
@@ -543,7 +549,7 @@ function checkIndexAndSchema(config,step,report){
    report.census_0212_rows_read+=r.readRows;
    // Exhaustive D1-side set equality may scan large source/index trees;
    // never let an unbounded operation exhaust the monthly admission.
-   if(report.census_0212_rows_read>3000000)
+   if(report.census_0212_rows_read>STEP3_MAX_MIGRATION_READ_ROWS)
     fail("SUPPORTED_0212_CENSUS_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
   };

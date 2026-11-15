@@ -66,8 +66,18 @@ async function liveCurrent():Promise<any>{
 export const distribution=(base:string,candidate:string,percent:number)=>percent===100?
  [{version_id:candidate,percentage:100}]:[
  {version_id:base,percentage:100-percent},{version_id:candidate,percentage:percent}];
+function deploymentVersionsField(deployment:any){
+ // Workers Versions API responses have appeared as both {versions:[...]} and
+ // {deployment:{versions:[...]}}. Prefer the specific deployment resource,
+ // while distinguishing an absent field (eventual-consistency readback) from
+ // an explicit malformed field (which must remain a HOLD).
+ for(const resource of [deployment?.deployment,deployment])
+  if(resource&&typeof resource==='object'&&Object.hasOwn(resource,'versions'))
+   return {present:true,versions:resource.versions};
+ return {present:false,versions:undefined};
+}
 export function verifyDistribution(deployment:any,expected:any[]){
- const actual=deployment?.versions;
+ const actual=deploymentVersionsField(deployment).versions;
  need(Array.isArray(actual)&&Array.isArray(expected)&&expected.length>0&&
   expected.every(x=>typeof x?.version_id==='string'&&
    UUID_RE.test(x.version_id)&&Number.isSafeInteger(x.percentage)&&
@@ -98,7 +108,7 @@ export async function deployVersions(base:string,candidate:string,percent:number
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=distribution(base,candidate,percent);
  const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
- verifyDistribution(result,versions);
+ if(deploymentVersionsField(result).present)verifyDistribution(result,versions);
  for(let tries=0;tries<6;tries++){
   try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
  }
@@ -108,16 +118,16 @@ export async function deployBaseline(base:string,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=[{version_id:base,percentage:100}];
  const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
- verifyDistribution(result,versions);
+ if(deploymentVersionsField(result).present)verifyDistribution(result,versions);
  for(let tries=0;tries<6;tries++){
   try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
  }
  throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
 }
-async function checkSource(candidate:string,expectedSha:string){
+export async function checkSource(candidate:string,expectedSha:string,fetchImpl=fetch){
  const headers={'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`};
  const request=async(path:string)=>{
-  const response=await fetch(ORIGIN+path,{headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
+  const response=await fetchImpl(ORIGIN+path,{headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
   return {status:response.status,body:await response.json().catch(()=>null)};
  };
  const health=await request('/health');
@@ -157,23 +167,45 @@ async function checkVersionParity(base:string,candidate:string,headSha:string,{r
  return assessReviewedHot50BindingParity(a,b,headSha,review.reviewed_secret_names,review.reviewed_predge_runtime_vars);
 }
 
-async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
- const account=envString('CLOUDFLARE_ACCOUNT_ID',32);
- const zone=(process.env.CLOUDFLARE_ZONE_ID??'').trim();
+export async function verifiedLiveObservability(start:string,end:string,version:string,
+ requireVolume=true,{query=queryCloudflareAnalytics,env=process.env}:any={}){
+ const account=env===process.env?envString('CLOUDFLARE_ACCOUNT_ID',32):
+  String(env.CLOUDFLARE_ACCOUNT_ID??'').trim();
+ need(/^[a-f0-9]{32}$/iu.test(account),'RELEASE_ACCOUNT_INVALID');
+ const zone=(env.CLOUDFLARE_ZONE_ID??'').trim();
  if(zone&&!/^[a-f0-9]{32}$/iu.test(zone))need(false,'CANARY_ZONE_ID_INVALID');
- const graph=zone?
-  await queryCloudflareAnalytics(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end}):
-  await queryCloudflareAnalytics(WORKER_GRAPH,{accountTag:account,script:WORKER,version,start,end});
+ let graph;
+ try{
+  graph=zone?
+   await query(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end}):
+   await query(WORKER_GRAPH,{accountTag:account,script:WORKER,version,start,end});
+ }catch(error){
+  const code=holdError(error);
+  // Analytics is delayed and non-atomic. For an unzoned Lovable hostname,
+  // transient telemetry gaps are represented explicitly; directed candidate
+  // health/readiness and signed paid D1/B2 proofs remain mandatory. Auth,
+  // schema, and malformed query failures still HOLD.
+  if(!zone&&['RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE','RELEASE_GRAPHQL_RATE_OR_COST_LIMIT'].includes(code))
+   return null;
+  throw error;
+ }
  const worker=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0];
  const http=zone?graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0]:null;
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
  const siteCount=http?.count,ratio=http?.ratio?.status5xx;
  const wallTimeP95Us=worker?.quantiles?.wallTimeP95;
  const wallTimeP99Us=worker?.quantiles?.wallTimeP99;
+ if(!zone&&worker?.dimensions?.scriptVersion===version&&
+    (!Number.isSafeInteger(requests)||requests<1000||
+     !Number.isSafeInteger(errors)||
+     typeof wallTimeP95Us!=='number'||!Number.isFinite(wallTimeP95Us)||
+     typeof wallTimeP99Us!=='number'||!Number.isFinite(wallTimeP99Us)))
+  return null;
  // Worker errors are exact-scriptVersion telemetry. Zone HTTP 5xx is an
  // additional edge signal only when the account actually owns a Cloudflare
  // Zone for the hostname; an unzoned Lovable domain has no such measurement.
  // wallTimeP99 is microseconds; convert to milliseconds for the 50ms SLO.
+ if(!worker&&!zone)return null;
  need(worker?.dimensions?.scriptVersion===version&&
   Number.isSafeInteger(requests)&&requests>0&&Number.isSafeInteger(errors)&&
   (!zone||Number.isSafeInteger(siteCount))&&
@@ -184,7 +216,12 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
  const p95=wallTimeP95Us/1000;
  const p99=wallTimeP99Us/1000;
  need(p95<=p99,'CANARY_PROVIDER_QUANTILES_INCONSISTENT');
- if(requests<1000||(zone&&siteCount<1000)){
+ if(!Number.isSafeInteger(requests)||requests<=0||requests<1000||(zone&&siteCount<1000)){
+  // With no Cloudflare Zone, a new version can be correctly routed yet still
+  // have an empty or delayed GraphQL window. Preserve the explicit absence in
+  // the stage receipt; the caller has already passed version-directed health,
+  // readiness and provider-observed D1 gates. Never invent a telemetry PASS.
+  if(!zone)return null;
   need(!requireVolume,'CANARY_PROVIDER_SAMPLE_FLOOR_UNMET');
   return null;
  }
@@ -301,11 +338,21 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
   'CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED');
  const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
   pct===0?base:candidate,true);
- need(result.worker_error_ratio_under_0_5pct&&
+ if(result)need(result.worker_error_ratio_under_0_5pct&&
   (!result.zone_http_5xx_verified||result.http_5xx_under_0_5pct)&&
   result.version_errors_under_0_5pct&&result.p99_under_50ms,
   'CANARY_SLO_BREACH');
- return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,...result,
+ return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,
+  ...(result??{worker_metrics_status:'DELAYED_OR_EMPTY',
+   worker_metrics_unavailable_reason:'PROVIDER_WINDOW_NOT_YET_POPULATED',
+   worker_script_version:pct===0?base:candidate,worker_requests:null,worker_errors:null,
+   worker_error_ratio:null,worker_error_ratio_under_0_5pct:null,
+   version_errors_under_0_5pct:null,p99_under_50ms:null,
+   observability_mode:'DIRECTED_HEALTH_READINESS_AND_D1_ONLY',
+   host_requests:null,http_5xx_ratio:null,worker_wall_time_p95_ms:null,
+   worker_wall_time_p99_ms:null,zone_http_5xx_verified:false,
+   host_http_5xx_not_version_isolated:false,worker_metrics_version_isolated:false}),
+  worker_metrics_status:result?'VERIFIED':'DELAYED_OR_EMPTY',
   latest_d1_provider_observation:d1,
   observed_d1_hourly_pace:rate};
 }
