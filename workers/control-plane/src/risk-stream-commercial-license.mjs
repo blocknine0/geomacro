@@ -83,17 +83,19 @@ export async function verifyCommercialSourceGro(record,groPublicSpkiB64,now=Date
   (!Object.hasOwn(evidence,"strategic_corridors")||Array.isArray(evidence.strategic_corridors)&&
    evidence.strategic_corridors.length<=12&&
    evidence.strategic_corridors.every(v=>typeof v==="string"&&/^[A-Z]{3}>[A-Z]{3}$/u.test(v)));
- if(p.schema!=="geomacro.event-stream-gro.v1"||
-   !exact(p,["schema","subject","category","event_fingerprint","source_originals",
+ const licenseKeys=["schema","subject","category","event_fingerprint","source_originals",
     "what_happened","why_it_matters","market_relevance","what_to_watch",
     "eligible_derived_score","evidence_and_confidence","generated_at","expires_at",
-    "execution_authorized","charged","certified_risk_index","customer_delivery_authorized"])||
+    "execution_authorized","charged","certified_risk_index","customer_delivery_authorized"];
+ if(p.schema!=="geomacro.event-stream-gro.v1"||
+   !(exact(p,licenseKeys)||exact(p,[...licenseKeys,"commercial_origin_gro_id"]))||
    !safeEvidence||
    p.subject?.type!=="COUNTRY"||!isHot50RiskCountry(p.subject.id)||
    !ALLOWED.has(p.category)||
    p.execution_authorized!==false||p.charged!==false||
    p.certified_risk_index!==false||
    p.customer_delivery_authorized!==true||
+   (p.commercial_origin_gro_id!==undefined&&!HASH.test(p.commercial_origin_gro_id))||
    !Array.isArray(p.source_originals)||p.source_originals.length<1||p.source_originals.length>3||
    new Set(p.source_originals).size!==p.source_originals.length||
    !p.source_originals.every(s=>HASH.test(s))||

@@ -173,15 +173,70 @@ class IngestService:
         self.source_status: dict[str, dict[str, Any]] = {}
         self.raw_lock = asyncio.Lock()
         self.last_archive_hour: str | None = None
+        self.risk_stream_candidates: dict[str, dict[str, Any]] = {}
+
+    async def emit_verified_risk_stream_candidate(self, candidate: dict[str, Any]) -> bool:
+        """Submit only a publisher-supplied, item-licensed candidate to both attesters.
+
+        Ordinary RSS/Google/Telegram/OSINT cards never enter this path. The
+        control plane and independent attesters remain authoritative for the
+        candidate schema, item license, rights registry, signatures and D1.
+        """
+        encoded = json.dumps(candidate, separators=(",", ":"))
+        if len(encoded.encode("utf-8")) > 12_000:
+            return False
+        if candidate.get("schema") != "geomacro.risk-stream-candidate.v1" or \
+           candidate.get("kind") != "VERIFIED_ORIGINAL" or \
+           not isinstance(candidate.get("rights_verification"), dict) or \
+           not isinstance(candidate.get("raw_payload"), str):
+            return False
+        try:
+            attested = await self.http.post(WORKER_URL + "/v1/internal/risk-stream/attest",
+                headers={"Authorization": f"Bearer {WORKER_TOKEN}"},
+                json={"schema": "geomacro.risk-stream-attestation-request.v1", "draft": candidate})
+            if attested.status_code != 200:
+                return False
+            receipt = attested.json()
+            proof = receipt.get("proof")
+            if not isinstance(proof, dict) or not proof.get("facts_signature_b64") or not proof.get("rights_signature_b64"):
+                return False
+            item = {**candidate, "proof": proof}
+            context = receipt.get("risk_context")
+            if context is not None:
+                item["risk_context"] = context
+            response = await self.http.post(WORKER_URL + "/v1/internal/risk-stream/events",
+                headers={"Authorization": f"Bearer {WORKER_TOKEN}"},
+                json={"schema": "geomacro.risk-stream-ingest-batch.v1", "items": [item]})
+            if response.status_code not in (200, 202):
+                return False
+            accepted = response.json()
+            return accepted.get("ok") is True and accepted.get("accepted") == 1 and \
+                accepted.get("commercial_delivery") is False
+        except Exception as exc:
+            log.warning("risk stream candidate held error=%s", type(exc).__name__)
+            return False
 
     async def fetch_feed(self, source_name: str, url: str, source_type: str, credibility: float,
-                         category: str | None = None) -> list[dict[str, Any]]:
+                         category: str | None = None, risk_stream_enabled: bool = False) -> list[dict[str, Any]]:
         try:
             response = await self.http.get(url)
             response.raise_for_status()
             parsed = await asyncio.to_thread(feedparser.parse, response.content)
             out = []
             for entry in parsed.entries:
+                # Candidate extensions are opt-in per approved feed. They are
+                # never copied into the ordinary unified event/D1 payload.
+                if risk_stream_enabled:
+                    candidate = entry.get("geomacro_risk_stream_candidate")
+                    if isinstance(candidate, str):
+                        try:
+                            candidate = json.loads(candidate)
+                        except (TypeError, ValueError):
+                            candidate = None
+                    if isinstance(candidate, dict):
+                        candidate_key = str(candidate.get("event_fingerprint", ""))
+                        if candidate_key:
+                            self.risk_stream_candidates.setdefault(candidate_key, candidate)
                 normalized = normalize_item({
                     "title": entry.get("title"),
                     "summary": entry.get("summary") or entry.get("description"),
@@ -214,13 +269,23 @@ class IngestService:
             if source_type not in {"verified_media", "official", "unverified_osint"}:
                 continue
             jobs.append(self.fetch_feed(str(spec["name"]), str(spec["url"]), source_type,
-                float(spec.get("credibility_score", .75)), spec.get("risk_category")))
+                float(spec.get("credibility_score", .75)), spec.get("risk_category"),
+                risk_stream_enabled=spec.get("risk_stream_item_licensed") is True))
         results = await asyncio.gather(*jobs, return_exceptions=True)
         for result in results:
             if isinstance(result, list):
                 for event in result:
                     self.pending.setdefault(event["id"], event)
-        return await self.flush_batches()
+        receipts = await self.flush_batches()
+        if self.risk_stream_candidates:
+            # Bounded per poll; no source title/URL or raw bytes are copied to
+            # the public/unified D1 event lane. The item-license guard inside
+            # both attesters is authoritative and fail-closed.
+            pending = list(self.risk_stream_candidates.items())[:10]
+            for key, candidate in pending:
+                if await self.emit_verified_risk_stream_candidate(candidate):
+                    self.risk_stream_candidates.pop(key, None)
+        return receipts
 
     async def flush_batches(self) -> list[dict[str, Any]]:
         receipts = []
