@@ -1317,5 +1317,22 @@
     "global_risk_final_lock_unmodified": true,
     "non_index_backends_and_workflows_unmodified": true,
     "payments_unmodified": true
+  },
+  "approved_unified_risk_gate_pricing_20261115": {
+    "approval": "Owner explicitly requested the three-category unified Risk Gate pricing table, exact Predge-parity tier prices, unified API path and GeoMacro commercial rights callout on 2026-11-15. This approval is limited to the immutable pricing component blobs below; checkout and production payment activation remain disabled.",
+    "approved_source_commit": "45d0108c43676bee3962c88549c2f9326057c482",
+    "approved_paths": [
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx"
+    ],
+    "prices_usdc": {
+      "basic_focused": "0.15",
+      "standard": "0.20",
+      "complex_full": "0.30"
+    },
+    "canonical_endpoint": "/api/v1/risk-gate",
+    "production_funds_authorized": false,
+    "website_lock_remains_active": true,
+    "exact_blob_lock": true
   }
 }

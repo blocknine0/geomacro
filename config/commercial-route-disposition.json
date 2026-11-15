@@ -169,6 +169,10 @@
       "classification": "PRODUCTION",
       "status": "NO_FUNDS_PREFLIGHT"
     },
+    "/api/v1/risk-gate": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/api/v1/pricing": {
       "classification": "PRODUCTION",
       "status": "LIVE_NO_FUNDS_DISCOVERY"

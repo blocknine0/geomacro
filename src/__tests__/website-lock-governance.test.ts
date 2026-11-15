@@ -474,6 +474,18 @@ describe("website lock governance", () => {
     expect(apiBranding?.payment_activation_unchanged).toBe(true);
     expect(apiBranding?.predge_unchanged).toBe(true);
     expect(apiBranding?.global_risk_presentation_unchanged).toBe(true);
+    const unifiedRiskGatePricing = config.approved_unified_risk_gate_pricing_20261115;
+    expect(unifiedRiskGatePricing?.approved_source_commit).toMatch(/^[0-9a-f]{40}$/);
+    expect(unifiedRiskGatePricing?.approved_paths).toEqual([
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx",
+    ]);
+    expect(unifiedRiskGatePricing?.prices_usdc).toEqual({
+      basic_focused: "0.15", standard: "0.20", complex_full: "0.30",
+    });
+    expect(unifiedRiskGatePricing?.canonical_endpoint).toBe("/api/v1/risk-gate");
+    expect(unifiedRiskGatePricing?.production_funds_authorized).toBe(false);
+    expect(unifiedRiskGatePricing?.exact_blob_lock).toBe(true);
     const unified = config.approved_unified_store_api_20261031;
     expect(unified?.approved_source_commit).toBe("cba23f57f06f7952a7b39eab751d44d316cb8200");
     expect(unified?.approved_paths).toEqual([
