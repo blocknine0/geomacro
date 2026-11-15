@@ -8,11 +8,11 @@ export function intakeIsDue(policy,intervalMinutes,now,events=[]){
  // Only official dated release windows may consume the incident allocation.
  return now-at>=intervalMinutes*60000||releaseWindowEvents(events,now).length>0;
 }
-export async function readIntakeBaseline({fetchImpl=fetch,readAll,repair,now=Date.now()}){
+export async function readIntakeBaseline({fetchImpl=fetch,readAll,repair,now=Date.now(),bundleUrl=BUNDLE}){
  const read=async()=>{
   let overcap=null;
   const onlyBundle=async(input,init)=>{
-   if(String(input)!==BUNDLE)throw Error('FASTLANE_COMPLETE_BUNDLE_REQUIRED');
+   if(String(input)!==bundleUrl)throw Error('FASTLANE_COMPLETE_BUNDLE_REQUIRED');
    if(overcap)return overcap.clone();
    const r=await fetchImpl(input,init);
    if(r.status===503){try{const body=await r.clone().json();if(body.error==='DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED')overcap=r.clone();}catch{/* never infer a retention fault from other outages */}}

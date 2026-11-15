@@ -142,9 +142,11 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(pub).toContain("primary_publisher_status:report.primary_publisher_status??[]");
    expect(pub).toContain("fallback_publisher_status:report.fallback_publisher_status??[]");
    expect(pub).toContain("fallback_for_primary_outage_or_no_recent_release:true");
-   expect(pub).toContain("const baseline=await readIntakeBaseline({fetchImpl:canonicalRead");
+   expect(pub).toContain("const baseline=await readIntakeBaseline({fetchImpl:globalThis.fetch");
+   expect(pub).toContain("readAll:(fetchImpl,now)=>fetchAllDerivedNews(fetchImpl,now,{fresh:true,canonicalOriginToken:token})");
+   expect(pub).not.toContain("canonicalRead");
    expect(pub).toContain("!existingIds.has(s.id)");
-   expect(pub).toContain("fetchAllDerivedNews(canonicalRead,Date.now())");
+   expect(pub).toContain("fetchAllDerivedNews(globalThis.fetch,Date.now(),");
    expect(pub).toContain("exact_first_writer_attribution_verified:false");
    expect(pub).toContain("measurement_is_true_first_insert_utc:false");
    expect(pub).toContain("FASTLANE_D1_FULL_JOURNAL_READBACK_FAILED");
