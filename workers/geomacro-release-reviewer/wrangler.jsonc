@@ -1,0 +1,21 @@
+{
+  "name": "geomacro-release-reviewer",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-14",
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "GEOMACRO_COMMERCIAL_STREAM_RELEASE": "0",
+    "RISK_STREAM_CANARY_HOLD_CLEARED": "0",
+    "RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED": "0",
+    "PREDGE_PAID_CUSTOMER_ENTITLEMENT_VERIFIED": "0",
+    "PREDGE_PAID_GO_LIVE_APPROVED": "0"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "geomacro-control-plane",
+      "database_id": "db057ca9-9f6e-4957-ac28-144f3b798f9b"
+    }
+  ]
+}
