@@ -76,7 +76,7 @@ export function officialGeomacroAgentDiscovery(){
   official_api_display_urls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
   category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
    ...profile,
-   display_name:GEOMACRO_OFFICIAL_API_CATALOG.find(api=>api.path===profile.api)?.name ?? profile.name,
+   display_name:profile.name,
    display_url:formatGeomacroApiDisplayPath(profile.api),
    agent_endpoint:OFFICIAL_AGENT_PATH,
    agent_request:{tool:profile.tool,arguments:{country_iso3:"IND",
