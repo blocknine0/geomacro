@@ -606,7 +606,7 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
-      - name: Build sidecar only from opted-in item-licensed publisher originals
+      - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
         if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl

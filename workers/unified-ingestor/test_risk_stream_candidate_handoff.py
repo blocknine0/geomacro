@@ -85,79 +85,40 @@ class CandidateHandoffTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(posted["proof"]["facts_signature_b64"], "facts-proof")
         self.assertEqual(posted["proof"]["rights_signature_b64"], "rights-proof")
 
-    async def test_opted_in_feed_extension_is_collected_and_emitted_through_both_attesters(self):
-        candidate = {
-            "schema": "geomacro.risk-stream-candidate.v1",
-            "kind": "VERIFIED_ORIGINAL",
-            "source_id": "uk_fcdo_ogl_official_atom",
-            "feed_origin": "RSS",
-            "rights_verification": {"item_license_evidence": {
-                "license_id": "UK_OGL_V3", "third_party_exceptions": False,
-                "non_commercial": False, "restricted_material": False,
-                "factual_record_only": True, "original_text_republished": False,
-            }},
-            "raw_payload": "First-party item. Open Government Licence v3",
-            "event_fingerprint": "b" * 64,
-            "country_iso3": "GBR",
-            "category": "GEOPOLITICS",
-            "source_url": "https://www.gov.uk/government/news/briefing",
-            "published_at": "2026-11-15T08:00:00Z",
-            "derived": {"what": "A defined policy action changed.",
-                "why": "It affects a specific exposure.", "market": "Access may tighten.",
-                "watch": "Track official implementation."},
-        }
-        entry = {"title": "Factual event update", "summary": "Official record",
-            "link": candidate["source_url"], "published": "Sun, 15 Nov 2026 08:00:00 GMT",
-            "geomacro_risk_stream_candidate": candidate}
-        feedparser.parse = lambda *_args, **_kwargs: types.SimpleNamespace(entries=[entry])
-        service = object.__new__(ingestor.IngestService)
-        service.http = FeedHttp()
-        service.pending = {}
-        service.source_status = {}
-        service.risk_stream_candidates = {}
-        rows = await service.fetch_feed("uk_fcdo_ogl_official_atom", "https://www.gov.uk/feed.atom",
-            "official", .95, "conflict",
-            risk_stream_candidate_extension="geomacro_risk_stream_candidate")
-        self.assertEqual(len(rows), 1)
-        self.assertIn("b" * 64, service.risk_stream_candidates)
-        self.assertTrue(await service.emit_verified_risk_stream_candidate(candidate))
-        self.assertEqual([call[0].rsplit("/", 1)[-1] for call in service.http.calls],
-            ["attest", "events"])
+    async def test_standard_atom_entry_builds_item_license_candidate_without_custom_extension(self):
+        rights = ingestor.APPROVED_RISK_RIGHTS["uk_fcdo_ogl_official_atom"]
+        page = (f'<a href="{rights["rights_evidence"]["licence_url"]}" rel="license">'
+            'Open Government Licence v3.0</a>')
+        entry = {"id": "tag:gov.uk,2026:123", "title": "UK sanctions policy for Russia",
+            "summary": "Official sanctions policy record relating to Russia.",
+            "link": "https://www.gov.uk/government/news/sanctions-russia",
+            "updated": "2026-11-15T08:00:00Z"}
+        candidate = ingestor.candidate_from_standard_entry(entry,
+            source_name="uk_fcdo_ogl_official_atom", category="conflict", page_html=page)
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate["source_id"], "uk_fcdo_ogl_official_atom")
+        self.assertEqual(candidate["country_iso3"], "RUS")
+        self.assertEqual(candidate["category"], "GEOPOLITICS")
+        self.assertIn(rights["rights_evidence"]["licence_url"], candidate["raw_payload"])
+        self.assertNotIn("sanctions policy for Russia", candidate["raw_payload"])
 
-    async def test_wrong_source_candidate_extension_is_not_retained(self):
-        candidate = {"schema": "geomacro.risk-stream-candidate.v1",
-            "kind": "VERIFIED_ORIGINAL", "source_id": "different_feed",
-            "feed_origin": "RSS", "rights_verification": {"item_license_evidence": {}},
-            "raw_payload": "licensed source facts", "event_fingerprint": "c" * 64}
-        entry = {"title": "ordinary title", "link": "https://www.gov.uk/item",
-            "published": "Sun, 15 Nov 2026 08:00:00 GMT",
-            "geomacro_risk_stream_candidate": candidate}
-        feedparser.parse = lambda *_args, **_kwargs: types.SimpleNamespace(entries=[entry])
-        service = object.__new__(ingestor.IngestService)
-        service.http = FeedHttp()
-        service.risk_stream_candidates = {}
-        service.source_status = {}
-        await service.fetch_feed("uk_fcdo_ogl_official_atom", "https://www.gov.uk/feed.atom",
-            "official", .95, "conflict",
-            risk_stream_candidate_extension="geomacro_risk_stream_candidate")
-        self.assertEqual(service.risk_stream_candidates, {})
-
-    async def test_unlicensed_or_non_opted_in_feed_extension_is_ignored(self):
-        candidate = {"schema": "geomacro.risk-stream-candidate.v1",
-            "kind": "VERIFIED_ORIGINAL", "source_id": "uk_fcdo_ogl_official_atom",
-            "feed_origin": "RSS", "rights_verification": {"item_license_evidence": {}},
-            "raw_payload": "licensed source facts", "event_fingerprint": "d" * 64}
-        entry = {"title": "ordinary title", "link": "https://www.gov.uk/item",
-            "published": "Sun, 15 Nov 2026 08:00:00 GMT",
-            "geomacro_risk_stream_candidate": candidate}
-        feedparser.parse = lambda *_args, **_kwargs: types.SimpleNamespace(entries=[entry])
-        service = object.__new__(ingestor.IngestService)
-        service.http = FeedHttp()
-        service.risk_stream_candidates = {}
-        service.source_status = {}
-        await service.fetch_feed("uk_fcdo_ogl_official_atom", "https://www.gov.uk/feed.atom",
-            "official", .95, "conflict", risk_stream_candidate_extension=None)
-        self.assertEqual(service.risk_stream_candidates, {})
+    async def test_standard_item_rejects_missing_or_restrictive_page_license(self):
+        rights = ingestor.APPROVED_RISK_RIGHTS["uk_fcdo_ogl_official_atom"]
+        page = (f'<a href="{rights["rights_evidence"]["licence_url"]}" rel="license">'
+            'Open Government Licence v3.0</a>')
+        entry = {"id": "tag:gov.uk,2026:123", "title": "Sanctions policy for Russia",
+            "summary": "Official sanctions policy relating to Russia.",
+            "link": "https://www.gov.uk/government/news/sanctions-russia",
+            "updated": "2026-11-15T08:00:00Z"}
+        self.assertIsNone(ingestor.candidate_from_standard_entry(entry,
+            source_name="uk_fcdo_ogl_official_atom", category="conflict",
+            page_html="<html>No license statement</html>"))
+        self.assertIsNone(ingestor.candidate_from_standard_entry(entry,
+            source_name="uk_fcdo_ogl_official_atom", category="conflict",
+            page_html="<html>All rights reserved</html>"))
+        marked = {**entry, "rights_markers": "CC BY-NC third-party material"}
+        self.assertIsNone(ingestor.candidate_from_standard_entry(marked,
+            source_name="uk_fcdo_ogl_official_atom", category="conflict", page_html=page))
 
     async def test_headline_or_metadata_only_items_never_reach_attesters(self):
         service = object.__new__(ingestor.IngestService)

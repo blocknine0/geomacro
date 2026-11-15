@@ -26,17 +26,20 @@ risk tags use deterministic title/summary rules. Sentiment remains `null`
 until a supported scorer exists. Google News headlines are tagged at 0.55 and
 are not treated as independently verified facts.
 
-## Optional Risk Stream candidate extension
+## Optional standard-feed Risk Stream candidates
 
 Only feeds with both `risk_stream_item_licensed: true` and
-`risk_stream_candidate_extension: "geomacro_risk_stream_candidate"` are
-considered for the internal Risk Stream lane. Each Atom/RSS entry must carry
-that extension as a JSON object using `geomacro.risk-stream-candidate.v1`,
-with `kind: "VERIFIED_ORIGINAL"`, the same `source_id` as the feed registry,
-the original payload, and the exact item-level license evidence. Ordinary
-titles, summaries, and links do not create candidates. The Control Plane and
-both independent attesters re-check the item license, rights registry,
-signature, and source identity before D1 admission; failures remain unbilled.
+`risk_stream_standard_item_license_candidate: true` are considered. The
+candidate builder uses ordinary Atom/RSS `id`, `link`, and native `updated` or
+`published` fields, then fetches the linked publisher page with redirects
+disabled and requires its actual item-level `rel="license"` marker to match
+the reviewed source-rights registry. It classifies country and category from
+the item and rejects ambiguous subjects, stale timestamps, missing markers,
+third-party exceptions, and non-commercial/restricted terms. The registry
+does not manufacture item evidence and no custom upstream GeoMacro tag is
+required. The Control Plane and both independent attesters re-run the
+authoritative license, source-rights, signature, and source-identity checks
+before admission; failures remain unbilled.
 
 Private OSINT and Telegram are not candidate extensions. Their existing
 authenticated Control Plane bridge reduces matching observations to bounded

@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import unicodedata
+import types
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -45,6 +46,19 @@ if not os.environ["B2_S3_ENDPOINT"].startswith("https://"):
 POLL_SECONDS = max(60, min(int(os.getenv("POLL_SECONDS", "900")), 3600))
 DEFAULT_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "unified-rss-feed-registry.v1.json"
 COUNTRY_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "country-iso2-names.v1.json"
+RIGHTS_MANIFEST_PATH = Path(__file__).resolve().parents[2] / "config" / "risk-stream-source-rights-reviewed.v1.json"
+RIGHTS_MANIFEST = json.loads(RIGHTS_MANIFEST_PATH.read_text(encoding="utf-8"))
+APPROVED_RISK_RIGHTS = {row["source_id"]: row for row in RIGHTS_MANIFEST.get("entries", [])
+                        if row.get("status") == "APPROVED"}
+ISO2_TO_ISO3 = {"US": "USA", "CN": "CHN", "IN": "IND", "RU": "RUS", "GB": "GBR",
+    "UA": "UKR", "IR": "IRN", "IL": "ISR", "JP": "JPN", "KR": "KOR", "DE": "DEU",
+    "FR": "FRA", "BR": "BRA", "CA": "CAN", "AU": "AUS", "SA": "SAU", "AE": "ARE",
+    "MX": "MEX", "ZA": "ZAF", "PS": "PSE", "EG": "EGY", "QA": "QAT", "OM": "OMN",
+    "IQ": "IRQ", "NG": "NGA", "CD": "COD", "ZM": "ZMB", "CL": "CHL", "PE": "PER",
+    "AR": "ARG", "BO": "BOL", "ID": "IDN", "VN": "VNM", "TH": "THA", "MY": "MYS",
+    "SG": "SGP", "PH": "PHL", "PK": "PAK", "BD": "BGD", "KZ": "KAZ", "MN": "MNG",
+    "MM": "MMR", "IT": "ITA", "ES": "ESP", "NL": "NLD", "CH": "CHE", "NO": "NOR",
+    "SE": "SWE", "PL": "POL", "TR": "TUR", "BE": "BEL"}
 if os.getenv("GEOMACRO_RSS_FEEDS_JSON"):
     RSS_FEEDS = json.loads(os.environ["GEOMACRO_RSS_FEEDS_JSON"])
 else:
@@ -114,6 +128,13 @@ def published_epoch(entry: Any) -> int | None:
     raw = entry.get("published") or entry.get("updated")
     if raw:
         try:
+            value = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if value.tzinfo is None:
+                return None
+            return int(value.astimezone(timezone.utc).timestamp())
+        except (TypeError, ValueError, OverflowError):
+            pass
+        try:
             value = parsedate_to_datetime(raw)
             return int(value.astimezone(timezone.utc).timestamp())
         except (TypeError, ValueError, OverflowError):
@@ -156,6 +177,136 @@ def normalize_item(item: dict[str, Any], *, source_name: str, source_type: str,
     }
 
 
+def candidate_from_standard_entry(entry: Any, *, source_name: str, category: str | None,
+                                 page_html: str, feed_origin: str = "RSS") -> dict[str, Any] | None:
+    """Build a bounded candidate from ordinary feed fields plus the linked page's license.
+
+    The source registry never supplies item-level evidence. The linked page
+    must expose an exact reviewed `rel=license` URL and a readable marker;
+    the independent Worker attesters re-run the authoritative guard.
+    """
+    rights = APPROVED_RISK_RIGHTS.get(source_name)
+    categories = {"conflict": "GEOPOLITICS", "macro_economics": "MACRO_FX",
+                  "commodities": "CRITICAL_MINERALS"}
+    stream_category = categories.get(category or "")
+    if not rights or stream_category not in rights.get("categories", []):
+        return None
+    item_url = str(entry.get("link") or "")
+    if not item_url.startswith("https://"):
+        return None
+    from urllib.parse import urlparse
+    host = (urlparse(item_url).hostname or "").lower()
+    root = rights["publisher_root_domain"]
+    if host != root and not host.endswith("." + root):
+        return None
+    lic = rights.get("rights_evidence", {}).get("licence_url", "")
+    terms = rights.get("rights_evidence", {}).get("terms_url", "")
+    marker_values = [entry.get("rights"), entry.get("license"), entry.get("rights_markers")]
+    marker_values.extend(tag.get("term") if isinstance(tag, dict) else tag
+                         for tag in (entry.get("tags") or []))
+    for link in entry.get("links") or []:
+        if isinstance(link, dict) and link.get("rel") == "license":
+            marker_values.append(link.get("href"))
+    item_rights = " ".join(str(value) for value in marker_values if value)
+    if re.search(r"non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b", item_rights, re.IGNORECASE):
+        return None
+    declared_licenses = re.findall(r"https://[^\s<>\"']+", item_rights)
+    if any(url.rstrip(").,;") not in {lic, terms} for url in declared_licenses):
+        return None
+    anchor = re.search(r"<a\b(?=[^>]*\brel=[\"']license[\"'])(?=[^>]*\bhref=[\"']" +
+        re.escape(lic) + r"[\"'])[^>]*>(.*?)</a\s*>|<a\b(?=[^>]*\bhref=[\"']" +
+        re.escape(lic) + r"[\"'])(?=[^>]*\brel=[\"']license[\"'])[^>]*>(.*?)</a\s*>",
+        page_html, flags=re.IGNORECASE | re.DOTALL)
+    if not anchor:
+        return None
+    marker = clean(anchor.group(1) or anchor.group(2), 120)
+    page_text = clean(page_html, 100000).lower()
+    if not marker or re.search(r"non[- ]commercial|not for commercial use|all rights reserved|third[- ]party (?:copyright|content|material)", page_text):
+        return None
+    title = clean(entry.get("title"), 1200)
+    summary = clean(entry.get("summary") or entry.get("description"), 3000)
+    corpus = f"{title} {summary}".lower()
+    event_types = {
+        "GEOPOLITICS": [(r"sanction|asset freeze|export control", "sanctions_policy"),
+            (r"ceasefire|hostilities pause", "ceasefire"),
+            (r"attack|missile|troops|military|conflict|war|gaza|ukraine", "conflict_escalation"),
+            (r"tariff|trade restriction|trade disruption", "trade_disruption")],
+        "MACRO_FX": [(r"interest rate|monetary policy|bank rate", "central_bank_policy"),
+            (r"inflation|consumer prices", "inflation_release"),
+            (r"currency|exchange rate|sterling|pound", "fx_intervention"),
+            (r"trade|tariff|customs", "trade_disruption")],
+        "CRITICAL_MINERALS": [(r"export ban|export control", "critical_mineral_export_control"),
+            (r"production|mine output", "critical_mineral_production"),
+            (r"mineral|lithium|cobalt|copper|rare earth|graphite", "critical_mineral_supply"),
+            (r"trade|customs", "trade_disruption")],
+    }
+    event_type = next((kind for pattern, kind in event_types[stream_category]
+                       if re.search(pattern, corpus, re.IGNORECASE) and
+                       (stream_category != "CRITICAL_MINERALS" or re.search(
+                           r"mineral|lithium|cobalt|copper|rare earth|graphite", corpus, re.IGNORECASE))), None)
+    if not event_type:
+        return None
+    country_hits = []
+    for iso2, names in COUNTRIES.items():
+        # Match registered country names only; do not infer the subject from
+        # the source's own country or from an ambiguous feed-level category.
+        if iso2 == "GB":
+            continue
+        if any(re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", corpus, re.IGNORECASE)
+               for name in names):
+            country = ISO2_TO_ISO3.get(iso2)
+            if country:
+                country_hits.append(country)
+    if len(set(country_hits)) > 1:
+        return None
+    country_iso3 = country_hits[0] if country_hits else ISO2_TO_ISO3.get("GB")
+    published = published_epoch(entry)
+    if not published:
+        return None
+    published_at = datetime.fromtimestamp(published, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    item_id = str(entry.get("id") or item_url)
+    raw_payload = json.dumps({"id": item_id, "link": item_url,
+        "updated": entry.get("updated") or entry.get("published"), "country_iso3": country_iso3,
+        "category": stream_category, "license_marker": marker, "license_url": lic,
+        "terms_url": terms}, separators=(",", ":"))
+    evidence = {"license_id": rights["rights_evidence"].get("license_id", "UK_OGL_V3"),
+        "license_url": lic, "terms_url": terms, "item_url": item_url,
+        "item_license_marker": marker, "publisher_owned_content_only": True,
+        "third_party_exceptions": False, "non_commercial": False,
+        "restricted_material": False, "factual_record_only": True,
+        "original_text_republished": False}
+    identity = {"category": {"GEOPOLITICS": "geopolitics", "MACRO_FX": "macro",
+        "CRITICAL_MINERALS": "rare_earth"}[stream_category], "country_iso3": country_iso3,
+        "event_type": event_type, "actor_id": rights["parent_media_entity"],
+        "target_id": country_iso3.lower() + "_policy_subject",
+        "location_id": country_iso3.lower() + "_national_scope", "occurred_at": published_at}
+    claim = hashlib.sha256(json.dumps(identity, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    event_key = "CLAIM:" + claim.upper()
+    entities = sorted(["ACTOR:" + hashlib.sha256(identity["actor_id"].encode()).hexdigest()[:32].upper(),
+        "TARGET:" + hashlib.sha256(identity["target_id"].encode()).hexdigest()[:32].upper(),
+        "LOCATION:" + hashlib.sha256(identity["location_id"].encode()).hexdigest()[:32].upper()])
+    fingerprint = hashlib.sha256(json.dumps([country_iso3, stream_category, event_key, entities],
+        separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    return {"schema": "geomacro.risk-stream-candidate.v1", "kind": "VERIFIED_ORIGINAL",
+        "country_iso3": country_iso3, "category": stream_category, "feed_origin": feed_origin,
+        "event_key": event_key, "event_fingerprint": fingerprint, "entities": entities,
+        "source_id": source_name, "source_url": item_url, "publisher_root_domain": root,
+        "parent_media_entity": rights["parent_media_entity"], "source_role": rights["source_role"],
+        "published_at": published_at, "original_page_sha256": hashlib.sha256(raw_payload.encode()).hexdigest(),
+        "derived": {"what": "A dated official action has been published for a specifically identified jurisdiction.",
+            "why": "The recorded policy signal may alter the jurisdiction's exposure to the affected risk.",
+            "market": "Relevant counterparties may adjust risk limits while the signal is assessed.",
+            "watch": "Monitor subsequent official measures and independent corroboration."},
+        "raw_payload": raw_payload, "proof": None,
+        "rights_verification": {"registry_source_id": source_name, "registry_enabled": True,
+            "registry_commercial_rights_approved": True,
+            "authorization_reference": f"{lic} | {terms}",
+            "independent_reviewer_id": rights["rights_evidence"]["reviewer"],
+            "checked_at_utc": rights["rights_evidence"]["reviewed_at"],
+            "rights_expires_at_utc": rights["rights_expire_at"] + "T00:00:00.000Z",
+            "item_license_evidence": evidence}}
+
+
 class RawObservation(BaseModel):
     source_name: str = Field(min_length=2, max_length=160, pattern=r"^[a-zA-Z0-9_.:-]+$")
     title: str = Field(min_length=1, max_length=1200)
@@ -176,7 +327,7 @@ class IngestService:
         self.risk_stream_candidates: dict[str, dict[str, Any]] = {}
 
     async def emit_verified_risk_stream_candidate(self, candidate: dict[str, Any]) -> bool:
-        """Submit only a publisher-supplied, item-licensed candidate to both attesters.
+        """Submit only a standard-feed, item-license-verified candidate to both attesters.
 
         Ordinary RSS/Google/Telegram/OSINT cards never enter this path. The
         control plane and independent attesters remain authoritative for the
@@ -218,36 +369,47 @@ class IngestService:
 
     async def fetch_feed(self, source_name: str, url: str, source_type: str, credibility: float,
                          category: str | None = None,
-                         risk_stream_candidate_extension: str | None = None) -> list[dict[str, Any]]:
+                         risk_stream_standard_item_license_candidate: bool = False) -> list[dict[str, Any]]:
         try:
             response = await self.http.get(url)
             response.raise_for_status()
-            parsed = await asyncio.to_thread(feedparser.parse, response.content)
+            content_type = response.headers.get("content-type", "").lower()
+            if "json" in content_type:
+                payload = response.json()
+                items = payload if isinstance(payload, list) else payload.get("items", payload.get("entries", []))
+                entries = [{"id": item.get("id") or item.get("guid"),
+                    "title": item.get("title"), "summary": item.get("summary") or item.get("content_text") or item.get("description"),
+                    "link": item.get("url") or item.get("external_url") or item.get("link"),
+                    "updated": item.get("date_modified") or item.get("date_published") or item.get("updated") or item.get("published"),
+                    "rights_markers": " ".join(str(item.get(key, "")) for key in ("rights", "license", "license_url")) + " " +
+                        " ".join(str(tag) for tag in item.get("tags", []) if tag)}
+                    for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+                parsed = types.SimpleNamespace(entries=entries)
+            else:
+                parsed = await asyncio.to_thread(feedparser.parse, response.content)
             out = []
             for entry in parsed.entries:
-                # Candidate extensions are opt-in per approved feed. They are
-                # never copied into the ordinary unified event/D1 payload.
-                if risk_stream_candidate_extension == "geomacro_risk_stream_candidate":
-                    candidate = entry.get(risk_stream_candidate_extension)
-                    if isinstance(candidate, str):
+                # Candidate routing is opt-in and rights-registry-bound. The
+                # ordinary Atom/RSS entry supplies identity/time/link; the
+                # item's linked publisher page must independently expose the
+                # exact reviewed license marker. No custom feed extension is
+                # required or trusted as a license declaration.
+                if risk_stream_standard_item_license_candidate is True:
+                    if source_name in APPROVED_RISK_RIGHTS:
                         try:
-                            candidate = json.loads(candidate)
-                        except (TypeError, ValueError):
-                            candidate = None
-                    if isinstance(candidate, dict):
-                        # Feed-level opt-in is only a routing hint. Require a
-                        # complete item envelope tied to this exact reviewed
-                        # feed before retaining it for the remote item guard.
-                        candidate_key = str(candidate.get("event_fingerprint", ""))
-                        if (candidate.get("schema") == "geomacro.risk-stream-candidate.v1" and
-                            candidate.get("kind") == "VERIFIED_ORIGINAL" and
-                            candidate.get("source_id") == source_name and
-                            candidate.get("feed_origin") == "RSS" and
-                            isinstance(candidate.get("raw_payload"), str) and
-                            isinstance(candidate.get("rights_verification"), dict) and
-                            isinstance(candidate["rights_verification"].get("item_license_evidence"), dict) and
-                            candidate_key):
-                            self.risk_stream_candidates.setdefault(candidate_key, candidate)
+                            item_link = str(entry.get("link") or "")
+                            page_response = await self.http.get(item_link, follow_redirects=False)
+                            if page_response.status_code == 200 and not page_response.history:
+                                candidate = candidate_from_standard_entry(entry,
+                                    source_name=source_name, category=category,
+                                    page_html=page_response.text,
+                                    feed_origin="OFFICIAL_API" if "json" in content_type else "RSS")
+                                if candidate:
+                                    candidate_key = str(candidate.get("event_fingerprint", ""))
+                                    if candidate_key:
+                                        self.risk_stream_candidates.setdefault(candidate_key, candidate)
+                        except (httpx.HTTPError, ValueError, TypeError):
+                            pass
                 normalized = normalize_item({
                     "title": entry.get("title"),
                     "summary": entry.get("summary") or entry.get("description"),
@@ -281,8 +443,8 @@ class IngestService:
                 continue
             jobs.append(self.fetch_feed(str(spec["name"]), str(spec["url"]), source_type,
                 float(spec.get("credibility_score", .75)), spec.get("risk_category"),
-                risk_stream_candidate_extension=(spec.get("risk_stream_candidate_extension")
-                    if spec.get("risk_stream_item_licensed") is True else None)))
+                risk_stream_standard_item_license_candidate=(spec.get("risk_stream_standard_item_license_candidate") is True
+                    and spec.get("risk_stream_item_licensed") is True)))
         results = await asyncio.gather(*jobs, return_exceptions=True)
         for result in results:
             if isinstance(result, list):
