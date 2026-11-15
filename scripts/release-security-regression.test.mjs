@@ -68,7 +68,10 @@ test('B2 physical audit preserves permanent zero-list policy and never advertise
 
 test('canary version-specific wall-time p99 is converted from microseconds',()=>{
  const s=readFileSync('scripts/canary-promoter.ts','utf8');
- assert.match(s,/scriptVersion:\$version/);
+ assert.match(s,/dimensions\{scriptVersion\}/);
+ assert.match(s,/row\?\.dimensions\?\.scriptVersion===version/);
+ assert.doesNotMatch(s,/scriptVersion:\$version/);
+ assert.match(s,/workersInvocationsAdaptive\(limit:100,filter:\{scriptName:\$script,datetime_geq:\$start,datetime_leq:\$end\}\)/u);
  assert.match(s,/quantiles\{wallTimeP95 wallTimeP99\}/);
  assert.match(s,/const p99=wallTimeP99Us\/1000/);
  assert.match(s,/version_errors_under_0_5pct/);
@@ -86,7 +89,8 @@ test('Cloudflare Analytics query declares provider-specific lowercase string sca
  }
  const source=readFileSync('scripts/canary-promoter.ts','utf8');
  assert.match(source,/\$script:string!/u);
- assert.match(source,/\$version:string!/u);
+ assert.doesNotMatch(source,/\$version:string!/u);
+ assert.match(source,/dimensions\{scriptVersion\}/u);
 });
 
 test('real provider error categories remain fixed codes; no provider text leaks',()=>{
