@@ -15,7 +15,7 @@ test('cadence uses acknowledged intake, never quote/cron clocks; official releas
 test('healthy baseline pays one read and no retention sweep; only exact proven overcap repairs once',async()=>{
  let requests=0,repairs=0;
  const readAll=async fetchImpl=>{const r=await fetchImpl(canonicalBundle);const j=await r.json();if(!r.ok)throw Error('READ_FAILED');return j.records;};
- const run=fetchImpl=>readIntakeBaseline({fetchImpl,readAll,now,repair:async()=>{repairs++;}});
+ const run=fetchImpl=>readIntakeBaseline({fetchImpl,readAll,bundleUrl:canonicalBundle,now,repair:async()=>{repairs++;}});
  assert.deepEqual(await run(async()=>{requests++;return Response.json({records:['existing']});}),['existing']);
  assert.equal(requests,1);assert.equal(repairs,0);
  requests=0;
@@ -27,7 +27,7 @@ test('healthy baseline pays one read and no retention sweep; only exact proven o
 });
 test('retries of the same known overcapacity fault cannot multiply D1 reads',async()=>{
  let requests=0,repairs=0;
- const rows=await readIntakeBaseline({now,repair:async()=>{repairs++;},fetchImpl:async()=>{requests++;return repairs?Response.json({records:[1]}):Response.json({error:'DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED'},{status:503});},readAll:async f=>{
+ const rows=await readIntakeBaseline({now,bundleUrl:canonicalBundle,repair:async()=>{repairs++;},fetchImpl:async()=>{requests++;return repairs?Response.json({records:[1]}):Response.json({error:'DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED'},{status:503});},readAll:async f=>{
   for(let n=0;n<3;n++){const r=await f(canonicalBundle);if(r.ok)return (await r.json()).records;}
   throw Error('FAILED');
  }});
@@ -35,7 +35,7 @@ test('retries of the same known overcapacity fault cannot multiply D1 reads',asy
 });
 test('intake baseline rejects legacy public/page fallback before issuing another D1 request',async()=>{
  let requests=0;
- await assert.rejects(readIntakeBaseline({now,repair:async()=>{},fetchImpl:async()=>{requests++;return Response.json({records:[]});},readAll:async f=>{
+ await assert.rejects(readIntakeBaseline({now,bundleUrl:canonicalBundle,repair:async()=>{},fetchImpl:async()=>{requests++;return Response.json({records:[]});},readAll:async f=>{
   const r=await f('https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate');
   return r.json();
  }}),/FASTLANE_COMPLETE_BUNDLE_REQUIRED/);
@@ -57,7 +57,7 @@ test('admission success clock is typed, monotonic and cannot carry source text',
  assert.doesNotMatch(publisher,/canonicalRead/u);
  assert.match(publisher,/readAll:\(fetchImpl,now\)=>fetchAllDerivedNews\(fetchImpl,now,\{fresh:true,canonicalOriginToken:token\}\)/u);
  assert.match(publisher,/fetchAllDerivedNews\(globalThis\.fetch,Date\.now\(\),\s*\{fresh:true,canonicalOriginToken:token\}\)/u);
- assert.match(readFileSync('scripts/lib/budgeted-news-intake.mjs','utf8'),/\/v1\/internal\/website-derived-news-bundle/u);
+ assert.match(publisher,/bundleUrl:controlPlaneOrigin\+"\/v1\/internal\/website-derived-news-bundle"/u);
  const route=index.indexOf("url.pathname==='/v1/internal/website-derived-news-bundle'");
  assert.ok(route>index.indexOf('const auth = authorized(request, env)'));
  assert.ok(index.slice(route,route+500).includes('readDerivedStoriesBundle(env,Date.now(),false)'));
