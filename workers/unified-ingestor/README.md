@@ -26,6 +26,24 @@ risk tags use deterministic title/summary rules. Sentiment remains `null`
 until a supported scorer exists. Google News headlines are tagged at 0.55 and
 are not treated as independently verified facts.
 
+## Optional Risk Stream candidate extension
+
+Only feeds with both `risk_stream_item_licensed: true` and
+`risk_stream_candidate_extension: "geomacro_risk_stream_candidate"` are
+considered for the internal Risk Stream lane. Each Atom/RSS entry must carry
+that extension as a JSON object using `geomacro.risk-stream-candidate.v1`,
+with `kind: "VERIFIED_ORIGINAL"`, the same `source_id` as the feed registry,
+the original payload, and the exact item-level license evidence. Ordinary
+titles, summaries, and links do not create candidates. The Control Plane and
+both independent attesters re-check the item license, rights registry,
+signature, and source identity before D1 admission; failures remain unbilled.
+
+Private OSINT and Telegram are not candidate extensions. Their existing
+authenticated Control Plane bridge reduces matching observations to bounded
+country/category/event/severity/corroboration features with
+`raw_source_redacted: true`; source URLs, headlines, quotes, and channel names
+are not sent through this collector's candidate field.
+
 ## Render Free liveness
 
 The Render blueprint uses the minimal public `/healthz` endpoint for its

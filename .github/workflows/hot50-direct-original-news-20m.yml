@@ -288,6 +288,11 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Build bounded sidecar from opted-in publisher item extensions
+        if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Send only separately item-license-verified direct originals through dual attestation
         if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
         env:
@@ -297,6 +302,11 @@ jobs:
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
+      - name: Remove transient licensed candidate sidecar
+        if: always()
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Require actual three-category native publisher runtime proof (D1-admitted)
         shell: bash
         run: |

@@ -31,5 +31,12 @@ test("Render collector does not promote ordinary article metadata and invokes bo
  assert.match(worker,/risk-stream\/attest/u);
  assert.match(worker,/risk-stream\/events/u);
  assert.match(worker,/candidate\.get\("schema"\) != "geomacro\.risk-stream-candidate\.v1"/u);
+ assert.match(worker,/risk_stream_candidate_extension == "geomacro_risk_stream_candidate"/u);
  assert.match(worker,/self\.pending\.setdefault\(event\["id"\], event\)/u);
+ const feeds=JSON.parse(read("config/unified-rss-feed-registry.v1.json"));
+ const rights=JSON.parse(read("config/risk-stream-source-rights-reviewed.v1.json"));
+ const approved=new Set(rights.entries.filter(entry=>entry.status==="APPROVED").map(entry=>entry.source_id));
+ const opted=feeds.sources.filter(feed=>feed.risk_stream_item_licensed===true);
+ assert.ok(opted.length>0);
+ assert.ok(opted.every(feed=>feed.risk_stream_candidate_extension==="geomacro_risk_stream_candidate"&&approved.has(feed.name)));
 });

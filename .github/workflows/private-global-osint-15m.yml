@@ -606,6 +606,11 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Build sidecar only from opted-in item-licensed publisher originals
+        if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Emit only verified-original candidate sidecars through facts and rights attesters
         if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
         env:
@@ -615,6 +620,11 @@ jobs:
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
+      - name: Remove transient licensed candidate sidecar
+        if: always()
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Record every actual source ID state and independently verified D1 ACK
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

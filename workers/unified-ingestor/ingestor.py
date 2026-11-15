@@ -217,7 +217,8 @@ class IngestService:
             return False
 
     async def fetch_feed(self, source_name: str, url: str, source_type: str, credibility: float,
-                         category: str | None = None, risk_stream_enabled: bool = False) -> list[dict[str, Any]]:
+                         category: str | None = None,
+                         risk_stream_candidate_extension: str | None = None) -> list[dict[str, Any]]:
         try:
             response = await self.http.get(url)
             response.raise_for_status()
@@ -226,16 +227,26 @@ class IngestService:
             for entry in parsed.entries:
                 # Candidate extensions are opt-in per approved feed. They are
                 # never copied into the ordinary unified event/D1 payload.
-                if risk_stream_enabled:
-                    candidate = entry.get("geomacro_risk_stream_candidate")
+                if risk_stream_candidate_extension == "geomacro_risk_stream_candidate":
+                    candidate = entry.get(risk_stream_candidate_extension)
                     if isinstance(candidate, str):
                         try:
                             candidate = json.loads(candidate)
                         except (TypeError, ValueError):
                             candidate = None
                     if isinstance(candidate, dict):
+                        # Feed-level opt-in is only a routing hint. Require a
+                        # complete item envelope tied to this exact reviewed
+                        # feed before retaining it for the remote item guard.
                         candidate_key = str(candidate.get("event_fingerprint", ""))
-                        if candidate_key:
+                        if (candidate.get("schema") == "geomacro.risk-stream-candidate.v1" and
+                            candidate.get("kind") == "VERIFIED_ORIGINAL" and
+                            candidate.get("source_id") == source_name and
+                            candidate.get("feed_origin") == "RSS" and
+                            isinstance(candidate.get("raw_payload"), str) and
+                            isinstance(candidate.get("rights_verification"), dict) and
+                            isinstance(candidate["rights_verification"].get("item_license_evidence"), dict) and
+                            candidate_key):
                             self.risk_stream_candidates.setdefault(candidate_key, candidate)
                 normalized = normalize_item({
                     "title": entry.get("title"),
@@ -270,7 +281,8 @@ class IngestService:
                 continue
             jobs.append(self.fetch_feed(str(spec["name"]), str(spec["url"]), source_type,
                 float(spec.get("credibility_score", .75)), spec.get("risk_category"),
-                risk_stream_enabled=spec.get("risk_stream_item_licensed") is True))
+                risk_stream_candidate_extension=(spec.get("risk_stream_candidate_extension")
+                    if spec.get("risk_stream_item_licensed") is True else None)))
         results = await asyncio.gather(*jobs, return_exceptions=True)
         for result in results:
             if isinstance(result, list):
