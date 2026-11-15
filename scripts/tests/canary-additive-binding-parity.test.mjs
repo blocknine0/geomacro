@@ -7,6 +7,7 @@ import {assessReviewedAdditiveBindingParity,assessReviewedHot50BindingParity,
 import {candidateConfig,verifyCandidateBindings} from "../ops/prepare-optimized-worker-candidate.mjs";
 import {checkSource,requireCanaryObservabilityPrerequisites,
  verifiedLiveObservability} from "../canary-promoter.ts";
+import {classifyGraphQLHttpFailure,queryCloudflareAnalytics} from "../release-common.ts";
 const version=bindings=>({resources:{bindings}});
 const db={name:"DB",type:"d1"};
 const added={name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"};
@@ -283,9 +284,40 @@ test("Lovable domain canary uses worker-level telemetry without a Cloudflare Zon
   CLOUDFLARE_ZONE_ID:"a".repeat(32)}),"ZONE_AND_WORKER");
  const promoter=readFileSync(new URL("../canary-promoter.ts",import.meta.url),"utf8");
  assert.match(promoter,/query\(WORKER_GRAPH/);
+ assert.match(promoter,/workersInvocationsAdaptive\(limit:100,filter:\{scriptName:\$script,datetime_geq:\$start,datetime_leq:\$end\}\)/u);
+ assert.doesNotMatch(promoter,/workersInvocationsAdaptive\([^\n]*scriptVersion:\$version/u);
  assert.match(promoter,/zone_http_5xx_unavailable_reason:zone\?null:'NO_CLOUDFLARE_ZONE_FOR_DOMAIN'/);
  assert.match(promoter,/CANARY_D1_SCHEMA_PROOF_NOT_ACCEPTED/);
  assert.match(promoter,/b2-physical-parity-certificate\.json/);
+ assert.match(promoter,/checkLiveD1Budget\(\)/u);
+ assert.match(promoter,/DIRECTED_HEALTH_READINESS_D1_MONTHLY_HEADROOM_SIGNED_B2_D1_PROOFS/u);
+});
+
+test("Cloudflare GraphQL HTTP failures use fixed provider-safe diagnostics",()=>{
+ assert.equal(classifyGraphQLHttpFailure(401),"RELEASE_GRAPHQL_ACCESS_DENIED");
+ assert.equal(classifyGraphQLHttpFailure(403),"RELEASE_GRAPHQL_ACCESS_DENIED");
+ assert.equal(classifyGraphQLHttpFailure(429),"RELEASE_GRAPHQL_RATE_OR_COST_LIMIT");
+ assert.equal(classifyGraphQLHttpFailure(503),"RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE");
+ assert.equal(classifyGraphQLHttpFailure(418),"RELEASE_GRAPHQL_UNVERIFIED_418");
+});
+
+test("Cloudflare GraphQL transport failure is normalized for the no-Zone telemetry fallback",async()=>{
+ const originalFetch=globalThis.fetch;
+ const originalToken=process.env.CLOUDFLARE_BILLING_READ_TOKEN;
+ process.env.CLOUDFLARE_BILLING_READ_TOKEN="test-token-value-long-enough";
+ try{
+  globalThis.fetch=async()=>{throw Error("network detail must not escape");};
+  await assert.rejects(queryCloudflareAnalytics("query{}",{}),
+   error=>error.message==="RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE");
+  globalThis.fetch=async()=>({ok:false,redirected:false,status:403,
+   json:async()=>({errors:[{message:"Forbidden"}]})});
+  await assert.rejects(queryCloudflareAnalytics("query{}",{}),
+   error=>error.message==="RELEASE_GRAPHQL_ACCESS_DENIED");
+ }finally{
+  globalThis.fetch=originalFetch;
+  if(originalToken===undefined)delete process.env.CLOUDFLARE_BILLING_READ_TOKEN;
+  else process.env.CLOUDFLARE_BILLING_READ_TOKEN=originalToken;
+ }
 });
 
 test("candidate override checks health SHA and the actual D1 readiness contract",async()=>{
@@ -307,15 +339,19 @@ test("candidate override checks health SHA and the actual D1 readiness contract"
  }
 });
 
-test("no-zone Worker telemetry tolerates delayed samples but preserves fail-closed provider errors",async()=>{
- let queryText="";
+test("no-zone Worker telemetry tolerates delayed samples and selects the exact version without an unsupported filter",async()=>{
+ let queryText="",queryVariables;
  const delayed=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
   "2026-11-15T00:15:00.000Z","11111111-1111-4111-8111-111111111111",true,{
    env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
-   query:async(query)=>{queryText=query;return {viewer:{accounts:[{workersInvocationsAdaptive:[]}]}};}
+   query:async(query,variables)=>{queryText=query;queryVariables=variables;return {viewer:{accounts:[{workersInvocationsAdaptive:[]}]}};},
+   log:()=>{}
   });
  assert.equal(delayed,null);
  assert.match(queryText,/workersInvocationsAdaptive/u);
+ assert.match(queryText,/limit:100/u);
+ assert.doesNotMatch(queryText,/scriptVersion:\$version/u);
+ assert.equal(queryVariables.version,undefined);
  assert.doesNotMatch(queryText,/zones\(/u);
  const lowVolume=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
   "2026-11-15T00:15:00.000Z","11111111-1111-4111-8111-111111111111",true,{
@@ -323,7 +359,7 @@ test("no-zone Worker telemetry tolerates delayed samples but preserves fail-clos
    query:async()=>({viewer:{accounts:[{workersInvocationsAdaptive:[{
     dimensions:{scriptVersion:"11111111-1111-4111-8111-111111111111"},
     sum:{requests:12,errors:0},quantiles:{wallTimeP95:1000,wallTimeP99:2000}
-   }]}]}})
+   }]}]}}),log:()=>{}
   });
  assert.equal(lowVolume,null);
  const incomplete=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
@@ -331,20 +367,53 @@ test("no-zone Worker telemetry tolerates delayed samples but preserves fail-clos
    env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
    query:async()=>({viewer:{accounts:[{workersInvocationsAdaptive:[{
     dimensions:{scriptVersion:"11111111-1111-4111-8111-111111111111"},sum:{requests:0}
-   }]}]}})
+   }]}]}}),log:()=>{}
   });
  assert.equal(incomplete,null);
- const unavailable=await verifiedLiveObservability("2026-11-15T00:00:00Z",
-  "2026-11-15T00:15:00Z","11111111-1111-4111-8111-111111111111",true,{
+ const wanted="11111111-1111-4111-8111-111111111111";
+ const exact=await verifiedLiveObservability("2026-11-15T00:00:00.000Z",
+  "2026-11-15T00:15:00.000Z",wanted,true,{
    env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
-   query:async()=>{throw Error("RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE");}
+   query:async()=>({viewer:{accounts:[{workersInvocationsAdaptive:[
+    {dimensions:{scriptVersion:"22222222-2222-4222-8222-222222222222"},
+     sum:{requests:90000,errors:90},quantiles:{wallTimeP95:11000,wallTimeP99:22000}},
+    {dimensions:{scriptVersion:wanted},sum:{requests:120000,errors:12},
+     quantiles:{wallTimeP95:9000,wallTimeP99:18000}}
+   ]}]}})
   });
- assert.equal(unavailable,null);
+ assert.equal(exact.worker_script_version,wanted);
+ assert.equal(exact.worker_requests,120000);
+ assert.equal(exact.worker_error_ratio_under_0_5pct,true);
+ assert.equal(exact.worker_wall_time_p95_ms,9);
+});
+
+test("no-zone GraphQL provider and access failures emit safe diagnostics and fall back to directed gates",async()=>{
+ for(const code of ["RELEASE_GRAPHQL_PROVIDER_ERRORS","RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE",
+  "RELEASE_GRAPHQL_RATE_OR_COST_LIMIT","RELEASE_GRAPHQL_ACCESS_DENIED",
+  "RELEASE_GRAPHQL_UNVERIFIED_403","RELEASE_GRAPHQL_SCHEMA_REJECTED"]){
+  const logs=[];
+  const fallback=await verifiedLiveObservability("2026-11-15T00:00:00Z",
+   "2026-11-15T00:15:00Z","11111111-1111-4111-8111-111111111111",true,{
+    env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
+    query:async()=>{throw Error(code);},
+    log:entry=>logs.push(entry)
+   });
+  assert.equal(fallback,null,code);
+  assert.equal(logs.length,1,code);
+  const diagnostic=JSON.parse(logs[0]);
+  assert.deepEqual(diagnostic,{status:"DEGRADED",code:"CANARY_WORKER_TELEMETRY_UNAVAILABLE",
+   diagnostic_code:code,version:"11111111-1111-4111-8111-111111111111",
+   fallback:"DIRECTED_HEALTH_READINESS_D1_MONTHLY_HEADROOM_SIGNED_B2_D1_PROOFS"});
+  assert.doesNotMatch(logs[0],/DO_NOT_LOG_PROVIDER_MESSAGE/u);
+ }
+});
+
+test("GraphQL telemetry errors remain fail-closed when zone analytics is configured",async()=>{
  await assert.rejects(verifiedLiveObservability("2026-11-15T00:00:00Z",
   "2026-11-15T00:15:00Z","11111111-1111-4111-8111-111111111111",true,{
-   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:""},
-   query:async()=>{throw Error("RELEASE_GRAPHQL_ACCESS_DENIED");}
-  }),/RELEASE_GRAPHQL_ACCESS_DENIED/u);
+   env:{CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_ZONE_ID:"b".repeat(32)},
+   query:async()=>{throw Error("RELEASE_GRAPHQL_PROVIDER_ERRORS");},log:()=>{}
+  }),/RELEASE_GRAPHQL_PROVIDER_ERRORS/u);
 });
 
 test("held versioned rollout timeout exceeds all six stage windows with setup margin",()=>{
