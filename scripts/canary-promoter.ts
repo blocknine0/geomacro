@@ -184,7 +184,7 @@ export async function verifiedLiveObservability(start:string,end:string,version:
  let graph;
  try{
   graph=zone?
-   await query(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end}):
+   await query(GRAPH,{accountTag:account,script:WORKER,zoneTag:zone,host:'api.geomacro.live',start,end}):
    await query(WORKER_GRAPH,{accountTag:account,script:WORKER,start,end});
  }catch(error){
   const code=holdError(error);
