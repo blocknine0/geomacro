@@ -25,17 +25,32 @@ test("only four reviewed migration SQL files exist in immutable order",()=>{
  assert(manifest[2].file.includes("staged-migrations/"));
  assert(manifest[3].file.includes("staged-migrations/"));
 });
-test("bounded pre-seed and CREATE INDEX probe forbids >3k existing rows",()=>{
+test("ordinary staged DDL stays at 3k while reviewed 0212 source growth is bounded at 24k",()=>{
  const tables=STEP3_MIGRATIONS[0].sizeTables;
- const query=step3SizeProbeSQL(tables);
+ const ordinary=STEP3_MIGRATIONS.find(x=>x.id==="0204");
+ const pending=STEP3_MIGRATIONS.find(x=>x.id==="0212");
+ assert.equal(ordinary.sizeTableRowCap,3000);
+ assert.equal(pending.sizeTableRowCap,24000);
+ const query=step3SizeProbeSQL(tables,ordinary.sizeTableRowCap);
  assert.match(query,/OFFSET 3000/u);
  assert.match(query,/private_osint_news_25h/u);
  assert.match(query,/website_derived_intelligence/u);
  assert.equal(validateStep3SizeProbe(tables,
-  [{over_0:0,over_1:0,over_2:0}]).status,"PASS");
+  [{over_0:0,over_1:0,over_2:0}],ordinary.sizeTableRowCap).status,"PASS");
  assert.throws(()=>validateStep3SizeProbe(tables,
   [{over_0:0,over_1:1,over_2:0}]),
   /SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET/u);
+ const pendingQuery=step3SizeProbeSQL(pending.sizeTables,pending.sizeTableRowCap);
+ assert.match(pendingQuery,/OFFSET 24000/u);
+ assert.equal(validateStep3SizeProbe(pending.sizeTables,
+  [{over_0:0}],pending.sizeTableRowCap).maximum_existing_rows_per_table,24000);
+ assert.throws(()=>validateStep3SizeProbe(pending.sizeTables,
+  [{over_0:1}],pending.sizeTableRowCap),
+  /SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET/u);
+ assert.throws(()=>step3SizeProbeSQL(pending.sizeTables,24001),
+  /TABLE_SIZE_SCOPE_INVALID/u);
+ assert.throws(()=>validateStep3SizeProbe(pending.sizeTables,
+  [{over_0:0}],24001),/TABLE_SIZE_SCOPE_INVALID/u);
  assert.throws(()=>step3SizeProbeSQL(["sqlite_master;DELETE FROM x"]),
   /TABLE_SIZE_SCOPE_INVALID/u);
 });
@@ -109,7 +124,14 @@ test("only pending DDL is size-probed; native schema is not acceptance",()=>{
  assert(src.includes('if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD")'));
 });
 
-test("0212 pending reviewed large-source envelope covers 11822 rows, no 3k bypass elsewhere",()=>{
+test("0212 pending reviewed large-source envelope covers 11822 rows; only 0212 receives 24k size cap",()=>{
+ assert.deepEqual(STEP3_MIGRATIONS.map(x=>[x.id,x.sizeTableRowCap]),[
+  ["0204",3000],["0211",3000],["0212",24000],["0213",3000]
+ ]);
+ const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(runner,/const cap=step\.sizeTableRowCap\?\?3000/u);
+ assert.match(runner,/step3SizeProbeSQL\(step\.sizeTables,cap\)/u);
+ assert.match(runner,/validateStep3SizeProbe\(step\.sizeTables,r\.rows,cap\)/u);
  const sql=step30212PendingSourcePreflightSQL();
  assert.match(sql,/phase2h_private_raw_news/u);
  assert.match(sql,/LIMIT 24001/u);
