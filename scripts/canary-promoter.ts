@@ -37,10 +37,10 @@ export function requireCanaryObservabilityPrerequisites(env:Record<string,string
 // Cloudflare Workers invocation quantiles expose wallTimeP99 in MICROSECONDS,
 // not requestDurationP99 in milliseconds. Query the exact routed Worker
 // version, not the aggregate script; a 1% canary can be hidden by 99% baseline.
-const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$version:string!,$zoneTag:string!,$host:string!,$start:Time!,$end:Time!){
+const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$zoneTag:string!,$host:string!,$start:Time!,$end:Time!){
  viewer{
   accounts(filter:{accountTag:$accountTag}){
-   workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
+   workersInvocationsAdaptive(limit:100,filter:{scriptName:$script,datetime_geq:$start,datetime_leq:$end}){
     dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP95 wallTimeP99}
    }
   }
@@ -51,9 +51,9 @@ const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$vers
   }
  }
 }`;
-const WORKER_GRAPH=`query CanaryWorkerObservability($accountTag:string!,$script:string!,$version:string!,$start:Time!,$end:Time!){
+const WORKER_GRAPH=`query CanaryWorkerObservability($accountTag:string!,$script:string!,$start:Time!,$end:Time!){
  viewer{accounts(filter:{accountTag:$accountTag}){
-  workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
+  workersInvocationsAdaptive(limit:100,filter:{scriptName:$script,datetime_geq:$start,datetime_leq:$end}){
    dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP95 wallTimeP99}
   }
  }}
@@ -168,28 +168,37 @@ async function checkVersionParity(base:string,candidate:string,headSha:string,{r
 }
 
 export async function verifiedLiveObservability(start:string,end:string,version:string,
- requireVolume=true,{query=queryCloudflareAnalytics,env=process.env}:any={}){
+ requireVolume=true,{query=queryCloudflareAnalytics,env=process.env,
+  log=(entry:string)=>console.error(entry)}:any={}){
  const account=env===process.env?envString('CLOUDFLARE_ACCOUNT_ID',32):
   String(env.CLOUDFLARE_ACCOUNT_ID??'').trim();
  need(/^[a-f0-9]{32}$/iu.test(account),'RELEASE_ACCOUNT_INVALID');
  const zone=(env.CLOUDFLARE_ZONE_ID??'').trim();
  if(zone&&!/^[a-f0-9]{32}$/iu.test(zone))need(false,'CANARY_ZONE_ID_INVALID');
+ const telemetryFallback=(diagnosticCode:string)=>{
+  log(JSON.stringify({status:'DEGRADED',code:'CANARY_WORKER_TELEMETRY_UNAVAILABLE',
+   diagnostic_code:diagnosticCode,version,
+   fallback:'DIRECTED_HEALTH_READINESS_D1_MONTHLY_HEADROOM_SIGNED_B2_D1_PROOFS'}));
+  return null;
+ };
  let graph;
  try{
   graph=zone?
    await query(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end}):
-   await query(WORKER_GRAPH,{accountTag:account,script:WORKER,version,start,end});
+   await query(WORKER_GRAPH,{accountTag:account,script:WORKER,start,end});
  }catch(error){
   const code=holdError(error);
-  // Analytics is delayed and non-atomic. For an unzoned Lovable hostname,
-  // transient telemetry gaps are represented explicitly; directed candidate
-  // health/readiness and signed paid D1/B2 proofs remain mandatory. Auth,
-  // schema, and malformed query failures still HOLD.
-  if(!zone&&['RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE','RELEASE_GRAPHQL_RATE_OR_COST_LIMIT'].includes(code))
-   return null;
+  // Analytics is an observational SLO signal, not an authorization gate. If
+  // an unzoned Lovable domain cannot obtain Worker GraphQL telemetry, record
+  // the provider's fixed diagnostic code and continue only with the mandatory
+  // directed version probes, monthly D1 headroom, and signed release proofs.
+  // A missing credential or a failure in any of those release gates still HOLDs.
+  if(!zone&&code.startsWith('RELEASE_GRAPHQL_'))return telemetryFallback(code);
   throw error;
  }
- const worker=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0];
+ const workerRows=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive;
+ const worker=Array.isArray(workerRows)?workerRows.find((row:any)=>
+  row?.dimensions?.scriptVersion===version):undefined;
  const http=zone?graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0]:null;
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
  const siteCount=http?.count,ratio=http?.ratio?.status5xx;
@@ -200,12 +209,12 @@ export async function verifiedLiveObservability(start:string,end:string,version:
      !Number.isSafeInteger(errors)||
      typeof wallTimeP95Us!=='number'||!Number.isFinite(wallTimeP95Us)||
      typeof wallTimeP99Us!=='number'||!Number.isFinite(wallTimeP99Us)))
-  return null;
+  return telemetryFallback('CANARY_WORKER_TELEMETRY_METRICS_INCOMPLETE');
  // Worker errors are exact-scriptVersion telemetry. Zone HTTP 5xx is an
  // additional edge signal only when the account actually owns a Cloudflare
  // Zone for the hostname; an unzoned Lovable domain has no such measurement.
  // wallTimeP99 is microseconds; convert to milliseconds for the 50ms SLO.
- if(!worker&&!zone)return null;
+ if(!worker&&!zone)return telemetryFallback('CANARY_WORKER_TELEMETRY_VERSION_SAMPLE_MISSING');
  need(worker?.dimensions?.scriptVersion===version&&
   Number.isSafeInteger(requests)&&requests>0&&Number.isSafeInteger(errors)&&
   (!zone||Number.isSafeInteger(siteCount))&&
@@ -221,7 +230,7 @@ export async function verifiedLiveObservability(start:string,end:string,version:
   // have an empty or delayed GraphQL window. Preserve the explicit absence in
   // the stage receipt; the caller has already passed version-directed health,
   // readiness and provider-observed D1 gates. Never invent a telemetry PASS.
-  if(!zone)return null;
+  if(!zone)return telemetryFallback('CANARY_WORKER_TELEMETRY_SAMPLE_FLOOR_UNMET');
   need(!requireVolume,'CANARY_PROVIDER_SAMPLE_FLOOR_UNMET');
   return null;
  }
