@@ -4,8 +4,14 @@
  */
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
-export const STEP3_MAX_EXISTING_ROWS_PER_TABLE=3000;
-export const STEP3_0212_PENDING_SOURCE_CAP=24000;
+import {STEP3_SET_MAX_SOURCE_ROWS,STEP3_JOIN_MAX_SOURCE_ROWS}
+ from "./d1-step3-large-index-set-proof.mjs";
+export const STEP3_MAX_EXISTING_ROWS_PER_TABLE=STEP3_JOIN_MAX_SOURCE_ROWS;
+export const STEP3_0204_SOURCE_ROW_BUDGET=STEP3_SET_MAX_SOURCE_ROWS;
+export const STEP3_0211_SOURCE_ROW_BUDGET=STEP3_JOIN_MAX_SOURCE_ROWS;
+export const STEP3_0212_PENDING_SOURCE_CAP=STEP3_SET_MAX_SOURCE_ROWS;
+export const STEP3_SOURCE_READ_COST_PER_ROW=25;
+export const STEP3_SOURCE_WRITE_COST_PER_ROW=20;
 export const STEP3_MIGRATIONS=Object.freeze([
  Object.freeze({
   id:"0204",file:"workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql",
@@ -21,7 +27,7 @@ export const STEP3_MIGRATIONS=Object.freeze([
   sizeTables:Object.freeze([
    "private_osint_news_25h","private_osint_source_checks_24h",
    "website_derived_intelligence"]),
-  sizeTableRowCap:STEP3_MAX_EXISTING_ROWS_PER_TABLE
+  sizeTableRowCap:STEP3_0204_SOURCE_ROW_BUDGET
  }),
  Object.freeze({
   id:"0211",file:"workers/control-plane/migrations/0211_p0b_daily_committed_count.sql",
@@ -33,7 +39,7 @@ export const STEP3_MIGRATIONS=Object.freeze([
   }),
   integrityTables:Object.freeze(["p0b_committed_day_totals","ingestion_spool_queue"]),
   sizeTables:Object.freeze(["ingestion_spool_queue"]),
-  sizeTableRowCap:STEP3_MAX_EXISTING_ROWS_PER_TABLE
+  sizeTableRowCap:STEP3_0211_SOURCE_ROW_BUDGET
  }),
  Object.freeze({
   id:"0212",file:"workers/control-plane/staged-migrations/0212_d1_keyset_hourly_pending_census.sql",
@@ -51,8 +57,8 @@ export const STEP3_MIGRATIONS=Object.freeze([
    "phase2h_pending_hourly_v1","phase2h_private_raw_news",
    "private_osint_news_25h","website_derived_intelligence"]),
   sizeTables:Object.freeze(["phase2h_private_raw_news"]),
-  // Keep the rehearsal probe aligned with the separately reviewed 0212
-  // pending-source preflight; this is not a general DDL limit increase.
+  // Match the exhaustive 0212 source-index proof ceiling. Paid monthly
+  // headroom further reduces this cap for each actual rehearsal.
   sizeTableRowCap:STEP3_0212_PENDING_SOURCE_CAP
  }),
  Object.freeze({
@@ -124,7 +130,7 @@ export function step3SizeProbeSQL(tables,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
  if(!Array.isArray(tables)||tables.length===0||
     tables.length>5||tables.some(x=>!safeName(x))||
     !Number.isSafeInteger(cap)||cap<100||
-    cap>STEP3_0212_PENDING_SOURCE_CAP)
+    cap>STEP3_MAX_EXISTING_ROWS_PER_TABLE)
   fail("TABLE_SIZE_SCOPE_INVALID");
  return "SELECT "+tables.map((t,i)=>
   "EXISTS(SELECT 1 FROM "+t+" LIMIT 1 OFFSET "+cap+
@@ -133,7 +139,7 @@ export function step3SizeProbeSQL(tables,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
 export function validateStep3SizeProbe(tables,results,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
  if(!Array.isArray(tables)||tables.length===0||tables.length>5||
     tables.some(x=>!safeName(x))||!Number.isSafeInteger(cap)||
-    cap<100||cap>STEP3_0212_PENDING_SOURCE_CAP)
+    cap<100||cap>STEP3_MAX_EXISTING_ROWS_PER_TABLE)
   fail("TABLE_SIZE_SCOPE_INVALID");
  if(!Array.isArray(results)||results.length!==1)fail("SIZE_PROOF_MISSING");
  const r=results[0];
@@ -147,39 +153,104 @@ export function validateStep3SizeProbe(tables,results,cap=STEP3_MAX_EXISTING_ROW
 }
 
 /**
- * A one-time expansion of the reviewed pending 0212 migration budget,
- * never a general override of the 3000-row ordinary DDL ceiling.
+ * A migration's staged-index budget cannot exceed its complete index-audit
+ * source ceiling. It is reduced further by fresh paid monthly and paced
+ * headroom, after preserving the policy's independent migration reserves.
+ */
+export function deriveStep3SourceRowBudget(migrationId,headroom){
+ const step=STEP3_MIGRATIONS.find(x=>x.id===migrationId);
+ const nonnegative=x=>Number.isSafeInteger(x)&&x>=0;
+ if(!step||step.sizeTables.length===0||!headroom||
+    headroom.status!=="PASS"||
+    !nonnegative(headroom.remaining_rows_read)||
+    !nonnegative(headroom.remaining_rows_written)||
+    !nonnegative(headroom.paced_remaining_rows_read)||
+    !nonnegative(headroom.paced_remaining_rows_written)||
+    !nonnegative(headroom.reserved_migration_rows_read)||
+    !nonnegative(headroom.reserved_migration_rows_written))
+  fail("SOURCE_ROW_BUDGET_HEADROOM_UNVERIFIED");
+ const reads=Math.max(0,Math.min(headroom.remaining_rows_read,
+  headroom.paced_remaining_rows_read)-headroom.reserved_migration_rows_read);
+ const writes=Math.max(0,Math.min(headroom.remaining_rows_written,
+  headroom.paced_remaining_rows_written)-headroom.reserved_migration_rows_written);
+ const budget=Math.min(step.sizeTableRowCap,
+  Math.floor(reads/STEP3_SOURCE_READ_COST_PER_ROW/step.sizeTables.length),
+  Math.floor(writes/STEP3_SOURCE_WRITE_COST_PER_ROW/step.sizeTables.length));
+ if(budget<100)fail("SOURCE_ROW_BUDGET_BELOW_MINIMUM");
+ return Object.freeze({migration_id:migrationId,budget,
+  maximum_integrity_supported_rows:step.sizeTableRowCap,
+  source_read_budget_rows:reads,source_write_budget_rows:writes,
+  source_read_cost_per_row:STEP3_SOURCE_READ_COST_PER_ROW,
+  source_write_cost_per_row:STEP3_SOURCE_WRITE_COST_PER_ROW,
+  derived_from_fresh_paid_monthly_headroom:true});
+}
+export function step3SourceRowBudgetFailure({
+ migrationId,sourceTable,sourceRows,budget
+}={}){
+ const step=STEP3_MIGRATIONS.find(x=>x.id===migrationId);
+ if(!step||!step.integrityTables.includes(sourceTable)||
+    !Number.isSafeInteger(sourceRows)||sourceRows<0||
+    !Number.isSafeInteger(budget)||budget<100||
+    budget>step.sizeTableRowCap||sourceRows<=budget)
+  fail("SOURCE_ROW_BUDGET_FAILURE_DETAILS_INVALID");
+ return Object.freeze({migration_id:migrationId,source_table:sourceTable,
+  source_rows:sourceRows,budget});
+}
+
+/**
+ * 0212 is bounded by the exhaustive index membership proof's source ceiling;
+ * current paid monthly headroom and operation cost admission reduce it.
  * Each subquery is physically bounded. The grouped UTC-hour preflight
  * is needed because the 0212 counter auditor has a separate bin limit.
  * Provider cost is measured and re-admitted by the protected caller.
  */
-export function step30212PendingSourcePreflightSQL(){
+export function step30212PendingSourcePreflightSQL({
+ sourceCap=STEP3_0212_PENDING_SOURCE_CAP,
+ relatedSourceCap=STEP3_0204_SOURCE_ROW_BUDGET
+}={}){
+ if(!Number.isSafeInteger(sourceCap)||sourceCap<100||
+    sourceCap>STEP3_0212_PENDING_SOURCE_CAP||
+    !Number.isSafeInteger(relatedSourceCap)||relatedSourceCap<100||
+    relatedSourceCap>STEP3_0204_SOURCE_ROW_BUDGET)
+  fail("0212_SOURCE_ROW_BUDGET_INVALID");
  const raw="phase2h_private_raw_news";
  const limited=(table,cap,condition="")=>
   "(SELECT COUNT(*) FROM (SELECT 1 FROM "+table+
   condition+" LIMIT "+(cap+1)+"))";
  return "SELECT "+
-  limited(raw,STEP3_0212_PENDING_SOURCE_CAP)+
+  limited(raw,sourceCap)+
    " AS raw_rows,"+
-  limited(raw,STEP3_0212_PENDING_SOURCE_CAP,
+  limited(raw,sourceCap,
    " WHERE b2_object_sha256 IS NULL")+" AS pending_rows,"+
   "(SELECT COUNT(*) FROM (SELECT 1 FROM "+raw+
    " WHERE b2_object_sha256 IS NULL "+
    "GROUP BY category,substr(first_ingested_at,1,13) LIMIT 3001)) AS hour_bins,"+
-  limited("private_osint_news_25h",3000)+" AS osint_rows,"+
-  limited("website_derived_intelligence",3000)+" AS website_rows";
+  limited("private_osint_news_25h",relatedSourceCap)+" AS osint_rows,"+
+  limited("website_derived_intelligence",relatedSourceCap)+" AS website_rows";
 }
-export function validateStep30212PendingSourcePreflight(results){
+export function validateStep30212PendingSourcePreflight(results,{
+ sourceCap=STEP3_0212_PENDING_SOURCE_CAP,
+ relatedSourceCap=STEP3_0204_SOURCE_ROW_BUDGET
+}={}){
+ if(!Number.isSafeInteger(sourceCap)||sourceCap<100||
+    sourceCap>STEP3_0212_PENDING_SOURCE_CAP||
+    !Number.isSafeInteger(relatedSourceCap)||relatedSourceCap<100||
+    relatedSourceCap>STEP3_0204_SOURCE_ROW_BUDGET)
+  fail("0212_SOURCE_ROW_BUDGET_INVALID");
  if(!Array.isArray(results)||results.length!==1||
     Object.keys(results[0]??{}).sort().join(",")!==
     "hour_bins,osint_rows,pending_rows,raw_rows,website_rows")
   fail("0212_PENDING_SOURCE_PROOF_MISSING");
  const v=results[0];
- if(Object.values(v).some(x=>!Number.isSafeInteger(x)||x<0)||
-    v.raw_rows>STEP3_0212_PENDING_SOURCE_CAP||
-    v.pending_rows>v.raw_rows||v.hour_bins>3000||
-    v.osint_rows>3000||v.website_rows>3000)
-  fail("0212_REVIEWED_LARGE_SOURCE_BUDGET_EXCEEDED");
+ if(Object.values(v).some(x=>!Number.isSafeInteger(x)||x<0))
+  fail("0212_PENDING_SOURCE_PROOF_INVALID");
+ if(v.pending_rows>v.raw_rows)
+  fail("0212_PENDING_SOURCE_COUNT_CONTRADICTION");
+ if(v.hour_bins>3000)
+  fail("0212_HOUR_BIN_BUDGET_EXCEEDED");
+ if(v.raw_rows>sourceCap||v.osint_rows>relatedSourceCap||
+    v.website_rows>relatedSourceCap)
+  fail("0212_SOURCE_ROW_BUDGET_EXCEEDED");
  if((v.pending_rows===0)!==(v.hour_bins===0))
   fail("0212_PENDING_HOUR_BIN_CONTRADICTION");
  // Conservatively budget source seed + two reviewed index builds; this
@@ -188,7 +259,7 @@ export function validateStep30212PendingSourcePreflight(results){
   v.pending_rows*10+(v.osint_rows+v.website_rows)*15;
  const estimated_rows_written=10000+v.raw_rows*20+
   v.pending_rows*8+(v.osint_rows+v.website_rows)*12;
- if(estimated_rows_read>10000000||estimated_rows_written>500000)
+ if(estimated_rows_read>10000000||estimated_rows_written>6000000)
   fail("0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED");
  return Object.freeze({
   status:"PASS_READ_ONLY_BOUNDED_0212_COST_ENVELOPE_NOT_PRODUCTION_APPROVAL",

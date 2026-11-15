@@ -6,7 +6,10 @@ import {STEP3_MIGRATIONS,step3SqlManifests,step3SizeProbeSQL,
  classifyStep3NativeHistory,step30212PendingSourcePreflightSQL,
  validateStep30212PendingSourcePreflight,
  step3SchemaSQL,verifyStep3Schema,
- verifyStep3Integrity,verifyStep3Explain,compareImmutableBaseline}
+ verifyStep3Integrity,verifyStep3Explain,compareImmutableBaseline,
+ deriveStep3SourceRowBudget,STEP3_MAX_EXISTING_ROWS_PER_TABLE,
+ STEP3_0204_SOURCE_ROW_BUDGET,STEP3_0211_SOURCE_ROW_BUDGET,
+ STEP3_0212_PENDING_SOURCE_CAP,step3SourceRowBudgetFailure}
  from "../lib/d1-step3-migration-contract.mjs";
 import {parseStep3WranglerQuery}
  from "../ops/run-step3-protected-d1-migrations.mjs";
@@ -25,34 +28,82 @@ test("only four reviewed migration SQL files exist in immutable order",()=>{
  assert(manifest[2].file.includes("staged-migrations/"));
  assert(manifest[3].file.includes("staged-migrations/"));
 });
-test("ordinary staged DDL stays at 3k while reviewed 0212 source growth is bounded at 24k",()=>{
- const tables=STEP3_MIGRATIONS[0].sizeTables;
+test("all staged source budgets match exhaustive integrity ceilings and current paid headroom",()=>{
  const ordinary=STEP3_MIGRATIONS.find(x=>x.id==="0204");
+ const spool=STEP3_MIGRATIONS.find(x=>x.id==="0211");
  const pending=STEP3_MIGRATIONS.find(x=>x.id==="0212");
- assert.equal(ordinary.sizeTableRowCap,3000);
- assert.equal(pending.sizeTableRowCap,24000);
- const query=step3SizeProbeSQL(tables,ordinary.sizeTableRowCap);
- assert.match(query,/OFFSET 3000/u);
+ assert.equal(STEP3_MAX_EXISTING_ROWS_PER_TABLE,150000);
+ assert.equal(ordinary.sizeTableRowCap,STEP3_0204_SOURCE_ROW_BUDGET);
+ assert.equal(ordinary.sizeTableRowCap,100000);
+ assert.equal(spool.sizeTableRowCap,STEP3_0211_SOURCE_ROW_BUDGET);
+ assert.equal(spool.sizeTableRowCap,150000);
+ assert.equal(pending.sizeTableRowCap,STEP3_0212_PENDING_SOURCE_CAP);
+ assert.equal(pending.sizeTableRowCap,100000);
+ const query=step3SizeProbeSQL(ordinary.sizeTables,ordinary.sizeTableRowCap);
+ assert.match(query,/OFFSET 100000/u);
  assert.match(query,/private_osint_news_25h/u);
  assert.match(query,/website_derived_intelligence/u);
- assert.equal(validateStep3SizeProbe(tables,
+ assert.equal(validateStep3SizeProbe(ordinary.sizeTables,
   [{over_0:0,over_1:0,over_2:0}],ordinary.sizeTableRowCap).status,"PASS");
- assert.throws(()=>validateStep3SizeProbe(tables,
+ assert.throws(()=>validateStep3SizeProbe(ordinary.sizeTables,
   [{over_0:0,over_1:1,over_2:0}]),
   /SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET/u);
  const pendingQuery=step3SizeProbeSQL(pending.sizeTables,pending.sizeTableRowCap);
- assert.match(pendingQuery,/OFFSET 24000/u);
+ assert.match(pendingQuery,/OFFSET 100000/u);
  assert.equal(validateStep3SizeProbe(pending.sizeTables,
-  [{over_0:0}],pending.sizeTableRowCap).maximum_existing_rows_per_table,24000);
+  [{over_0:0}],pending.sizeTableRowCap).maximum_existing_rows_per_table,100000);
  assert.throws(()=>validateStep3SizeProbe(pending.sizeTables,
   [{over_0:1}],pending.sizeTableRowCap),
   /SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET/u);
- assert.throws(()=>step3SizeProbeSQL(pending.sizeTables,24001),
+ assert.throws(()=>step3SizeProbeSQL(pending.sizeTables,150001),
   /TABLE_SIZE_SCOPE_INVALID/u);
  assert.throws(()=>validateStep3SizeProbe(pending.sizeTables,
-  [{over_0:0}],24001),/TABLE_SIZE_SCOPE_INVALID/u);
+  [{over_0:0}],150001),/TABLE_SIZE_SCOPE_INVALID/u);
  assert.throws(()=>step3SizeProbeSQL(["sqlite_master;DELETE FROM x"]),
   /TABLE_SIZE_SCOPE_INVALID/u);
+ const high=deriveStep3SourceRowBudget("0204",{
+  status:"PASS",remaining_rows_read:17_348_478_639,
+  remaining_rows_written:30_419_967,
+  paced_remaining_rows_read:17_348_478_639,
+  paced_remaining_rows_written:30_419_967,
+  reserved_migration_rows_read:20_000_000,
+  reserved_migration_rows_written:1_000_000
+ });
+ assert.equal(high.budget,100000);
+ assert.equal(high.derived_from_fresh_paid_monthly_headroom,true);
+ const paced=deriveStep3SourceRowBudget("0211",{
+  status:"PASS",remaining_rows_read:1_000_000,
+  remaining_rows_written:40_000,
+  paced_remaining_rows_read:900_000,
+  paced_remaining_rows_written:32_000,
+  reserved_migration_rows_read:100_000,
+  reserved_migration_rows_written:10_000
+ });
+ assert.equal(paced.budget,1100);
+ const multiTable=deriveStep3SourceRowBudget("0204",{
+  status:"PASS",remaining_rows_read:10000000,
+  remaining_rows_written:5000000,
+  paced_remaining_rows_read:9000000,
+  paced_remaining_rows_written:4000000,
+  reserved_migration_rows_read:1000000,
+  reserved_migration_rows_written:1000000
+ });
+ assert.equal(multiTable.budget,50000,
+  "0204 allocates the combined resource envelope across its three source tables");
+ assert.deepEqual(step3SourceRowBudgetFailure({migrationId:"0212",
+  sourceTable:"phase2h_private_raw_news",sourceRows:100001,budget:100000}),{
+  migration_id:"0212",source_table:"phase2h_private_raw_news",
+  source_rows:100001,budget:100000
+ });
+ assert.throws(()=>step3SourceRowBudgetFailure({migrationId:"0212",
+  sourceTable:"phase2h_private_raw_news",sourceRows:100000,budget:100000}),
+  /SOURCE_ROW_BUDGET_FAILURE_DETAILS_INVALID/u);
+ assert.throws(()=>deriveStep3SourceRowBudget("0212",{
+  status:"NOT_YET_VERIFIED",remaining_rows_read:99,
+  remaining_rows_written:99,paced_remaining_rows_read:99,
+  paced_remaining_rows_written:99,reserved_migration_rows_read:0,
+  reserved_migration_rows_written:0
+ }),/SOURCE_ROW_BUDGET_HEADROOM_UNVERIFIED/u);
 });
 test("Stage2 recovers only an authenticated existing Worker bearer before D1 provider writes",()=>{
  const y=readFileSync(".github/workflows/production-rollout-orchestrator.yml","utf8");
@@ -124,17 +175,25 @@ test("only pending DDL is size-probed; native schema is not acceptance",()=>{
  assert(src.includes('if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD")'));
 });
 
-test("0212 pending reviewed large-source envelope covers 11822 rows; only 0212 receives 24k size cap",()=>{
+test("0212 pending source envelope scales to its integrity ceiling while retaining monthly admission",()=>{
  assert.deepEqual(STEP3_MIGRATIONS.map(x=>[x.id,x.sizeTableRowCap]),[
-  ["0204",3000],["0211",3000],["0212",24000],["0213",3000]
+  ["0204",100000],["0211",150000],["0212",100000],["0213",150000]
  ]);
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
- assert.match(runner,/const cap=step\.sizeTableRowCap\?\?3000/u);
+ assert.match(runner,/deriveStep3SourceRowBudget\(step\.id,report\.latest_headroom\)/u);
  assert.match(runner,/step3SizeProbeSQL\(step\.sizeTables,cap\)/u);
  assert.match(runner,/validateStep3SizeProbe\(step\.sizeTables,r\.rows,cap\)/u);
+ assert.match(runner,/sourceRows:exact/u);
+ assert.match(runner,/sourceTable:item\.source_table/u);
+ assert.match(runner,/migrationId,sourceTable:item\.source_table/u);
+ assert.match(runner,/STEP3_MIGRATION_SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET/u);
+ assert.match(runner,/paced_remaining_rows_written/u);
+ assert.match(runner,/estimated_rows_read=cap\*step\.sizeTables\.length\*\s*STEP3_SOURCE_READ_COST_PER_ROW/u);
+ assert.match(runner,/estimated_rows_written=cap\*step\.sizeTables\.length\*\s*STEP3_SOURCE_WRITE_COST_PER_ROW/u);
+ assert.match(runner,/STAGED_INDEX_BUDGET_ADMITTED_/u);
  const sql=step30212PendingSourcePreflightSQL();
  assert.match(sql,/phase2h_private_raw_news/u);
- assert.match(sql,/LIMIT 24001/u);
+ assert.match(sql,/LIMIT 100001/u);
  assert.match(sql,/LIMIT 3001/u);
  assert.doesNotMatch(sql,/\b(?:INSERT|DELETE|UPDATE|ALTER|DROP|REPLACE)\b/iu);
  const a=validateStep30212PendingSourcePreflight([
@@ -144,19 +203,25 @@ test("0212 pending reviewed large-source envelope covers 11822 rows; only 0212 r
  assert.equal(a.status,"PASS_READ_ONLY_BOUNDED_0212_COST_ENVELOPE_NOT_PRODUCTION_APPROVAL");
  assert.equal(a.source_rows_verified,11822);
  assert(a.estimated_rows_read>11822);
- assert(a.estimated_rows_written<500000);
+ assert(a.estimated_rows_written<6000000);
  assert.equal(a.production_release_authorized,false);
  assert.equal(a.no_sql_writes_performed,true);
  for(const x of [
-  {raw_rows:24001,pending_rows:8000,hour_bins:216,osint_rows:1,website_rows:1},
+  {raw_rows:100001,pending_rows:8000,hour_bins:216,osint_rows:1,website_rows:1},
   {raw_rows:11822,pending_rows:11823,hour_bins:216,osint_rows:1,website_rows:1},
   {raw_rows:11822,pending_rows:8000,hour_bins:3001,osint_rows:1,website_rows:1},
-  {raw_rows:11822,pending_rows:8000,hour_bins:216,osint_rows:3001,website_rows:1},
-  {raw_rows:11822,pending_rows:8000,hour_bins:216,osint_rows:1,website_rows:3001},
-  {raw_rows:11822,pending_rows:0,hour_bins:216,osint_rows:1,website_rows:1},
-  {raw_rows:22000,pending_rows:21000,hour_bins:216,osint_rows:3000,website_rows:3000}
+  {raw_rows:11822,pending_rows:8000,hour_bins:216,osint_rows:100001,website_rows:1},
+  {raw_rows:11822,pending_rows:8000,hour_bins:216,osint_rows:1,website_rows:100001},
+  {raw_rows:11822,pending_rows:0,hour_bins:216,osint_rows:1,website_rows:1}
  ])assert.throws(()=>validateStep30212PendingSourcePreflight([x]),
-   /0212_REVIEWED_LARGE_SOURCE_BUDGET_EXCEEDED|0212_PENDING_HOUR_BIN_CONTRADICTION|0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED/);
+   /0212_SOURCE_ROW_BUDGET_EXCEEDED|0212_HOUR_BIN_BUDGET_EXCEEDED|0212_PENDING_SOURCE_COUNT_CONTRADICTION|0212_PENDING_HOUR_BIN_CONTRADICTION|0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED/);
+ const realistic=validateStep30212PendingSourcePreflight([{
+  raw_rows:100000,pending_rows:100000,hour_bins:3000,
+  osint_rows:100000,website_rows:100000
+ }]);
+ assert.equal(realistic.source_rows_verified,100000);
+ assert(realistic.estimated_rows_read<10000000);
+ assert(realistic.estimated_rows_written<6000000);
 });
 test("Nov 10 live bounded provider source metrics fit reviewed 0212 estimate",()=>{
  // Read-only owner-run production D1 receipts: total=11822 on earlier
@@ -178,11 +243,11 @@ test("production estimated cost is presented to live Paid admission before any D
  const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  assert.match(r,/estimatedMigrationRowsRead:estimate\?\.estimated_rows_read\?\?0/u);
  assert.match(r,/estimatedMigrationRowsWritten:estimate\?\.estimated_rows_written\?\?0/u);
- const pre=r.indexOf("validateStep30212PendingSourcePreflight(source.rows)");
+ const pre=r.indexOf("validateStep30212PendingSourcePreflight(source.rows,");
  const checkpoint=r.indexOf("const checkpoint=await captureDurableD1Checkpoint",pre);
  const ledger=r.indexOf("const ledger=ensureLedger(config,manifests,state)",pre);
  assert(pre>0&&checkpoint>pre&&ledger>checkpoint);
- assert.match(r,/if\(source.readRows>200000\)/u);
+ assert.match(r,/if\(source.readRows>1000000\)/u);
 });
 
 test("exact D1 native meta readback refuses missing rows and nonzero writes",()=>{
