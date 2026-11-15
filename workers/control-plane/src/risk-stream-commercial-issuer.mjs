@@ -158,10 +158,14 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
  const candidateHash=await licensedSha(candidateJson);
  const authorizedGroId=await licensedSha("geomacro.authorized-gro.v1\n"+sourceGroId);
  const input={schema:"geomacro.commercial-review-request.v1",
+  client_id:PREDGE_PULL_CLIENT_ID,
   source_gro_id:sourceGroId,source_gro_sha256:row.payload_sha256,
   proposed_gro_id:authorizedGroId,proposed_gro_sha256:candidateHash,
   country_iso3:p.subject.id,category:p.category,
   original_observation_ids:p.source_originals,
+  source_gro_payload_json:row.payload_json,
+  source_gro_signature_b64:row.signature_b64,
+  eligible_derived_score:p.eligible_derived_score??null,
   original_content_not_transmitted:true,no_funds:true};
  const reviewer=requestReview??(async body=>{
   const response=await env.GEOMACRO_RELEASE_REVIEWER.fetch(
