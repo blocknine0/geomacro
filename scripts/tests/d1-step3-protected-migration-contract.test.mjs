@@ -61,16 +61,19 @@ test("all staged source budgets match exhaustive integrity ceilings and current 
   [{over_0:0}],150001),/TABLE_SIZE_SCOPE_INVALID/u);
  assert.throws(()=>step3SizeProbeSQL(["sqlite_master;DELETE FROM x"]),
   /TABLE_SIZE_SCOPE_INVALID/u);
- const high=deriveStep3SourceRowBudget("0204",{
-  status:"PASS",remaining_rows_read:17_348_478_639,
-  remaining_rows_written:30_419_967,
-  paced_remaining_rows_read:17_348_478_639,
-  paced_remaining_rows_written:30_419_967,
+ const observedHeadroom={
+  status:"PASS",remaining_rows_read:17_348_227_970,
+  remaining_rows_written:30_374_780,
+  paced_remaining_rows_read:6_666_097_425,
+  paced_remaining_rows_written:9_010_518,
   reserved_migration_rows_read:20_000_000,
   reserved_migration_rows_written:1_000_000
- });
+ };
+ const high=deriveStep3SourceRowBudget("0204",observedHeadroom);
  assert.equal(high.budget,100000);
  assert.equal(high.derived_from_fresh_paid_monthly_headroom,true);
+ assert.equal(deriveStep3SourceRowBudget("0211",observedHeadroom).budget,150000);
+ assert.equal(deriveStep3SourceRowBudget("0212",observedHeadroom).budget,100000);
  const paced=deriveStep3SourceRowBudget("0211",{
   status:"PASS",remaining_rows_read:1_000_000,
   remaining_rows_written:40_000,
@@ -180,7 +183,10 @@ test("0212 pending source envelope scales to its integrity ceiling while retaini
   ["0204",100000],["0211",150000],["0212",100000],["0213",150000]
  ]);
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(runner,/remaining_rows_read:x\.remaining_rows_read/u);
+ assert.match(runner,/remaining_rows_written:x\.remaining_rows_written/u);
  assert.match(runner,/deriveStep3SourceRowBudget\(step\.id,report\.latest_headroom\)/u);
+ assert.match(runner,/deriveStep3SourceRowBudget\("0212",state\.latest_headroom\)/u);
  assert.match(runner,/step3SizeProbeSQL\(step\.sizeTables,cap\)/u);
  assert.match(runner,/validateStep3SizeProbe\(step\.sizeTables,r\.rows,cap\)/u);
  assert.match(runner,/sourceRows:exact/u);

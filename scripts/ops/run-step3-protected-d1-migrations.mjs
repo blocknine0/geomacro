@@ -251,6 +251,12 @@ async function refreshedGate(report,stage,estimateOverride=null){
   reason:x.reason??null,provider_error:x.provider_error??null,
   attempts,day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
+  // Keep the source-budget contract's canonical names in the signed
+  // rehearsal receipt. The short aliases below are retained for existing
+  // diagnostics and consumers; deriveStep3SourceRowBudget reads these full
+  // names and must never infer them from absent fields.
+  remaining_rows_read:x.remaining_rows_read,
+  remaining_rows_written:x.remaining_rows_written,
   read_remaining:x.remaining_rows_read,
   write_remaining:x.remaining_rows_written,
   paced_remaining_rows_read:Math.max(0,
