@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-14T20:39:30.774Z",
+  "checked_at": "2026-11-15T00:22:05.430Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 40,
+  "item_count": 35,
   "counts": {
-    "geopolitics": 6,
-    "macro": 12,
-    "rare_earth": 22
+    "geopolitics": 5,
+    "macro": 10,
+    "rare_earth": 20
   },
-  "source_native_ids_sha256": "017552dfd0b2c713f63b5440d45d1bff16ce7473f1dca4ff2833d393b3c200ec",
+  "source_native_ids_sha256": "0cef2521b0fb6e45f71e73b8193fa27ac61cde399873175a6452eb38d56d4f7c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -689,101 +689,6 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-65678a15",
-      "category": "rare_earth",
-      "title": "Geomacro finds USA Rare Earth Earnings reported Left Me With 1 Big Unanswered Question - The Motley Fool",
-      "what_changed": "A monitored source feed reports: USA Rare Earth Earnings reported Left Me With 1 Big Unanswered Question - The Motley Fool. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-12T00:05:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d3f6681b",
-      "category": "macro",
-      "title": "Geomacro finds Statistics Canada published employment figures for October 2026 · Canada",
-      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
-      "what_changed": "Statistics Canada published employment figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
-      "geography": "Canada",
-      "development_type": "official update",
-      "topic": "official economic statistics",
-      "published_at": "2026-11-12",
-      "date_precision": "day",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Statistics Canada"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-2ad99f49",
-      "category": "rare_earth",
-      "title": "Geomacro finds USA Rare Earth launched Commercial Rare Earth Shipments From Brazil to US Government-Backed Entity - NAI500",
-      "what_changed": "A monitored source feed reports: USA Rare Earth launched Commercial Rare Earth Shipments From Brazil to US Government-Backed Entity - NAI500. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-11T23:55:17.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4b62d86e",
-      "category": "macro",
-      "title": "Geomacro finds Integra Resources cut 2026 gold output guidance on slow leach rates - StreetInsider",
-      "what_changed": "A monitored source feed reports: Integra Resources cut 2026 gold output guidance on slow leach rates - StreetInsider. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-11T23:01:56.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-07f157f3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Second Committee: approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources · Palestinian territories",
-      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
-      "what_changed": "Second Committee approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources. Country or region mentioned: Palestinian territories.",
-      "geography": "Palestinian territories",
-      "development_type": "approval",
-      "topic": "foreign policy",
-      "published_at": "2026-11-11T22:57:56.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     }
