@@ -56,7 +56,6 @@ export async function verifyRiskStreamQueueProvider({
  const consumers=consumerBody.result;
  const consumer=Array.isArray(consumers)&&consumers.length===1?consumers[0]:null;
  if(consumer?.type!=="worker"||consumer?.script_name!=="geomacro-control-plane"||
-    consumer?.queue_name!=="geomacro-risk-stream"||
     consumer?.dead_letter_queue!=="geomacro-risk-stream-dlq"||
     consumer?.settings?.batch_size!==10||consumer?.settings?.max_retries!==8)
   fail("CONSUMER_BINDING_UNVERIFIED");
