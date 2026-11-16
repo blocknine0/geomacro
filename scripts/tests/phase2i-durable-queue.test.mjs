@@ -100,3 +100,31 @@ test("workflows preserve D1 quota mutual exclusion and durable opt-in",()=>{
  assert.match(source,/legacyPending/);
  assert.match(source,/d1_readback_verified!==true/);
 });
+
+test("1,277 deferred candidates drain through encrypted R2 chunks and <=100-row verified D1 acknowledgements",async()=>{
+ const f=setup(),rows=Array.from({length:1277},(_,i)=>candidate(i+12000));
+ const appended=await appendAndLeasePhase2i({observed:rows,root:ROOT,env:ENV,fetchImpl:f.fetchImpl});
+ assert.equal(appended.appended_new,1277);
+ assert.equal(appended.verified_encrypted_objects,3);
+ assert.equal(f.r2.objects.size,3);
+ let acknowledged=0,steps=0;
+ let lease=appended;
+ while(acknowledged<rows.length){
+  assert.ok(lease.lease,"durable backlog item must remain leaseable until readback ACK");
+  assert.ok(lease.candidates.length<=500);
+  const admitted=lease.candidates.slice(0,100);
+  assert.ok(admitted.length<=100,"D1 admission must remain within the hourly pacing slot");
+  const receipt=await acknowledgePhase2i({lease:lease.lease,
+   verifiedRecordIds:admitted.map(durableCandidateId),env:ENV,fetchImpl:f.fetchImpl});
+  assert.equal(receipt.acked_now,admitted.length);
+  acknowledged+=receipt.acked_now;steps++;
+  lease=await appendAndLeasePhase2i({observed:[],root:ROOT,env:ENV,fetchImpl:f.fetchImpl});
+ }
+ const status=await phase2iDurableStatus({env:ENV,fetchImpl:f.fetchImpl});
+ assert.equal(acknowledged,1277);
+ assert.equal(status.acknowledged,1277);
+ assert.equal(status.pending_eligible,0);
+ assert.equal(status.fully_d1_drained,true);
+ assert.ok(steps>=13,"100-row D1 admission ceiling is preserved while draining the backlog");
+});
+
