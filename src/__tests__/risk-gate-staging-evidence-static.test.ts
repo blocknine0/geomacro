@@ -89,6 +89,8 @@ describe("Risk Gate staging evidence contract", () => {
     expect(ephemeralStaging).toContain("RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64");
     expect(ephemeralStaging).toContain("GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64");
     expect(ephemeralStaging).toContain("ephemeral-risk-gate-decision-staging");
+    expect(ephemeralStaging).toContain("0123_risk_gap_enrichment.sql");
+    expect(ephemeralStaging).toContain("0201_progressive_risk_gate_facts.sql");
   });
 
   it("keeps the new staging evidence contracts inside the P0 security gate", () => {

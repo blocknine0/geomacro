@@ -11,7 +11,8 @@ export async function startEphemeralD1Staging({port=3101}={}){
   throw Error('DISPOSABLE_STAGING_ONLY');
  const db=new Database(':memory:');
  db.exec('CREATE TABLE schema_meta(name TEXT PRIMARY KEY,version INTEGER,updated_at TEXT)');
- for(const name of ['0012_country_gro_verified_hot.sql','0020_predge_risk_gate_d1.sql'])
+ for(const name of ['0012_country_gro_verified_hot.sql','0020_predge_risk_gate_d1.sql',
+   '0123_risk_gap_enrichment.sql','0201_progressive_risk_gate_facts.sql'])
   db.exec(readFileSync(new URL('../../workers/control-plane/migrations/'+name,import.meta.url),'utf8'));
  const pair=generateKeyPairSync('ed25519');
  const decisionPair=generateKeyPairSync('ed25519');
