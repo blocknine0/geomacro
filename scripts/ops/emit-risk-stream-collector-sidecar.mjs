@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import {readFileSync,existsSync} from "node:fs";
 import {createHmac} from "node:crypto";
-import {createHmac} from "node:crypto";
 import {emitRiskStreamCandidates} from "./emit-risk-stream-candidates.mjs";
 
 const fail=code=>{throw Error("RISK_STREAM_COLLECTOR_SIDECAR_"+code)};
