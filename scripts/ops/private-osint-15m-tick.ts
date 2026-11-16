@@ -16,7 +16,6 @@ import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {officialWebsiteCandidateFromOsint,isKnownOfficialWebsiteFeed,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
 import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
-import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
 import {isConcretePublicIntelligence,intelligenceDisplayRejection,intelligenceRequiredSourceCredits} from "../../src/lib/intelligence-concrete-publication.ts";
@@ -89,8 +88,11 @@ const result=await collectPrivateOsint15m({
   if(isKnownOfficialWebsiteFeed(raw.source_url,raw.category)||
      typeof raw.article_url!=="string"||
      !PRIVATE_OSINT_TOPICS[raw.category]?.test(raw.title))return;
-  const event=actorActionNewsObservation(raw.title);
-  if(!event)return;
+  // Private OSINT is a discovery signal, not verified event evidence.
+  // Do not require a named actor/action classifier to display a source-neutral
+  // observation: that gate discarded most incoming items and made the public
+  // feed look stalled. Keep the category topic gate above, exact item identity,
+  // native timestamp, and downstream redaction/verification boundaries intact.
   const lane=observedByCategory.get(raw.category);
   // Collapse one original item repeated in multiple search/feed queries.
   const identity=raw.category+"|"+raw.article_url;
@@ -104,7 +106,7 @@ const result=await collectPrivateOsint15m({
    if(oldestDate!==null&&raw.published_at<=oldestDate)return;
    lane.delete(oldestKey);
   }
-  lane.set(identity,{...row,event});
+  lane.set(identity,row);
  }),
 });
 const scanned=result.summary.source_checks;
