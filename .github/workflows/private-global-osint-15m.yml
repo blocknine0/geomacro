@@ -669,10 +669,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GITHUB_OUTPUT: ${{ github.output }}
         run: node scripts/ops/verify-risk-stream-queue-provider.mjs
       - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'

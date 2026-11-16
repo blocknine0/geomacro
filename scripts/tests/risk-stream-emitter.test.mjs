@@ -171,3 +171,20 @@ test("send mode checks live runtime, obtains genuine signatures, gets Queue ACK 
  assert.equal(privateContext?.raw_source_redacted,true);
  assert.doesNotMatch(JSON.stringify(batches),/osint\.invalid|private headline|secret/iu);
 });
+
+test("send mode fails before attestation when the live Queue consumer serves a stale Worker version",async()=>{
+ let calls=0;
+ await assert.rejects(emitRiskStreamCandidates({originals:[originals[0]],sourceRegistry,
+  rightsManifest,now,dryRun:false,controlPlaneUrl:"https://control.invalid",
+  controlPlaneToken:"root-test-token",expectedControlPlaneSourceSha:"a".repeat(40),
+  fetchImpl:async(url)=>{
+   calls++;
+   assert.equal(new URL(url).pathname,"/v1/internal/risk-stream/runtime");
+   return {ok:true,status:200,json:async()=>({ok:true,
+    schema:"geomacro.risk-stream-runtime-status.v1",ready:true,
+    deployed_source_sha:"b".repeat(40),research_flags:{active:true,
+     ingestion_enabled:true,production_mode:true,hot50_research_enabled:true},
+    queue_binding_present:true,d1_binding_present:true,auth_configured:true})};
+  }}),/CONTROL_PLANE_DEPLOYMENT_STALE/u);
+ assert.equal(calls,1);
+});

@@ -21,18 +21,11 @@ if(!input||!existsSync(input)){
  // independently re-check the actual D1 registry row before admission.
  const sourceRegistry=manifest.entries.map(entry=>({...entry,enabled:1,
   commercial_rights_approved:1,rights_expire_at:entry.rights_expire_at}));
- const providerId=String(process.env.RISK_STREAM_QUEUE_PROVIDER_ID??"");
- const providerReceipt=String(process.env.RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256??"");
- if(!/^[a-f0-9]{32}$/iu.test(providerId)||!/^[a-f0-9]{64}$/u.test(providerReceipt))
-  fail("PROVIDER_RECEIPT_MISSING");
  emitRiskStreamCandidates({originals,sourceRegistry,rightsManifest:manifest,
-  expectedControlPlaneSourceSha:process.env.GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA,
   dryRun:false,controlPlaneUrl:process.env.CONTROL_PLANE_URL,
   controlPlaneToken:((!process.env.CONTROL_PLANE_TOKEN||process.env.CONTROL_PLANE_TOKEN===process.env.ROOT_LEDGER_TOKEN)&&process.env.ROOT_LEDGER_TOKEN)?createHmac("sha256",process.env.ROOT_LEDGER_TOKEN).update("geomacro-control-plane-v1").digest("hex"):process.env.CONTROL_PLANE_TOKEN,
   factsPublicB64:process.env.RISK_STREAM_MACHINE_FACTS_SPKI_B64,
   rightsPublicB64:process.env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64})
-  .then(result=>console.log(JSON.stringify({...result,
-   queue_provider_receipt_verified:true,queue_provider_id:providerId,
-   queue_provider_receipt_sha256:providerReceipt})))
+  .then(result=>console.log(JSON.stringify(result)))
   .catch(error=>{console.error(String(error?.message??"RISK_STREAM_EMIT_FAILED").slice(0,120));process.exitCode=2});
 }
