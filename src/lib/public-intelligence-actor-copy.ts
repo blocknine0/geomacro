@@ -1,4 +1,5 @@
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
+import {isSourceNeutralOsintSignal,projectSourceNeutralOsintSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
 
 /**
  * Only display explicit actor/action words already derived from an original
@@ -20,6 +21,10 @@ const ACTION=/(?:announced|approved|authorized|authorised|urged|warned|called fo
 const QUALIFIED=/^((?:UN(?:ited Nations)?(?: Secretary-General| agencies| experts)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|European Commission|European Union|Security Council|[A-Z][\p{L}.'-]*(?:\s+(?:of|the|and|for|[A-Z][\p{L}.'-]*)){0,5}))\s+/u;
 const NON_ACTORS=new Set(["Official","New","Trade","Interest","Mineral","Policy","Risk","Source","Publication","An","GDP","Inflation","Prices","Consumer","Economic","Employment"]);
 export function intelligenceActorHeadline(s:StatelessIntelligenceSignal){
+ const projected=s?.status==="osint_feed_observed_unverified"?
+  projectSourceNeutralOsintSignal(s):null;
+ if(projected&&isSourceNeutralOsintSignal(projected))
+  return projected.title.replace(/^Geomacro finds\s+/iu,"");
  const title=clean(s.title.replace(/^Geomacro finds\s+/iu,""),160);
  const change=clean(s.what_changed,650);
  const m=title.match(QUALIFIED);
@@ -31,6 +36,9 @@ export function intelligenceActorHeadline(s:StatelessIntelligenceSignal){
  return "Actor not verified: "+topic(s);
 }
 export function intelligenceActorChange(s:StatelessIntelligenceSignal){
+ const projected=s?.status==="osint_feed_observed_unverified"?
+  projectSourceNeutralOsintSignal(s):null;
+ if(projected&&isSourceNeutralOsintSignal(projected))return projected.what_changed;
  const change=clean(s.what_changed,650);
  if(change&&!GENERIC.test(change))return change;
  return "The original-dated publication concerns "+topic(s)+

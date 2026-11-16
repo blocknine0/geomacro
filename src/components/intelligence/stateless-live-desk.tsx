@@ -55,9 +55,8 @@ const CATEGORY_STYLE = {
   rare_earth: { bar: "bg-amber-500", icon: "text-amber-500", marker: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300", reading: "CRITICAL MINERALS SIGNAL" },
 } as const;
 
-// LOCKED PRESENTATION CONTRACT: OSINT and official-derived findings share this exact
-// Story component, category styling, layout, save action, What changed and Why it matters.
-// OSINT shares the canonical presentation; the internal unverified status is not shown on the public website.
+// LOCKED PRESENTATION CONTRACT: OSINT and official-derived findings share this Story component,
+// category styling, layout, save action, What changed and Risk → Effect → Price Impact.
 function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
   const mandatoryCredits=intelligenceRequiredSourceCredits(signal);
@@ -91,7 +90,7 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">RISK → EFFECT → PRICE IMPACT</p>
           <dl className="mt-3 grid gap-3 text-sm leading-6">
             <div><dt className="font-semibold text-foreground">Risk mechanism</dt><dd className="text-foreground/80">{takeaways.mechanism}</dd></div>
-            <div><dt className="font-semibold text-foreground">Downstream effect</dt><dd className="text-foreground/80">{takeaways.effect}</dd></div>
+            <div><dt className="font-semibold text-foreground">Why it matters · Downstream effect</dt><dd className="text-foreground/80">{takeaways.effect}</dd></div>
             <div><dt className="font-semibold text-foreground">Affected FX / commodity / corridor</dt><dd className="text-foreground/80">{takeaways.market}</dd></div>
           </dl>
           <span className="mt-3 inline-flex rounded-full border border-border px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION POSTURE · {takeaways.posture}</span>

@@ -136,7 +136,9 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(feedResponse.headers.get("Cache-Control")).toBe("no-store");
     const doc=await feedResponse.json();
     expect(doc.signals).toHaveLength(1);
-    expect(doc.signals[0].sources_credited).toEqual(["Monitored feed: www.bankofcanada.ca"]);
+    expect(doc.signals[0].sources_credited).toEqual([]);
+    expect(doc.signals[0].title).toContain("unverified macro watch signal");
+    expect(JSON.stringify(doc)).not.toContain("bankofcanada.ca");
     expect(data.size).toBe(1);
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
     expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");

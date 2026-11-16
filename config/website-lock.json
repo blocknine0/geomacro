@@ -1341,7 +1341,24 @@
   "approved_intelligence_risk_gate_conversion_20261116": {
     "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk \u2192 Effect \u2192 Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
     "purpose": "Improve only the Intelligence route and desk presentation. Preserve unscored public evidence semantics, source attribution, no copyrighted-source republishing, disabled paid execution, and the independent Global Risk presentation lock.",
-    "approved_source_commit": "3674eee1a3b887519bb1d9eb1953e177c5a59afa",
+    "approved_source_commit": "21f7253d9b46ec51f4ec5521d6db8ca9bb3738c9",
+    "approved_paths": [
+      "src/routes/intelligence.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_flags_enabled": false,
+    "durable_objects_added": false,
+    "extra_public_route_d1_reads_added": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_private_osint_website_projection_20261116": {
+    "approval": "Owner explicitly requested the missing Private OSINT Website Intelligence feed be repaired end to end on 2026-11-16; source-neutral unverified watch cards are allowed while raw headlines, feed hosts, article URLs, and source text remain excluded from public responses.",
+    "purpose": "Show fresh existing Private OSINT observations across all three categories as unverified watch signals and redact legacy journal rows in every public readback path.",
+    "approved_source_commit": "184a0a2991a9dd15d96aef9d178db6174edcea72",
     "approved_paths": [
       "src/routes/intelligence.tsx",
       "src/components/intelligence/stateless-live-desk.tsx"

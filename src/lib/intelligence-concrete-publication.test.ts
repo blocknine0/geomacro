@@ -36,6 +36,8 @@ describe("actual-event Intelligence publication",()=>{
   expect(isConcretePublicIntelligence({...s,what_changed:"A monitored feed contains a dated item on a geopolitical publisher candidate."})).toBe(false);
  });
  it("admits three-domain concrete OSINT reports while rejecting anonymous publisher candidates",()=>{
+  const neutralHeadlines={geopolitics:"an unverified geopolitical watch signal",
+    macro:"an unverified macro watch signal",rare_earth:"an unverified critical-minerals watch signal"} as const;
   for(const category of ["geopolitics","macro","rare_earth"] as const){
     const basis=sample(category);
     const report={...basis,status:"osint_feed_observed_unverified" as const,
@@ -44,11 +46,16 @@ describe("actual-event Intelligence publication",()=>{
       what_changed:"A monitored source feed reports: "+basis.what_changed+
         " This report has not been independently verified."};
     expect(isConcretePublicIntelligence(report),category).toBe(true);
-    expect(concreteIntelligenceHeadline(report)).toBe(basis.title.replace(/^Geomacro finds /u,""));
-    expect(isConcretePublicIntelligence({...report,
-      title:"Geomacro finds macro publisher candidate source-feed observation"})).toBe(false);
-    expect(isConcretePublicIntelligence({...report,
-      sources_credited:["Monitored feed: news.un.org"]})).toBe(false);
+    expect(concreteIntelligenceHeadline(report)).toBe(neutralHeadlines[category]);
+    expect(concreteGeomacroAnalysis(report)).not.toContain(basis.title.replace(/^Geomacro finds /u,""));
+    const legacyTitle={...report,
+      title:"Geomacro finds macro publisher candidate source-feed observation"};
+    expect(isConcretePublicIntelligence(legacyTitle)).toBe(true);
+    expect(concreteIntelligenceHeadline(legacyTitle)).toBe(neutralHeadlines[category]);
+    const restrictedCredit={...report,sources_credited:["Monitored feed: news.un.org"]};
+    expect(isConcretePublicIntelligence(restrictedCredit)).toBe(true);
+    expect(concreteIntelligenceHeadline(restrictedCredit)).toBe(neutralHeadlines[category]);
+    expect(JSON.stringify(concreteGeomacroAnalysis(restrictedCredit))).not.toContain("news.un.org");
   }
  });
  it("shows first-party governmental original facts without blanketing every publisher by credit",()=>{
@@ -83,7 +90,7 @@ describe("actual-event Intelligence publication",()=>{
      what_changed:"United Nations "+action+" in its dated statement."} as never)).toBe(true);
   });
 
- it("distinguishes humanitarian security from election statements, even within geopolitics",()=>{
+ it("keeps source-neutral OSINT copy independent of restricted headlines",()=>{
    const msf={...sample("geopolitics"),
      title:"Geomacro finds MSF called for stronger security measures to protect its work in Central Darfur",
      what_changed:"A monitored source feed reports: MSF called for stronger security measures to protect its work in Central Darfur. This report has not been independently verified.",
@@ -99,12 +106,10 @@ describe("actual-event Intelligence publication",()=>{
    const election=concreteGeomacroAnalysis(brazil);
    expect(isConcretePublicIntelligence(msf)).toBe(true);
    expect(isConcretePublicIntelligence(brazil)).toBe(true);
-   expect(security).toContain("relief workers");
-   expect(security).toContain("Central Darfur");
-   expect(election).toContain("electoral misconduct");
-   expect(election).toContain("Brazil election");
-   expect(election).not.toBe(security);
-   expect(election).not.toContain("continuity of access");
+   expect(security).toContain("civilian safety");
+   expect(election).toBe(security);
+   expect(security).not.toContain("Central Darfur");
+   expect(election).not.toContain("Brazil election");
    expect(security).not.toContain("political legitimacy");
    expect(election).toContain("independently unverified");
  });
@@ -134,7 +139,7 @@ describe("actual-event Intelligence publication",()=>{
    }
  });
 
- it("turns specific currently observed macro stories into different causal watchpoints",()=>{
+ it("does not derive public macro copy from unverified OSINT headlines",()=>{
   const headlines=[
    ["Mahama said Ghana is in talks with Russia over first nuclear power station","power-infrastructure","commissioning"],
    ["PM approved expansion of Jinnah and Allama Iqbal airports, eyes making Karachi air cargo hub","freight capacity","cargo handling"],
@@ -142,7 +147,7 @@ describe("actual-event Intelligence publication",()=>{
    ["Sterling Financial reported 37.1% growth in nine-month profit before tax to 97.28bn","firm-level profitability","comparable figures"],
    ["European Central Bank held key interest rates steady as energy prices cloud inflation and growth outlook","policy-rate decision","asset-price"],
   ] as const;
-  const tails:string[]=[];
+  const analyses:string[]=[];
   for(const [headline,subject,limit] of headlines){
    const story={...sample("macro"),title:"Geomacro finds "+headline,
     what_changed:"A monitored source feed reports: "+headline+". This report has not been independently verified.",
@@ -151,21 +156,22 @@ describe("actual-event Intelligence publication",()=>{
     sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
    const analysis=concreteGeomacroAnalysis(story);
    expect(analysis).toContain("independently unverified");
-   expect(analysis).toContain(subject);
-   expect(analysis).toContain(limit);
-   tails.push(analysis.split("”, ")[1]??"");
+   expect(analysis).not.toContain(headline);
+   expect(analysis).not.toContain(subject);
+   expect(analysis).not.toContain(limit);
+   analyses.push(analysis);
   }
-  expect(new Set(tails).size).toBe(headlines.length);
-  expect(tails.every(t=>!t.includes("affected indicator, economic channel and reporting period"))).toBe(true);
+  expect(new Set(analyses).size).toBe(1);
+  expect(analyses[0]).toContain("affected indicator, economic channel and reporting period");
  });
- it("separates mineral access product, earnings, and copper output shortfall",()=>{
+ it("does not derive public minerals copy from unverified OSINT headlines",()=>{
   const headlines=[
    ["Metals.io launched Copper, Unlocking Access to the Critical Metal at the Heart of Electrification","digital access","redemption"],
    ["Teck Resources reported higher copper and zinc prices help boost Q3 profit","copper and zinc","operating costs"],
    ["Glencore maintained guidance but quarterly copper output falls short","guidance-versus-output","actual period output"],
    ["European Union announced lithium export controls","shipment permissions","implementation date"],
   ] as const;
-  const tails:string[]=[];
+  const analyses:string[]=[];
   for(const [headline,focus,limit] of headlines){
    const story={...sample("rare_earth"),title:"Geomacro finds "+headline,
     what_changed:"A monitored source feed reports: "+headline+". This report has not been independently verified.",
@@ -174,12 +180,13 @@ describe("actual-event Intelligence publication",()=>{
     sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
    const analysis=concreteGeomacroAnalysis(story);
    expect(analysis).toContain("independently unverified");
-   expect(analysis).toContain(focus);
-   expect(analysis).toContain(limit);
-   tails.push(analysis.split("”, ")[1]??"");
+   expect(analysis).not.toContain(headline);
+   expect(analysis).not.toContain(focus);
+   expect(analysis).not.toContain(limit);
+   analyses.push(analysis);
   }
-  expect(new Set(tails).size).toBe(headlines.length);
-  expect(tails.every(t=>!t.includes("affected material, supply-chain stage and geography"))).toBe(true);
+  expect(new Set(analyses).size).toBe(1);
+  expect(analyses[0]).toContain("affected material, supply-chain stage and geography");
  });
 
 });

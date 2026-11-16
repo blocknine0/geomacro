@@ -1,6 +1,7 @@
 import type {StatelessIntelligenceSignal,StatelessCategory} from "./stateless-intelligence-model";
 import type {FindCardV1} from "./find-card-v1";
 import {isCriticalMineralsSubject} from "../../scripts/lib/critical-minerals-subject-evidence.mjs";
+import {isSourceNeutralOsintSignal,projectSourceNeutralOsintSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
 import {intelligenceActorHeadline,intelligenceActorChange} from "./public-intelligence-actor-copy";
 
 /**
@@ -21,6 +22,10 @@ const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|cri
 /** Stable derived publisher-release headline only; never substitute a feed
  * hostname for the grammatical actor or imply verification of an outcome. */
 export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):string|null{
+ const projectedOsint=s?.status==="osint_feed_observed_unverified"
+  ?projectSourceNeutralOsintSignal(s):null;
+ if(projectedOsint&&isSourceNeutralOsintSignal(projectedOsint))
+  return projectedOsint.title.replace(/^Geomacro finds\s+/iu,"");
  const actorFirst=intelligenceActorHeadline(s);
  if(!actorFirst.startsWith("Actor not verified:"))return actorFirst;
  const title=s.title.replace(/^Geomacro finds\s+/iu,"").trim();
@@ -69,14 +74,16 @@ export function intelligenceDisplayRejection(s:StatelessIntelligenceSignal):Inte
    return "INVALID_STATE_OR_CREDIT";
  if(s.category==="rare_earth"&&!isCriticalMineralsSubject(s))
    return "OUTSIDE_CRITICAL_MINERALS_SCOPE";
+ if(s.status==="osint_feed_observed_unverified"){
+  const ms=Date.parse(s.published_at);
+  const projected=projectSourceNeutralOsintSignal(s);
+  if(!projected||!isSourceNeutralOsintSignal(projected))return "UNVERIFIED_ORIGINAL_SOURCE";
+  if(!Number.isFinite(ms)||!/^\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(s.published_at))
+   return "INVALID_PUBLICATION_DATE";
+  return null;
+ }
  // Feed hostname is not the actual government/IGO original publisher credit.
  // Do not downgrade a first-party feed to a fake source-reported no-credit card.
- if(s.status==="osint_feed_observed_unverified"&&
-   (s.development_type!=="unverified OSINT feed observation"||
-    s.sources_credited.length!==1||
-    !s.sources_credited[0].startsWith("Monitored feed: ")||
-    /(?:news\.un\.org|press\.un\.org|gov\.uk|wto\.org|statcan\.gc\.ca|beehive\.govt\.nz|europa\.eu)/iu.test(s.sources_credited[0])))
-   return "UNVERIFIED_ORIGINAL_SOURCE";
  const headline=concreteIntelligenceHeadline(s),change=intelligenceActorChange(s);
  if(!headline)return "UNKNOWN_ACTOR_OR_ACTION";
  if(headline.length<18||headline.length>220||change.length<30||change.length>650||

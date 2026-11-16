@@ -182,6 +182,8 @@ const approvedPricing = [
   // Owner-requested Intelligence freshness and Risk Gate conversion copy;
   // authorize only the exact route and desk component blobs in this PR.
   config.approved_intelligence_risk_gate_conversion_20261116,
+  // Source-neutral Private OSINT watch projection and explicit unverified card label.
+  config.approved_private_osint_website_projection_20261116,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a

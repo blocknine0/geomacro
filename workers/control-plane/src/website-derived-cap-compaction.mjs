@@ -19,8 +19,9 @@ const PRIORITY_TRIM_SQL=
   "CASE "+
   "WHEN json_extract(story_json, '$.status') = 'official_release_observed_unscored' THEN 2 "+
   "WHEN json_extract(story_json, '$.status') = 'osint_feed_observed_unverified' "+
-  "AND json_extract(story_json, '$.what_changed') LIKE 'A monitored source feed reports:%' "+
-  "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate') THEN 1 "+
+  "AND ((json_extract(story_json, '$.development_type') = 'unverified OSINT feed observation' "+
+  "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate')) "+
+  "OR json_extract(story_json, '$.what_changed') LIKE 'A monitored source feed reports:%') THEN 1 "+
   "ELSE 0 END DESC, published_at DESC, id DESC LIMIT -1 OFFSET 600)";
 
 async function exactCount(db){
