@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-16T07:12:05.073Z",
+  "checked_at": "2026-11-16T08:01:27.223Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 20,
+  "item_count": 18,
   "counts": {
     "geopolitics": 3,
-    "macro": 7,
-    "rare_earth": 10
+    "macro": 6,
+    "rare_earth": 9
   },
-  "source_native_ids_sha256": "89fd6d4b3d5e3e179290b4e00aca21df6462316b37e161c515087f848869df23",
+  "source_native_ids_sha256": "ced3b6b127f943116a91218d1c8248215123db5608d142d01634e2ecb710248c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -364,44 +364,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-5087e34c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Atlantic Lithium confirmed Dispatch of Scheme Booklet Ahead of December Vote on Huayou Acquisition - Yahoo Finance UK",
-      "what_changed": "A monitored source feed reports: Atlantic Lithium confirmed Dispatch of Scheme Booklet Ahead of December Vote on Huayou Acquisition - Yahoo Finance UK. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-13T08:00:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-552fc73a",
-      "category": "macro",
-      "title": "Geomacro finds Cora Gold agreed to conditional demerger of Senegal assets",
-      "what_changed": "A monitored source feed reports: Cora Gold agreed to conditional demerger of Senegal assets. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-13T07:47:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.mining-technology.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
