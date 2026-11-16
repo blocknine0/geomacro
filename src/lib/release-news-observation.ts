@@ -76,7 +76,7 @@ export function actorActionNewsObservation(title:string):{headline:string;change
    change:"The release reports renewed peace efforts in Sudan aimed at ending drone warfare and the associated humanitarian crisis."};
  // Transform industry reporting about projects facing trade constraints into
  // a source-neutral development while retaining the concrete country/topic.
- const exposure=/^(.{3,140}?)\s+faces?\s+(?:new\s+)?(export restrictions?|export controls?|curbs?)\.?$/iu.exec(text);
+ const exposure=/^(.{3,140}?)\s+faces?\s+(?:new\s+)?(export (?:restrictions?|controls?|curbs?)|curbs?)\.?$/iu.exec(text);
  if(exposure)
   return {headline:`${exposure[2]} affecting ${exposure[1]}`,
    change:`The report describes ${exposure[2].toLocaleLowerCase()} affecting ${exposure[1]}.`};
