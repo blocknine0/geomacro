@@ -4,8 +4,10 @@ import {readFileSync} from "node:fs";
 import {planD1BundledWork,admitPaidCanonicalReadOnlyCatchup} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 import {WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
+import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
 
 const now=new Date("2026-11-08T23:00:00.000Z");
+const budget=JSON.parse(readFileSync(new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 const snapshot=(rowsRead,rowsWritten)=>({
  schema:"geomacro.d1-account-daily-quota-readonly.v1",
  day_utc:"2026-11-08",provider_graphql_usage_observed:true,
@@ -20,8 +22,13 @@ const paidProof={
  observed_at:now.toISOString(),subscription_changed:false,
  billing_action_performed:false
 };
+const ownerEnvelope=(s,at=now)=>evaluateOwnerD1DailyEnvelope({
+ observedRowsRead:s.observed_rows_read,observedRowsWritten:s.observed_rows_written,
+ now:at,policy:budget.d1_budget_policy,
+});
 test("Paid original intake reserves a bounded separate derived lane, not general research",()=>{
- const p=planD1BundledWork(snapshot(3587497,396308),{now,paidProof});
+ const s=snapshot(3587497,396308);
+ const p=planD1BundledWork(s,{now,paidProof,ownerEnvelope:ownerEnvelope(s)});
  assert.equal(p.state,"CRITICAL_ONLY");
  assert.equal(p.critical,true);
  assert.equal(p.research,false);
@@ -40,7 +47,9 @@ test("unknown Paid, Free, high writes, and stale UTC day cannot unlock derived D
   [s,{now}],
   [s,{now,paidProof:{...paidProof,verified:false}}],
   [s,{now,paidProof:{...paidProof,observed_at:"2026-11-07T00:00:00Z"}}],
-  [snapshot(3587497,1099800),{now,paidProof}],
+  [s,{now,paidProof,ownerEnvelope:{...ownerEnvelope(s),held:true}}],
+  [snapshot(3587497,1099800),{now,paidProof,
+   ownerEnvelope:ownerEnvelope(snapshot(3587497,1099800))}],
   [{...s,day_utc:"2026-11-07"},{now,paidProof}]
  ]){
   const p=planD1BundledWork(q,options);
