@@ -99,6 +99,7 @@ describe("actual-event Intelligence publication",()=>{
    ["rare_earth","Chile","CHL","Copper Supply & Processing"],
   ] as const){
    const source={...sample(category),status:"osint_feed_observed_unverified" as const,
+    development_type:"unverified OSINT feed observation",
     geography:country,country_iso3:iso3,corridor:category==="geopolitics"?"Bab el-Mandeb":null,
     event_direction:"tightening",topic,
     title:"Restricted publisher headline must not appear",
