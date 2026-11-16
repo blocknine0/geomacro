@@ -20,9 +20,9 @@ describe("Store, pricing API and D1 paid-credit parity: NO FUNDS",()=>{
   expect(m.one_time_credit_packs).toEqual(GEOMACRO_ONE_TIME_PACKS);
   expect(m.subscriptions).toEqual(GEOMACRO_SUBSCRIPTIONS);
   expect(GEOMACRO_SUBSCRIPTIONS.map(x=>[x.price_usd,x.credits_per_30_days]))
-   .toEqual([[9,1000],[29,5000],[99,25000]]);
+   .toEqual([[9,900],[29,2900],[99,9900]]);
   expect(GEOMACRO_ONE_TIME_PACKS.map(x=>[x.price_usd,x.credits]))
-   .toEqual([[5,100],[15,500],[30,1500]]);
+   .toEqual([[5,500],[15,1500],[30,3000]]);
   for(const p of GEOMACRO_SUBSCRIPTIONS){
    const tier=GEOMACRO_ACCESS_TIERS[p.id];
    expect(tier.public_price_usd).toBe(p.price_usd);

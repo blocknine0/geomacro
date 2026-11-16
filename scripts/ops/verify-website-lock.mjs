@@ -178,6 +178,7 @@ const approvedPricing = [
   // Explicit 2026-11-14 owner-authorized retirement of only the public /risk-indices page.
   // Exact immutable source blobs; all other website and Global Risk locks remain active.
   config.approved_risk_indices_page_retirement_20261114,
+  config.approved_pricing_credit_risk_gate_20261116,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a

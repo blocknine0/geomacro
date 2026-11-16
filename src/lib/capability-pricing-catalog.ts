@@ -1,4 +1,5 @@
 import type {GeomacroCreditCapability} from "./commercial-access-contract";
+import {GEOMACRO_RISK_GATE_CREDIT_COSTS} from "./credit-metering-policy.mjs";
 
 export const GEOMACRO_CAPABILITY_PRICING_VERSION =
   "geomacro.capability-usdc.v2" as const;
@@ -18,9 +19,9 @@ export const GEOMACRO_CAPABILITY_PRICES={
     existing_valid_signed:"0.03",newly_qualified_signed:"0.05",
   },
   risk_gate_bundle:{
-    // External tiers: Basic / Focused ($0.10), Standard ($0.15),
-    // Complex / Full ($0.25). Legacy variant keys preserve frozen receipts.
-    existing_proof_preflight:"0.10",standard:"0.15",complex_multi_source:"0.25",
+    // Predge-parity Addendum v2 customer prices. Legacy variant keys preserve
+    // frozen receipt identities while new quotes use the aligned amounts.
+    existing_proof_preflight:"0.15",standard:"0.20",complex_multi_source:"0.30",
   },
 } as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
 
@@ -57,7 +58,7 @@ export function usdcDecimalToAtomic(value:string):string{
     throw Error("USDC_DECIMAL_PRECISION_INVALID");
   const [whole,fraction=""]=value.split(".");
   const amount=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,"0"));
-  if(amount<=0n||amount>250_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
+  if(amount<=0n||amount>300_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
   return amount.toString();
 }
 export type CapabilityPrice=Readonly<{
@@ -114,6 +115,7 @@ export function publicRiskGateThreeTierProducts(){
   const price=resolveGeomacroCapabilityPrice("risk_gate_bundle",tier.variant);
   return {...tier,usd_per_call:price.amount_usdc,
    usdc_atomic:price.amount_atomic,
+   credit_equivalent:GEOMACRO_RISK_GATE_CREDIT_COSTS[tier.id],
    currency:"USD" as const,billing_unit:"PER_SUCCESSFUL_DELIVERY" as const,
    response_schema:"geomacro.risk-gate-commercial-three-tier.v1" as const};
  });

@@ -4,11 +4,12 @@ import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 /** Shared developer/agent catalog. A listed route does not establish readiness. */
 const TRANSPORT_ENDPOINTS = [
   ...GEOMACRO_OFFICIAL_API_CATALOG.map(api => ({
-    ...api, methods: ["GET", "POST"],
+    ...api, methods: api.id === "risk_gate" ? ["POST"] : ["GET", "POST"],
     purpose: api.id === "agent" ? "Discover tools; POST a tool and arguments envelope."
       : api.id === "intelligence" ? "Country, corridor and multi-topic queries through the shared engine."
-      : "Country queries within this category; canonical evidence and payment checks.",
-    access: "GET discovery; POST requires per-request eligibility and x402.",
+      : "One signed Risk Gate endpoint for geopolitics, macro/FX or critical minerals, selected by category.",
+    access: api.id === "risk_gate" ? "POST requires a customer API key, per-request evidence eligibility and commercial checks."
+      : "GET discovery; POST requires per-request eligibility and x402.",
   })),
   { id: "availability", name: "Structural availability", methods: ["GET", "POST"],
     path: "/api/v1/intelligence/availability",
@@ -46,6 +47,7 @@ export const GEOMACRO_API_EXAMPLES = {
   geopolitics: { subjects: [{ type: "country", country_iso3: "IND" }], question: "What are the geopolitical risks for India?", fulfillment_mode: "published_only", detail: "standard" },
   macro_fx: { subjects: [{ type: "country", country_iso3: "IND" }], question: "What are the macro and FX risks for India?", fulfillment_mode: "published_only", detail: "standard" },
   critical_minerals: { subjects: [{ type: "country", country_iso3: "IND" }], question: "What are the critical minerals risks for India?", fulfillment_mode: "published_only", detail: "standard" },
+  risk_gate: { request_id: "risk-gate-example-001", country_iso3: "IND", category: "MACRO_FX", tier: "STANDARD" },
   availability: { subjects: [{ type: "country", country_iso3: "IND" }], topics: ["macro_risk"], delivery_tier: "structural_baseline", fulfillment_mode: "published_only", detail: "compact" },
   price_preflight: { capability: "structural_country_digest", variant: "standard", network: "base" },
   agent: { tool: "macro_fx_query", arguments: { country_iso3: "IND", question: "What are the macro and FX risks for India?", fulfillment_mode: "published_only" } },

@@ -1139,7 +1139,6 @@
                       },
                       "arguments": {
                         "type": "object",
-                        "additionalProperties": false,
                         "properties": {
                           "question": {
                             "type": "string",
@@ -1159,7 +1158,8 @@
                         },
                         "required": [
                           "question"
-                        ]
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "required": [
@@ -1949,6 +1949,15 @@
                     }
                   }
                 },
+                "answer_question": {
+                  "summary": "Turn a natural-language question mentioning one or more unambiguous countries into an exact priced Intelligence Query. Uses the canonical source, freshness, commercial-rights, signed-proof and x402 settlement gates; never accepts a client price and never charges when unavailable.",
+                  "value": {
+                    "tool": "answer_question",
+                    "arguments": {
+                      "question": "What is the inflation risk in Brazil?"
+                    }
+                  }
+                },
                 "geopolitics_query": {
                   "summary": "Geomacro Geopolitics Agent: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.",
                   "value": {
@@ -2065,15 +2074,6 @@
                       },
                       "action_type": "exposure_review",
                       "policy_preset": "balanced"
-                    }
-                  }
-                },
-                "answer_question": {
-                  "summary": "Turn a natural-language question mentioning one or more unambiguous countries into an exact priced Intelligence Query. Uses the canonical source, freshness, commercial-rights, signed-proof and x402 settlement gates; never accepts a client price and never charges when unavailable.",
-                  "value": {
-                    "tool": "answer_question",
-                    "arguments": {
-                      "question": "What is the inflation risk in Brazil?"
                     }
                   }
                 }
@@ -2615,6 +2615,103 @@
         "description": "Use optional product={capability,variant} for an exact Store contract. Structural products require delivery_tier=structural_baseline; full profiles require two or more dimensions. A newly qualified signed object requires a recent issued_after cutoff and an actual verified publisher output. No signer or raw source is created by this request."
       }
     },
+    "/api/v1/risk-gate": {
+      "post": {
+        "summary": "GEOMACRO Commercial Risk Gate API",
+        "operationId": "RequestasignedcommercialRiskGate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "country_iso3",
+                  "category",
+                  "tier"
+                ],
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "prepare"
+                    ]
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "country_iso3": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "category": {
+                    "enum": [
+                      "GEOPOLITICS",
+                      "MACRO_FX",
+                      "CRITICAL_MINERALS"
+                    ]
+                  },
+                  "tier": {
+                    "enum": [
+                      "BASIC",
+                      "STANDARD",
+                      "COMPLEX",
+                      "basic_focused",
+                      "standard",
+                      "complex_full"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "request_id": "risk-gate-example-001",
+                "country_iso3": "IND",
+                "category": "MACRO_FX",
+                "tier": "STANDARD"
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "BearerApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Only when underlying independently verified contract permits it; 200 is not implied by discovery."
+          },
+          "400": {
+            "description": "Invalid or unsupported query"
+          },
+          "402": {
+            "description": "Only after canonical deliverability and payment preflight, not a blanket price offer"
+          },
+          "409": {
+            "description": "Request conflict or recovery required; do not authorize a second payment"
+          },
+          "413": {
+            "description": "Request exceeds this endpoint's byte limit"
+          },
+          "415": {
+            "description": "application/json required"
+          },
+          "422": {
+            "description": "Not eligible or insufficient original evidence/rights"
+          },
+          "429": {
+            "description": "Rate limited; honor Retry-After if present and back off without auto-paying"
+          },
+          "503": {
+            "description": "Unavailable or unverified data runtime; no paid delivery"
+          }
+        },
+        "description": "One endpoint serves geopolitics, macro/FX and critical minerals. mode=prepare performs no-charge shape validation without credentials, evidence reads or settlement; a paid request omits mode and requires a funded customer API key, evidence eligibility and the existing fail-closed commercial checks."
+      }
+    },
     "/api/v1/intelligence/geopolitics": {
       "get": {
         "operationId": "discoverGeopoliticsCategory",
@@ -2653,7 +2750,7 @@
         ]
       },
       "post": {
-        "summary": "GEOMACRO Geopolitics API",
+        "summary": "Query geopolitics scoped intelligence",
         "operationId": "Querygeopoliticsscopedintelligence",
         "requestBody": {
           "required": true,
@@ -3118,7 +3215,7 @@
         ]
       },
       "post": {
-        "summary": "GEOMACRO Macro/FX API",
+        "summary": "Query macro FX scoped intelligence",
         "operationId": "QuerymacroFXscopedintelligence",
         "requestBody": {
           "required": true,
@@ -3584,7 +3681,7 @@
         ]
       },
       "post": {
-        "summary": "GEOMACRO Critical Minerals API",
+        "summary": "Query critical minerals scoped intelligence",
         "operationId": "Querycriticalmineralsscopedintelligence",
         "requestBody": {
           "required": true,
@@ -4593,9 +4690,7 @@
   "x-geomacro": {
     "official_api_display_names": {
       "intelligence": "GEOMACRO Intelligence API",
-      "geopolitics": "GEOMACRO Geopolitics API",
-      "macro_fx": "GEOMACRO Macro/FX API",
-      "critical_minerals": "GEOMACRO Critical Minerals API",
+      "risk_gate": "GEOMACRO Commercial Risk Gate API",
       "agent": "GEOMACRO AI Agent API"
     },
     "official_api_catalog": [
@@ -4606,22 +4701,10 @@
         "path": "/api/v1/intelligence/query"
       },
       {
-        "id": "geopolitics",
-        "name": "GEOMACRO Geopolitics API",
+        "id": "risk_gate",
+        "name": "GEOMACRO Commercial Risk Gate API",
         "method": "POST",
-        "path": "/api/v1/intelligence/geopolitics"
-      },
-      {
-        "id": "macro_fx",
-        "name": "GEOMACRO Macro/FX API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/macro-fx"
-      },
-      {
-        "id": "critical_minerals",
-        "name": "GEOMACRO Critical Minerals API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/critical-minerals"
+        "path": "/api/v1/risk-gate"
       },
       {
         "id": "agent",
@@ -4630,6 +4713,11 @@
         "path": "/api/v1/agent"
       }
     ],
+    "official_api_display_urls": {
+      "intelligence": "geomacro.live /api/v1/intelligence/query",
+      "risk_gate": "geomacro.live /api/v1/risk-gate",
+      "agent": "geomacro.live /api/v1/agent"
+    },
     "public_endpoint_catalog": [
       {
         "id": "intelligence",
@@ -4641,43 +4729,20 @@
           "POST"
         ],
         "purpose": "Country, corridor and multi-topic queries through the shared engine.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
+        "access": "GET discovery; POST requires per-request eligibility and x402.",
+        "display_url": "geomacro.live /api/v1/intelligence/query"
       },
       {
-        "id": "geopolitics",
-        "name": "GEOMACRO Geopolitics API",
+        "id": "risk_gate",
+        "name": "GEOMACRO Commercial Risk Gate API",
         "method": "POST",
-        "path": "/api/v1/intelligence/geopolitics",
+        "path": "/api/v1/risk-gate",
         "methods": [
-          "GET",
           "POST"
         ],
-        "purpose": "Country queries within this category; canonical evidence and payment checks.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
-      },
-      {
-        "id": "macro_fx",
-        "name": "GEOMACRO Macro/FX API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/macro-fx",
-        "methods": [
-          "GET",
-          "POST"
-        ],
-        "purpose": "Country queries within this category; canonical evidence and payment checks.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
-      },
-      {
-        "id": "critical_minerals",
-        "name": "GEOMACRO Critical Minerals API",
-        "method": "POST",
-        "path": "/api/v1/intelligence/critical-minerals",
-        "methods": [
-          "GET",
-          "POST"
-        ],
-        "purpose": "Country queries within this category; canonical evidence and payment checks.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
+        "purpose": "One signed Risk Gate endpoint for geopolitics, macro/FX or critical minerals, selected by category.",
+        "access": "POST requires a customer API key, per-request evidence eligibility and commercial checks.",
+        "display_url": "geomacro.live /api/v1/risk-gate"
       },
       {
         "id": "agent",
@@ -4689,7 +4754,8 @@
           "POST"
         ],
         "purpose": "Discover tools; POST a tool and arguments envelope.",
-        "access": "GET discovery; POST requires per-request eligibility and x402."
+        "access": "GET discovery; POST requires per-request eligibility and x402.",
+        "display_url": "geomacro.live /api/v1/agent"
       },
       {
         "id": "availability",
@@ -4700,7 +4766,8 @@
         ],
         "path": "/api/v1/intelligence/availability",
         "purpose": "Structural baseline preflight. Legacy: one country/topic; explicit Store product: country/corridor digest or full multidimension profile.",
-        "access": "No funds; not current signed risk."
+        "access": "No funds; not current signed risk.",
+        "display_url": "geomacro.live /api/v1/intelligence/availability"
       },
       {
         "id": "pricing",
@@ -4710,7 +4777,8 @@
         ],
         "path": "/api/v1/pricing",
         "purpose": "Exact capability prices and output contracts.",
-        "access": "Public catalog; not a payment offer."
+        "access": "Public catalog; not a payment offer.",
+        "display_url": "geomacro.live /api/v1/pricing"
       },
       {
         "id": "networks",
@@ -4720,7 +4788,8 @@
         ],
         "path": "/api/v1/payments/networks",
         "purpose": "Base, Arc and Polygon native USDC rails.",
-        "access": "Discovery; activation checked separately."
+        "access": "Discovery; activation checked separately.",
+        "display_url": "geomacro.live /api/v1/payments/networks"
       },
       {
         "id": "price_preflight",
@@ -4730,7 +4799,8 @@
         ],
         "path": "/api/v1/payments/preflight",
         "purpose": "Preview a capability, variant and network amount.",
-        "access": "No funds; does not prove deliverability."
+        "access": "No funds; does not prove deliverability.",
+        "display_url": "geomacro.live /api/v1/payments/preflight"
       },
       {
         "id": "outputs",
@@ -4740,7 +4810,8 @@
         ],
         "path": "/api/intelligence/capabilities",
         "purpose": "view=outputs for fields or view=license for terms.",
-        "access": "Public discovery."
+        "access": "Public discovery.",
+        "display_url": "geomacro.live /api/intelligence/capabilities"
       },
       {
         "id": "finds",
@@ -4750,7 +4821,8 @@
         ],
         "path": "/api/v1/finds",
         "purpose": "Derived cards; domain=geopolitics, macro or rare_earth.",
-        "access": "No funds; unscored research, not a signed risk product."
+        "access": "No funds; unscored research, not a signed risk product.",
+        "display_url": "geomacro.live /api/v1/finds"
       },
       {
         "id": "live_structured",
@@ -4761,17 +4833,8 @@
         ],
         "path": "/api/v1/intelligence/live-structured",
         "purpose": "Official observations and open-data measurements by category, country or supported numeric question.",
-        "access": "No funds; reference periods may precede retrieval."
-      },
-      {
-        "id": "risk_indices",
-        "name": "Public Risk Indices",
-        "methods": [
-          "GET"
-        ],
-        "path": "/api/public/risk-indices",
-        "purpose": "Public category indices with publication delay and verification status.",
-        "access": "Website research; current values may be unavailable."
+        "access": "No funds; reference periods may precede retrieval.",
+        "display_url": "geomacro.live /api/v1/intelligence/live-structured"
       },
       {
         "id": "keys",
@@ -4781,7 +4844,8 @@
         ],
         "path": "/api/risk-object-keys",
         "purpose": "Public keys and key lifecycle metadata.",
-        "access": "Public verification metadata."
+        "access": "Public verification metadata.",
+        "display_url": "geomacro.live /api/risk-object-keys"
       },
       {
         "id": "health",
@@ -4791,7 +4855,8 @@
         ],
         "path": "/api/health",
         "purpose": "Runtime status; deep=1 checks product dependencies.",
-        "access": "Diagnostics; HTTP 200 alone is not a payable offer."
+        "access": "Diagnostics; HTTP 200 alone is not a payable offer.",
+        "display_url": "geomacro.live /api/health"
       },
       {
         "id": "mcp",
@@ -4801,7 +4866,8 @@
         ],
         "path": "/api/mcp",
         "purpose": "JSON-RPC initialize, tools/list and tools/call.",
-        "access": "Tool-specific proof verification or governed x402 delivery."
+        "access": "Tool-specific proof verification or governed x402 delivery.",
+        "display_url": "geomacro.live /api/mcp"
       },
       {
         "id": "a2a",
@@ -4811,17 +4877,18 @@
         ],
         "path": "/api/a2a",
         "purpose": "Agent card and protocol routes.",
-        "access": "Discovery; tasks follow their own authentication."
+        "access": "Discovery; tasks follow their own authentication.",
+        "display_url": "geomacro.live /api/a2a"
       }
     ],
     "branding_does_not_change_http_method": true,
-    "pricing_version": "geomacro.capability-usdc.v1",
+    "pricing_version": "geomacro.capability-usdc.v2",
     "pricing": [
       {
         "capability": "structural_country_digest",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_country_digest",
             "variant": "standard",
             "amount_usdc": "0.02",
@@ -4831,29 +4898,33 @@
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "structural_corridor_digest",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_corridor_digest",
             "variant": "standard",
-            "amount_usdc": "0.05",
-            "amount_atomic": "50000",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "structural_country_profile",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_country_profile",
             "variant": "standard",
             "amount_usdc": "0.03",
@@ -4863,103 +4934,101 @@
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "structural_corridor_profile",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_corridor_profile",
             "variant": "standard",
-            "amount_usdc": "0.08",
-            "amount_atomic": "80000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "intelligence_query",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "intelligence_query",
             "variant": "focused",
+            "amount_usdc": "0.02",
+            "amount_atomic": "20000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "NOT_APPLICABLE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "intelligence_query",
+            "variant": "standard",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "NOT_APPLICABLE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "intelligence_query",
+            "variant": "complex_multi_source",
             "amount_usdc": "0.05",
             "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "intelligence_query",
-            "variant": "standard",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "NOT_APPLICABLE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "intelligence_query",
-            "variant": "complex_multi_source",
-            "amount_usdc": "0.15",
-            "amount_atomic": "150000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "signed_risk_object",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "signed_risk_object",
             "variant": "existing_valid_signed",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "NOT_APPLICABLE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "signed_risk_object",
+            "variant": "newly_qualified_signed",
             "amount_usdc": "0.05",
             "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "signed_risk_object",
-            "variant": "newly_qualified_signed",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "NOT_APPLICABLE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "ELIGIBILITY_GATED",
+        "new_sales_allowed": true
       },
       {
         "capability": "risk_gate_bundle",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "existing_proof_preflight",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
-            "currency": "USDC",
-            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
-            "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
-          },
-          {
-            "version": "geomacro.capability-usdc.v1",
-            "capability": "risk_gate_bundle",
-            "variant": "standard",
             "amount_usdc": "0.15",
             "amount_atomic": "150000",
             "currency": "USDC",
@@ -4967,17 +5036,29 @@
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
+            "capability": "risk_gate_bundle",
+            "variant": "standard",
+            "amount_usdc": "0.20",
+            "amount_atomic": "200000",
+            "currency": "USDC",
+            "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
+            "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
+          },
+          {
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "complex_multi_source",
-            "amount_usdc": "0.25",
-            "amount_atomic": "250000",
+            "amount_usdc": "0.30",
+            "amount_atomic": "300000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
           }
         ],
-        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT"
+        "availability": "CHECK_LIVE_PROOF_BEFORE_PAYMENT",
+        "launch_status": "COMING_SOON",
+        "new_sales_allowed": false
       }
     ],
     "locked_pricing_endpoint": "/api/v1/pricing",
@@ -5286,6 +5367,13 @@
           }
         },
         "additionalProperties": true
+      }
+    },
+    "securitySchemes": {
+      "BearerApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "GeoMacro customer API key"
       }
     }
   }

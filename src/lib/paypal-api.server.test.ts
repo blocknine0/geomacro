@@ -28,7 +28,7 @@ describe("GeoMacro PayPal India cross-border readiness (NO FUNDS)", () => {
   });
   it("maps exactly the founder-approved prices without activation", () => {
     expect(GEOMACRO_PAYPAL_PRODUCT_CATALOG.map(x => [x.amount_usd, x.credits]))
-      .toEqual([[9,1000],[29,5000],[99,25000],[5,100],[15,500],[30,1500]]);
+      .toEqual([[9,900],[29,2900],[99,9900],[5,500],[15,1500],[30,3000]]);
     expect(GEOMACRO_PAYPAL_PRODUCT_CATALOG.every(x => !x.checkout_enabled)).toBe(true);
   });
   it("uses sandbox by default and refuses incomplete credentials", () => {

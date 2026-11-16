@@ -26,9 +26,9 @@ describe("dual rail locked checkout contract", () => {
   it("retains all six founder-approved prices and native Circle contracts", () => {
     const c = readOnlyDualRailCatalog();
     expect(c.products.map(p => [p.sku, p.price_usd, p.credits])).toEqual([
-      ["starter_dev",9,1000],["pro_analyst",29,5000],
-      ["business_pilot",99,25000],["starter_pack",5,100],
-      ["standard_pack",15,500],["growth_pack",30,1500],
+      ["starter_dev",9,900],["pro_analyst",29,2900],
+      ["business_pilot",99,9900],["starter_pack",5,500],
+      ["standard_pack",15,1500],["growth_pack",30,3000],
     ]);
     expect(c.networks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id:"base", chain_id:8453,

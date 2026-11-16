@@ -17,6 +17,10 @@ const loadHarness = readFileSync(
   "scripts/load-test-risk-gate-staging.ts",
   "utf8",
 );
+const ephemeralStaging = readFileSync(
+  "scripts/ops/start-ephemeral-d1-risk-gate-staging.ts",
+  "utf8",
+);
 const responseProbe = readFileSync(
   "scripts/probe-risk-gate-staging-response-security.ts",
   "utf8",
@@ -82,6 +86,14 @@ describe("Risk Gate staging evidence contract", () => {
     expect(finalAcceptanceWorkflow).toContain("RISK_GATE_LOAD_TEST_ALLOW_429: 'false'");
     expect(finalAcceptanceWorkflow).not.toContain("RISK_GATE_STAGING_BASE_URL");
     expect(finalAcceptanceWorkflow).not.toContain("secrets.RISK_GATE_STAGING_API_KEY");
+    expect(ephemeralStaging).toContain("RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64");
+    expect(ephemeralStaging).toContain("GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64");
+    expect(ephemeralStaging).toContain("ephemeral-risk-gate-decision-staging");
+    expect(ephemeralStaging).toContain("0123_risk_gap_enrichment.sql");
+    expect(ephemeralStaging).toContain("0113_risk_gate_append_only_audit_receipts.sql");
+    expect(ephemeralStaging).toContain("0124_risk_gate_receipt_signatures.sql");
+    expect(ephemeralStaging).toContain("0201_progressive_risk_gate_facts.sql");
+    expect(ephemeralStaging).toContain("RISK_GATE_OBSERVATION_HMAC_KEY");
   });
 
   it("keeps the new staging evidence contracts inside the P0 security gate", () => {

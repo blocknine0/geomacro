@@ -84,6 +84,24 @@ describe("website lock governance", () => {
     expect(newsGriApproval.publication).toContain("pending");
     const categoryPricing=config.approved_three_category_api_pricing_20261025;
     expect(categoryPricing.previous_baseline_sha).toBe("8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6");
+    const riskGatePricing = config.approved_pricing_credit_risk_gate_20261116;
+    expect(riskGatePricing.approved_source_commit).toBe("2695e62969a122cfe536f437155642fb33e56a5a");
+    expect(riskGatePricing.approved_paths).toEqual([
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/category-api-pricing.test.tsx",
+      "src/components/category-api-pricing.tsx",
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/structured-product-setup.tsx",
+      "src/routes/pricing.tsx",
+    ]);
+    expect(riskGatePricing.exact_blob_lock).toBe(true);
+    expect(riskGatePricing.website_lock_remains_active).toBe(true);
+    expect(riskGatePricing.paid_flags_enabled).toBe(false);
+    expect(riskGatePricing.payment_authorized).toBe(false);
+    expect(riskGatePricing.canary_hold_unchanged).toBe(true);
+    expect(riskGatePricing.protected_intelligence_and_risk_index_files_unchanged).toBe(true);
+    expect(riskGatePricing.published_source_sha_unchanged).toBe(true);
     const permanentArchiveApproval=config.approved_permanent_finds_archive_d1_free_reads_20261026;
     expect(categoryPricing.approved_ui_commit).toBe(permanentArchiveApproval.previous_baseline_sha);
     const languageApproval = config.approved_language_pack_navigation_fix_20261026;

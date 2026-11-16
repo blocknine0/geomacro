@@ -13,7 +13,11 @@ describe("store catalog and launch availability", () => {
       createElement(CategoryApiPricing),createElement(CapabilityPriceSchedule),createElement(StructuredProductSetup)));
     expect((html.match(/data-price-usdc=/g)??[])).toHaveLength(12);
     expect((html.match(/data-capability="intelligence_query"/g)??[])).toHaveLength(1);
-    expect(html).not.toMatch(/<option[^>]*>[^<]*USDC/);
+    expect(html).toContain("Focused · BASIC · 0.15 USDC / 15 credits");
+    expect(html).toContain("Standard · 0.20 USDC / 20 credits");
+    expect(html).toContain("Complex multi-source · 0.30 USDC / 30 credits");
+    expect(html).toContain("/api/v1/risk-gate");
+    expect(html).toContain("Check preparation · no charge");
   });
   it("shows API outputs without repeating the Store price schedule", () => {
     const html=renderToStaticMarkup(createElement(CapabilityPriceSchedule,{compact:true}));

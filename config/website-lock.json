@@ -1279,8 +1279,7 @@
     "pricing_and_payment_unchanged": true,
     "new_unreviewed_website_changes_not_authorized": true,
     "production_publish_requires_exact_sha_proof": true
-  }
-,
+  },
   "approved_risk_indices_page_retirement_20261114": {
     "approval": "Owner explicitly directed permanent removal of the Risk Indices page on 2026-11-14 (Asia/Kolkata); follow-up narrowed scope to the public page only.",
     "purpose": "Retire only /risk-indices, its navigation and public product claims. Preserve GRI historical/backend proof, /global-risk frozen lock, OSINT, commercial Risk Gate, website safeguards and paid go-live hold.",
@@ -1317,5 +1316,26 @@
     "global_risk_final_lock_unmodified": true,
     "non_index_backends_and_workflows_unmodified": true,
     "payments_unmodified": true
+  },
+  "approved_pricing_credit_risk_gate_20261116": {
+    "approval": "Founder explicitly authorized the 2026-11-16 unified Risk Gate pricing and credit-parity presentation update in ChatGPT. Exact source blobs only; keep the website lock active and all payment execution disabled.",
+    "approved_source_commit": "2695e62969a122cfe536f437155642fb33e56a5a",
+    "approved_paths": [
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/category-api-pricing.test.tsx",
+      "src/components/category-api-pricing.tsx",
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/structured-product-setup.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "paid_flags_enabled": false,
+    "payment_authorized": false,
+    "canary_hold_unchanged": true,
+    "protected_intelligence_and_risk_index_files_unchanged": true,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }

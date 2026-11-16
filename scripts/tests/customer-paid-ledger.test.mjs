@@ -72,7 +72,7 @@ test('tier/cost shares central pricing and prohibits unavailable risk authorizat
  for(const tier of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full'])
   assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
  assert.deepEqual(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
-  {risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25});
+  {risk_gate_basic_focused:15,risk_gate_standard:20,risk_gate_complex_full:30});
 });
 
 test('D1 customer authorize rejects risk tiers that cannot be debited',async()=>{

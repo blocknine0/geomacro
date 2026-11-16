@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GEOMACRO_USDC_NATIVE_RAILS } from "@/lib/usdc-native-rail-identities";
-import { CreditCard, ShieldCheck, Wallet } from "lucide-react";
+import { Bot, CreditCard, ShieldCheck, Wallet } from "lucide-react";
+import { GEOMACRO_AGENT_MICROPAYMENT } from "@/lib/low-barrier-pricing";
 
 export type CheckoutSelection = {
   id: string;
@@ -15,7 +16,7 @@ export type CheckoutSelection = {
  * No PayPal order, payable crypto quote, QR or funds/credits can be issued.
  */
 export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelection }) {
-  const [rail, setRail] = useState<"paypal" | "usdc">("paypal");
+  const [rail, setRail] = useState<"paypal" | "usdc" | "agent_x402">("paypal");
   const [network, setNetwork] = useState<"base" | "polygon">("base");
   const chain = GEOMACRO_USDC_NATIVE_RAILS[network];
 
@@ -30,7 +31,7 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
             Pay directly from this page
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Select any plan or credit pack above, then choose PayPal / card or native USDC.
+            Select any plan or credit pack above, then preview PayPal / card, native USDC, or AI-agent Base USDC x402.
             This embedded checkout is a non-payable preview while integration testing is locked.
           </p>
         </div>
@@ -62,7 +63,7 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
         </aside>
 
         <div className="rounded-xl border border-border bg-background p-4 sm:p-5">
-          <div role="tablist" aria-label="Payment method" className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1.5">
+          <div role="tablist" aria-label="Payment method" className="grid grid-cols-1 gap-2 rounded-xl bg-muted p-1.5 sm:grid-cols-3">
             <button id="gm-paypal-tab" type="button" role="tab" aria-controls="gm-paypal-panel"
               aria-selected={rail === "paypal"} tabIndex={rail === "paypal" ? 0 : -1}
               onClick={() => setRail("paypal")}
@@ -76,6 +77,13 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
               className={"flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold " +
                 (rail === "usdc" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
               <Wallet className="h-4 w-4" aria-hidden /> Crypto USDC
+            </button>
+            <button id="gm-agent-x402-tab" type="button" role="tab" aria-controls="gm-agent-x402-panel"
+              aria-selected={rail === "agent_x402"} tabIndex={rail === "agent_x402" ? 0 : -1}
+              onClick={() => setRail("agent_x402")}
+              className={"flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold " +
+                (rail === "agent_x402" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+              <Bot className="h-4 w-4" aria-hidden /> AI Agents · Base x402
             </button>
           </div>
 
@@ -131,6 +139,26 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
               No payable quote, recipient instruction, QR code or transaction authorization is provided.
               Never send funds based on this preview.
             </p>
+          </section>
+
+          <section id="gm-agent-x402-panel" role="tabpanel" aria-labelledby="gm-agent-x402-tab"
+            hidden={rail !== "agent_x402"} className="mt-5 space-y-4">
+            <h3 className="font-semibold">AI agents · Base USDC x402 pay-per-call</h3>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Agent payment discovery is available for Base Mainnet ({GEOMACRO_AGENT_MICROPAYMENT.network}).
+              The unified Risk Gate tiers are Focused $0.15, Standard $0.20, and Complex $0.30 per eligible delivery.
+            </p>
+            <div className="rounded-lg border border-border p-4 text-sm">
+              <p><span className="font-medium">Risk Gate API:</span> <code>geomacro.live /api/v1/risk-gate</code></p>
+              <p className="mt-2"><span className="font-medium">x402 resource discovery:</span> <code>geomacro.live /api/x402/intelligence</code></p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                A published price is not a payment offer. Risk Gate x402 quotes and settlement remain locked until
+                separate production activation; evidence, signed delivery and entitlement checks still apply.
+              </p>
+            </div>
+            <button type="button" disabled className="w-full cursor-not-allowed rounded-lg bg-muted px-4 py-3 text-sm font-semibold text-muted-foreground">
+              Base USDC x402 agent payment · Locked preview
+            </button>
           </section>
         </div>
       </div>

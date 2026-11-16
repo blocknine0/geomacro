@@ -6,19 +6,17 @@ import { ApiEndpointDirectory } from "../components/api-endpoint-directory";
 import { GEOMACRO_PUBLIC_API_ENDPOINTS } from "../lib/public-api-endpoints";
 
 const categoryPaths = [
-  "/api/v1/intelligence/geopolitics",
-  "/api/v1/intelligence/macro-fx",
-  "/api/v1/intelligence/critical-minerals",
-  "/api/v1/intelligence/query",
+  "/api/v1/risk-gate",
 ];
 
 describe("sitewide branded public API URLs", () => {
-  it("prints exactly the requested geomacro.live + API path on the Store for all four intelligence endpoints", () => {
+  it("prints the unified geomacro.live Risk Gate endpoint on each category row", () => {
     const html = renderToStaticMarkup(createElement(CategoryApiPricing));
-    for (const path of categoryPaths) {
-      expect(html).toContain(`geomacro.live ${path}`);
-      expect(html).not.toContain(`POST ${path}`);
-    }
+    expect(html.match(/geomacro\.live \/api\/v1\/risk-gate/g)?.length).toBeGreaterThanOrEqual(3);
+    for (const path of categoryPaths) expect(html).toContain(`geomacro.live ${path}`);
+    expect(html).not.toContain("/api/v1/intelligence/geopolitics");
+    expect(html).not.toContain("/api/v1/intelligence/macro-fx");
+    expect(html).not.toContain("/api/v1/intelligence/critical-minerals");
     expect(html).not.toMatch(/>POST</);
   });
   it("removes HTTP method badges from the complete public endpoint directory", () => {
@@ -37,7 +35,7 @@ describe("sitewide branded public API URLs", () => {
     for (const endpoint of GEOMACRO_PUBLIC_API_ENDPOINTS) {
       expect(endpoint.methods.length).toBeGreaterThan(0);
     }
-    expect(GEOMACRO_PUBLIC_API_ENDPOINTS.find(x => x.id === "geopolitics")?.methods)
+    expect(GEOMACRO_PUBLIC_API_ENDPOINTS.find(x => x.id === "risk_gate")?.methods)
       .toContain("POST");
     expect(GEOMACRO_PUBLIC_API_ENDPOINTS.find(x => x.id === "pricing")?.methods)
       .toEqual(["GET"]);

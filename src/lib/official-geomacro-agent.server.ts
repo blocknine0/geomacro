@@ -37,7 +37,7 @@ const H={
  "Content-Type":"application/json; charset=utf-8",
  "Access-Control-Allow-Origin":"*",
  "Access-Control-Allow-Methods":"GET, POST, OPTIONS",
- "Access-Control-Allow-Headers":"Content-Type, PAYMENT-SIGNATURE, payment-signature",
+ "Access-Control-Allow-Headers":"Content-Type, Authorization, PAYMENT-SIGNATURE, payment-signature",
  "Access-Control-Expose-Headers":"PAYMENT-REQUIRED, PAYMENT-RESPONSE",
  "X-Content-Type-Options":"nosniff",
  "Referrer-Policy":"no-referrer",
@@ -46,9 +46,7 @@ const json=(data:unknown,status=200,headers:Record<string,string>={})=>
  Response.json(data,{status,headers:{...H,...headers}});
 const endpoints={
  agent:"/api/v1/agent",canonical_intelligence:CANONICAL_MAINNET_INTELLIGENCE_PATH,
- geopolitics:"/api/v1/intelligence/geopolitics",
- macro_fx:"/api/v1/intelligence/macro-fx",
- critical_minerals:"/api/v1/intelligence/critical-minerals",
+ risk_gate:"/api/v1/risk-gate",
  availability:"/api/v1/intelligence/availability",
  product_availability:"/api/v1/intelligence/products-availability",
  free_finds:"/api/v1/finds",
@@ -78,7 +76,7 @@ export function officialGeomacroAgentDiscovery(){
   official_api_display_urls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
   category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
    ...profile,
-   display_name:GEOMACRO_OFFICIAL_API_CATALOG.find(api=>api.path===profile.api)?.name ?? profile.name,
+   display_name:profile.name,
    display_url:formatGeomacroApiDisplayPath(profile.api),
    agent_endpoint:OFFICIAL_AGENT_PATH,
    agent_request:{tool:profile.tool,arguments:{country_iso3:"IND",
@@ -187,19 +185,31 @@ export function officialGeomacroAgentOpenApi(){
     requestBody:queryOpenApiBody(publicQueryOpenApiSchema(),GEOMACRO_API_EXAMPLES.query),
     description:"Use optional product={capability,variant} for an exact Store contract. Structural products require delivery_tier=structural_baseline; full profiles require two or more dimensions. A newly qualified signed object requires a recent issued_after cutoff and an actual verified publisher output. No signer or raw source is created by this request.",
    }},
-   [endpoints.geopolitics]:{get:categoryReadOperation("Geopolitics"),post:{
+   [endpoints.risk_gate]:{post:{
+    ...op("Request a signed commercial Risk Gate","post",[{}, {BearerApiKey:[]}]),
+    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.risk_gate,
+    description:"One endpoint serves geopolitics, macro/FX and critical minerals. mode=prepare performs no-charge shape validation without credentials, evidence reads or settlement; a paid request omits mode and requires a funded customer API key, evidence eligibility and the existing fail-closed commercial checks.",
+    requestBody:{required:true,content:{"application/json":{schema:{type:"object",additionalProperties:false,
+      required:["country_iso3","category","tier"],properties:{
+        mode:{enum:["prepare"]},
+        request_id:{type:"string",minLength:1,maxLength:256},
+        country_iso3:{type:"string",pattern:"^[A-Z]{3}$"},
+        category:{enum:["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]},
+        tier:{enum:["BASIC","STANDARD","COMPLEX","basic_focused","standard","complex_full"]},
+      }},example:GEOMACRO_API_EXAMPLES.risk_gate}}},
+   }},
+   // The old category query resources remain compatibility aliases. Commercial
+   // Risk Gate delivery uses the single endpoint above.
+   "/api/v1/intelligence/geopolitics":{get:categoryReadOperation("Geopolitics"),post:{
     ...op("Query geopolitics scoped intelligence","post"),
-    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.geopolitics,
     requestBody:queryOpenApiBody(publicQueryOpenApiSchema(["conflict_geopolitics"]),GEOMACRO_API_EXAMPLES.geopolitics),
    }},
-   [endpoints.macro_fx]:{get:categoryReadOperation("MacroFx"),post:{
+   "/api/v1/intelligence/macro-fx":{get:categoryReadOperation("MacroFx"),post:{
     ...op("Query macro FX scoped intelligence","post"),
-    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.macro_fx,
     requestBody:queryOpenApiBody(publicQueryOpenApiSchema(["macro_risk","fx_external_risk"]),GEOMACRO_API_EXAMPLES.macro_fx),
    }},
-   [endpoints.critical_minerals]:{get:categoryReadOperation("CriticalMinerals"),post:{
+   "/api/v1/intelligence/critical-minerals":{get:categoryReadOperation("CriticalMinerals"),post:{
     ...op("Query critical minerals scoped intelligence","post"),
-    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.critical_minerals,
     requestBody:queryOpenApiBody(publicQueryOpenApiSchema(["critical_minerals"]),GEOMACRO_API_EXAMPLES.critical_minerals),
    }},
    [endpoints.availability]:{
@@ -261,7 +271,8 @@ export function officialGeomacroAgentOpenApi(){
    evidence_and_rights_required:true,
    execution_authorized:false,payment_authorized_by_discovery:false,
   },
- } as const;
+  components:{securitySchemes:{BearerApiKey:{type:"http",scheme:"bearer",bearerFormat:"GeoMacro customer API key"}}},
+  } as const;
 }
 const isRecord=(x:unknown):x is Record<string,unknown>=>!!x&&
  typeof x==="object"&&!Array.isArray(x);

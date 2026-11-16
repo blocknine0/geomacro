@@ -5,8 +5,8 @@ import {publicGeomacroPaidPricingManifest} from "./geomacro-paid-pricing-manifes
 describe("founder low-barrier public new-sale pricing",()=>{
  it("publishes three monthly tiers and one-time packs",()=>{
    expect(GEOMACRO_LOW_BARRIER_VERSION).toBe("geomacro.low-barrier.v1");
-   expect(GEOMACRO_SUBSCRIPTIONS.map(x=>[x.price_usd,x.credits_per_30_days])).toEqual([[9,1000],[29,5000],[99,25000]]);
-   expect(GEOMACRO_ONE_TIME_PACKS.map(x=>[x.price_usd,x.credits])).toEqual([[5,100],[15,500],[30,1500]]);
+   expect(GEOMACRO_SUBSCRIPTIONS.map(x=>[x.price_usd,x.credits_per_30_days])).toEqual([[9,900],[29,2900],[99,9900]]);
+   expect(GEOMACRO_ONE_TIME_PACKS.map(x=>[x.price_usd,x.credits])).toEqual([[5,500],[15,1500],[30,3000]]);
    for(const tier of GEOMACRO_SUBSCRIPTIONS){
      expect(GEOMACRO_ACCESS_TIERS[tier.id].credits_per_30_days).toBe(tier.credits_per_30_days);
      expect(GEOMACRO_ACCESS_TIERS[tier.id].public_price_usd).toBe(tier.price_usd);
@@ -14,7 +14,7 @@ describe("founder low-barrier public new-sale pricing",()=>{
    expect(GEOMACRO_ACCESS_TIERS.analyst_pilot.pricing_reference).toBe("RETIRED_FOR_NEW_SALES");
    expect(GEOMACRO_ACCESS_TIERS.api_pilot.pricing_reference).toBe("RETIRED_FOR_NEW_SALES");
  });
- it("describes exact catalog prices up to Risk Gate 0.25 without activating funds",()=>{
+ it("describes exact catalog prices up to Risk Gate 0.30 without activating funds",()=>{
    const x=publicGeomacroPaidPricingManifest();
    expect(x.launch_pricing_version).toBe(GEOMACRO_LOW_BARRIER_VERSION);
    expect(x.subscriptions).toBe(GEOMACRO_SUBSCRIPTIONS);
@@ -24,10 +24,10 @@ describe("founder low-barrier public new-sale pricing",()=>{
    expect(x.credit_pack_checkout_status).toBe("NOT_YET_VERIFIED");
    expect(x.payment_authorized).toBe(false);
    expect(GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc).toBe("0.02");
-   expect(GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc).toBe("0.25");
+   expect(GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc).toBe("0.30");
    for(const row of x.capabilities)for(const v of row.variants){
      expect(Number(v.price_usdc)).toBeGreaterThanOrEqual(0.02);
-     expect(Number(v.price_usdc)).toBeLessThanOrEqual(row.capability==="risk_gate_bundle"?0.25:0.05);
+     expect(Number(v.price_usdc)).toBeLessThanOrEqual(row.capability==="risk_gate_bundle"?0.30:0.05);
    }
    expect(x.capabilities.some(x=>x.capability==="gri_read")).toBe(false);
  });

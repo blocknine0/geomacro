@@ -246,7 +246,7 @@ export class CommerceLedger {
         typeof quote.amount_atomic!=="string" ||
         !/^[1-9][0-9]*$/u.test(quote.amount_atomic) ||
         BigInt(quote.amount_atomic)>(
-          quote.capability==="risk_gate_bundle"?250_000n:50_000n) ||
+          quote.capability==="risk_gate_bundle"?300_000n:50_000n) ||
         typeof customerBytes!=="string" ||
         new TextEncoder().encode(customerBytes).byteLength>WDI_PREQUOTE_MAX_BYTES ||
         await sha256Text(customerBytes)!==quote.prepared_answer_sha256)

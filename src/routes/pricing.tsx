@@ -8,7 +8,7 @@ import { GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
-  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans, $5/$15/$30 credit packs, locked PayPal/card and Base/Polygon USDC checkout previews, and evidence-gated x402.";
+  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans at 1 cent per credit, $5/$15/$30 credit packs, a unified three-category Risk Gate at $0.15/$0.20/$0.30 per eligible delivery, and locked PayPal/card, USDC and Base x402 previews.";
 const URL = "https://geomacro.live/pricing";
 const highlights = [
   { label: "Geopolitics", icon: Globe2 },
@@ -48,7 +48,7 @@ function PricingPage() {
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               One place for 30-day prepaid plans and one-time credits. Choose how to pay,
-              explore Geomacro's three API categories and prepare requests without a charge.
+              explore the unified three-category Risk Gate and prepare requests without a charge. Credit packs use 1 credit = $0.01 USD.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#plans" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
@@ -88,8 +88,8 @@ function PricingPage() {
               ))}
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-              Two payment methods are available to preview: PayPal/card (international fiat)
-              and native USDC (Base / Polygon). External payments remain locked.
+              Preview PayPal/card (international fiat), native USDC (Base / Polygon), or AI-agent Base USDC x402.
+              All payment methods remain locked and non-payable.
             </p>
           </div>
         </div>
@@ -116,8 +116,8 @@ function PricingPage() {
             Start small. Grow on your terms.
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Compare prepaid 30-day plans and one-time credit packs, then select PayPal/card
-            or native Base/Polygon USDC directly on this page. Production transactions remain locked.
+            Compare prepaid 30-day plans and one-time credit packs at 1 credit = $0.01 USD, then select
+            PayPal/card, native Base/Polygon USDC, or AI-agent Base USDC x402. Production transactions remain locked.
           </p>
         </div>
         <LowBarrierPricing />
@@ -128,8 +128,8 @@ function PricingPage() {
           <p className="gm-eyebrow">Developer integration</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One engine. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Geopolitics, Macro / FX and Critical Minerals share one intelligence engine.
-            Production paid API delivery is not yet active. This section lists endpoints, not purchasable per-delivery products.
+            Geopolitics, Macro / FX and Critical Minerals share one signed Risk Gate endpoint and three evidence tiers.
+            Prices are $0.15 / $0.20 / $0.30 per eligible delivery; payment activation remains separately gated.
           </p>
         </div>
         <CategoryApiPricing showPrices />

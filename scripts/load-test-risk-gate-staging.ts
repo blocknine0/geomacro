@@ -250,9 +250,10 @@ function buildPolicy() {
   };
 }
 
-function buildRequestBody(target: LoadTarget, index: number) {
+export function buildRequestBody(target: LoadTarget, index: number) {
   const useCorridor = target.mode === "corridor" || (target.mode === "mixed" && index % 2 === 1);
   const requestId = `load_${Date.now()}_${index}`;
+  const categories = ["geopolitics", "macro_fx", "critical_minerals"] as const;
   const action_context = {
     action_type: "staging_load_test",
     currency: "USDC",
@@ -262,6 +263,8 @@ function buildRequestBody(target: LoadTarget, index: number) {
   if (useCorridor) {
     return {
       request_id: requestId,
+      category: categories[index % categories.length],
+      tier: "basic_focused",
       subject: {
         type: "corridor",
         origin_country_iso3: target.corridorOriginIso3,
@@ -274,6 +277,8 @@ function buildRequestBody(target: LoadTarget, index: number) {
 
   return {
     request_id: requestId,
+    category: categories[index % categories.length],
+    tier: "basic_focused",
     subject: { type: "country", country_iso3: target.countryIso3 },
     action_context,
     policy: buildPolicy(),
@@ -485,6 +490,18 @@ export function runSelfTest() {
     valid.maxP99Ms !== DEFAULT_MAX_P99_MS
   ) {
     throw new Error("Self-test normalization or default SLO failed");
+  }
+
+  const countryRequest = buildRequestBody(valid, 0);
+  const corridorRequest = buildRequestBody(valid, 1);
+  for (const [label, request] of [["country", countryRequest], ["corridor", corridorRequest]] as const) {
+    if (request.tier !== "basic_focused" ||
+      !["geopolitics", "macro_fx", "critical_minerals"].includes(request.category)) {
+      throw new Error(`Self-test ${label} request omitted the canonical category or tier`);
+    }
+  }
+  if (!("country_iso3" in countryRequest.subject) || !("origin_country_iso3" in corridorRequest.subject)) {
+    throw new Error("Self-test did not preserve country/corridor request shapes");
   }
 
   for (const productionUrl of ["https://geomacro.live", "https://www.geomacro.live/"]) {

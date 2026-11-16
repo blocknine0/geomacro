@@ -137,9 +137,10 @@ describe("production x402 readiness", () => {
     expect(api.categories).toEqual(["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]);
     expect(api.officialApis).toEqual({
       canonical,
-      geopolitics: `${origin}/api/v1/intelligence/geopolitics`,
-      macro_fx: `${origin}/api/v1/intelligence/macro-fx`,
-      critical_minerals: `${origin}/api/v1/intelligence/critical-minerals`,
+      geopolitics: `${origin}/api/v1/risk-gate`,
+      macro_fx: `${origin}/api/v1/risk-gate`,
+      critical_minerals: `${origin}/api/v1/risk-gate`,
+      risk_gate: `${origin}/api/v1/risk-gate`,
       agent: `${origin}/api/v1/agent`,
       pricing: `${origin}/api/v1/pricing`,
       no_funds_availability: `${origin}/api/v1/intelligence/availability`,
