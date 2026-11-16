@@ -60,4 +60,21 @@ describe("three-domain intelligence event dedup lock",()=>{
   expect(original.severity).toBeNull();
   expect(original.published_at).toBe("2026-10-25T08:00:00.000Z");
  });
+ it("keeps the desk alive when the permanent archive exceeds the pairwise dedupe bound",()=>{
+  const categories:[StatelessIntelligenceSignal["category"],StatelessIntelligenceSignal["category"],StatelessIntelligenceSignal["category"]]=
+   ["geopolitics","macro","rare_earth"];
+  const start=Date.parse("2026-10-25T08:00:00.000Z");
+  const rows=Array.from({length:2_100},(_,index)=>{
+   const category=categories[index%categories.length];
+   const id=category+"-"+index.toString(16).padStart(8,"0");
+   return sample(id,category,`distinct event ${index} headline`,new Date(start-index*1_000).toISOString());
+  });
+  const result=dedupeIntelligenceStories(rows);
+  expect(result).toHaveLength(1_600);
+  for(const [firstIndex,category] of categories.entries()){
+   const selected=result.filter(row=>row.category===category);
+   expect(selected.length).toBeGreaterThan(500);
+   expect(selected.some(row=>row.id.endsWith(firstIndex.toString(16).padStart(8,"0")))).toBe(true);
+  }
+ });
 });
