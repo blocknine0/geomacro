@@ -2,8 +2,42 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-16T09:17:24.119Z",
+  "updated_at": "2026-11-16T09:22:16.980Z",
   "signals": [
+    {
+      "id": "rare_earth-5a5ea802",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T08:49:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-802df78c",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T08:40:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-55abc9dd",
       "category": "rare_earth",
@@ -38,6 +72,23 @@
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d4bff565",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T07:00:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
@@ -157,6 +208,23 @@
       "severity": null
     },
     {
+      "id": "rare_earth-2444f5b4",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-f095beca",
       "category": "rare_earth",
       "title": "Geomacro finds an unverified critical-minerals watch signal",
@@ -190,6 +258,23 @@
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7bc7a896",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T03:20:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
@@ -347,6 +432,23 @@
       "severity": null
     },
     {
+      "id": "rare_earth-0c6b7e73",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T23:30:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-f81eca72",
       "category": "rare_earth",
       "title": "Geomacro finds an unverified critical-minerals watch signal",
@@ -361,6 +463,23 @@
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5eaf76b8",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T22:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
@@ -399,6 +518,40 @@
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-a4c8b54d",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T19:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-fa9860cd",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T19:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
@@ -456,6 +609,23 @@
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-b646f331",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-15T18:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
