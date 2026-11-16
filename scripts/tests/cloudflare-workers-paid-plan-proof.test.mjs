@@ -134,6 +134,32 @@ test("Billing Read uses account-scoped Cloudflare GET and never updates a subscr
   env:{...env,CLOUDFLARE_BILLING_READ_TOKEN:undefined},now,
   fetchImpl:async()=>{throw Error("MUST_NOT_FETCH")}}),/PERMISSION_REQUIRED/);
 });
+
+test("billing 403 retries the Cloudflare API token and exposes only a bounded declared Paid D1 sidecar mode",async()=>{
+ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  CLOUDFLARE_BILLING_READ_TOKEN:"b".repeat(32),CLOUDFLARE_API_TOKEN:"c".repeat(32),
+  GEOMACRO_D1_PLAN_TIER:"paid"};
+ const tokens=[];
+ const response=await readCloudflareWorkersPaidProof({env,now,fetchImpl:async(_url,init)=>{
+  tokens.push(init.headers.Authorization);
+  return {status:403};
+ }});
+ assert.deepEqual(tokens,["Bearer "+env.CLOUDFLARE_BILLING_READ_TOKEN,
+  "Bearer "+env.CLOUDFLARE_API_TOKEN]);
+ assert.equal(response.verified,false);
+ assert.equal(response.source,"OWNER_DECLARED_D1_PLAN_TIER");
+ assert.equal(response.bounded_risk_stream_only,true);
+ const graphql={data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:[{
+  dimensions:{databaseId:"database-a",date:"2026-10-27"},sum:{rowsRead:1000,rowsWritten:1000}
+ }]}]}}};
+ const quota=await checkD1BundledWork({env,now,fetchImpl:async(url)=>
+  url.endsWith("/graphql")?{ok:true,json:async()=>graphql}:{status:403,json:async()=>({})}});
+ assert.equal(quota.paid_capacity_probe_status,"OWNER_DECLARED_PAID_D1_CAP_MODE");
+ assert.equal(quota.workers_paid_subscription_verified,false);
+ assert.equal(quota.risk_stream_sidecar_admitted,true);
+ assert.equal(quota.risk_stream_sidecar_daily_write_cap,1_100_000);
+ assert.equal(quota.owner_declared_paid_d1_cap_mode,true);
+});
 test("live planner with paid-provider proof is still no-D1-query and refuses forged Billing data",async()=>{
  const account="a".repeat(32),env={
   CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32),

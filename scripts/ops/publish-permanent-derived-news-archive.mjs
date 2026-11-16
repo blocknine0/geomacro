@@ -27,8 +27,10 @@ export const SIGNAL_FIELDS=[
   "id","category","title","what_changed","why_it_matters","topic","geography",
   "development_type","published_at","date_precision","observed_release_count",
   "sources_credited","status","same_event_corrob_verified","severity",
+  "country_iso3","corridor","event_direction","event_action",
 ];
-const FIELD_SET=new Set(SIGNAL_FIELDS);
+const LEGACY_FIELD_SET=new Set(SIGNAL_FIELDS.slice(0,15));
+const OSINT_FIELD_SET=new Set(SIGNAL_FIELDS);
 const CATEGORY_SET=new Set(CATEGORIES);
 const D1_FEED_URL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 const MAX_SIGNAL_BYTES=5_000;
@@ -67,11 +69,13 @@ function originalTime(signal){
 export function isPermanentArchiveSignal(value,now=Date.now(),{allowHistorical=true}={}){
   if(!value||typeof value!=="object"||Array.isArray(value))return false;
   const s=value;
-  if(Object.keys(s).length!==FIELD_SET.size||Object.keys(s).some(k=>!FIELD_SET.has(k))||
+  const allowedFields=s.status==="osint_feed_observed_unverified"?OSINT_FIELD_SET:LEGACY_FIELD_SET;
+  if(Object.keys(s).length!==allowedFields.size||Object.keys(s).some(k=>!allowedFields.has(k))||
      !isSafeDerivedNewsReadbackSignal(s)||
      !CATEGORY_SET.has(s.category)||
      typeof s.id!=="string"||!new RegExp("^(?:"+CATEGORIES.join("|")+ ")-[0-9a-f]{8}$","u").test(s.id)||
-     typeof s.title!=="string"||!s.title.startsWith("Geomacro finds ")||s.title.length>240||
+     typeof s.title!=="string"||!(s.status==="osint_feed_observed_unverified"?
+       s.title.startsWith("GeoMacro "):s.title.startsWith("Geomacro finds "))||s.title.length>240||
      typeof s.what_changed!=="string"||s.what_changed.length<30||s.what_changed.length>650||
      typeof s.why_it_matters!=="string"||s.why_it_matters.length<30||s.why_it_matters.length>700||
      typeof s.topic!=="string"||s.topic.length>120||
@@ -90,9 +94,7 @@ export function isPermanentArchiveSignal(value,now=Date.now(),{allowHistorical=t
   const proseOnly=s.status==="osint_feed_observed_unverified"
     ?JSON.stringify({...s,sources_credited:[]}):raw;
   if(raw.length>MAX_SIGNAL_BYTES||/https?:\/\/|www\./iu.test(proseOnly))return false;
-  if(s.status==="osint_feed_observed_unverified"&&
-     !isSourceNeutralOsintSignal(s)&&
-     !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u.test(s.sources_credited[0]||""))
+  if(s.status==="osint_feed_observed_unverified"&&!isSourceNeutralOsintSignal(s))
     return false;
   return true;
 }
@@ -201,7 +203,8 @@ export function distinctHeadlineArchiveRows(signals){
     if(isTemplateObservation(signal)||
        (signal.category==="rare_earth"&&!isCriticalMineralsSubject(signal)))continue;
   const key=isSourceNeutralOsintSignal(signal)
-    ?[signal.category,signal.topic,signal.published_at.slice(0,16)].join("|")
+    ?[signal.category,signal.topic,signal.country_iso3,signal.corridor??"",signal.event_direction,
+      signal.event_action,signal.published_at.slice(0,16)].join("|")
     :normalizeHeadline(signal.title);
     if(!key)continue;
     const current=uniqueByHeadline.get(key);
@@ -209,9 +212,9 @@ export function distinctHeadlineArchiveRows(signals){
   }
   return sortSignals([...uniqueByHeadline.values()]);
 }
-/** The rolling 250-row latest feed is a preview, not the full immutable archive. */
-export function selectCurrentArchiveSignals(signals,limit=250){
-  if(!Number.isSafeInteger(limit)||limit<1||limit>250)
+/** The rolling 475-row latest feed preserves the admitted source poll volume. */
+export function selectCurrentArchiveSignals(signals,limit=475){
+  if(!Number.isSafeInteger(limit)||limit<1||limit>475)
     throw Error("PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID");
   const unique=distinctHeadlineArchiveRows(signals);
   const groups=new Map(CATEGORIES.map(category=>[
@@ -560,7 +563,7 @@ export async function publishPermanentDerivedNewsArchive({
     ok:true,schema:PUBLIC_FEED_SCHEMA,checked_at:new Date(now).toISOString(),
     original_release_delay_minutes:0,retention_days:3,retention_hours:72,
     delivery_scope:"free_website_only",scored:false,chargeable:false,
-    supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
+    supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,475),
   };
   const nextCoverage=buildCurrentArchiveEligibility(recent,now,nextLatest.signals);
   const nextDaily=buildDailyOfficialFinds(allSignals,now);

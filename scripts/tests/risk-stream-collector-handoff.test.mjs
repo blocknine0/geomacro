@@ -11,7 +11,8 @@ test("scheduled direct and private collectors hand only complete licensed sideca
  ]){
   const workflow=read(path);
   assert.match(workflow,/emit-risk-stream-collector-sidecar\.mjs/u);
-  assert.match(workflow,/RISK_STREAM_ACTIVE == '1'/u);
+  assert.match(workflow,/risk_stream_sidecar_admitted == 'true'/u);
+  assert.doesNotMatch(workflow,/vars\.RISK_STREAM_ACTIVE == '1'.{0,180}emit-risk-stream-collector-sidecar/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_FACTS_SPKI_B64/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_RIGHTS_SPKI_B64/u);
  }

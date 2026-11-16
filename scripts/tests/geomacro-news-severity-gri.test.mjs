@@ -8,6 +8,7 @@ import {
 } from "../../workers/control-plane/src/geomacro-news-severity-gri.mjs";
 import {canonicalProgressiveJson} from "../../workers/control-plane/src/progressive-risk-gate.mjs";
 import {withPublicEtag} from "../../workers/control-plane/src/public-http-etag.mjs";
+import {projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 
 const NOW=Date.parse("2026-10-28T16:30:00.000Z");
 const SECRET="geo-macro-news-grading-test-secret-".repeat(2);
@@ -31,6 +32,16 @@ const SOURCE=[
  example("macro","00000003","monetary policy"),
  example("rare_earth","00000004","critical-minerals policy"),
 ];
+function osintExample(category,id,topic,minutes=20,country="United States",iso="USA"){
+ const source=example(category,id,topic,minutes,"osint_feed_observed_unverified");
+ const projected=projectSourceNeutralOsintSignal({...source,
+  geography:country,
+  status:"osint_feed_observed_unverified",
+  development_type:"unverified OSINT feed observation",
+  country_iso3:iso,corridor:null,event_direction:"uncertain",
+  sources_credited:["Monitored feed: research.example"]});
+ return projected?{...projected,sources_credited:["Monitored feed: research.example"]}:null;
+}
 test("GeoMacro HMAC signs exact three-domain 0–100 news-severity calculation",async()=>{
  const r=await certifiedNewsSeverityGriFromSignals(SOURCE,{now:NOW,secret:SECRET});
  assert.equal(r.schema,NEWS_GRI_SCHEMA);
@@ -61,10 +72,7 @@ test("GeoMacro HMAC signs exact three-domain 0–100 news-severity calculation",
 });
 test("public official releases AND observed OSINT contribute independently with provenance weights",async()=>{
  const official=SOURCE[0];
- const osint={...example("macro","00000077","monetary policy"),
-  status:"osint_feed_observed_unverified",
-  development_type:"unverified OSINT feed observation",geography:null,
-  sources_credited:["Monitored feed: research.example"]};
+ const osint=osintExample("macro","00000077","monetary policy");
  const r=await certifiedNewsSeverityGriFromSignals([official,osint,
   {...example("rare_earth","00000078","critical-minerals policy"),
    status:"official_feed_candidate_unscored",topic:"minerals publisher candidate",
@@ -85,11 +93,8 @@ test("public official releases AND observed OSINT contribute independently with 
  assert.equal(r.data.indices[2].score,null);
 });
 test("a matching official release takes priority over uncorroborated OSINT in one bucket",async()=>{
- const osint={...SOURCE[0],
-  id:"geopolitics-00000099",status:"osint_feed_observed_unverified",
-  development_type:"unverified OSINT feed observation",geography:null,
-  sources_credited:["Monitored feed: research.example"]};
- const official={...SOURCE[0],geography:null};
+ const osint=osintExample("geopolitics","00000099","geopolitical security");
+ const official={...SOURCE[0],geography:"United States"};
  const r=await certifiedNewsSeverityGriFromSignals([osint,official],
   {now:NOW,secret:SECRET});
  assert.equal(r.observed_osint_input_count,1);
@@ -100,13 +105,10 @@ test("a matching official release takes priority over uncorroborated OSINT in on
 });
 test("public news and OSINT across all three categories are both counted without source URL disclosure",async()=>{
  const osintRows=[
-  ["geopolitics","geopolitical security","000000a1"],
-  ["macro","monetary policy","000000a2"],
-  ["rare_earth","critical-mineral inputs","000000a3"],
- ].map(([category,topic,id])=>({...example(category,id,topic,90),
-  status:"osint_feed_observed_unverified",
-  development_type:"unverified OSINT feed observation",geography:null,
-  sources_credited:["Monitored feed: international.example"]}));
+  ["geopolitics","geopolitical security","000000a1","Japan","JPN"],
+  ["macro","monetary policy","000000a2","India","IND"],
+  ["rare_earth","critical-mineral inputs","000000a3","Chile","CHL"],
+ ].map(([category,topic,id,country,iso])=>osintExample(category,id,topic,90,country,iso));
  const r=await certifiedNewsSeverityGriFromSignals([...SOURCE,...osintRows],
   {now:NOW,secret:SECRET});
  assert.equal(r.observed_osint_input_count,3);
@@ -250,9 +252,7 @@ test("real 24H/48H/72H journal backfill stays source-native and never invents ol
  assert.equal(out.data.indices[1].score,null);
 });
 test("GeoMacro OSINT stays low-weight and historical bins never increase source authority",async()=>{
- const osint={...example("macro","000000b5","monetary policy",50*60),
-  status:"osint_feed_observed_unverified",geography:null,development_type:"unverified OSINT feed observation",
-  sources_credited:["Monitored feed: research.example"]};
+ const osint=osintExample("macro","000000b5","monetary policy",50*60);
  const out=await certifiedNewsSeverityGriFromSignals([osint],{now:NOW,secret:SECRET});
  const index=out.data.indices[1];
  assert.equal(index.sourceMix.osint,1);

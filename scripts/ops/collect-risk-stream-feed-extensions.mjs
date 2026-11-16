@@ -23,12 +23,33 @@ const CATEGORY_TERMS={
   [/mineral|lithium|cobalt|copper|rare earth|graphite/iu,"critical_mineral_supply"],
   [/trade|customs/iu,"trade_disruption"]]
 };
-const COUNTRY_TERMS={USA:["united states","u.s.","usa"],GBR:["united kingdom","britain","british","uk"],
+const EVENT_COPY=Object.freeze({
+ sanctions_policy:"SANCTIONS_POLICY: jurisdictional restrictions tighten.",
+ ceasefire:"CEASEFIRE: operational security conditions enter a transition.",
+ conflict_escalation:"CONFLICT_ESCALATION: security pressure increases.",
+ trade_disruption:"TRADE_DISRUPTION: cross-border access faces a policy or logistics change.",
+ central_bank_policy:"CENTRAL_BANK_POLICY: monetary stance or policy settings change.",
+ inflation_release:"INFLATION_RELEASE: consumer-price conditions receive a dated update.",
+ fx_intervention:"FX_INTERVENTION: currency liquidity or exchange-rate action changes.",
+ critical_mineral_export_control:"CRITICAL_MINERAL_EXPORT_CONTROL: mineral trade access tightens.",
+ critical_mineral_production:"CRITICAL_MINERAL_PRODUCTION: mine or processing output changes.",
+ critical_mineral_supply:"CRITICAL_MINERAL_SUPPLY: material availability or supply-chain terms change.",
+});
+const COUNTRY_TERMS={USA:["united states","u.s.","usa","american"],GBR:["united kingdom","britain","british","uk"],
  CHN:["china","chinese"],IND:["india","indian"],RUS:["russia","russian"],
  UKR:["ukraine","ukrainian"],ISR:["israel","israeli"],PSE:["palestine","palestinian","gaza"],
  IRN:["iran","iranian"],SAU:["saudi arabia","saudi"],ARE:["united arab emirates","uae"],
  AUS:["australia","australian"],CAN:["canada","canadian"],BRA:["brazil","brazilian"],
- ZAF:["south africa"],IDN:["indonesia","indonesian"],CHL:["chile","chilean"],PER:["peru","peruvian"]};
+ ZAF:["south africa"],IDN:["indonesia","indonesian"],CHL:["chile","chilean"],PER:["peru","peruvian"],
+ JPN:["japan","japanese"],KOR:["south korea","korea","korean"],BEL:["belgium","belgian"],DEU:["germany","german"],
+ FRA:["france","french"],MEX:["mexico","mexican"],ITA:["italy","italian"],ESP:["spain","spanish"],NLD:["netherlands","dutch"],
+ CHE:["switzerland","swiss"],NOR:["norway","norwegian"],SWE:["sweden","swedish"],POL:["poland","polish"],
+ TUR:["turkey","türkiye","turkiye","turkish"],EGY:["egypt","egyptian"],QAT:["qatar","qatari"],OMN:["oman","omani"],
+ IRQ:["iraq","iraqi"],NGA:["nigeria","nigerian"],COD:["democratic republic of the congo","dr congo","congo"],ZMB:["zambia","zambian"],
+ ARG:["argentina","argentine"],BOL:["bolivia","bolivian"],VNM:["vietnam","vietnamese"],THA:["thailand","thai"],
+ MYS:["malaysia","malaysian"],SGP:["singapore","singaporean"],PHL:["philippines","filipino"],PAK:["pakistan","pakistani"],
+ BGD:["bangladesh","bangladeshi"],KAZ:["kazakhstan","kazakh"],MNG:["mongolia","mongolian"],MMR:["myanmar","burma","burmese"]};
+const normalizeSovereignIso3=value=>value==="ATA"?"AUS":value;
 const SOURCE_COUNTRY={uk_fcdo_ogl_official_atom:"GBR",uk_obr_ogl_macro_atom:"GBR",
  uk_dbt_ogl_minerals_atom:"GBR",uk_hmt_ogl_official_atom:"GBR",uk_desnz_ogl_minerals_atom:"GBR",
  uk_mod_ogl_security_atom:"GBR",uk_cabinet_ogl_security_atom:"GBR",uk_bist_ogl_minerals_atom:"GBR"};
@@ -148,7 +169,7 @@ function normalizedEntryCandidate(entry,feed,rights,page,feedOrigin="RSS"){
  // official national source and the item has no foreign-country mention,
  // the reviewed publisher jurisdiction is the conservative subject.
  if(countries.length>1)return null;
- const country_iso3=countries[0]?.[0]??SOURCE_COUNTRY[rights.source_id];
+ const country_iso3=normalizeSovereignIso3(countries[0]?.[0]??SOURCE_COUNTRY[rights.source_id]);
  if(!country_iso3)return null;
  const published=new Date(entry.updated);
  if(!Number.isFinite(published.getTime()))return null;
@@ -168,10 +189,12 @@ function normalizedEntryCandidate(entry,feed,rights,page,feedOrigin="RSS"){
    terms_url:rights.rights_evidence.terms_url,item_url:sourceUrl.href,item_license_marker:evidence.marker,
    publisher_owned_content_only:true,third_party_exceptions:false,non_commercial:false,
    restricted_material:false,factual_record_only:true,original_text_republished:false},
-  derived:{what:"A dated official action has been published for a specifically identified jurisdiction.",
-   why:"The recorded policy signal may alter the jurisdiction's exposure to the affected risk.",
-   market:"Relevant counterparties may adjust risk limits while the signal is assessed.",
-   watch:"Monitor subsequent official measures and independent corroboration."}};
+  derived:{what:EVENT_COPY[eventType],
+   why:`Risk classification: ${eventType.replaceAll("_"," ")} in ${country_iso3}; assess the jurisdiction and affected sector before changing exposure.`,
+   market:category==="MACRO_FX"?`Potential channels include ${country_iso3} currency liquidity, FX settlement and sovereign financing.`:
+    category==="CRITICAL_MINERALS"?`Potential channels include ${country_iso3} mineral throughput, processing availability and benchmark premiums.`:
+    `Potential channels include ${country_iso3} operating continuity, trade routing, freight and sovereign risk.`,
+   watch:"Track formal implementation, affected counterparties and independent evidence before escalation."}};
  const identity=eventIdentityFields(original);
  return {...original,...identity};
 }
@@ -238,8 +261,11 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
     counts.invalid++;continue;
    }
    try{
-    prepareRiskStreamCandidate(original,sources,now,{rightsManifest:manifest});
-    originals.push(original);
+    const normalized=original.country_iso3==="ATA"?{...original,country_iso3:"AUS",
+     event_identity:{...original.event_identity,country_iso3:"AUS"}}:original;
+    const candidate={...normalized,...eventIdentityFields(normalized)};
+    prepareRiskStreamCandidate(candidate,sources,now,{rightsManifest:manifest});
+    originals.push(candidate);
    }catch{counts.invalid++;}
   }
  }

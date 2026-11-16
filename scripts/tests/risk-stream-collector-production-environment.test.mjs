@@ -29,8 +29,9 @@ test("Risk Stream collector emitters resolve credentials from production environ
     assert.match(job, /CONTROL_PLANE_TOKEN:\s*\$\{\{\s*secrets\.CONTROL_PLANE_TOKEN\s*\|\|\s*secrets\.GEOMACRO_COMMERCE_LEDGER_TOKEN\s*\}\}/);
     assert.match(job, /RISK_STREAM_MACHINE_FACTS_SPKI_B64:\s*\$\{\{\s*secrets\.RISK_STREAM_MACHINE_FACTS_SPKI_B64\s*\}\}/);
     assert.match(job, /RISK_STREAM_MACHINE_RIGHTS_SPKI_B64:\s*\$\{\{\s*secrets\.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64\s*\}\}/);
-    assert.match(job, /vars\.RISK_STREAM_ACTIVE == '1'/);
-    assert.match(job, /vars\.STREAM_INGESTION_ENABLED == 'true'/);
+    assert.match(job, /risk_stream_sidecar_admitted == 'true'/);
+    assert.doesNotMatch(job, /vars\.RISK_STREAM_ACTIVE == '1'/);
+    assert.doesNotMatch(job, /vars\.STREAM_INGESTION_ENABLED == 'true'/);
     assert.match(job, /run: node scripts\/ops\/emit-risk-stream-collector-sidecar\.mjs/);
   }
 });

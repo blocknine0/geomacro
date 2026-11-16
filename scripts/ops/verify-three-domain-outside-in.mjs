@@ -42,7 +42,7 @@ export function verifyThreeDomainLivePublication({
   daily.generated_at!==latest.checked_at||
   index.updated_at!==latest.checked_at)
   fail("STATIC_COHORT_CLOCK_MISMATCH");
- if(!Array.isArray(latest.signals)||latest.signals.length>250||
+ if(!Array.isArray(latest.signals)||latest.signals.length>475||
   !Array.isArray(daily.signals)||daily.signals.length>36||
   !Array.isArray(journal.signals)||journal.signals.length>600||
   journal.returned_rows!==journal.signals.length||
@@ -107,7 +107,7 @@ export function verifyThreeDomainLivePublication({
    fail("D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_"+category);
   if(rendered.length!==active.length)
    fail("WEBSITE_EXACT_RENDER_MISMATCH_"+category);
-  // The 250-row public "latest" is a intentionally deduplicated/ranked
+  // The 475-row public "latest" is a deliberately deduplicated/ranked
   // presentation, not the immutable archive. A canonical article already
   // retained in a month/category static shard is NOT unpublished just
   // because its display card is omitted from the preview.

@@ -108,12 +108,16 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
  const id=row.category+"-"+createHash("sha256").update(row.news_id).digest("hex").slice(0,8);
  let event=null;
  try{event=typeof summarize==="function"?summarize(row.title):null}catch{return null}
- const concrete=concreteOsintPublication({category:row.category,title:row.title,event});
+ const concrete=concreteOsintPublication({category:row.category,title:row.title,event,
+   country_iso3:row.country_iso3,country_name:row.country_name,
+   corridor:row.corridor,event_direction:row.event_direction});
  if(!concrete)return null;
  const projected=projectSourceNeutralOsintSignal({
    id,category:row.category,topic:concrete.topic||observedTopic,
    title:concrete.title,what_changed:concrete.what_changed,
    why_it_matters:concrete.why_it_matters,geography:concrete.geography,
+   country_iso3:concrete.country_iso3,corridor:concrete.corridor,
+   event_direction:concrete.event_direction,event_action:concrete.event_action,
    development_type:"unverified OSINT feed observation",
    published_at:row.published_at,date_precision:"exact",observed_release_count:1,
    sources_credited:[],status:"osint_feed_observed_unverified",

@@ -21,7 +21,7 @@ export function ApiEndpointDirectory() {
   return <section id="endpoints" aria-labelledby="endpoints-title" className="mt-10 scroll-mt-24">
     <p className="gm-eyebrow">Developer reference</p>
     <h2 id="endpoints-title" className="mt-3 text-2xl font-semibold">Endpoints for your integration.</h2>
-    <p className="mt-3 text-sm leading-6 text-muted-foreground">Official GEOMACRO endpoints on <code>geomacro.live</code>. Requests requiring JSON bodies follow the documented HTTP method in OpenAPI. Self-service API keys are coming soon; these are discovery, research and governed x402 interfaces.</p>
+    <p className="mt-3 text-sm leading-6 text-muted-foreground">Official GEOMACRO endpoints on <code>geomacro.live</code>. Requests requiring JSON bodies follow the documented HTTP method in OpenAPI. See Store &amp; API for structured product tiers, signed Risk Gates and AI-agent JSON access.</p>
     <div className="mt-4 flex flex-wrap gap-5 text-sm">
       <a href="/api/v1/agent?view=openapi" className="gm-text-link">OpenAPI 3.1 schema ↗</a>
       <a href="/api/v1/agent" className="gm-text-link">Agent discovery ↗</a>

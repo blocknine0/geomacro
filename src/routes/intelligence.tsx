@@ -202,7 +202,8 @@ function IntelligencePage() {
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
           What changed, why it matters, and how significant is the risk? Explore verified Geomacro assessments across geopolitics, Macro/FX and critical minerals. Website publication is delayed by at least 60 minutes; each assessment retains its original evidence date.
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">Free to browse. For structured API delivery or monthly intelligence access, <Link to="/pricing" className="font-medium text-primary hover:underline">compare access options</Link>.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Free to browse. Turn each signal into a signed, machine-readable Risk Gate for analysts and AI agents.</p>
+        <Link to="/pricing" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API</Link>
         <p className="mt-2 text-xs text-muted-foreground">
           Publisher inventories and raw evidence stay private. A dataset requiring named credit
           is not eligible for source-private publication until the exact contributing dataset,

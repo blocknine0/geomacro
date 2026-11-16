@@ -40,13 +40,13 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Recurring intelligence for teams and workflows");
     expect(guide).toContain('mailto:contact@geomacro.live?subject=Geomacro%20monthly');
     expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
-    expect(read("src/components/api-keys-notice.tsx")).toContain("Self-service access and checkout are not open yet.");
+    expect(read("src/components/api-keys-notice.tsx")).toContain("Approved prices for all three category APIs are published in Store &amp; API.");
     expect(pricing).toContain("Building for a team?");
   });
 
   it("provides buyer action on Intelligence, Ask and Docs without promising paid availability", () => {
-    expect(intelligence).toContain("Free to browse.");
-    expect(intelligence).toContain("compare access options");
+    expect(intelligence).toContain("Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON");
+    expect(intelligence).toContain('to="/pricing"');
     expect(ask).toContain("Public chat is free; structured API products use separate x402 pricing.");
     expect(ask).toContain("compare API and monthly access");
     expect(docs).toContain("Explore free Intelligence");
@@ -67,7 +67,8 @@ describe("commercial access is explained sitewide", () => {
     const roadmap = read("src/components/sections/roadmap-section.tsx");
     const contact = read("src/routes/contact.tsx");
     expect(intelligence).toContain("Previous verified risk assessments remain available for comparison");
-    expect(roadmap).toContain("API keys · Coming soon");
+    expect(roadmap).not.toContain("API keys · Coming soon");
+    expect(roadmap).toContain("Store & API access");
     expect(contact).toContain("Do not send private keys, seed phrases or production secrets.");
   });
 });

@@ -153,9 +153,10 @@ export function selectDailyUnverifiedObservations(
      v.date_precision!=="exact"||
      !isSafeDerivedNewsReadbackSignal(v)||!isConcretePublicIntelligence(v)||
      v.severity!==null||v.same_event_corrob_verified!==false||
-     !Array.isArray(v.sources_credited)||v.sources_credited.length!==1||
-     !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u
-       .test(v.sources_credited[0]))continue;
+     !Array.isArray(v.sources_credited)||v.sources_credited.length>1||
+     v.sources_credited.length===1&&
+       !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u
+         .test(v.sources_credited[0]))continue;
   const ms=Date.parse(v.published_at);
   if(!Number.isFinite(ms)||ms>now||now-ms>72*3_600_000)continue;
   seen.add(v.id);found.push(v);

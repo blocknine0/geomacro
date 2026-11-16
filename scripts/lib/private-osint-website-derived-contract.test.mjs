@@ -2,20 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {unverifiedWebsiteSignalFromOsint} from "./private-osint-website-bridge.mjs";
 import {verifyDerivedStory,readDerivedStories,readDerivedStoriesBundle} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
-import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const titles={
- geopolitics:"Yemen Ministry of Transport introduces Red Sea tanker transit controls",
- macro:"Bank of Japan announces policy rate decision for Japan",
- rare_earth:"Chile Ministry of Mines approves lithium processing project",
+ geopolitics:"United Nations leaders announce new sanctions and security measures",
+ macro:"Central bank reports monetary policy and inflation developments",
+ rare_earth:"Government announces new critical mineral mining supply strategy",
 };
 test("all three unverified OSINT source feed cards pass the production website journal and remain unscored",()=>{
  for(const [category,title] of Object.entries(titles)){
   const signal=unverifiedWebsiteSignalFromOsint({
-   news_id:"news-"+"b".repeat(64),category,title,published_at:"2026-10-25T11:40:00.000Z",
+   news_id:"news-"+"b".repeat(64),category,title,country_iso3:category==="rare_earth"?"CAN":category==="macro"?"CAN":"USA",published_at:"2026-10-25T11:40:00.000Z",
    source_url:"https://news.google.com/rss/search?q=official",article_url:null,
-  },now,actorActionNewsObservation);
+  },now);
   assert.ok(signal,category);
   assert.equal(verifyDerivedStory(signal,now),true,category);
   assert.equal(verifyDerivedStory({...signal,severity:44},now),false);
@@ -28,14 +27,14 @@ test("all three unverified OSINT source feed cards pass the production website j
 
 test("public Worker read projects stored private headlines and feed hosts into browser-admissible watch cards",async()=>{
  const headlines={
-  geopolitics:"Yemen Ministry of Transport introduces Red Sea tanker transit controls",
-  macro:"Bank of Japan announces policy rate decision for Japan",
-  rare_earth:"Chile Ministry of Mines approves lithium processing project",
+  geopolitics:"Secret publisher headline: sanctions announced in a named country",
+  macro:"Bank source title: new inflation figures and official response",
+  rare_earth:"Industry source headline: lithium exports interrupted at a port",
  };
  for(const category of Object.keys(headlines)){
-  const raw=unverifiedWebsiteSignalFromOsint({news_id:"news-"+"c".repeat(64),category,
+  const raw=unverifiedWebsiteSignalFromOsint({news_id:"news-"+"c".repeat(64),category,country_iso3:category==="geopolitics"?"USA":category==="macro"?"CAN":"CHL",
    title:headlines[category],source_url:"https://private-publisher.example/rss",
-   published_at:"2026-10-25T11:40:00.000Z"},now,actorActionNewsObservation);
+   published_at:"2026-10-25T11:40:00.000Z"},now);
   assert.ok(raw);
   const env={DB:{prepare(){return {bind(){return {all:async()=>({results:[{
    story_json:JSON.stringify(raw),first_seen_at:"2026-10-25T11:41:00.000Z"}]})}}}}}};
@@ -45,11 +44,11 @@ test("public Worker read projects stored private headlines and feed hosts into b
   assert.equal(doc.signals.length,1);
   const [publicSignal]=doc.signals;
   assert.equal(publicSignal.sources_credited.length,0);
-  assert.match(publicSignal.title,/· .+ — (?:Red Sea Maritime Corridor|Japan|Chile)$/u);
-  assert.doesNotMatch(publicSignal.title,/unverified .* watch signal|publisher headline|source title/iu);
-  assert.doesNotMatch(JSON.stringify(doc),/private-publisher\.example|https?:\/\//u);
+  assert.match(publicSignal.title,/^GeoMacro (Geopolitics|Macro\/FX|Critical Minerals) Brief · .+ — .+ \([A-Z]{3}\)$/u);
+  assert.match(publicSignal.why_it_matters,/Risk: .* → Downstream effect: .* → Price impact channel: .*Action Posture:/u);
+  assert.doesNotMatch(JSON.stringify(doc),/Secret publisher headline|private-publisher\.example|sanctions announced|inflation figures|exports interrupted/u);
   const bundle=await readDerivedStoriesBundle(env,now,false);
   const bundleDoc=await bundle.json();
-  assert.doesNotMatch(JSON.stringify(bundleDoc),/private-publisher\.example|https?:\/\//u);
+  assert.doesNotMatch(JSON.stringify(bundleDoc),/Secret publisher headline|private-publisher\.example|sanctions announced|inflation figures|exports interrupted/u);
  }
 });

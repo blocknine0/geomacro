@@ -682,6 +682,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // enabled Billing Read or paid entitlement proof fails, remain on the
     // original conservative Free plan guard. No magic paid-mode env switch.
     let paidProof=null,spendGuardProof=null,paidProbe="NO_ACCOUNT_TOKEN";
+    let paidTierDeclaredFallback=false;
     let paidSubscriptionVerified=false;
     // An existing account token may already have Billing Read permission.
     // Try its read-only provider endpoints before requiring another secret;
@@ -692,15 +693,20 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     if(billingEnv.CLOUDFLARE_BILLING_READ_TOKEN){
       try{
         const candidate=await readCloudflareWorkersPaidProof({env:billingEnv,fetchImpl,now});
-        paidSubscriptionVerified=true;
-        paidProof=candidate;
+        paidSubscriptionVerified=candidate.verified===true;
+        paidTierDeclaredFallback=candidate.verified===false&&
+          candidate.source==="OWNER_DECLARED_D1_PLAN_TIER"&&
+          candidate.bounded_risk_stream_only===true;
+        if(paidSubscriptionVerified)paidProof=candidate;
         // Keep the real policy diagnostic without making it a capacity gate.
         const guard=await readFiveUsdSpendGuard({env:billingEnv,fetchImpl,now});
-        if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;paidProbe="VERIFIED";}
+        if(guard.verified===true&&paidSubscriptionVerified){paidProof=candidate;spendGuardProof=guard;paidProbe="VERIFIED";}
+        else if(paidTierDeclaredFallback)paidProbe="OWNER_DECLARED_PAID_D1_CAP_MODE";
         else paidProbe="SUBSCRIPTION_VERIFIED_SPEND_POLICY_ADVISORY";
       }catch(error){
         const code=String(error?.message??"");
-        paidProbe=/^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
+        paidProbe=paidTierDeclaredFallback?"OWNER_DECLARED_PAID_D1_CAP_MODE":
+          /^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
       }
     }
     // Independent owner UTC daily cap applies even when Cloudflare reports
@@ -734,6 +740,17 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       ownerBudget.rows_written-Math.max(
         ownerBudget.normal_rows_written,quota.observed_rows_written));
     return {...result,
+      // Risk-stream candidate microbatches have their own tightly bounded
+      // admission. They may run in declared Paid-cap mode after a billing
+      // scope 403 only while observed daily writes remain below 1.1M. This
+      // does not claim a provider subscription, unlock other lanes, or relax
+      // the owner cap on any producer.
+      risk_stream_sidecar_admitted:
+        quota.observed_rows_written<1_100_000&&
+        (paidSubscriptionVerified||paidTierDeclaredFallback),
+      risk_stream_sidecar_daily_write_cap:1_100_000,
+      risk_stream_sidecar_observed_rows_written:quota.observed_rows_written,
+      owner_declared_paid_d1_cap_mode:paidTierDeclaredFallback,
       canonical_archive_catchup_readonly:canonicalArchiveReadOnly,
       canonical_archive_catchup_max_rows:canonicalArchiveReadOnly?601:0,
       canonical_archive_catchup_requires_monthly_provider_pass:true,
@@ -787,6 +804,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key]??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_source_lane="+
       String(result.paid_derived_news_source_lane===true)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"risk_stream_sidecar_admitted="+
+      String(result.risk_stream_sidecar_admitted===true)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"risk_stream_sidecar_observed_rows_written="+
+      String(result.risk_stream_sidecar_observed_rows_written??"")+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_max_rows="+
       String(result.paid_derived_news_max_rows??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"canonical_archive_catchup_readonly="+

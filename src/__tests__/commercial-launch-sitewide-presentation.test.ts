@@ -34,9 +34,10 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(pricing).toContain("<CategoryApiPricing showPrices />");
     expect(api).toContain("CategoryApiPricing");
     expect(read("src/components/category-api-pricing.tsx")).toContain("There is no category surcharge.");
-    expect(notice).toContain("API keys");
-    expect(notice).toContain("Coming soon");
-    expect(notice).toContain("Self-service access and checkout are not open yet.");
+    expect(notice).toContain("Per-call API pricing");
+    expect(notice).toContain("Published");
+    expect(notice).toContain("Enquire about launch access");
+    expect(notice).not.toMatch(/API keys.*coming soon/iu);
     expect(catalog).toContain("GEOMACRO_CAPABILITY_PRICES");
     expect(catalog).toContain("Enquire about this product");
     expect(catalog).not.toContain("Buy now");

@@ -47,6 +47,9 @@ export type StatelessIntelligenceSignal = {
   topic: string;
   what_changed: string;
   geography: string | null;
+  country_iso3?: string | null;
+  corridor?: string | null;
+  event_direction?: string | null;
   development_type: string;
   published_at: string;
   date_precision: "exact" | "day";
@@ -646,7 +649,7 @@ export function selectBoundedRetainedOriginalTargets(
   limit=250,
 ):StatelessIntelligenceSignal[] {
   if(!Array.isArray(current)||!Array.isArray(retained)||
-     current.length>250||retained.length>MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS||
+     current.length>475||retained.length>MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS||
      !Number.isSafeInteger(limit)||limit<1||limit>MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS)
     throw Error("PRIVATE_ORIGINAL_REFERENCE_TARGET_BUDGET_INVALID");
   const targets=new Map<string,StatelessIntelligenceSignal>();

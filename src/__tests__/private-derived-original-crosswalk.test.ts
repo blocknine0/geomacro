@@ -55,7 +55,7 @@ describe("ephemeral first-party original-reference crosswalk for D1-derived lead
   expect(reconcilePrivateDerivedSourceRefs([original],selected,NOW).size).toBe(1);
   expect(reconcilePrivateDerivedSourceRefs([original],Array(601).fill(fresh),NOW).size).toBe(0);
   expect(()=>selectBoundedRetainedOriginalTargets([fresh],retained,601)).toThrow();
-  expect(()=>selectBoundedRetainedOriginalTargets(Array(251).fill(fresh),[])).toThrow();
+  expect(()=>selectBoundedRetainedOriginalTargets(Array(601).fill(fresh),[])).toThrow();
  });
  it("reconstructs precise source identity only when the exact preexisting derived bytes agree",()=>{
   const [signal]=deriveStatelessSignals([original],NOW);

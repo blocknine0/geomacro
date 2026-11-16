@@ -27,7 +27,8 @@ describe("homepage reader and buyer journeys", () => {
     for (const target of ["/intelligence", "/ask-geomacro", "/data-api", "/pricing", "/institutional"]) {
       expect(html).toContain(`href="${target}"`);
     }
-    expect(html).toContain("API keys and self-service checkout coming soon.");
+    expect(html).toContain("Checkout availability is verified separately.");
+    expect(html).not.toMatch(/API keys.*coming soon/iu);
     expect(html).not.toContain('href="/risk-indices"');
     expect(html).not.toMatch(/Generate structured JSON|Paste news text|Source license|payment-signature/);
   });

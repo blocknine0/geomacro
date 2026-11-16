@@ -106,7 +106,7 @@ test("live website audit compares only active catalog rows, not retired prices",
 
 test("outside-in Store check verifies actual plans, packs and locked checkout", async () => {
   const {assertLockedStorefront} = await import("../lib/website-live-audit-contract.mjs");
-  const html=String.raw`<main>Payments locked · no charge Live checkout locked · no charge
+  const html=String.raw`<main>Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API
     PayPal / card checkout Manual transfer / QR
     <article data-plan-id="starter_dev"><span>$9</span><span>1,000 credits</span></article>
     <article data-pack-id="starter_pack"><span>$5</span><span>100 credits</span></article>
@@ -117,7 +117,7 @@ test("outside-in Store check verifies actual plans, packs and locked checkout", 
     {plans:1,packs:1,checkout_locked:true});
   assert.throws(()=>assertLockedStorefront(html.replace("$9","$99"),plans,packs),
     /PUBLIC_STORE_PLAN_PRICE_MISMATCH/);
-  assert.throws(()=>assertLockedStorefront(html.replace("Payments locked · no charge",""),plans,packs),
+  assert.throws(()=>assertLockedStorefront(html+" Payments locked · no charge",plans,packs),
     /PUBLIC_STORE_LOCKED_PRESENTATION_MISMATCH/);
 });
 

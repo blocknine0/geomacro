@@ -386,7 +386,7 @@ describe("website lock governance", () => {
     expect(desk).toContain("Earlier news · Dated");
     expect(desk).not.toContain("website-derived-news-html");
     expect(desk).toContain("RISK → EFFECT → PRICE IMPACT");
-    expect(desk).toContain("Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON");
+    expect(desk).toContain("Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON");
     expect(desk).not.toContain("SOURCE / PUBLISHER");
     expect(audit.approved_ui_commit).toBe("972d987f44f328d727fb3147daf2b6807a344a38");
     expect(audit.previous_baseline_sha).toBe("ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e");

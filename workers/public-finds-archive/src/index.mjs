@@ -1,7 +1,7 @@
 // Public static-only coherent-snapshot guard. It never touches D1, B2,
 // partner endpoints, source identities, signing, payment or original dates.
 const GUARDED=new Set(["/latest.json","/coverage-72h.json","/daily-highlights.json"]);
-const MAX_BYTES=2_000_000,MAX_AGE=6*60*60_000;
+const MAX_BYTES=4_000_000,MAX_AGE=6*60*60_000;
 const denied=()=>Response.json({
  ok:false,error:"PUBLIC_ARCHIVE_COHORT_UNVERIFIED",
  free_website_only:true,paid_eligible:false
@@ -17,7 +17,7 @@ export function checkPublicStaticCohort(latest,coverage,now=Date.now()){
     latest.delivery_scope!=="free_website_only"||
     latest.chargeable!==false||latest.scored!==false||
     latest.supabase_dependency!==false||latest.retention_hours!==72||
-    !Array.isArray(latest.signals)||latest.signals.length>250||
+    !Array.isArray(latest.signals)||latest.signals.length>475||
     coverage?.schema!=="geomacro.free-derived-archive-eligibility.v1"||
     coverage.retention_hours!==72||coverage.free_website_only!==true||
     coverage.signed_or_scored!==false||

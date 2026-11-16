@@ -8,6 +8,7 @@ import {
  publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,buildCurrentArchiveEligibility,
 } from "./publish-permanent-derived-news-archive.mjs";
 import {buildHeldPrivateOsintProjection} from "../lib/private-osint-held-public-projection.mjs";
+import {projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 
 const NOW=Date.parse("2026-10-26T00:00:00.000Z");
 const tempDirs=[];
@@ -46,7 +47,7 @@ const failD1=async()=>new Response(JSON.stringify({ok:false,error:"quota"}),{sta
 afterEach(()=>{for(const dir of tempDirs.splice(0))rmSync(dir,{recursive:true,force:true});});
 
 describe("permanent derived-only website archive",()=>{
- it("round-robins current category records before applying the 250-row feed cap",()=>{
+ it("round-robins current category records before applying the 475-row feed cap",()=>{
   const rows=[
    ...Array.from({length:300},(_,i)=>({...signal(i.toString(16).padStart(8,"0"),"2026-10","geopolitics"),
      title:"Geomacro finds geopolitical incident number "+i})),
@@ -55,39 +56,44 @@ describe("permanent derived-only website archive",()=>{
    ...Array.from({length:14},(_,i)=>({...signal((2000+i).toString(16).padStart(8,"0"),"2026-10","rare_earth"),
      title:"Geomacro finds mineral output report number "+i})),
   ];
-  const selected=selectCurrentArchiveSignals(rows,250);
+  const selected=selectCurrentArchiveSignals(rows,475);
   const counts={geopolitics:0,macro:0,rare_earth:0};
   for(const row of selected)counts[row.category]++;
-  assert.equal(selected.length,250);
-  assert.deepEqual(counts,{geopolitics:166,macro:70,rare_earth:14});
-  assert.equal(new Set(selected.map(row=>row.id)).size,250);
+  assert.equal(selected.length,384);
+  assert.deepEqual(counts,{geopolitics:300,macro:70,rare_earth:14});
+  assert.equal(new Set(selected.map(row=>row.id)).size,384);
   assert.deepEqual(selected,selected.slice().sort((a,b)=>
    b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id)));
  });
- it("counts all current concrete official stories beyond 250 while separating OSINT and stale records",()=>{
+ it("counts current concrete findings within the 475-row feed while separating OSINT and stale records",()=>{
   const originals=Array.from({length:280},(_,i)=>({
     ...signal(i.toString(16).padStart(8,"0"),"2026-10","macro"),
     title:"Geomacro finds central bank policy measure number "+i,
   }));
-  const osint={...signal("ffffffff","2026-10","rare_earth"),
-    title:"Geomacro finds Chile copper supply report example",
-    status:"osint_feed_observed_unverified",
+  const osint=projectSourceNeutralOsintSignal({
+    ...signal("ffffffff","2026-10","rare_earth"),topic:"critical-mineral inputs",
+    geography:"Chile",country_iso3:"CHL",corridor:null,event_direction:"tightening",
+    event_action:"Reported Exposure to Supply Constraints",
+    title:"Private source title is not projected",
+    what_changed:"Private source prose is discarded by the shared projection.",
+    why_it_matters:"Private source analysis is discarded by the shared projection.",
+    sources_credited:[],status:"osint_feed_observed_unverified",
     development_type:"unverified OSINT feed observation",
-    sources_credited:["Monitored feed: example.org"]};
+  });
   const old={...signal("ffffeeee","2026-09","geopolitics"),
     title:"Geomacro finds historical geopolitics report example"};
   const current=[...originals,osint];
-  const preview=selectCurrentArchiveSignals(current,250);
+  const preview=selectCurrentArchiveSignals(current,475);
   const stats=buildCurrentArchiveEligibility([...current,old],NOW,preview);
-  assert.equal(preview.length,250);
+  assert.equal(preview.length,281);
   assert.equal(stats.original_release_eligible_total,280);
   assert.equal(stats.free_displayable_findings_total,281);
-  assert.equal(stats.free_displayable_outside_latest_preview,31);
+  assert.equal(stats.free_displayable_outside_latest_preview,0);
   assert.equal(stats.free_displayable_by_category.rare_earth,1);
   assert.equal(stats.free_displayable_status,"MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED");
   assert.deepEqual(stats.original_release_by_category,{geopolitics:0,macro:280,rare_earth:0});
   assert.equal(stats.pending_osint_total,1);
-  assert.equal(stats.eligible_outside_latest_preview,31);
+  assert.equal(stats.eligible_outside_latest_preview,0);
   assert.equal(stats.unique_current_findings,281);
   assert.equal(stats.unverified_promoted,false);
   assert.equal(stats.paid_customer_eligible,false);
@@ -138,7 +144,7 @@ describe("permanent derived-only website archive",()=>{
   const duplicate=signal("1234abcd","2026-10","macro");
   assert.throws(()=>selectCurrentArchiveSignals([duplicate,{...duplicate}],250),
    /PERMANENT_ARCHIVE_LATEST_INPUT_INVALID/);
-  assert.throws(()=>selectCurrentArchiveSignals([duplicate],251),
+  assert.throws(()=>selectCurrentArchiveSignals([duplicate],476),
    /PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID/);
  });
  it("keeps old signals forever and adds new signals without D1",async()=>{
@@ -161,7 +167,7 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(coverage.latest_preview_rows,1);
   assert.equal(coverage.paid_customer_eligible,false);
  });
- it("drops held OSINT without a concrete transformed country/action and performs no D1 read",async()=>{
+ it("publishes country/topic-classified held OSINT in a concrete form without any D1 read",async()=>{
   const p=temp();
   const item={
    schema:"geomacro.reusable-news-json.v1",id:"news-"+"a".repeat(64),
@@ -182,16 +188,21 @@ describe("permanent derived-only website archive",()=>{
   const urls=[];
   const result=await publishPermanentDerivedNewsArchive({...p,allowD1Reads:false,
    fetchImpl:async url=>{urls.push(String(url));return new Response("unavailable",{status:503})},now:NOW});
-  assert.equal(projection.signals.length,0);
-  assert.equal(result.new_signals_added,0);
-  assert.equal(result.deploy_needed,false);
+  assert.equal(projection.signals.length,1);
+  assert.match(projection.signals[0].title,/^GeoMacro Critical Minerals Brief/u);
+  assert.match(projection.signals[0].why_it_matters,/Action Posture: REQUIRE_APPROVAL/u);
+  assert.equal(result.new_signals_added,1);
+  assert.equal(result.deploy_needed,true);
   assert.equal(result.zero_d1_mode,true);
   assert.equal(result.d1_reads_performed,0);
   assert.equal(result.d1_used_for_public_reads,false);
   assert.equal(urls.some(url=>url=== "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate"),false);
-  assert.deepEqual(urls,[]);
-  assert.equal(existsSync(join(p.assetsDir,"latest.json")),false);
-  assert.equal(JSON.parse(readFileSync(p.candidatePath,"utf8")).signals.length,0);
+  assert.deepEqual(urls,["https://geomacro-public-finds-archive.daspallab202391.workers.dev/index.json"]);
+  assert.equal(existsSync(join(p.assetsDir,"latest.json")),true);
+  const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
+  assert.equal(latest.signals.length,1);
+  assert.match(latest.signals[0].title,/^GeoMacro Critical Minerals Brief/u);
+  assert.equal(JSON.parse(readFileSync(p.candidatePath,"utf8")).signals.length,1);
  });
  it("refuses to combine zero-D1 publication mode with canonical catch-up",async()=>{
   const p=temp();

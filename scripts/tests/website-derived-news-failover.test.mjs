@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
 import {decideWebsiteNewsBackstop,verifiedBackstopPublicationTime,verifiedPrimaryPublicationTime,BACKSTOP_AFTER_MS} from "../lib/website-derived-news-failover.mjs";
+import {projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 const NOW=Date.parse("2026-10-13T08:22:00.000Z");
 const success=(at)=>({
   status:"completed", conclusion:"success",head_branch:"main",updated_at:at,
@@ -305,17 +306,18 @@ test("production cadence backstop uses the shared OSINT-safe readback contract",
   assert.ok(verifier.includes("DERIVED_NEWS_PUBLIC_READBACK_CONTRACT_INVALID"));
   assert.ok(!workflow.includes('/https?:\\/\\/|www\\./iu.test(JSON.stringify(s))'));
   const {isSafeDerivedNewsReadbackSignal}=await import("../lib/derived-news-readback-policy.mjs");
-  const safe={
+  const safe=projectSourceNeutralOsintSignal({
     id:"macro-12345678",category:"macro",
-    title:"Geomacro finds official economic statistics source-feed observation",
-    what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
-    why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
-    topic:"official economic statistics",geography:null,
+    title:"Canadian release headline kept out of the public derivative",
+    what_changed:"A dated observation concerns tightening FX liquidity conditions in Canada.",
+    why_it_matters:"Funding pressure can raise local settlement costs and shift CAD/USD and sovereign spreads.",
+    topic:"FX and external balances",geography:"Canada",country_iso3:"CAN",corridor:null,
+    event_direction:"tightening",event_action:"Reported Indicator Update",
     development_type:"unverified OSINT feed observation",
     published_at:"2026-10-25T11:25:00.000Z",date_precision:"exact",observed_release_count:1,
-    sources_credited:["Monitored feed: www.bankofcanada.ca"],
+    sources_credited:[],
     status:"osint_feed_observed_unverified",same_event_corrob_verified:false,severity:null,
-  };
+  });
   assert.equal(isSafeDerivedNewsReadbackSignal(safe),true);
   assert.equal(isSafeDerivedNewsReadbackSignal({...safe,what_changed:"Open https://example.com/path"}),false);
   assert.equal(isSafeDerivedNewsReadbackSignal({...safe,sources_credited:["Monitored feed: bankofcanada.ca/path"]}),false);

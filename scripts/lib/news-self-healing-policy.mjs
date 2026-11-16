@@ -36,7 +36,7 @@ export function planNewsSelfHeal({
     latest.scored!==false||latest.supabase_dependency!==false||
     coverage.paid_customer_eligible!==false||
     daily.chargeable!==false||daily.official_only!==true||
-    !Array.isArray(latest.signals)||latest.signals.length>250||
+    !Array.isArray(latest.signals)||latest.signals.length>475||
     !Array.isArray(daily.signals)||daily.signals.length>36||
     !Number.isSafeInteger(index.total_signals)||
     index.total_signals<latest.signals.length)
@@ -61,7 +61,7 @@ export function planNewsSelfHeal({
   return outcome("BLOCKED","D1_BUNDLE_CONTRACT_INVALID");
  if(typeof classifyDisplay!=="function"||typeof isArchiveEligible!=="function")
   return outcome("BLOCKED","POLICY_MISSING");
- // The 250-row latest feed is only a preview. Current archive coverage is
+ // The 475-row latest feed is only a preview. Current archive coverage is
  // calculated from ALL immutable monthly/category shards, and may truthfully
  // report more current unverified observations than fit in the preview.
  // Do not call this ordinary capacity condition a failed or missing archive.

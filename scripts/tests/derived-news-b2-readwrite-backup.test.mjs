@@ -6,7 +6,7 @@ import {archiveDerivedJournalToB2,readExactCurrentDerivedJournal,
  from "../lib/derived-news-b2-readwrite-backup.mjs";
 import {runGovernedDerivedNewsBackup,summarizeSafeBackupReceipt}
  from "../ops/archive-live-derived-news-to-b2.mjs";
-import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
+import {isSafeDerivedNewsReadbackSignal,projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 const now=new Date("2026-10-22T12:07:00Z");
 const sample=(category,id)=>{
  const topics={geopolitics:"security and diplomacy",macro:"monetary policy",
@@ -75,14 +75,16 @@ test("actual three-domain D1 stories are B2 PUT+GET restored exact, no paid sign
  assert.equal(result.payments,0);
 });
 test("safe domain-only OSINT attribution passes the same Worker, D1 readback and B2 backup contract",async()=>{
- const osint={...sample("macro","4567abcd"),
-   title:"Geomacro finds official economic statistics source-feed observation",
-   what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
-   why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
-   topic:"official economic statistics",geography:null,
+ const osint={...projectSourceNeutralOsintSignal({...sample("macro","4567abcd"),
+   title:"Canadian economic release contains a source headline that must remain private",
+   what_changed:"A monitored source feed contains a dated item about Canadian FX liquidity.",
+   why_it_matters:"Currency funding conditions may change downstream import costs and settlement risk.",
+   topic:"FX and external balances",geography:"Canada",country_iso3:"CAN",corridor:null,
+   event_direction:"tightening",event_action:"Reported Indicator Update",
    development_type:"unverified OSINT feed observation",
    sources_credited:["Monitored feed: www.bankofcanada.ca"],
-   status:"osint_feed_observed_unverified"};
+   status:"osint_feed_observed_unverified"}),
+   sources_credited:["Monitored feed: www.bankofcanada.ca"]};
  assert.equal(isSafeDerivedNewsReadbackSignal(osint),true);
  const fromD1=await readExactCurrentDerivedJournal({fetchImpl:fetchDoc(bundle([...rows,osint])),now});
  assert.equal(fromD1.length,4);
@@ -105,13 +107,14 @@ test("URL/path/HTML in OSINT attribution still fails closed at the archive bound
   "Monitored feed: www.bankofcanada.ca/rss.xml",
   "Monitored feed: news.un.org (aggregator; original publisher not verified)",
  ]) {
-  const osint={...sample("macro","4567abcd"),
-    title:"Geomacro finds official economic statistics source-feed observation",
-    what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
-    why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
-    topic:"official economic statistics",geography:null,
+  const osint={...projectSourceNeutralOsintSignal({...sample("macro","4567abcd"),
+    title:"Canadian economic release contains a source headline that must remain private",
+    what_changed:"A monitored source feed contains a dated item about Canadian FX liquidity.",
+    why_it_matters:"Currency funding conditions may change downstream import costs and settlement risk.",
+    topic:"FX and external balances",geography:"Canada",country_iso3:"CAN",corridor:null,
+    event_direction:"tightening",event_action:"Reported Indicator Update",
     development_type:"unverified OSINT feed observation",
-    sources_credited:[credit],status:"osint_feed_observed_unverified"};
+    sources_credited:[credit],status:"osint_feed_observed_unverified"}),sources_credited:[credit]};
   await assert.rejects(()=>archiveDerivedJournalToB2({
     fetchImpl:fetchDoc(bundle([...rows,osint])),b2:b2(),now
   }),/DERIVED_NEWS_B2_/u);

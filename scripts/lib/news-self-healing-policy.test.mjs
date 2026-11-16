@@ -68,7 +68,7 @@ test("immutable ID mismatch, truncated preview, bogus cohort fail closed",()=>{
  const mismatched=sample();mismatched.archive.daily.generated_at=new Date(NOW-2*3600_000).toISOString();
  assert.equal(planNewsSelfHeal(mismatched).workflow,"deploy-permanent-public-finds-archive.yml");
 });
-test("truthful 250-row preview truncation passes with exact public shard ID census",()=>{
+test("truthful latest-preview truncation passes with exact public shard ID census",()=>{
  const s=sample();
  const outside=row("rare_earth","b7ac15e2");
  s.archive.coverage.free_displayable_outside_latest_preview=1;

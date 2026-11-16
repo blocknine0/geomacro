@@ -19,14 +19,15 @@ test("actual SQLite D1 pruning retains older actor/action OSINT over 600 newer g
    }),inserted);
   }
   const concrete={
-   id:"rare_earth-abcdef12",category:"rare_earth",topic:"Copper Supply & Processing",
+   id:"rare_earth-abcdef12",category:"rare_earth",topic:"critical-mineral inputs",
    status:"osint_feed_observed_unverified",
-   title:"Geomacro finds Copper Supply & Processing · Approval or Authorization — Chile",
-   what_changed:"Unverified feed observation: Chile's Ministry of Mines approved a copper processing project.",
-   why_it_matters:"Risk: approval affecting copper supply and processing in Chile. Effect: buyers and processors may need to recheck copper delivery timing, eligible suppliers and conversion capacity linked to Chile if the report is confirmed. Price channel to monitor: COMEX copper benchmark; concentrate treatment charges. Action Posture: REQUIRE_APPROVAL; no independent corroboration or price move is asserted.",
-   geography:"Chile",development_type:"unverified OSINT feed observation",
-   published_at:new Date(now-36*3600000).toISOString(),date_precision:"exact",
-   observed_release_count:1,sources_credited:[],same_event_corrob_verified:false,severity:null,
+   title:"GeoMacro Critical Minerals Brief · Critical-Mineral Inputs — Chile (CHL)",
+   what_changed:"WHAT CHANGED: GeoMacro's dated observation classifies mineral regulators and supply-chain operators activity in critical-mineral inputs for Chile as tightening or disruption pressure.",
+   why_it_matters:"WHY IT MATTERS — Risk: tightening critical-mineral inputs pressure in Chile → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
+   geography:"Chile",country_iso3:"CHL",corridor:null,event_direction:"tightening",
+   development_type:"unverified OSINT feed observation",date_precision:"exact",
+   published_at:new Date(now-36*3600000).toISOString(),observed_release_count:1,
+   sources_credited:["Monitored feed: monitored.example"],same_event_corrob_verified:false,severity:null
   };
   const older=new Date(now-36*3600000).toISOString();
   put.run(concrete.id,concrete.category,older,"exact",JSON.stringify(concrete),inserted);

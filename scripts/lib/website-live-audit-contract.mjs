@@ -64,8 +64,8 @@ function offerArticle(html, attribute, id) {
 
 export function assertLockedStorefront(html, plans, packs) {
   if (typeof html !== "string" ||
-      !html.includes("Payments locked · no charge") ||
-      !html.includes("Live checkout locked · no charge") ||
+      html.includes("Payments locked · no charge") ||
+      !html.includes("Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON") ||
       !html.includes("PayPal / card checkout") ||
       !html.includes("Manual transfer / QR") ||
       html.includes('data-capability="risk_gate_bundle"'))

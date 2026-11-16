@@ -7,6 +7,11 @@ const input=process.env.GEOMACRO_RISK_STREAM_CANDIDATES_FILE;
 if(!input||!existsSync(input)){
  console.log(JSON.stringify({status:"NO_ITEM_LICENSE_VERIFIED_CANDIDATES",candidate_count:0}));
 }else{
+ const writes=Number(process.env.GEOMACRO_RISK_STREAM_D1_DAILY_WRITES);
+ if(process.env.GEOMACRO_RISK_STREAM_D1_CAP_REQUIRED!=="true"||
+    process.env.GEOMACRO_RISK_STREAM_D1_CAP_ADMITTED!=="true"||
+    !Number.isSafeInteger(writes)||writes<0||writes>=1_100_000)
+  fail("DAILY_D1_WRITE_CAP_NOT_ADMITTED");
  const originals=readFileSync(input,"utf8").split(/\r?\n/u).filter(Boolean).map(line=>{
   try{return JSON.parse(line)}catch{fail("JSONL_INVALID")}
  });

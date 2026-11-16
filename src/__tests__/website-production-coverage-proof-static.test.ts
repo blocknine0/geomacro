@@ -41,9 +41,11 @@ describe("public production coverage proof", () => {
   it("keeps Intelligence cards concrete and points each card and the feed header to Store & API", () => {
     const desk = read("src/components/intelligence/stateless-live-desk.tsx");
     const macro = read("src/components/intelligence/macro-fastlane-panel.tsx");
-    const cta = "Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API (/pricing)";
+    const cta = "Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API";
 
     expect(desk.match(new RegExp(cta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gu"))?.length).toBe(2);
+    expect(desk).toContain('href="/pricing"');
+    expect(read("src/routes/intelligence.tsx")).toContain('to="/pricing"');
     expect(desk).not.toContain("an unverified geopolitical watch signal");
     expect(desk).not.toContain("an unverified macro watch signal");
     expect(desk).not.toContain("an unverified critical-minerals watch signal");

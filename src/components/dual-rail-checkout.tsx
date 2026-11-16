@@ -32,12 +32,9 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Select any plan or credit pack above, then preview PayPal / card, native USDC, or AI-agent Base USDC x402.
-            This embedded checkout is a non-payable preview while integration testing is locked.
+            This embedded checkout is a non-payable preview. Contact us for current access arrangements.
           </p>
         </div>
-        <span className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-          Payments locked · no charge
-        </span>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
