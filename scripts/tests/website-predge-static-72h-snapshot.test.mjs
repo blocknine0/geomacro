@@ -2,21 +2,30 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {buildWebsitePilotSnapshot,verifyWebsitePilotStaticReadback,WEBSITE_PILOT_MAX_ROWS}
  from "../lib/website-predge-static-72h-snapshot.mjs";
+import {projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 
 const now=Date.parse("2026-10-29T09:45:00.000Z");
 const stamp="2026-10-29T08:00:00.000Z";
-const row=(category,id,status="official_release_observed_unscored")=>({
- id:category+"-"+id,category,
- title:"Geomacro finds original development about sector policy updates",
- what_changed:"A dated official public monitoring input was observed and the event details require review.",
- why_it_matters:"The observation may matter for situational awareness but cannot establish price impact.",
- topic:"monetary policy",geography:null,
- development_type:status==="osint_feed_observed_unverified"?"unverified OSINT feed observation":"policy update",
- published_at:stamp,date_precision:"exact",observed_release_count:1,
- sources_credited:status==="osint_feed_observed_unverified"?
-  ["Monitored feed: www.example.org"]:["Federal Reserve Board"],
- status,same_event_corrob_verified:false,severity:null,
-});
+const row=(category,id,status="official_release_observed_unscored")=>status==="osint_feed_observed_unverified"?
+ projectSourceNeutralOsintSignal({
+  id:category+"-"+id,category,title:"A private publisher headline remains outside this projection",
+  what_changed:"A dated observation concerns supply and processing policy for Australian critical-mineral inputs.",
+  why_it_matters:"Processor access and industrial input availability may shift the relevant mineral benchmark.",
+  topic:"critical-mineral inputs",geography:"Australia",country_iso3:"AUS",corridor:null,
+  event_direction:"tightening",event_action:"Reported Indicator Update",
+  development_type:"unverified OSINT feed observation",published_at:stamp,date_precision:"exact",
+  observed_release_count:1,sources_credited:[],status,
+  same_event_corrob_verified:false,severity:null,
+ }):({
+  id:category+"-"+id,category,
+  title:"Geomacro finds original development about sector policy updates",
+  what_changed:"A dated official public monitoring input was observed and the event details require review.",
+  why_it_matters:"The observation may matter for situational awareness but cannot establish price impact.",
+  topic:"monetary policy",geography:null,development_type:"policy update",
+  published_at:stamp,date_precision:"exact",observed_release_count:1,
+  sources_credited:["Federal Reserve Board"],status,
+  same_event_corrob_verified:false,severity:null,
+ });
 test("single 72h Website cohort retains all three categories, IDs, clock and OSINT without conversion",()=>{
  const records=[row("geopolitics","12345678"),row("macro","abcdef12"),
   row("rare_earth","77778888","osint_feed_observed_unverified")];
