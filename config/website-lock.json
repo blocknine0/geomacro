@@ -1337,5 +1337,22 @@
     "protected_intelligence_and_risk_index_files_unchanged": true,
     "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_intelligence_risk_gate_conversion_20261116": {
+    "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk → Effect → Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
+    "purpose": "Improve only the Intelligence route and desk presentation. Preserve unscored public evidence semantics, source attribution, no copyrighted-source republishing, disabled paid execution, and the independent Global Risk presentation lock.",
+    "approved_source_commit": "0bda837b3c4d04bf8edd30eb8d39f8053e93fd45",
+    "approved_paths": [
+      "src/routes/intelligence.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_flags_enabled": false,
+    "durable_objects_added": false,
+    "extra_public_route_d1_reads_added": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }

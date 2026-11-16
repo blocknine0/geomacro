@@ -179,6 +179,9 @@ const approvedPricing = [
   // Exact immutable source blobs; all other website and Global Risk locks remain active.
   config.approved_risk_indices_page_retirement_20261114,
   config.approved_pricing_credit_risk_gate_20261116,
+  // Owner-requested Intelligence freshness and Risk Gate conversion copy;
+  // authorize only the exact route and desk component blobs in this PR.
+  config.approved_intelligence_risk_gate_conversion_20261116,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
