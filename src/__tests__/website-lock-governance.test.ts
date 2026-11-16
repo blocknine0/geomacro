@@ -538,4 +538,19 @@ describe("website lock governance", () => {
     expect(config.published_baseline).toContain("15-minute original-source delay");
     expect(config.published_baseline).toContain("independent 60m Global Risk remains");
   });
+
+  it("pins the source-neutral Private OSINT watch presentation to exact blobs without enabling paid execution",()=>{
+    const config=JSON.parse(read("config/website-lock.json"));
+    const approval=config.approved_private_osint_website_projection_20261116;
+    expect(approval.exact_blob_lock).toBe(true);
+    expect(approval.approved_paths).toEqual([
+      "src/routes/intelligence.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+    ]);
+    expect(approval.paid_flags_enabled).toBe(false);
+    expect(approval.durable_objects_added).toBe(false);
+    expect(approval.extra_public_route_d1_reads_added).toBe(false);
+    expect(read("scripts/ops/verify-website-lock.mjs"))
+      .toContain("config.approved_private_osint_website_projection_20261116");
+  });
 });
