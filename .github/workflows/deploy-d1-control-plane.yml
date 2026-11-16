@@ -1425,6 +1425,11 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Require live Risk Stream runtime to match this deployment
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: node scripts/ops/verify-risk-stream-runtime-live.mjs
+
       - name: Verify real progressive Risk Gate Ed25519 and D1 idempotent replay (no funds)
         shell: bash
         env:

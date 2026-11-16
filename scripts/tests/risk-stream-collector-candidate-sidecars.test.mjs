@@ -147,12 +147,22 @@ test("private collector adds only redacted corroboration features at dual attest
   controlPlaneToken:"c".repeat(48),factsPublicB64:facts.publicKey.export({format:"der",type:"spki"}).toString("base64"),
   rightsPublicB64:rights.publicKey.export({format:"der",type:"spki"}).toString("base64"),
   sleepImpl:async()=>{},fetchImpl:async(url,options)=>{
+   if(new URL(url).pathname.endsWith("/runtime"))return {ok:true,status:200,json:async()=>({
+    schema:"geomacro.risk-stream-runtime-status.v1",ready:true,deployed_source_sha:null,
+    research_flags:{active:true,ingestion_enabled:true,production_mode:true,hot50_research_enabled:true},
+    queue_binding_present:true,d1_binding_present:true,auth_configured:true})};
    if(new URL(url).pathname.endsWith("/attest")){
     const draft={...JSON.parse(options.body).draft,risk_context:context};
     const claims=riskStreamOriginalClaims(draft);
     return {ok:true,status:200,json:async()=>({risk_context:context,proof:{
      facts_signature_b64:sign(null,Buffer.from("geomacro.machine-original-facts.v1\n"+claims),facts.privateKey).toString("base64"),
      rights_signature_b64:sign(null,Buffer.from("geomacro.machine-commercial-rights.v1\n"+claims),rights.privateKey).toString("base64")}})};
+   }
+   if(new URL(url).pathname.endsWith("/readback")){
+    const observation_ids=JSON.parse(options.body).observation_ids;
+    return {ok:true,status:200,json:async()=>({ok:true,
+     schema:"geomacro.risk-stream-readback-receipt.v1",requested:observation_ids.length,
+     readback_count:observation_ids.length,readback_verified:true,observation_ids})};
    }
    posted.push(JSON.parse(options.body));
    return {ok:true,status:202,json:async()=>({ok:true,accepted:1,commercial_delivery:false})};
