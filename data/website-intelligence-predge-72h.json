@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-16T18:37:00.664Z",
+  "checked_at": "2026-11-16T18:43:17.008Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 381,
+  "item_count": 382,
   "counts": {
-    "geopolitics": 194,
+    "geopolitics": 195,
     "macro": 175,
     "rare_earth": 12
   },
-  "source_native_ids_sha256": "0bdd5edb254aa5103b948503fbac74c41b942d4541a1b97d772c1fd3f656f53a",
+  "source_native_ids_sha256": "59dc4a44e0c81eaaba08f3fea7be28ee7875c8c113a66aca59c21a959bf3618e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,27 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-5c9f4764",
+      "category": "geopolitics",
+      "title": "GeoMacro Geopolitics Brief · Geopolitical Security — Lebanon (LBN)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported update by public authorities and security actors, affecting geopolitical security in Lebanon; direction is uncertain (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: uncertain geopolitical security pressure in Lebanon → Downstream effect: routing, transit continuity and insurance costs may shift → Price impact channel: regional freight and war-risk insurance rates. Action Posture: REQUIRE_APPROVAL.",
+      "topic": "geopolitical security",
+      "geography": "Lebanon",
+      "country_iso3": "LBN",
+      "corridor": null,
+      "event_direction": "uncertain",
+      "event_action": "Reported Update",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T18:37:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-afa2255c",
       "category": "macro",
