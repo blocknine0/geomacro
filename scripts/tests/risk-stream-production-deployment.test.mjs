@@ -114,3 +114,15 @@ test("deployment wiring keeps Store checkout default off",()=>{
  assert.match(workflow,/GEOMACRO_STORE_CHECKOUT_ENABLED: \$\{\{ vars\.GEOMACRO_STORE_CHECKOUT_ENABLED \|\| '' \}\}/);
  assert.doesNotMatch(example,/"GEOMACRO_STORE_CHECKOUT_ENABLED": "YES"/);
 });
+
+test("production deployment cannot pass until its live Risk Stream runtime is accepted",()=>{
+ const deploy=workflow.indexOf("      - name: Deploy D1 control-plane Worker with pinned Wrangler");
+ const origin=workflow.indexOf("      - name: Require HTTPS deployment origin",deploy);
+ const runtime=workflow.indexOf("      - name: Require live Risk Stream runtime to match this deployment",origin);
+ const progressive=workflow.indexOf("      - name: Verify real progressive Risk Gate Ed25519",runtime);
+ assert.ok(deploy>=0&&origin>deploy&&runtime>origin&&progressive>runtime);
+ const gate=workflow.slice(runtime,progressive);
+ assert.match(gate,/CONTROL_PLANE_URL: \$\{\{ steps\.origin\.outputs\.url \}\}/);
+ assert.match(gate,/verify-risk-stream-runtime-live\.mjs/);
+ assert.doesNotMatch(gate,/continue-on-error/);
+});
