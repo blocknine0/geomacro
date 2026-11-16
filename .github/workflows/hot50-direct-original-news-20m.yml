@@ -244,6 +244,7 @@ jobs:
       cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Production-scoped credentials and vars are required by the sidecar emitter below.
     environment: production
     permissions:
       contents: read

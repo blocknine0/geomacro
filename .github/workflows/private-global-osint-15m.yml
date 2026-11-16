@@ -539,6 +539,7 @@ jobs:
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Production-scoped credentials and vars are required by the sidecar emitter below.
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
