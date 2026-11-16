@@ -433,12 +433,12 @@ jobs:
           GEOMACRO_RISK_STREAM_D1_CAP_ADMITTED: "true"
           GEOMACRO_RISK_STREAM_D1_DAILY_WRITES: ${{ needs.quota-admission.outputs.risk_stream_sidecar_observed_rows_written }}
           CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
-          CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+          CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
         run: |
-          if [ -z "${CONTROL_PLANE_TOKEN:-}" ] && [ -n "${ROOT_LEDGER_TOKEN:-}" ]; then
+          if { [ -z "${CONTROL_PLANE_TOKEN:-}" ] || [ "$CONTROL_PLANE_TOKEN" = "$ROOT_LEDGER_TOKEN" ]; } && [ -n "${ROOT_LEDGER_TOKEN:-}" ]; then
             CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
             echo "::add-mask::$CONTROL_PLANE_TOKEN"
             export CONTROL_PLANE_TOKEN
@@ -678,12 +678,12 @@ jobs:
           GEOMACRO_RISK_STREAM_D1_CAP_ADMITTED: "true"
           GEOMACRO_RISK_STREAM_D1_DAILY_WRITES: ${{ needs.quota-admission.outputs.risk_stream_sidecar_observed_rows_written }}
           CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
-          CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+          CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
         run: |
-          if [ -z "${CONTROL_PLANE_TOKEN:-}" ] && [ -n "${ROOT_LEDGER_TOKEN:-}" ]; then
+          if { [ -z "${CONTROL_PLANE_TOKEN:-}" ] || [ "$CONTROL_PLANE_TOKEN" = "$ROOT_LEDGER_TOKEN" ]; } && [ -n "${ROOT_LEDGER_TOKEN:-}" ]; then
             CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
             echo "::add-mask::$CONTROL_PLANE_TOKEN"
             export CONTROL_PLANE_TOKEN
