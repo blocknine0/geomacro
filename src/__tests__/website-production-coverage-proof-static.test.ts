@@ -32,7 +32,7 @@ describe("public production coverage proof", () => {
     expect(shell).toContain('const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);');
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain('new Set(["/",');
-    expect(shell).toContain("GeoMacro Intelligence · Ed25519-Signed Risk Gates · Store & API pricing available");
+    expect(shell).toContain("GeoMacro Intelligence · Ed25519-Signed Risk Gates · Store &amp; API pricing available");
     expect(shell).not.toContain("API keys coming soon");
     expect(shell).not.toContain("GITHUB_URL");
     expect(shell).not.toContain("AgentCommerceStatus compact");

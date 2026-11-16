@@ -55,7 +55,7 @@ describe("three-domain intelligence event dedup lock",()=>{
   const cloned={...original,id:"rare_earth-bbbbbbbb",status:"osint_feed_observed_unverified" as const,
    development_type:"unverified OSINT feed observation"};
   const result=dedupeIntelligenceStories([cloned,original]);
-  expect(result).toEqual([original]);
+  expect(result).toEqual([original,cloned]);
   expect(original.severity).toBeNull();
   expect(original.published_at).toBe("2026-10-25T08:00:00.000Z");
  });

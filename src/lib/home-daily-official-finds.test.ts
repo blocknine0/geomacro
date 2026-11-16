@@ -41,15 +41,29 @@ describe("official daily highlights in the homepage",()=>{
 });
 
 describe("explicitly unverified recent OSINT homepage lane",()=>{
- const observation=(category:StatelessIntelligenceSignal["category"],id:string,title:string):StatelessIntelligenceSignal=>({
-  ...official(category,id,"2026-11-01T15:00:00.000Z"),
-  title:"Geomacro finds "+title,
-  what_changed:"A monitored source feed reports: "+title+". The report has not been independently verified.",
-  development_type:"unverified OSINT feed observation",
-  topic:category==="rare_earth"?"critical minerals":"foreign policy",
-  status:"osint_feed_observed_unverified",
-  sources_credited:["Monitored feed: example.org"]
- });
+const observation=(category:StatelessIntelligenceSignal["category"],id:string,title:string):StatelessIntelligenceSignal=>{
+ const base=official(category,id,"2026-11-01T15:00:00.000Z");
+ const validTitle=category==="geopolitics"?"UN announced new humanitarian agreement for refugees"
+  :category==="macro"?"Federal Reserve announced an interest rate decision"
+  :"Canada approved new lithium mine funding";
+ const facts=title===validTitle?(category==="geopolitics"?{
+  title:"Geomacro finds Maritime Transit & Freight · Reported Policy or Operating Action — Red Sea Maritime Corridor",
+  what_changed:"Unverified feed observation: Yemen Ministry of Transport introduced Red Sea tanker transit controls.",
+  why_it_matters:"Risk: reported policy or operating action affecting maritime transit & freight in Red Sea Maritime Corridor. Effect: vessel transit, port access and cargo insurance planning may need review for Red Sea Maritime Corridor if the report is confirmed. Price channel to monitor: freight and marine insurance rates. Action Posture: REQUIRE_APPROVAL; no independent corroboration or price move is asserted.",
+  topic:"Maritime Transit & Freight",geography:"Red Sea Maritime Corridor",
+ }:{
+  title:category==="macro"?"Geomacro finds Monetary Policy & FX Liquidity · Reported Policy or Operating Action — Japan":"Geomacro finds Copper Supply & Processing · Approval or Authorization — Canada",
+  what_changed:category==="macro"?"Unverified feed observation: Bank of Japan announced a change to its policy rate guidance for Japan.":"Unverified feed observation: Canada's Ministry of Mines approved a copper processing project.",
+  why_it_matters:category==="macro"?"Risk: reported policy or operating action affecting monetary policy & fx liquidity in Japan. Effect: import settlement, funding costs and local-currency hedging may need review for Japan if the report is confirmed. Price channel to monitor: USD/JPY. Action Posture: REQUIRE_APPROVAL; no independent corroboration or price move is asserted.":"Risk: approval or authorization affecting copper supply & processing in Canada. Effect: buyers and processors may need to recheck copper supply & processing delivery timing, eligible suppliers and conversion capacity linked to Canada if the report is confirmed. Price channel to monitor: COMEX copper benchmark; concentrate treatment charges. Action Posture: REQUIRE_APPROVAL; no independent corroboration or price move is asserted.",
+  topic:category==="macro"?"Monetary Policy & FX Liquidity":"Copper Supply & Processing",
+  geography:category==="macro"?"Japan":"Canada",
+ }):null;
+ return {...base,...(facts??{}),id,category,
+  development_type:"unverified OSINT feed observation",date_precision:"exact",
+  published_at:"2026-11-01T15:00:00.000Z",observed_release_count:1,
+  status:"osint_feed_observed_unverified",sources_credited:["Monitored feed: example.org"],
+  same_event_corrob_verified:false,severity:null};
+};
  it("shows native-dated explicit observations without promoting into official",()=>{
   const rows=[
    observation("geopolitics","geopolitics-23456789","UN announced new humanitarian agreement for refugees"),
