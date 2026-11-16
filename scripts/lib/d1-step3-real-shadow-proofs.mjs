@@ -14,6 +14,30 @@ const NEW=/^geomacro-step3-shadow\.[a-z0-9-]+\.workers\.dev$/u;
 const LEGACY=/^geomacro-step3-shadow-legacy\.[a-z0-9-]+\.workers\.dev$/u;
 const sha=b=>createHash("sha256").update(b).digest("hex");
 const fail=x=>{throw Error("STEP3_PHYSICAL_"+x)};
+function classifyIndependentB2ReadFailure(error){
+ const message=error instanceof Error?error.message:"";
+ if(message==="B2_ARCHIVE_KEY_INVALID")return "ARCHIVE_KEY_INVALID";
+ if(message==="B2_ARCHIVE_KEY_EXPIRED")return "ARCHIVE_KEY_EXPIRED";
+ if(message==="B2_NATIVE_READ_CAPABILITY_MISSING")return "READ_CAPABILITY_MISSING";
+ if(message==="B2_NATIVE_READ_BUCKET_NOT_ALLOWED")return "READ_BUCKET_NOT_ALLOWED";
+ if(message==="B2_NATIVE_READ_PREFIX_NOT_ALLOWED")return "READ_PREFIX_NOT_ALLOWED";
+ if(message==="B2_NATIVE_AUTHORIZE_NETWORK_FAILED")return "AUTH_NETWORK";
+ if(message==="B2_NATIVE_GET_NETWORK_FAILED")return "GET_NETWORK";
+ if(message==="B2_REQUEST_BUDGET_EXHAUSTED")return "REQUEST_BUDGET";
+ if(message==="B2_PROVIDER_THROTTLED")return "PROVIDER_THROTTLED";
+ if(message==="B2_DOWNLOAD_CAP_EXCEEDED")return "DOWNLOAD_CAP";
+ if(message==="B2_TRANSACTION_CAP_EXCEEDED")return "TRANSACTION_CAP";
+ if(message==="B2_GET_RETRY_EXHAUSTED")return "GET_RETRY_EXHAUSTED";
+ const nativeAuth=message.match(/^B2_NATIVE_AUTHORIZE_FAILED_(400|401|403|404|408|429|500|502|503|504)_[A-Za-z0-9_.:-]{1,80}$/u);
+ if(nativeAuth)return "AUTH_HTTP_"+nativeAuth[1];
+ const nativeGet=message.match(/^B2_NATIVE_GET_FAILED_(400|401|403|404|408|429|500|502|503|504)_[A-Za-z0-9_.:-]{1,80}$/u);
+ if(nativeGet)return "NATIVE_GET_HTTP_"+nativeGet[1];
+ const s3Get=message.match(/^B2_GET_FAILED_(400|401|403|404|408|429|500|502|503|504)_[A-Za-z0-9_.:-]{1,80}$/u);
+ if(s3Get)return "S3_GET_HTTP_"+s3Get[1];
+ const s3Head=message.match(/^B2_HEAD_FAILED_(400|401|403|404|408|429|500|502|503|504)_[A-Za-z0-9_.:-]{1,80}$/u);
+ if(s3Head)return "S3_HEAD_HTTP_"+s3Head[1];
+ return "PROVIDER_ERROR_UNCLASSIFIED";
+}
 const isIso=x=>typeof x==="string"&&
  /^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/u.test(x)&&
  Number.isFinite(Date.parse(x));
@@ -62,7 +86,9 @@ export async function verifyRealShadowB2Parity({
  });
  let bytes;
  try{bytes=Buffer.from(await client.get(key))}
- catch{fail("INDEPENDENT_B2_FULL_GET_FAILED")}
+ catch(error){
+  fail("INDEPENDENT_B2_FULL_GET_FAILED_"+classifyIndependentB2ReadFailure(error));
+ }
  if(bytes.length<64||bytes.length>4_000_000||
     sha(bytes)!==source.b2_object_sha256)
   fail("INDEPENDENT_B2_BYTES_OR_SHA256_MISMATCH");
