@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-16T18:43:17.008Z",
+  "generated_at": "2026-11-16T19:39:56.279Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-070063a3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Protection of civilians must be at the heart of Myanmar’s future · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "United Kingdom issued a statement at the UN Third Committee concerning Protection of civilians must be at the heart of Myanmar’s future. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-16T18:24:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-791050dc",
       "category": "geopolitics",
@@ -230,25 +249,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-dcd8ebf3",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Continued violations of Abyei’s demilitarised status are unacceptable · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Continued violations of Abyei’s demilitarised status are unacceptable. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-05T16:11:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
