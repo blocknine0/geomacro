@@ -229,6 +229,36 @@ function ctx(){
   RISK_STREAM_GRO_VERIFY_SPKI_B64:spki(gro)};
  return {db,r2,env,facts,rights,gro};
 }
+test("transient Risk Stream Queue 503 retries three times with bounded backoff",async()=>{
+ const c=ctx(),now=Date.now(),delays=[];let attempts=0;
+ const item=candidate(c,3,"gov",now);
+ c.env.RISK_STREAM_QUEUE.sendBatch=async messages=>{
+  attempts++;
+  if(attempts<3){const error=Error("Cloudflare Queue HTTP 503");error.status=503;throw error;}
+  c.env.messages.push(...messages);
+ };
+ const response=await enqueueRiskStreamEvents(c.env,{
+  schema:"geomacro.risk-stream-ingest-batch.v1",items:[item]
+ },now,{sleeper:async ms=>delays.push(ms),random:()=>0});
+ assert.equal(response.status,202);
+ assert.equal(attempts,3);
+ assert.deepEqual(delays,[100,200]);
+ assert.equal(c.env.messages.length,1);
+});
+test("Risk Stream Queue 503 returns after exactly three retries",async()=>{
+ const c=ctx(),now=Date.now(),delays=[];let attempts=0;
+ const item=candidate(c,4,"gov",now);
+ c.env.RISK_STREAM_QUEUE.sendBatch=async()=>{
+  attempts++;const error=Error("Cloudflare Queue HTTP 503");error.status=503;throw error;
+ };
+ const response=await enqueueRiskStreamEvents(c.env,{
+  schema:"geomacro.risk-stream-ingest-batch.v1",items:[item]
+ },now,{sleeper:async ms=>delays.push(ms),random:()=>0});
+ assert.equal(response.status,503);
+ assert.deepEqual(await response.json(),{ok:false,error:"RISK_STREAM_QUEUE_UNAVAILABLE"});
+ assert.equal(attempts,4);
+ assert.deepEqual(delays,[100,200,400]);
+});
 function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetMs=0,roleOverride=null){
  const original=source==="gov",raw="Original verified event factual record for "+
   category+" "+i+" from "+source+"; direct independent original. Open Government Licence v3 "+
