@@ -83,6 +83,23 @@ function fakeProvider({wrongShadow=false,newR2Missing=false}={}){
  };
  return {fetchImpl,calls};
 }
+test("B2 account governor failures retain safe machine class without leaking arbitrary error text",async()=>{
+ const expectSafeFailure=async(error,code)=>assert.rejects(
+  verifyRealShadowB2Parity({env,source,b2Factory:()=>({get:async()=>{throw error}})}),
+  err=>{
+   assert.match(err.message,new RegExp(code));
+   assert.equal(err.message.includes("private-detail"),false);
+   return true;
+  });
+ await expectSafeFailure(new Error("B2_ACCOUNT_GLOBAL_QUOTA_D1_RESERVATION_FAILED"),
+  /STEP3_PHYSICAL_INDEPENDENT_B2_FULL_GET_FAILED_B2_ACCOUNT_GLOBAL_QUOTA_D1_RESERVATION_FAILED/u);
+ await expectSafeFailure(new Error("B2_GLOBAL_DAILY_QUOTA_EXHAUSTED"),
+  /STEP3_PHYSICAL_INDEPENDENT_B2_FULL_GET_FAILED_B2_GLOBAL_DAILY_QUOTA_EXHAUSTED/u);
+ await assert.rejects(
+  verifyRealShadowB2Parity({env,source,b2Factory:()=>({get:async()=>{throw new TypeError("private-detail")}})}),
+  /STEP3_PHYSICAL_INDEPENDENT_B2_FULL_GET_FAILED_CLIENT_TYPE_ERROR/u
+ );
+});
 test("two deployed shadow identities must each bind to the exact shadow DB",async()=>{
  const p=fakeProvider();
  const r=await verifyRealShadowDualWorkers({env,source,fetchImpl:p.fetchImpl});

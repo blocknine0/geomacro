@@ -36,6 +36,13 @@ function classifyIndependentB2ReadFailure(error){
  if(s3Get)return "S3_GET_HTTP_"+s3Get[1];
  const s3Head=message.match(/^B2_HEAD_FAILED_(400|401|403|404|408|429|500|502|503|504)_[A-Za-z0-9_.:-]{1,80}$/u);
  if(s3Head)return "S3_HEAD_HTTP_"+s3Head[1];
+ // The canonical B2 client also emits safe machine enums from the shared
+ // account quota ledger and native API setup. Preserve only a bounded code;
+ // never persist arbitrary provider text or credentials.
+ const machineCode=message.match(/^B2_([A-Za-z0-9_.:-]{1,120})$/u);
+ if(machineCode)return "B2_"+machineCode[1].replace(/[^A-Za-z0-9]/gu,"_").toUpperCase();
+ if(error instanceof TypeError)return "CLIENT_TYPE_ERROR";
+ if(error instanceof Error&&error.name==="AbortError")return "CLIENT_ABORT";
  return "PROVIDER_ERROR_UNCLASSIFIED";
 }
 const isIso=x=>typeof x==="string"&&
