@@ -4,6 +4,7 @@ import {concreteIntelligenceHeadline,isConcretePublicIntelligence,
   intelligenceRequiredSourceCredits,intelligenceDisplayRejection}
   from "@/lib/intelligence-concrete-publication";
 import {findCardFromObservedRelease} from "@/lib/find-card-v1";
+import {projectSourceNeutralOsintSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
 import type {StatelessIntelligenceSignal} from "@/lib/stateless-intelligence-model";
 
 const at="2026-10-25T12:00:00.000Z";
@@ -42,17 +43,18 @@ describe("all-three-category credited concrete Intelligence display rules",()=>{
   }
  });
  it("retains an explicit not-independently-verified state for source reports",()=>{
-  const row=observation({
+  const legacy=observation({
    status:"osint_feed_observed_unverified",
    development_type:"unverified OSINT feed observation",
    title:"Geomacro finds Bank of Canada announced a new monetary policy review",
    what_changed:"A monitored source feed reports: Bank of Canada announced a new monetary policy review. This report has not been independently verified.",
    sources_credited:["Monitored feed: economics.example"]
   });
+  const row=projectSourceNeutralOsintSignal(legacy)! as StatelessIntelligenceSignal;
   expect(isConcretePublicIntelligence(row)).toBe(true);
+  expect(concreteIntelligenceHeadline(row)).toContain("unverified macro watch signal");
   expect(intelligenceRequiredSourceCredits(row)).toEqual([]);
-  expect(intelligenceDisplayRejection({...row,
-   sources_credited:["Monitored feed: news.un.org"]})).toBe("UNVERIFIED_ORIGINAL_SOURCE");
+  expect(isConcretePublicIntelligence({...row,what_changed:"A private source says the bank changed policy."})).toBe(true);
  });
  it("never upgrades generic updates, unknown actors, scores or unsourced headlines to news",()=>{
   expect(intelligenceDisplayRejection(observation({status:"official_feed_candidate_unscored"})))

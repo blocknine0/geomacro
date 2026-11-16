@@ -171,7 +171,7 @@ test("collector captures the original RSS permalink ephemerally while keeping pr
  assert.equal(officialWebsiteCandidateFromOsint(observed[0],now)?.credit,"United Nations");
 });
 
-test("unverified native-dated source-feed observations become source-identified private-safe cards across all categories",()=>{
+test("unverified native-dated OSINT becomes source-neutral watch cards across all categories",()=>{
  const categories=["geopolitics","macro","rare_earth"];
  for(const category of categories){
   const row={
@@ -190,6 +190,8 @@ test("unverified native-dated source-feed observations become source-identified 
   assert.equal(signal.same_event_corrob_verified,false);
   assert.equal(signal.date_precision,"exact");
   assert.match(signal.sources_credited[0],/Monitored feed: news.google.com \(aggregator; original publisher not verified\)/u);
+  assert.match(signal.title,/unverified .* watch signal/u);
+  assert.match(signal.what_changed,/No underlying event, actor, action, or market impact has been verified/u);
   assert.ok(!JSON.stringify(signal).includes(row.title));
   assert.ok(!JSON.stringify(signal).includes(row.source_url));
   assert.equal(signal.geography,null);
@@ -199,7 +201,7 @@ test("unverified native-dated source-feed observations become source-identified 
  }
 });
 
-test("specific native-dated source reports use observed facts across three categories",()=>{
+test("summarizer callbacks cannot copy source headlines or prose into public watch cards",()=>{
  const examples=[
   ["geopolitics","United States announced a new security policy","United States announced a new security policy across border agencies."],
   ["macro","Federal Reserve announced new monetary policy measures","Federal Reserve announced new monetary policy measures affecting lending conditions."],
@@ -213,9 +215,12 @@ test("specific native-dated source reports use observed facts across three categ
   const signal=unverifiedWebsiteSignalFromOsint(row,now,()=>({headline,change}));
   assert.ok(signal,category);
   assert.equal(signal.status,"osint_feed_observed_unverified");
-  assert.equal(signal.title,"Geomacro finds "+headline);
-  assert.match(signal.what_changed,/monitored source feed reports/u);
+  assert.match(signal.title,/unverified .* watch signal/u);
+  assert.doesNotMatch(signal.what_changed,/monitored source feed reports|announced|release|project/u);
+  assert.doesNotMatch(signal.why_it_matters,/source host|publisher/u);
   assert.ok(!JSON.stringify(signal).includes(row.title));
+  assert.ok(!JSON.stringify(signal).includes(headline));
+  assert.ok(!JSON.stringify(signal).includes(change));
   assert.equal(signal.sources_credited.length,1);
   assert.equal(signal.same_event_corrob_verified,false);
  }
@@ -227,7 +232,7 @@ test("unverified source observations do not claim actor from source host",()=>{
  const derived=unverifiedWebsiteSignalFromOsint(row,now,()=>null);
  assert.ok(derived);
  assert.match(derived.sources_credited[0],/Monitored feed: example.gov/u);
- assert.match(derived.what_changed,/have not been independently verified/u);
+ assert.match(derived.what_changed,/No underlying event, actor, action, or market impact has been verified/u);
  assert.doesNotMatch(derived.title,/example.gov/u);
 });
 
@@ -298,13 +303,13 @@ test("concrete OSINT displaces generic feed candidates without growing the 600-r
   published_at:new Date(at-n*60000).toISOString(),
  }));
  const signal={id:"rare_earth-abc12345",category:"rare_earth",
-    title:"Geomacro finds critical-mineral inputs source-feed observation",
+    title:"Geomacro finds an unverified critical-minerals watch signal",
     published_at:new Date(at-36*3600000).toISOString(),date_precision:"exact",
     status:"osint_feed_observed_unverified",development_type:"unverified OSINT feed observation",
     topic:"critical-mineral inputs",geography:null,
-    what_changed:"A monitored source feed reports: Mining Ministry announced new mineral refinery plans. This report has not been independently verified.",
-    why_it_matters:"A mineral-related source-feed observation can guide checks of supply and production exposure. No actual supply impact is independently verified.",
-    observed_release_count:1,same_event_corrob_verified:false,severity:null,sources_credited:["Monitored feed: mining.example"]};
+    what_changed:"A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+    why_it_matters:"This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+    observed_release_count:1,same_event_corrob_verified:false,severity:null,sources_credited:[]};
  assert.equal(privateWebsiteRetentionPriority(signal),1);
  assert.equal(privateWebsiteRetentionPriority(candidates[0]),0);
  assert.equal(privateWebsiteRetentionNewestFirst(signal,candidates[0]),-1);
@@ -329,8 +334,13 @@ test("concrete OSINT displaces generic feed candidates without growing the 600-r
 });
 
 test("generic OSINT record cannot gain priority over a concrete event",()=>{
- const actor={status:"osint_feed_observed_unverified",topic:"critical-mineral inputs",
-   what_changed:"A monitored source feed reports: The ministry announced a minerals plan."};
+ const actor={id:"rare_earth-abc12345",category:"rare_earth",status:"osint_feed_observed_unverified",
+   development_type:"unverified OSINT feed observation",date_precision:"exact",geography:null,
+   published_at:"2026-10-25T11:25:00.000Z",observed_release_count:1,
+   same_event_corrob_verified:false,severity:null,sources_credited:[],topic:"critical-mineral inputs",
+   title:"Geomacro finds an unverified critical-minerals watch signal",
+   what_changed:"A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+   why_it_matters:"This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact."};
  assert.equal(privateWebsiteRetentionPriority({...actor,topic:"minerals publisher candidate"}),0);
  assert.equal(privateWebsiteRetentionPriority({...actor,what_changed:"Dated item about minerals"}),0);
  assert.equal(privateWebsiteRetentionPriority(actor),1);

@@ -55,9 +55,7 @@ const CATEGORY_STYLE = {
   rare_earth: { bar: "bg-amber-500", icon: "text-amber-500", marker: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300", reading: "CRITICAL MINERALS SIGNAL" },
 } as const;
 
-// LOCKED PRESENTATION CONTRACT: OSINT and official-derived findings share this exact
-// Story component, category styling, layout, save action, What changed and Why it matters.
-// OSINT shares the canonical presentation; the internal unverified status is not shown on the public website.
+// OSINT is shown only as a source-neutral, explicitly unverified watch signal.
 function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
   const mandatoryCredits=intelligenceRequiredSourceCredits(signal);
@@ -82,7 +80,10 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
             {labelFor(signal.category)}
           </span>
         </div>
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
+          {signal.status === "osint_feed_observed_unverified" ? <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">UNVERIFIED WATCH · NO SCORE</span> : null}
+        </div>
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(concreteIntelligenceHeadline(signal) ?? "")}</h3>
         {signal.geography ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(signal.geography)}</p> : null}
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>

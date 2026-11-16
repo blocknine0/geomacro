@@ -12,6 +12,80 @@ export const DERIVED_NEWS_TOPIC_POLICY_REVISION = 3;
 const DOMAIN_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const PROSE_URL_OR_DOMAIN_PATH = /(?:https?:\/\/|www\.|(?:[a-z0-9-]+\.)+[a-z]{2,63}\/)/iu;
 const AGGREGATOR_SUFFIX = " (aggregator; original publisher not verified)";
+const OSINT_TOPICS = Object.freeze({
+  geopolitics: new Set(["geopolitical security", "sanctions and trade restrictions", "geopolitical security"]),
+  macro: new Set(["monetary policy", "inflation and prices", "FX and external balances", "official economic statistics"]),
+  rare_earth: new Set(["critical-mineral inputs", "rare-earth supply"]),
+});
+const OSINT_LABELS = Object.freeze({
+  geopolitics: "geopolitical",
+  macro: "macro",
+  rare_earth: "critical-minerals",
+});
+const OSINT_IMPLICATIONS = Object.freeze({
+  geopolitics: "This unverified watch signal may warrant review of diplomatic, trade, security, or corridor exposure. It does not establish an event or its consequences.",
+  macro: "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+  rare_earth: "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+});
+const OSINT_PUBLIC_FIELDS = new Set(["id","category","title","what_changed","why_it_matters",
+  "topic","geography","development_type","published_at","date_precision",
+  "observed_release_count","sources_credited","status","same_event_corrob_verified","severity"]);
+
+function osintTopic(signal) {
+  const category = signal?.category;
+  const allowed = OSINT_TOPICS[category];
+  return allowed?.has(signal?.topic) ? signal.topic :
+    category === "geopolitics" ? "geopolitical security" :
+    category === "macro" ? "official economic statistics" :
+    category === "rare_earth" ? "critical-mineral inputs" : null;
+}
+
+/** Project a private legacy observation into a source-neutral public watch signal. */
+export function projectSourceNeutralOsintSignal(signal) {
+  if (!signal || signal.status !== "osint_feed_observed_unverified" ||
+      signal.development_type !== "unverified OSINT feed observation" ||
+      signal.date_precision !== "exact" || signal.geography !== null ||
+      !Array.isArray(signal.sources_credited) ||
+      !(signal.sources_credited.length === 0 ||
+        signal.sources_credited.length === 1 && isSafeMonitoredFeedCredit(signal.sources_credited[0])))
+    return null;
+  const topic = osintTopic(signal);
+  const label = OSINT_LABELS[signal.category];
+  if (!topic || !label) return null;
+  return {
+    id: signal.id,
+    category: signal.category,
+    title: `Geomacro finds an unverified ${label} watch signal`,
+    what_changed: `A private watch feed surfaced a ${label} signal for review. No underlying event, actor, action, or market impact has been verified.`,
+    why_it_matters: OSINT_IMPLICATIONS[signal.category],
+    topic,
+    geography: null,
+    development_type: "unverified OSINT feed observation",
+    published_at: signal.published_at,
+    date_precision: "exact",
+    observed_release_count: 1,
+    sources_credited: [],
+    status: "osint_feed_observed_unverified",
+    same_event_corrob_verified: false,
+    severity: null,
+  };
+}
+
+export function isSourceNeutralOsintSignal(signal) {
+  if (!signal || signal.status !== "osint_feed_observed_unverified" ||
+      Object.keys(signal).length!==OSINT_PUBLIC_FIELDS.size ||
+      Object.keys(signal).some(key=>!OSINT_PUBLIC_FIELDS.has(key)) ||
+      !["geopolitics", "macro", "rare_earth"].includes(signal.category) ||
+      signal.date_precision !== "exact" || signal.geography !== null ||
+      signal.development_type !== "unverified OSINT feed observation" ||
+      signal.observed_release_count !== 1 || signal.same_event_corrob_verified !== false ||
+      signal.severity !== null || !Array.isArray(signal.sources_credited) ||
+      signal.sources_credited.length !== 0) return false;
+  const projected = projectSourceNeutralOsintSignal({...signal, sources_credited:[]});
+  return Boolean(projected && signal.title === projected.title &&
+    signal.what_changed === projected.what_changed &&
+    signal.why_it_matters === projected.why_it_matters && signal.topic === projected.topic);
+}
 
 export function isSafeMonitoredFeedCredit(value) {
   if (typeof value !== "string" || value.length > 230 ||
@@ -44,7 +118,8 @@ export function isSafeDerivedNewsReadbackSignal(signal) {
         typeof value !== "string" || value.length > 230 || /[<>]/u.test(value))) return false;
 
   if (signal.status === "osint_feed_observed_unverified") {
-    return signal.development_type === "unverified OSINT feed observation" &&
+    return isSourceNeutralOsintSignal(signal) ||
+      signal.development_type === "unverified OSINT feed observation" &&
       signal.date_precision === "exact" && signal.geography === null &&
       signal.sources_credited.length === 1 &&
       isSafeMonitoredFeedCredit(signal.sources_credited[0]);

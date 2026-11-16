@@ -1,5 +1,5 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect.ts";
-import {isSafeDerivedNewsReadbackSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
+import {isSafeDerivedNewsReadbackSignal,isSourceNeutralOsintSignal,projectSourceNeutralOsintSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
 import {safeDerivedNewsD1FailureClass} from "../../scripts/lib/derived-news-d1-failure.mjs";
 /**
  * Direct, public, derived-only newsroom GET for browser clients.
@@ -121,9 +121,10 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
         (s.status==="osint_feed_observed_unverified" &&
           s.development_type==="unverified OSINT feed observation" &&
           s.date_precision==="exact" && s.geography===null &&
-          Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
-          typeof s.sources_credited[0]==="string"&&
-          s.sources_credited[0].startsWith("Monitored feed: "))) ||
+          (isSourceNeutralOsintSignal(s) ||
+            Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
+            typeof s.sources_credited[0]==="string"&&
+            s.sources_credited[0].startsWith("Monitored feed: ")))) ||
       s.same_event_corrob_verified !== false || s.severity !== null ||
       s.observed_release_count !== 1 ||
       !Array.isArray(s.sources_credited) ||
@@ -158,7 +159,9 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
   if (embargoEnd > now || raw.length > 5_000 ||
       /https?:\/\/|www\./iu.test(proseOnly) ||
       (s.status==="osint_feed_observed_unverified" &&
-        !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u.test(s.sources_credited[0] as string))) return false;
+        !isSourceNeutralOsintSignal(s) &&
+        !(s.sources_credited.length===1&&
+          /^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u.test(s.sources_credited[0] as string)))) return false;
   return true;
 }
 
@@ -176,7 +179,10 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
     throw Error("DERIVED_NEWS_PUBLIC_DOCUMENT_INVALID");
   }
   // A malformed object cannot be permitted to smuggle source metadata to UI.
-  return value.signals.filter(s => safeSignal(s, now));
+  return value.signals.filter(s => safeSignal(s, now)).map(s =>
+    (s as Record<string,unknown>).status==="osint_feed_observed_unverified"
+      ? projectSourceNeutralOsintSignal(s) as StatelessIntelligenceSignal
+      : s as StatelessIntelligenceSignal);
 }
 
 export async function fetchEdgeLatestDerivedNews(

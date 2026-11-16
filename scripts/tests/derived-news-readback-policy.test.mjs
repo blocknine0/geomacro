@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   isSafeMonitoredFeedCredit,
   isSafeDerivedNewsReadbackSignal,
+  isSourceNeutralOsintSignal,
+  projectSourceNeutralOsintSignal,
 } from "../lib/derived-news-readback-policy.mjs";
 
 const osint = (overrides={}) => ({
@@ -69,4 +71,24 @@ test("official derived cards never gain permission to include monitored-feed pro
   assert.equal(isSafeDerivedNewsReadbackSignal(official),true);
   assert.equal(isSafeDerivedNewsReadbackSignal({...official,sources_credited:["Monitored feed: www.bankofcanada.ca"]}),false);
   assert.equal(isSafeDerivedNewsReadbackSignal({...official,sources_credited:["https://bankofcanada.ca"]}),false);
+});
+
+test("legacy OSINT rows project to exact source-neutral watch signals for all three categories",()=>{
+  for(const [category,topic,label] of [
+    ["geopolitics","sanctions and trade restrictions","geopolitical"],
+    ["macro","inflation and prices","macro"],
+    ["rare_earth","critical-mineral inputs","critical-minerals"],
+  ]){
+    const raw=osint({id:category+"-abcdef12",category,topic,
+      title:"Geomacro finds a headline containing a restricted publisher phrase",
+      what_changed:"A monitored source feed reports a named entity and unpublished article sentence.",
+      sources_credited:["Monitored feed: publisher.example"]});
+    const safe=projectSourceNeutralOsintSignal(raw);
+    assert.ok(isSafeDerivedNewsReadbackSignal(safe));
+    assert.equal(isSourceNeutralOsintSignal(safe),true);
+    assert.equal(safe.title,`Geomacro finds an unverified ${label} watch signal`);
+    assert.deepEqual(safe.sources_credited,[]);
+    assert.doesNotMatch(JSON.stringify(safe),/restricted publisher|unpublished article|publisher\.example/u);
+    assert.equal(isSourceNeutralOsintSignal({...safe,raw_source_url:"https://publisher.example/a"}),false);
+  }
 });

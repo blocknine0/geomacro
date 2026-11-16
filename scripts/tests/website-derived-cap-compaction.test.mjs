@@ -19,7 +19,7 @@ function setup(count){
   for(let i=0;i<count;i++){
     const status=i===0?"official_release_observed_unscored":
       "osint_feed_observed_unverified";
-    const story={status,topic:"monetary policy",
+    const story={status,topic:"monetary policy",development_type:"unverified OSINT feed observation",
       what_changed:"A monitored source feed reports: an event."};
     insert.run("macro-"+i.toString(16).padStart(8,"0"),"macro",
       new Date(1793180000000+i*1000).toISOString(),"exact",

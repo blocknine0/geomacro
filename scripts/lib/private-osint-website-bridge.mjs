@@ -7,7 +7,7 @@ import {readIntakeBaseline} from "./budgeted-news-intake.mjs";
  * derived signals. Private OSINT rows are never copied to public storage.
  */
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from "./global-official-release-feeds.mjs";
-import {isSafeDerivedNewsReadbackSignal} from "./derived-news-readback-policy.mjs";
+import {isSafeDerivedNewsReadbackSignal,projectSourceNeutralOsintSignal} from "./derived-news-readback-policy.mjs";
 
 // Fixed first-party U.S. federal RSS paths already accepted by the private
 // production source inventory. Government-authored facts (not third-party
@@ -104,42 +104,30 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
    rare_earth:"minerals publisher candidate",
  };
  const observedTopic=hints[row.category].find(([p])=>p.test(row.title))?.[1]??fallbacks[row.category];
- const implications={
-   geopolitics:"A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-   macro:"A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-   rare_earth:"A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
- };
- const credited="Monitored feed: "+url.hostname+(url.hostname==="news.google.com"?" (aggregator; original publisher not verified)":"");
- const summary=summarize? summarize(row.title):null;
- const known=summary&&typeof summary.headline==="string"&&summary.headline.length>=12&&
-   summary.headline.length<=200&&typeof summary.change==="string"&&summary.change.length>=30&&
-   summary.change.length<=450&&!/[<>]|https?:\/\//iu.test(summary.headline+summary.change)?summary:null;
- const topic=known&&observedTopic===fallbacks[row.category]?
-   ({geopolitics:"geopolitical security",macro:"official economic statistics",
-     rare_earth:"critical-mineral inputs"})[row.category]:observedTopic;
- const title="Geomacro finds "+(known?summary.headline:topic+" source-feed observation");
- const changed=known?"A monitored source feed reports: "+known.change+" This report has not been independently verified.":
-   "A monitored source feed contains a dated item about "+topic+
-   ". The event actor, precise action and impact have not been independently verified.";
  const id=row.category+"-"+createHash("sha256").update(row.news_id).digest("hex").slice(0,8);
- return {
-   id,category:row.category,title,what_changed:changed,
-   why_it_matters:implications[row.category],topic,
+ // `summarize` remains an accepted argument for old callers, but is deliberately
+ // never invoked: no source title or article prose enters the public journal.
+ void summarize;
+ const projected=projectSourceNeutralOsintSignal({
+   id,category:row.category,topic:observedTopic,
    geography:null,development_type:"unverified OSINT feed observation",
-   published_at:row.published_at,date_precision:"exact",
-   observed_release_count:1,sources_credited:[credited],
-   status:"osint_feed_observed_unverified",same_event_corrob_verified:false,severity:null,
- };
+   published_at:row.published_at,date_precision:"exact",observed_release_count:1,
+   sources_credited:[],status:"osint_feed_observed_unverified",
+   same_event_corrob_verified:false,severity:null,
+ });
+ // Keep the deployed D1 writer's accepted legacy schema (one host-only
+ // monitored-feed credit). The public read projection strips it again.
+ if(!projected)return null;
+ const host=new URL(row.source_url).hostname;
+ return {...projected,sources_credited:["Monitored feed: "+host+
+   (host==="news.google.com"?" (aggregator; original publisher not verified)":"")]};
 }
 
 // Keep this deterministic priority identical to Worker D1's SQL CASE.
 export function privateWebsiteRetentionPriority(row){
  if(row?.status==="official_release_observed_unscored")return 2;
  if(row?.status==="osint_feed_observed_unverified"&&
-   typeof row.what_changed==="string"&&
-   row.what_changed.startsWith("A monitored source feed reports:")&&
-   !["geopolitical publisher candidate","macro publisher candidate",
-     "minerals publisher candidate"].includes(row.topic))return 1;
+   isSafeDerivedNewsReadbackSignal(row))return 1;
  return 0;
 }
 export function privateWebsiteRetentionNewestFirst(a,b){
@@ -164,7 +152,9 @@ export async function publishPrivateOsintWebsiteSignals({
     !["official_release_observed_unscored","official_feed_candidate_unscored","osint_feed_observed_unverified"].includes(s.status)||
     s.same_event_corrob_verified!==false||s.severity!==null||
     !Array.isArray(s.sources_credited)||s.sources_credited.length>1||
-    (s.sources_credited.length===0&&s.status!=="official_release_observed_unscored")||
+    (s.sources_credited.length===0&&s.status!=="official_release_observed_unscored"&&
+      !(s.status==="osint_feed_observed_unverified"&&
+        isSafeDerivedNewsReadbackSignal(s)))||
     (s.sources_credited.length===1&&
       (typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()))||
     !isSafeDerivedNewsReadbackSignal(s)))
