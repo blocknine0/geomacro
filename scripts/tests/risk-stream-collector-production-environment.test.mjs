@@ -26,7 +26,7 @@ test("Risk Stream collector emitters resolve credentials from production environ
     const source = readFileSync(workflow.path, "utf8");
     const job = jobBlock(source, workflow.job);
     assert.match(job, /^    environment:\s*production\s*$/m, workflow.job);
-    assert.match(job, /CONTROL_PLANE_TOKEN:\s*\$\{\{\s*secrets\.CONTROL_PLANE_TOKEN\s*\}\}/);
+    assert.match(job, /CONTROL_PLANE_TOKEN:\s*\$\{\{\s*secrets\.CONTROL_PLANE_TOKEN\s*\|\|\s*secrets\.GEOMACRO_COMMERCE_LEDGER_TOKEN\s*\}\}/);
     assert.match(job, /RISK_STREAM_MACHINE_FACTS_SPKI_B64:\s*\$\{\{\s*secrets\.RISK_STREAM_MACHINE_FACTS_SPKI_B64\s*\}\}/);
     assert.match(job, /RISK_STREAM_MACHINE_RIGHTS_SPKI_B64:\s*\$\{\{\s*secrets\.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64\s*\}\}/);
     assert.match(job, /vars\.RISK_STREAM_ACTIVE == '1'/);
