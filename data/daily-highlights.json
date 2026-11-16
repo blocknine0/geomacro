@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-16T16:00:07.178Z",
+  "generated_at": "2026-11-16T16:12:53.735Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,23 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-791050dc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Funding: cut raise risks of trafficking and exploitation for refugee children",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Funding cut raise risks of trafficking and exploitation for refugee children.",
+      "geography": null,
+      "development_type": "funding",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-16T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-3ecdebb1",
       "category": "geopolitics",
@@ -267,25 +284,6 @@
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-be28ba3f",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-10-30T20:57:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null

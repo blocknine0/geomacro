@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-16T16:00:07.178Z",
+  "checked_at": "2026-11-16T16:12:53.735Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 2,
+  "item_count": 3,
   "counts": {
-    "geopolitics": 2,
+    "geopolitics": 3,
     "macro": 0,
     "rare_earth": 0
   },
-  "source_native_ids_sha256": "5e4c92fc8d040e72fd2ec4cd11c292b7e4d0783403a31659428acbbecba1f103",
+  "source_native_ids_sha256": "03a4b9c39bafed1bf1315a96d775417c3e3110fc628f5fa5a2ae11f4275c0e2b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,23 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-791050dc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Funding: cut raise risks of trafficking and exploitation for refugee children",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Funding cut raise risks of trafficking and exploitation for refugee children.",
+      "geography": null,
+      "development_type": "funding",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-16T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-3ecdebb1",
       "category": "geopolitics",
