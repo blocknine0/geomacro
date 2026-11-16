@@ -1,13 +1,21 @@
 {
   "schema_version": "geomacro.commercial-security-accepted-release.v1",
   "canonical_repository": "blocknine0/geomacro",
-  "approved_live_release_sha": "6b6d466fbc9f5b2234ac379e11679244be52d95e",
+  "approved_live_release_sha": "0a473021367e23ba0ccda1221291c12783d6090d",
   "acceptance_scope": "PART1_MASTER_COMMERCE_FREEZE_AND_PAID_OUTPUT_BOUNDARY",
   "freeze_expected": true,
   "body_limit_bytes": 8192,
   "paid_write_probe_count": 14,
   "real_funds_used": false,
-  "review_pr": 3445,
+  "review_pr": 4007,
+  "reviewed_candidate_security_blobs": [
+    {
+      "path": "src/lib/central-security.server.ts",
+      "blob_sha": "89a2a1a4839710f8c57576e2c2a5928554ad9820",
+      "review_pr": 4045,
+      "purpose": "Classify POST /api/v1/risk-gate as a paid write and apply the existing emergency freeze before route execution."
+    }
+  ],
   "security_source_paths": [
     "src/lib/commercial-launch-gate.server.ts",
     "src/lib/central-security.server.ts",

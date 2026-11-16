@@ -77,6 +77,7 @@ describe("Geomacro central security route boundary", () => {
       "/api/v1/payments/crypto/quote",
       "/api/v1/payments/crypto/verify",
       "/api/v1/intelligence/query",
+      "/api/v1/risk-gate",
       "/api/v1/intelligence/structured-answer",
       "/api/v1/intelligence/geopolitics",
       "/api/v1/intelligence/macro-fx",

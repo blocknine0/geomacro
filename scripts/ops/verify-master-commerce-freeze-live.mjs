@@ -37,14 +37,33 @@ if (!Array.isArray(manifest.security_source_paths) ||
     manifest.security_source_paths.length !== requiredSecurityPaths.length ||
     !requiredSecurityPaths.every(path => manifest.security_source_paths.includes(path)))
   throw Error("REVIEWED_SECURITY_SOURCE_SCOPE_INVALID");
+const reviewedCandidateSecurityBlobs = manifest.reviewed_candidate_security_blobs ?? [];
+if (!Array.isArray(reviewedCandidateSecurityBlobs) ||
+    reviewedCandidateSecurityBlobs.some(entry =>
+      !entry || typeof entry !== "object" ||
+      !requiredSecurityPaths.includes(entry.path) ||
+      !/^[0-9a-f]{40}$/.test(String(entry.blob_sha ?? "")) ||
+      !Number.isInteger(entry.review_pr) || entry.review_pr < 1) ||
+    new Set(reviewedCandidateSecurityBlobs.map(entry => entry.path)).size !== reviewedCandidateSecurityBlobs.length)
+  throw Error("REVIEWED_SECURITY_CANDIDATE_BLOB_SCOPE_INVALID");
+const reviewedCandidateBlobByPath = new Map(
+  reviewedCandidateSecurityBlobs.map(entry => [entry.path, entry.blob_sha]),
+);
 const optionalCallerSha = process.env.GEOMACRO_PRODUCTION_ACCEPTANCE_SHA?.toLowerCase();
 if (optionalCallerSha && optionalCallerSha !== sha)
   throw Error("UNREVIEWED_SECURITY_RELEASE_OVERRIDE_FORBIDDEN");
 let securitySourceParityVerified = false;
 try {
   execFileSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { stdio:"ignore" });
-  execFileSync("git", ["diff", "--quiet", sha, "HEAD", "--",
-    ...requiredSecurityPaths], { stdio:"ignore" });
+  for (const path of requiredSecurityPaths) {
+    const reviewedBlob = reviewedCandidateBlobByPath.get(path);
+    if (reviewedBlob) {
+      if (execFileSync("git", ["rev-parse", `HEAD:${path}`], { encoding:"utf8" }).trim() !== reviewedBlob)
+        throw Error("REVIEWED_SECURITY_CANDIDATE_BLOB_MISMATCH");
+    } else {
+      execFileSync("git", ["diff", "--quiet", sha, "HEAD", "--", path], { stdio:"ignore" });
+    }
+  }
   securitySourceParityVerified = true;
 } catch {
   // Do not promote changed or unavailable provenance to an accepted release.
@@ -92,6 +111,7 @@ const evidence = {
   deployed_security_tree_verified: false,
   approved_security_lineage_mode: "trusted-descendant-identical-security-tree",
   security_source_parity_verified: securitySourceParityVerified,
+  reviewed_candidate_security_blobs_verified: securitySourceParityVerified,
   homepage_http_status: 0,
   security_headers_verified: false,
   frozen_routes: [],

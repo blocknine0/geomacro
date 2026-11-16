@@ -14,10 +14,17 @@ export async function startEphemeralD1Staging({port=3101}={}){
  for(const name of ['0012_country_gro_verified_hot.sql','0020_predge_risk_gate_d1.sql'])
   db.exec(readFileSync(new URL('../../workers/control-plane/migrations/'+name,import.meta.url),'utf8'));
  const pair=generateKeyPairSync('ed25519');
+ const decisionPair=generateKeyPairSync('ed25519');
  const authority={key_id:'ephemeral-d1-staging',public_key_spki_b64:pair.publicKey.export({format:'der',type:'spki'}).toString('base64')};
+ const decisionKeyId='ephemeral-risk-gate-decision-staging';
+ const decisionPublicKey=decisionPair.publicKey.export({format:'der',type:'spki'}).toString('base64');
+ const decisionPrivateKey=decisionPair.privateKey.export({format:'der',type:'pkcs8'}).toString('base64');
  const token=randomBytes(32).toString('hex'),now=Date.now();
  const generated=new Date(now-30000).toISOString(),expires=new Date(now+2*3600000).toISOString();
- const env={PREDGE_RISK_GATE_TOKEN:token,RISK_GATE_VERIFY_KEYS_JSON:JSON.stringify({[authority.key_id]:{
+ const env={PREDGE_RISK_GATE_TOKEN:token,RISK_GATE_DECISION_ED25519_KEY_ID:decisionKeyId,
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:decisionPrivateKey,
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:decisionPublicKey,
+  RISK_GATE_VERIFY_KEYS_JSON:JSON.stringify({[authority.key_id]:{
   status:'active',public_key_spki_b64:authority.public_key_spki_b64}}),DB:{prepare:(sql:string)=>({bind:(...args:any[])=>({
    first:async()=>db.query(sql).get(...args),run:async()=>db.query(sql).run(...args),
   })})}};
@@ -48,12 +55,13 @@ export async function startEphemeralD1Staging({port=3101}={}){
   if(url.pathname!=='/v1/partner/predge/risk-gate')return new Response(null,{status:404});
   return predgeRiskGateD1(request,env,Date.now(),authority);
  }});
- return {server,token,origin:'http://127.0.0.1:'+server.port,db};
+ return {server,token,origin:'http://127.0.0.1:'+server.port,db,decisionPublicKey};
 }
 if(import.meta.main){
  const target=process.env.GITHUB_ENV;if(!target)throw Error('GITHUB_ENV_REQUIRED');
- const {origin,token}=await startEphemeralD1Staging();
+ const {origin,token,decisionPublicKey}=await startEphemeralD1Staging();
  appendFileSync(target,'NODE_ENV=development\nGEOMACRO_RISK_GATE_LOCAL_D1_ORIGIN='+origin+
+  '\nGEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64='+decisionPublicKey+
   '\nRISK_GATE_STAGING_BASE_URL=http://127.0.0.1:3000\nRISK_GATE_STAGING_API_KEY='+token+'\n');
  mkdirSync('artifacts',{recursive:true});
  writeFileSync('artifacts/ephemeral-risk-gate-staging-provision.json',JSON.stringify({
