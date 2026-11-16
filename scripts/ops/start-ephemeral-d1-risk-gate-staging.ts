@@ -12,7 +12,8 @@ export async function startEphemeralD1Staging({port=3101}={}){
  const db=new Database(':memory:');
  db.exec('CREATE TABLE schema_meta(name TEXT PRIMARY KEY,version INTEGER,updated_at TEXT)');
  for(const name of ['0012_country_gro_verified_hot.sql','0020_predge_risk_gate_d1.sql',
-   '0123_risk_gap_enrichment.sql','0201_progressive_risk_gate_facts.sql'])
+   '0113_risk_gate_append_only_audit_receipts.sql','0123_risk_gap_enrichment.sql',
+   '0124_risk_gate_receipt_signatures.sql','0201_progressive_risk_gate_facts.sql'])
   db.exec(readFileSync(new URL('../../workers/control-plane/migrations/'+name,import.meta.url),'utf8'));
  const pair=generateKeyPairSync('ed25519');
  const decisionPair=generateKeyPairSync('ed25519');
@@ -22,7 +23,9 @@ export async function startEphemeralD1Staging({port=3101}={}){
  const decisionPrivateKey=decisionPair.privateKey.export({format:'der',type:'pkcs8'}).toString('base64');
  const token=randomBytes(32).toString('hex'),now=Date.now();
  const generated=new Date(now-30000).toISOString(),expires=new Date(now+2*3600000).toISOString();
- const env={PREDGE_RISK_GATE_TOKEN:token,RISK_GATE_DECISION_ED25519_KEY_ID:decisionKeyId,
+ const env={PREDGE_RISK_GATE_TOKEN:token,RISK_GATE_OBSERVATION_HMAC_KEY:randomBytes(32).toString('hex'),
+  RISK_GATE_OBSERVATION_HMAC_KEY_ID:'ephemeral-staging-hmac-v1',
+  RISK_GATE_DECISION_ED25519_KEY_ID:decisionKeyId,
   RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:decisionPrivateKey,
   RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:decisionPublicKey,
   RISK_GATE_VERIFY_KEYS_JSON:JSON.stringify({[authority.key_id]:{
