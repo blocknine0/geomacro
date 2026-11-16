@@ -268,13 +268,7 @@ jobs:
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
-        run: |
-          if { [ -z "${CONTROL_PLANE_TOKEN:-}" ] || [ "$CONTROL_PLANE_TOKEN" = "$ROOT_LEDGER_TOKEN" ]; } && [ -n "${ROOT_LEDGER_TOKEN:-}" ]; then
-            CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
-            echo "::add-mask::$CONTROL_PLANE_TOKEN"
-            export CONTROL_PLANE_TOKEN
-          fi
-          node scripts/ops/emit-risk-stream-collector-sidecar.mjs
+        run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
         env:
@@ -359,13 +353,7 @@ jobs:
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
-        run: |
-          if { [ -z "${CONTROL_PLANE_TOKEN:-}" ] || [ "$CONTROL_PLANE_TOKEN" = "$ROOT_LEDGER_TOKEN" ]; } && [ -n "${ROOT_LEDGER_TOKEN:-}" ]; then
-            CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
-            echo "::add-mask::$CONTROL_PLANE_TOKEN"
-            export CONTROL_PLANE_TOKEN
-          fi
-          node scripts/ops/emit-risk-stream-collector-sidecar.mjs
+        run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
         env:
