@@ -41,6 +41,7 @@ test("explicit other or multiple countries suppress issuer-country fallback",asy
  const b=await collect(source,["Chile and Indonesia announce new nickel mining policies"]);
  assert.equal(b.items[0].country_iso3,null);
  assert.deepEqual(privateOsintCountryMentions("Chile and Indonesia announce trade pact",COUNTRIES_195),["CHL","IDN"]);
+ assert.equal(privateOsintCountryMention("Australian lithium and copper mine faces new export restrictions",COUNTRIES_195),"AUS");
 });
 test("ordinary news, news index and unverifiable registries cannot inherit source fallback",async()=>{
  const generic={...source,id:"regional",url:"https://example.org/rss",scope:undefined};

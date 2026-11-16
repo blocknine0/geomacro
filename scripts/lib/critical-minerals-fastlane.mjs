@@ -41,8 +41,8 @@ export function parseSectorFeed(xml,spec,now){
   for(const category of [...(substantiveMineral?['rare_earth']:[]),...(macro?['macro']:[])]){
    const row={category,title,article_url:url.href,source_url:spec.url,published_at:new Date(at).toISOString(),news_id:'news-'+createHash('sha256').update(category+'|'+url.href).digest('hex')};
    const iso3=privateOsintCountryMention(title,COUNTRIES_195);
-   const geography=iso3?derivedCountryName(iso3):null;
-   const signal=unverifiedWebsiteSignalFromOsint(row,now,null,geography);
+   const country_name=iso3?derivedCountryName(iso3):null;
+   const signal=unverifiedWebsiteSignalFromOsint({...row,country_iso3:iso3,country_name},now,actorActionNewsObservation);
    if(signal){if(category==='macro'&&precious)signal.topic=precious.name;result.push(signal);}
   }
  }

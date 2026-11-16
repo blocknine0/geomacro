@@ -189,7 +189,7 @@ const observed=[...observedByCategory.values()].flatMap(lane=>[...lane.values()]
 const osintSignals=observed.map(row=>{
  const iso3=privateOsintCountryMention(row.title,COUNTRIES_195);
  const place=iso3?country195ByIso3(iso3)?.name??null:null;
- return unverifiedWebsiteSignalFromOsint(row,Date.now(),null,place);
+ return unverifiedWebsiteSignalFromOsint({...row,country_iso3:iso3,country_name:place},Date.now(),()=>row.event);
 })
  .filter(Boolean).filter(isConcretePublicIntelligence);
 // Fair latest-first scheduling; small categories cannot be buried by a large
