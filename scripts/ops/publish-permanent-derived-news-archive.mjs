@@ -14,7 +14,7 @@ import {
 import {dirname, join, resolve} from "node:path";
 import {createHash} from "node:crypto";
 import {deriveControlPlaneRootToken} from "./derive-control-plane-root-token.mjs";
-import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
+import {isSafeDerivedNewsReadbackSignal,isSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 import {buildWebsitePilotSnapshot} from "../lib/website-predge-static-72h-snapshot.mjs";
 import {buildDailyOfficialFinds} from "../lib/public-daily-official-finds.mjs";
 import {isCriticalMineralsSubject} from "../lib/critical-minerals-subject-evidence.mjs";
@@ -91,6 +91,7 @@ export function isPermanentArchiveSignal(value,now=Date.now(),{allowHistorical=t
     ?JSON.stringify({...s,sources_credited:[]}):raw;
   if(raw.length>MAX_SIGNAL_BYTES||/https?:\/\/|www\./iu.test(proseOnly))return false;
   if(s.status==="osint_feed_observed_unverified"&&
+     !isSourceNeutralOsintSignal(s)&&
      !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u.test(s.sources_credited[0]||""))
     return false;
   return true;
@@ -199,7 +200,9 @@ export function distinctHeadlineArchiveRows(signals){
   for(const signal of signals){
     if(isTemplateObservation(signal)||
        (signal.category==="rare_earth"&&!isCriticalMineralsSubject(signal)))continue;
-    const key=normalizeHeadline(signal.title);
+  const key=isSourceNeutralOsintSignal(signal)
+    ?[signal.category,signal.topic,signal.published_at.slice(0,16)].join("|")
+    :normalizeHeadline(signal.title);
     if(!key)continue;
     const current=uniqueByHeadline.get(key);
     if(!current||preferDuplicateCandidate(signal,current))uniqueByHeadline.set(key,signal);
@@ -414,9 +417,10 @@ function readCandidates(path,now){
 export async function publishPermanentDerivedNewsArchive({
   archiveDir,assetsDir,candidatePath,
   fetchImpl=fetch,now=Date.now(),canonicalCatchup=false,
-  canonicalOriginToken=null,
+  canonicalOriginToken=null,allowD1Reads=true,
 }={}){
-  if(typeof canonicalCatchup!=="boolean")
+  if(typeof canonicalCatchup!=="boolean"||typeof allowD1Reads!=="boolean"||
+     (!allowD1Reads&&canonicalCatchup))
     throw Error("PERMANENT_ARCHIVE_CATCHUP_CONFIG_INVALID");
   if(!archiveDir||!assetsDir||!candidatePath||!Number.isFinite(now))
     throw Error("PERMANENT_ARCHIVE_CONFIGURATION_INVALID");
@@ -456,7 +460,7 @@ export async function publishPermanentDerivedNewsArchive({
   // This path is explicitly opt-in from the production quota-admitted
   // recovery job. The normal archive publisher and the D1-held fallback
   // still require ZERO D1 reads. Never re-read D1 per website request.
-  if(!index.seed_complete){
+  if(!index.seed_complete&&allowD1Reads){
     try{
       seedRows=await readRecoverableD1Seed(fetchImpl,now);
       canonicalCatchupCompleted=true;
@@ -467,6 +471,10 @@ export async function publishPermanentDerivedNewsArchive({
       // candidates and it cannot delete or replace any earlier archive entry.
       console.warn("PERMANENT_ARCHIVE_D1_SEED_DEFERRED");
     }
+  }else if(!index.seed_complete&&!allowD1Reads){
+    // The D1-held Private OSINT lane may append source-neutral candidates and
+    // refresh the public card snapshot, but it must perform zero D1 reads.
+    console.log("PERMANENT_ARCHIVE_D1_SEED_SKIPPED_ZERO_D1_LANE");
   }else if(canonicalCatchup){
     // The existing recovery cadence can be woken by several upstream
     // workflow_run events. Persist only a safe clock checkpoint in the
@@ -645,6 +653,8 @@ export async function publishPermanentDerivedNewsArchive({
     total_signals:totalSignals,
     month_partitions:months.length,
     d1_used_for_public_reads:false,
+    d1_reads_performed:canonicalCatchupCompleted?1:seedCompleteThisRun?3:0,
+    zero_d1_mode:!allowD1Reads,
     old_signals_deleted:0,
     duplicate_ids_overwritten:0,
     raw_upstream_stored:false,
@@ -662,11 +672,12 @@ export async function publishPermanentDerivedNewsArchive({
 if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])).href){
   const [archiveDir,assetsDir,candidatePath]=process.argv.slice(2);
   const canonicalCatchup=process.env.GEOMACRO_CANONICAL_D1_CATCHUP==='true';
+  const allowD1Reads=process.env.GEOMACRO_PUBLIC_ARCHIVE_ZERO_D1!=='1';
   // Derive only within this production process; never persist or log keys.
   const canonicalOriginToken=canonicalCatchup?
     deriveControlPlaneRootToken(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN):null;
   publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath,
-    canonicalCatchup,canonicalOriginToken
+    canonicalCatchup,canonicalOriginToken,allowD1Reads
   }).catch(error=>{
     const code=error instanceof Error&&/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/.test(error.message)
       ?error.message:"PERMANENT_ARCHIVE_UPDATE_FAILED";

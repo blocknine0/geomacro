@@ -14,6 +14,7 @@ import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {sealPrivateOsintSpool,selectEligiblePrivateOsintSpoolItems} from "../lib/private-osint-encrypted-spool.mjs";
+import {buildHeldPrivateOsintProjection} from "../lib/private-osint-held-public-projection.mjs";
 
 if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
  process.env.GITHUB_REF!=="refs/heads/main"||
@@ -41,6 +42,12 @@ if(result.summary.source_endpoints_attempted!==sources.length||
  throw Error("OSINT_SPOOL_SOURCE_COVERAGE_INVALID");
 const prepared=selectEligiblePrivateOsintSpoolItems(result.items,Date.now());
 const envelope=sealPrivateOsintSpool({items:prepared.items,root,now:Date.now()});
+const publicProjection=buildHeldPrivateOsintProjection(prepared.items,Date.now());
+const publicProjectionPath=String(process.env.GEOMACRO_OSINT_PUBLIC_CANDIDATES_FILE??"").trim();
+if(publicProjectionPath){
+ writeFileSync(publicProjectionPath,JSON.stringify(publicProjection)+"\n",
+  {mode:0o600,flag:'wx'});
+}
 // Emit a real per-publisher status receipt for both the global default
 // 506-endpoint private collector and the dedicated direct 20-minute lane.
 {
@@ -71,6 +78,7 @@ console.log(JSON.stringify({
  checked_country_routes:195,checked_categories:3,
  source_health_by_state:result.summary.source_states,
  captured_unverified_items:prepared.items.length,
+ source_neutral_public_candidates:publicProjection.signals.length,
  rejected_invalid_or_expired_source_items:prepared.invalid,
  deduplicated_source_items:prepared.duplicates,
  examined_source_items:prepared.examined,
@@ -79,4 +87,7 @@ console.log(JSON.stringify({
  b2_operations:0,r2_operations:0,kv_operations:0,
  public_news_published:false,commercial_delivery_enabled:false,
  no_raw_source_bytes_logged:true,source_native_clock_required:true,
+ public_projection_raw_source_text_included:false,
+ public_projection_source_urls_included:false,
+ public_projection_scored:false,
 }));

@@ -24,6 +24,12 @@ on:
       - "config/hot-50-four-lane-source-crosswalk.v1.json"
       - "config/hot50-pinned-backup-sources.v1.json"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
+      - "scripts/lib/private-osint-held-public-projection.mjs"
+      - "scripts/lib/private-osint-held-public-projection.test.mjs"
+      - "scripts/tests/private-osint-held-public-publication.test.mjs"
+      - "scripts/ops/private-osint-stage-held.ts"
+      - "scripts/ops/publish-permanent-derived-news-archive.mjs"
+      - "scripts/ops/publish-permanent-derived-news-archive.test.mjs"
       - "config/hot-50-new-official-atom-sources.v1.json"
       - "scripts/lib/hot-50-google-news-category.mjs"
       - "scripts/lib/hot-50-four-lane-source-crosswalk.mjs"
@@ -786,7 +792,7 @@ jobs:
   stage-private-sources-when-d1-held:
     name: Preserve actual native-dated source observations when canonical D1 is held
     concurrency:
-      group: geomacro-private-osint-held-publisher-fetch
+      group: geomacro-permanent-news-publication
       cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
@@ -800,8 +806,10 @@ jobs:
         github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     environment: production
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -814,9 +822,79 @@ jobs:
         env:
           GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_OSINT_PUBLIC_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-held-public-candidates.json
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
+      - name: Publish source-neutral Private OSINT cards to the existing static Website Intelligence archive
+        id: held-publication
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GEOMACRO_PUBLIC_ARCHIVE_ZERO_D1: "1"
+          GEOMACRO_HELD_PUBLIC_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-held-public-candidates.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$GEOMACRO_HELD_PUBLIC_CANDIDATES_FILE" || {
+            echo "::error::HELD_OSINT_PUBLIC_CANDIDATE_SIDECAR_MISSING"
+            exit 2
+          }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test "${#CLOUDFLARE_ACCOUNT_ID}" -eq 32 || {
+            echo "::error::HELD_OSINT_PUBLIC_ARCHIVE_DEPLOY_CREDENTIALS_MISSING"
+            exit 2
+          }
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          archive_ref="refs/remotes/origin/geomacro-permanent-finds-archive"
+          git -c http.extraheader="$auth_header" fetch origin "refs/heads/geomacro-permanent-finds-archive:$archive_ref"
+          archive_dir="$RUNNER_TEMP/geomacro-held-permanent-finds-archive"
+          git worktree add --detach "$archive_dir" "$archive_ref"
+          assets_dir="$GITHUB_WORKSPACE/workers/public-finds-archive/assets"
+          node scripts/ops/publish-permanent-derived-news-archive.mjs \
+            "$archive_dir" "$assets_dir" "$GEOMACRO_HELD_PUBLIC_CANDIDATES_FILE"
+          result_file="$RUNNER_TEMP/permanent-derived-news-archive-result.json"
+          test -s "$result_file" || {
+            echo "::error::HELD_OSINT_PUBLIC_ARCHIVE_RECEIPT_MISSING"
+            exit 2
+          }
+          jq -e '.zero_d1_mode == true and .d1_reads_performed == 0 and .d1_used_for_public_reads == false and .payments == 0' "$result_file" >/dev/null || {
+            echo "::error::HELD_OSINT_PUBLIC_ARCHIVE_ZERO_D1_CONTRACT_FAILED"
+            exit 2
+          }
+          deploy_needed="$(jq -r '.deploy_needed == true' "$result_file")"
+          git -C "$archive_dir" add data
+          if ! git -C "$archive_dir" diff --cached --quiet; then
+            git -C "$archive_dir" config user.name "github-actions[bot]"
+            git -C "$archive_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$archive_dir" commit -m "Append source-neutral held Private OSINT cards"
+            git -C "$archive_dir" -c http.extraheader="$auth_header" push origin HEAD:refs/heads/geomacro-permanent-finds-archive
+          fi
+          if [[ "$deploy_needed" == "true" ]]; then
+            cd workers/public-finds-archive
+            npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
+          else
+            echo "::notice::HELD_OSINT_PUBLIC_ARCHIVE_ALREADY_EXACT"
+          fi
+          cd "$GITHUB_WORKSPACE"
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {verifyConvergedPublicStaticArchiveReadback} from './scripts/lib/verify-public-static-archive-readback.mjs';
+          const expectedDir=process.env.RUNNER_TEMP+'/geomacro-held-permanent-finds-archive/data/';
+          const readExpected=name=>JSON.parse(readFileSync(expectedDir+name,'utf8'));
+          const read=async path=>{
+            const response=await fetch('https://geomacro-public-finds-archive.daspallab202391.workers.dev'+path,
+              {method:'GET',redirect:'error',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(5000)});
+            if(!response.ok)throw Error('HELD_OSINT_STATIC_ARCHIVE_READBACK_HTTP_'+response.status);
+            return response.json();
+          };
+          const verified=await verifyConvergedPublicStaticArchiveReadback({
+            read,expectedIndex:readExpected('index.json'),expectedLatest:readExpected('latest.json'),
+            expectedCoverage:readExpected('coverage-72h.json'),attempts:5,delayMs:1200
+          });
+          console.log(JSON.stringify({...verified,zero_d1_mode:true,public_source_text_included:false}));
+          NODE
       - name: Optional dedicated R2 private AES-GCM escrow with independent byte readback
         if: ${{ vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET != '' }}
         id: r2_mirror

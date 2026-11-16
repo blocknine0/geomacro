@@ -7,6 +7,7 @@ import {
  ARCHIVE_INDEX_SCHEMA,ARCHIVE_MONTH_SCHEMA,isPermanentArchiveSignal,
  publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,buildCurrentArchiveEligibility,
 } from "./publish-permanent-derived-news-archive.mjs";
+import {buildHeldPrivateOsintProjection} from "../lib/private-osint-held-public-projection.mjs";
 
 const NOW=Date.parse("2026-10-26T00:00:00.000Z");
 const tempDirs=[];
@@ -159,6 +160,46 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(coverage.original_release_eligible_total,1);
   assert.equal(coverage.latest_preview_rows,1);
   assert.equal(coverage.paid_customer_eligible,false);
+ });
+ it("publishes source-neutral held OSINT candidates with an enforced zero-D1-read mode",async()=>{
+  const p=temp();
+  const item={
+   schema:"geomacro.reusable-news-json.v1",id:"news-"+"a".repeat(64),
+   id_is_cryptographic_proof:false,category:"rare_earth",country_iso3:"IND",
+   source:{publisher_name:null,original_url:null,original_published_at:"2026-10-25T23:55:00.000Z"},
+   facts:{event_types:["minerals"],action_terms:["supply"],named_organizations:[],numeric_mentions:[],
+    fact_extraction_status:"MACHINE_EXTRACTED_UNVERIFIED"},
+   usage_rights:{declared_source_license:"unknown",declaration_is_verified:false,
+    article_specific_permission_verified:false,commercial_reuse_authorized:false,
+    attribution_and_scope_review_required:true,factual_analysis_only:true},
+   verification:{original_page_verified:false,independent_event_verified:false,
+    facts_reviewed:false,source_licence_verified:false},
+   delivery:{raw_article_included:false,raw_headline_included:false,
+    downstream_paid_product_authorized:false,signing_authorized:false,user_submission_persisted:false},
+  };
+  const projection=buildHeldPrivateOsintProjection([item],NOW);
+  writeCandidates(p.candidatePath,projection.signals);
+  const urls=[];
+  const result=await publishPermanentDerivedNewsArchive({...p,allowD1Reads:false,
+   fetchImpl:async url=>{urls.push(String(url));return new Response("unavailable",{status:503})},now:NOW});
+  assert.equal(result.new_signals_added,1);
+  assert.equal(result.deploy_needed,true);
+  assert.equal(result.zero_d1_mode,true);
+  assert.equal(result.d1_reads_performed,0);
+  assert.equal(result.d1_used_for_public_reads,false);
+  assert.equal(urls.some(url=>url=== "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate"),false);
+  assert.ok(urls.every(url=>url.startsWith("https://geomacro-public-finds-archive.")));
+  const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
+  assert.equal(latest.signals[0].category,"rare_earth");
+  assert.equal(latest.chargeable,false);
+  assert.equal(latest.scored,false);
+  assert.equal(JSON.stringify(latest).includes("news-"+"a".repeat(64)),false);
+ });
+ it("refuses to combine zero-D1 publication mode with canonical catch-up",async()=>{
+  const p=temp();
+  await assert.rejects(()=>publishPermanentDerivedNewsArchive({...p,allowD1Reads:false,
+   canonicalCatchup:true,fetchImpl:async()=>{throw Error("must not fetch")},now:NOW}),
+   /PERMANENT_ARCHIVE_CATCHUP_CONFIG_INVALID/);
  });
  it("does not expire historical archive items when a later daily batch arrives",async()=>{
   const p=temp();
