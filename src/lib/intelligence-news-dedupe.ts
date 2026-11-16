@@ -29,6 +29,8 @@ const VERBS:Record<string,string>={
 };
 const POLARITY=new Set(["not","no","never","denies","denied","reject","withdraws","withdrawn"]);
 const WINDOW=36*3600_000;
+const MAX_DEDUPE_ROWS=1600;
+const DEDUPE_CATEGORY_ORDER=["geopolitics","macro","rare_earth"] as const;
 type Descriptor={row:StatelessIntelligenceSignal;time:number;tokens:Set<string>;
  numbers:Set<string>;action:string|null;negative:boolean;headline:string;categoryFit:number};
 function tokenise(text:string):string[]{
@@ -91,15 +93,41 @@ function priority(d:Descriptor){
    verifiedOriginal*10+precise*2+Math.min(d.tokens.size,9);
 }
 /**
+ * The permanent public archive grows over time and can legitimately contain
+ * more rows than the bounded pairwise deduper can compare. Keep the newest
+ * rows in a round-robin across the three domains before doing the expensive
+ * similarity pass. An archive-size increase must never escape a component
+ * render and replace the entire Intelligence page with the root error screen.
+ */
+function boundedRecentRows(rows:readonly StatelessIntelligenceSignal[]){
+ if(rows.length<=MAX_DEDUPE_ROWS)return rows;
+ const byCategory=new Map(DEDUPE_CATEGORY_ORDER.map(category=>[category,[] as {row:StatelessIntelligenceSignal;time:number}[]]));
+ for(const row of rows){
+   const bucket=byCategory.get(row.category);
+   const time=Date.parse(row.published_at);
+   if(bucket&&Number.isFinite(time))bucket.push({row,time});
+ }
+ for(const bucket of byCategory.values())bucket.sort((a,b)=>b.time-a.time||a.row.id.localeCompare(b.row.id));
+ const bounded:StatelessIntelligenceSignal[]=[];
+ for(let offset=0;bounded.length<MAX_DEDUPE_ROWS;offset++){
+   let added=false;
+   for(const category of DEDUPE_CATEGORY_ORDER){
+     const candidate=byCategory.get(category)?.[offset];
+     if(candidate&&bounded.length<MAX_DEDUPE_ROWS){bounded.push(candidate.row);added=true;}
+   }
+   if(!added)break;
+ }
+ return bounded;
+}
+/**
  * Deterministic and repeat-safe for live refresh, SSR hydration, existing D1
  * history and new source observations. Quality selects the canonical card,
  * then display order remains newest-first. The original rows stay in storage.
  */
 export function dedupeIntelligenceStories(rows:readonly StatelessIntelligenceSignal[])
  :StatelessIntelligenceSignal[]{
- if(!Array.isArray(rows)||rows.length>1600)
-   throw Error("INTELLIGENCE_EVENT_DEDUP_BOUND_EXCEEDED");
- const descriptors=rows.map(descriptor).filter(x=>Number.isFinite(x.time));
+ if(!Array.isArray(rows))throw Error("INTELLIGENCE_EVENT_DEDUP_INPUT_INVALID");
+ const descriptors=boundedRecentRows(rows).map(descriptor).filter(x=>Number.isFinite(x.time));
  descriptors.sort((a,b)=>priority(b)-priority(a)||b.time-a.time||
    a.row.id.localeCompare(b.row.id));
  const canonical:Descriptor[]=[];
