@@ -406,7 +406,7 @@ export async function renderDerivedStoriesHtml(
   const records=body.signals.filter(s=>verifyDerivedStory(s,now))
     .map(publicProjection).filter(Boolean).slice(0,150);
   const stories=records.map(s=>'<article><div class="label">'+
-    (s.status==="osint_feed_observed_unverified"?"UNVERIFIED WATCH · NO SCORE":s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
+    (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
     '</time></div>'+(s.status==="osint_feed_observed_unverified"?"":'<p class=label>Country or region: '+escapeHtml(s.geography??'Not specified in the release')+'</p>')+'<h2>'+escapeHtml(s.title.replace(/^Geomacro finds\s+/iu,''))+
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+
