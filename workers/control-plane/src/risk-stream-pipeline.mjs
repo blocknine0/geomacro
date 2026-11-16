@@ -1,7 +1,7 @@
 /**
  * GeoMacro event-driven Risk Gate stream. Private, proof-gated lane.
  * Index-only/GDELT hints are NEVER independent original source evidence.
- * Workers Queues provide durable 10-message/2s pacing; no process timers.
+ * Workers Queues provide durable 10-message/2s pacing; retries are bounded.
  * All signing claims require independently trusted machine fact/rights keys.
  * Signed stream GROs are internal delivery candidates, NOT certified GRIs
  * and NOT authority to charge a customer or to remove a release hold.
@@ -618,7 +618,25 @@ export async function processRiskStreamBatch(env,items,{
   daily_news_gro_state:dailyNews.status,daily_news_gro_signed:dailyNews.signed,
   daily_news_gro_is_commercial_release:false};
 }
-export async function enqueueRiskStreamEvents(env,body,now=Date.now()){
+async function sendRiskStreamBatchWithRetry(queue,messages,{
+ tries=4,sleeper=sleep,random=Math.random
+}={}){
+ for(let attempt=0;attempt<tries;attempt++){
+  try{return await queue.sendBatch(messages)}
+  catch(error){
+   const status=Number(error?.status??error?.statusCode??error?.response?.status);
+   const detail=String(error?.message??"");
+   const transient=[408,425,429,500,502,503,504].includes(status)||
+    /\b(?:HTTP\s*)?(?:408|425|429|500|502|503|504)\b|OVERLOADED|TIMEOUT|UNAVAILABLE|ECONNRESET|NETWORK/iu.test(detail);
+   if(!transient||attempt===tries-1)throw error;
+   await sleeper(Math.min(4000,100*2**attempt)+Math.floor(random()*80));
+  }
+ }
+ fail("QUEUE_RETRY_EXHAUSTED");
+}
+export async function enqueueRiskStreamEvents(env,body,now=Date.now(),{
+ sleeper=sleep,random=Math.random
+}={}){
  if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
     !env?.RISK_STREAM_QUEUE?.sendBatch)
   return Response.json({ok:false,error:"RISK_STREAM_DISABLED"},{status:503});
@@ -628,7 +646,8 @@ export async function enqueueRiskStreamEvents(env,body,now=Date.now()){
  try{
   for(let i=0;i<body.items.length;i+=10)
    await inspectRiskStreamCandidates(body.items.slice(i,i+10),now);
-  await env.RISK_STREAM_QUEUE.sendBatch(body.items.map(item=>({body:item,contentType:"json"})));
+  await sendRiskStreamBatchWithRetry(env.RISK_STREAM_QUEUE,
+   body.items.map(item=>({body:item,contentType:"json"})),{sleeper,random});
   return Response.json({ok:true,status:"DURABLY_QUEUED_NOT_YET_VERIFIED",
    accepted:body.items.length,commercial_delivery:false},{status:202});
  }catch(e){return Response.json({ok:false,error:
