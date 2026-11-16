@@ -32,10 +32,24 @@ describe("public production coverage proof", () => {
     expect(shell).toContain('const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);');
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain('new Set(["/",');
-    expect(shell).toContain("Intelligence findings have no added publication delay · API keys coming soon");
-    expect(shell).toContain("API keys coming soon");
+    expect(shell).toContain("GeoMacro Intelligence · Ed25519-Signed Risk Gates · Store &amp; API pricing available");
+    expect(shell).not.toContain("API keys coming soon");
     expect(shell).not.toContain("GITHUB_URL");
     expect(shell).not.toContain("AgentCommerceStatus compact");
+  });
+
+  it("keeps Intelligence cards concrete and points each card and the feed header to Store & API", () => {
+    const desk = read("src/components/intelligence/stateless-live-desk.tsx");
+    const macro = read("src/components/intelligence/macro-fastlane-panel.tsx");
+    const cta = "Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API (/pricing)";
+
+    expect(desk.match(new RegExp(cta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gu"))?.length).toBe(2);
+    expect(desk).not.toContain("an unverified geopolitical watch signal");
+    expect(desk).not.toContain("an unverified macro watch signal");
+    expect(desk).not.toContain("an unverified critical-minerals watch signal");
+    expect(desk).not.toContain("This report has not been independently verified");
+    expect(macro).not.toContain("Current gold/silver price evidence is incomplete");
+    expect(macro).not.toContain("Verified ECB daily FX reference temporarily unavailable");
   });
 
   it("keeps machine-readable website context aligned with the same measured claim", () => {

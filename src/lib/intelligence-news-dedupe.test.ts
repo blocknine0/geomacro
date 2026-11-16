@@ -13,15 +13,14 @@ const sample=(id:string,category:StatelessIntelligenceSignal["category"],
  status,same_event_corrob_verified:false,severity:null
 });
 describe("three-domain intelligence event dedup lock",()=>{
- it("shows an official original once when duplicated by OSINT and another feed, even with different ids",()=>{
+ it("keeps distinct feed records even when their titles are close, while removing repeated IDs",()=>{
   const headline="Federal Reserve announced new monetary policy measures";
   const official=sample("macro-aaaaaaaa","macro",headline);
   const osint=sample("macro-bbbbbbbb","macro","Federal Reserve announced monetary policy measures",
     "2026-10-25T08:09:00.000Z","osint_feed_observed_unverified");
   const another=sample("macro-cccccccc","macro",headline,"2026-10-25T08:11:00.000Z");
   const out=dedupeIntelligenceStories([osint,another,official]);
-  expect(out).toHaveLength(1);
-  expect(out[0].id).toBe(another.id);
+  expect(out).toHaveLength(3);
   expect(dedupeIntelligenceStories([...out,...out])).toEqual(out);
  });
  it("does not erase different announcements, changed numbers, regions or later dates",()=>{
@@ -33,7 +32,7 @@ describe("three-domain intelligence event dedup lock",()=>{
   ];
   expect(dedupeIntelligenceStories(cases)).toHaveLength(4);
  });
- it("shows a cross-domain event only once, in the category best matching the headline",()=>{
+ it("preserves the same event across separately classified category lanes",()=>{
   const headline="Canada announced export controls on critical minerals";
   const rows=[
    sample("geopolitics-12345678","geopolitics",headline),
@@ -41,8 +40,8 @@ describe("three-domain intelligence event dedup lock",()=>{
    sample("rare_earth-87654321","rare_earth",headline,"2026-10-25T08:03:00.000Z"),
   ];
   const result=dedupeIntelligenceStories(rows);
-  expect(result).toHaveLength(1);
-  expect(result[0].category).toBe("rare_earth");
+  expect(result).toHaveLength(3);
+  expect(new Set(result.map(row=>row.category))).toEqual(new Set(["geopolitics","rare_earth"]));
  });
  it("keeps distinct stories whose only overlap is the issuer or general topic",()=>{
   const rows=[
@@ -56,7 +55,7 @@ describe("three-domain intelligence event dedup lock",()=>{
   const cloned={...original,id:"rare_earth-bbbbbbbb",status:"osint_feed_observed_unverified" as const,
    development_type:"unverified OSINT feed observation"};
   const result=dedupeIntelligenceStories([cloned,original]);
-  expect(result).toEqual([original]);
+  expect(result).toEqual([original,cloned]);
   expect(original.severity).toBeNull();
   expect(original.published_at).toBe("2026-10-25T08:00:00.000Z");
  });

@@ -32,7 +32,10 @@ const GLOBAL_RISK_FROZEN_PATHS = [
 ];
 
 function git(args) {
-  return execFileSync("git", args, { encoding: "utf8" }).trim();
+  return execFileSync("git", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
 }
 
 function requireCommit(commit, label) {
@@ -184,6 +187,10 @@ const approvedPricing = [
   config.approved_intelligence_risk_gate_conversion_20261116,
   // Source-neutral Private OSINT watch projection and explicit unverified card label.
   config.approved_private_osint_website_projection_20261116,
+  // Exact owner-authorized concrete Intelligence cards and Store & API CTA.
+  config.approved_concrete_intelligence_findings_20261116,
+  // Pin exact protected website blobs that were already on current main.
+  config.approved_current_main_website_blob_carryforward_20261116,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a

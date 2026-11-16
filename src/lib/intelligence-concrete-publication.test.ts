@@ -35,26 +35,37 @@ describe("actual-event Intelligence publication",()=>{
   expect(isConcretePublicIntelligence({...s,title:"Geomacro finds geopolitical publisher candidate source-feed observation"})).toBe(false);
   expect(isConcretePublicIntelligence({...s,what_changed:"A monitored feed contains a dated item on a geopolitical publisher candidate."})).toBe(false);
  });
- it("admits three-domain concrete OSINT reports while rejecting anonymous publisher candidates",()=>{
-  const neutralHeadlines={geopolitics:"an unverified geopolitical watch signal",
-    macro:"an unverified macro watch signal",rare_earth:"an unverified critical-minerals watch signal"} as const;
+ it("admits only concrete three-domain source-reported findings and rejects generic placeholders",()=>{
+  const concreteByCategory={
+   geopolitics:{topic:"Maritime Transit & Freight",geography:"Red Sea Maritime Corridor",
+    title:"Geomacro finds Maritime Transit & Freight · Transit Controls — Red Sea Maritime Corridor",
+    what_changed:"Unverified feed observation: Yemen Ministry of Transport introduced tanker transit controls.",
+    why_it_matters:"Risk: transit controls may affect shipping exposure. Effect: vessel routes and cargo insurance planning may change if confirmed. Price channel to monitor: freight and marine insurance rates. Action Posture: REQUIRE_APPROVAL; no price move is asserted."},
+   macro:{topic:"Monetary Policy & FX Liquidity",geography:"Japan",
+    title:"Geomacro finds Monetary Policy & FX Liquidity · Policy Rate Decision — Japan",
+    what_changed:"Unverified feed observation: Bank of Japan announced its policy-rate decision.",
+    why_it_matters:"Risk: policy decisions can shift currency differentials. Effect: import settlement and hedging may need review if confirmed. Price channel to monitor: USD/JPY. Action Posture: REQUIRE_APPROVAL; no price move is asserted."},
+   rare_earth:{topic:"Copper Supply & Processing",geography:"Chile",
+    title:"Geomacro finds Copper Supply & Processing · Processing Project Approval — Chile",
+    what_changed:"Unverified feed observation: Chile's mining authority approved a copper processing project.",
+    why_it_matters:"Risk: processing capacity may change copper supply options. Effect: buyer sourcing and concentrate conversion plans may need review if confirmed. Price channel to monitor: COMEX copper benchmark. Action Posture: REQUIRE_APPROVAL; no price move is asserted."},
+  } as const;
   for(const category of ["geopolitics","macro","rare_earth"] as const){
     const basis=sample(category);
     const report={...basis,status:"osint_feed_observed_unverified" as const,
       development_type:"unverified OSINT feed observation",date_precision:"exact" as const,
       sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"],
-      what_changed:"A monitored source feed reports: "+basis.what_changed+
-        " This report has not been independently verified."};
+      ...concreteByCategory[category]};
     expect(isConcretePublicIntelligence(report),category).toBe(true);
-    expect(concreteIntelligenceHeadline(report)).toBe(neutralHeadlines[category]);
+    expect(concreteIntelligenceHeadline(report)).toBe(concreteByCategory[category].title.replace(/^Geomacro finds /u,""));
+    expect(report.what_changed).not.toContain(basis.title.replace(/^Geomacro finds /u,""));
     expect(concreteGeomacroAnalysis(report)).not.toContain(basis.title.replace(/^Geomacro finds /u,""));
     const legacyTitle={...report,
-      title:"Geomacro finds macro publisher candidate source-feed observation"};
-    expect(isConcretePublicIntelligence(legacyTitle)).toBe(true);
-    expect(concreteIntelligenceHeadline(legacyTitle)).toBe(neutralHeadlines[category]);
+      title:`Geomacro finds an unverified ${category} watch signal`};
+    expect(isConcretePublicIntelligence(legacyTitle)).toBe(false);
     const restrictedCredit={...report,sources_credited:["Monitored feed: news.un.org"]};
     expect(isConcretePublicIntelligence(restrictedCredit)).toBe(true);
-    expect(concreteIntelligenceHeadline(restrictedCredit)).toBe(neutralHeadlines[category]);
+    expect(concreteIntelligenceHeadline(restrictedCredit)).toBe(concreteByCategory[category].title.replace(/^Geomacro finds /u,""));
     expect(JSON.stringify(concreteGeomacroAnalysis(restrictedCredit))).not.toContain("news.un.org");
   }
  });
@@ -102,16 +113,9 @@ describe("actual-event Intelligence publication",()=>{
      id:"geopolitics-12345679",
      title:"Geomacro finds Trump said Brazil election was a disgrace",
      what_changed:"A monitored source feed reports: Trump said Brazil election was a disgrace. This report has not been independently verified."};
-   const security=concreteGeomacroAnalysis(msf);
-   const election=concreteGeomacroAnalysis(brazil);
-   expect(isConcretePublicIntelligence(msf)).toBe(true);
-   expect(isConcretePublicIntelligence(brazil)).toBe(true);
-   expect(security).toContain("civilian safety");
-   expect(election).toBe(security);
-   expect(security).not.toContain("Central Darfur");
-   expect(election).not.toContain("Brazil election");
-   expect(security).not.toContain("political legitimacy");
-   expect(election).toContain("independently unverified");
+   expect(isConcretePublicIntelligence(msf)).toBe(false);
+   expect(isConcretePublicIntelligence(brazil)).toBe(false);
+   expect(concreteIntelligenceHeadline(msf)).not.toContain("unverified geopolitical watch signal");
  });
  it("explains distinct macro and minerals events without invented outcomes",()=>{
    const rates={...sample("macro"),
@@ -139,7 +143,7 @@ describe("actual-event Intelligence publication",()=>{
    }
  });
 
- it("does not derive public macro copy from unverified OSINT headlines",()=>{
+ it("rejects unstructured macro OSINT prose instead of inventing public intelligence",()=>{
   const headlines=[
    ["Mahama said Ghana is in talks with Russia over first nuclear power station","power-infrastructure","commissioning"],
    ["PM approved expansion of Jinnah and Allama Iqbal airports, eyes making Karachi air cargo hub","freight capacity","cargo handling"],
@@ -147,46 +151,32 @@ describe("actual-event Intelligence publication",()=>{
    ["Sterling Financial reported 37.1% growth in nine-month profit before tax to 97.28bn","firm-level profitability","comparable figures"],
    ["European Central Bank held key interest rates steady as energy prices cloud inflation and growth outlook","policy-rate decision","asset-price"],
   ] as const;
-  const analyses:string[]=[];
   for(const [headline,subject,limit] of headlines){
    const story={...sample("macro"),title:"Geomacro finds "+headline,
     what_changed:"A monitored source feed reports: "+headline+". This report has not been independently verified.",
     topic:"macro economics",status:"osint_feed_observed_unverified" as const,
     development_type:"unverified OSINT feed observation",
     sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
-   const analysis=concreteGeomacroAnalysis(story);
-   expect(analysis).toContain("independently unverified");
-   expect(analysis).not.toContain(headline);
-   expect(analysis).not.toContain(subject);
-   expect(analysis).not.toContain(limit);
-   analyses.push(analysis);
+   expect(isConcretePublicIntelligence(story)).toBe(false);
+   expect(concreteIntelligenceHeadline(story)).not.toContain("unverified macro watch signal");
   }
-  expect(new Set(analyses).size).toBe(1);
-  expect(analyses[0]).toContain("affected indicator, economic channel and reporting period");
  });
- it("does not derive public minerals copy from unverified OSINT headlines",()=>{
+ it("rejects unstructured minerals OSINT prose instead of inventing public intelligence",()=>{
   const headlines=[
    ["Metals.io launched Copper, Unlocking Access to the Critical Metal at the Heart of Electrification","digital access","redemption"],
    ["Teck Resources reported higher copper and zinc prices help boost Q3 profit","copper and zinc","operating costs"],
    ["Glencore maintained guidance but quarterly copper output falls short","guidance-versus-output","actual period output"],
    ["European Union announced lithium export controls","shipment permissions","implementation date"],
   ] as const;
-  const analyses:string[]=[];
   for(const [headline,focus,limit] of headlines){
    const story={...sample("rare_earth"),title:"Geomacro finds "+headline,
     what_changed:"A monitored source feed reports: "+headline+". This report has not been independently verified.",
     topic:"critical minerals",status:"osint_feed_observed_unverified" as const,
     development_type:"unverified OSINT feed observation",
     sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
-   const analysis=concreteGeomacroAnalysis(story);
-   expect(analysis).toContain("independently unverified");
-   expect(analysis).not.toContain(headline);
-   expect(analysis).not.toContain(focus);
-   expect(analysis).not.toContain(limit);
-   analyses.push(analysis);
+   expect(isConcretePublicIntelligence(story)).toBe(false);
+   expect(concreteIntelligenceHeadline(story)).not.toContain("unverified critical-minerals watch signal");
   }
-  expect(new Set(analyses).size).toBe(1);
-  expect(analyses[0]).toContain("affected material, supply-chain stage and geography");
  });
 
 });

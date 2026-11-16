@@ -74,6 +74,12 @@ export function actorActionNewsObservation(title:string):{headline:string;change
  if(/^Sudan conflict:/iu.test(text)&&/Peace efforts resume/iu.test(text)&&/drone/iu.test(text))
   return {headline:"Peace efforts resume in Sudan amid drone warfare",
    change:"The release reports renewed peace efforts in Sudan aimed at ending drone warfare and the associated humanitarian crisis."};
+ // Transform industry reporting about projects facing trade constraints into
+ // a source-neutral development while retaining the concrete country/topic.
+ const exposure=/^(.{3,140}?)\s+faces?\s+(?:new\s+)?(export (?:restrictions?|controls?|curbs?)|curbs?)\.?$/iu.exec(text);
+ if(exposure)
+  return {headline:`${exposure[2]} affecting ${exposure[1]}`,
+   change:`The report describes ${exposure[2].toLocaleLowerCase()} affecting ${exposure[1]}.`};
  if(/^Migrants paid up to \$([0-9,.]+) million in smuggling fees on European sea routes\.?$/iu.test(text)){
   const amount=/\$([0-9,.]+)/u.exec(text)![1];
   return {headline:"Migrants on European sea routes paid smugglers up to $"+amount+" million",
@@ -111,7 +117,7 @@ export function actorActionNewsObservation(title:string):{headline:string;change
   let actor=match[1].replace(/^The /u,"");
   // A named institution/country/person must actually occupy the grammatical
   // actor position; a generic publisher topic is not an actor.
-  const named=/^(?:UN(?:ited Nations)?(?: agencies| independent experts| experts| chief| Secretary-General| Security Council| human rights office| rights chief)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|European Commission|European Union|Security Council|Government of [\p{Lu}][\p{L} .'-]{1,45}|[\p{Lu}][\p{L}.'-]*(?:\s+(?:of|the|and|[\p{Lu}][\p{L}.'-]*)){0,6})$/u;
+  const named=/^(?:UN(?:ited Nations)?(?: agencies| independent experts| experts| chief| Secretary-General| Security Council| human rights office| rights chief)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|Bank of Japan|Bank of Canada|Reserve Bank of India|Swiss National Bank|People's Bank of China|European Commission|European Union|Security Council|Government of [\p{Lu}][\p{L} .'-]{1,45}|[\p{Lu}][\p{L}.'-]*(?:\s+(?:of|the|and|[\p{Lu}][\p{L}.'-]*)){0,6})$/u;
   if(!named.test(actor))continue;
   actor=({UK:"United Kingdom",US:"United States",UN:"United Nations",ECB:"European Central Bank"} as Record<string,string>)[actor]??actor;
   const object=match[3].replace(/\s*[\u2013\u2014]\s*/gu,", ").trim();

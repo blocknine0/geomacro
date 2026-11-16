@@ -29,7 +29,6 @@ export function MacroFastlanePanel(){
   <p className="mt-1 text-xs text-muted-foreground">Currency policy, inflation, jobs, gold demand and silver supply. Each release keeps one event identity across relevant markets.</p>
   <div className="mt-3 flex flex-wrap gap-4 text-sm">
    {quotes.map(q=><p key={q.instrument}><strong>{q.instrument}</strong> {new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:3}).format(q.value)} <span className="text-xs text-muted-foreground">per troy oz · {new Date(q.observed_at).toLocaleTimeString()} · provider indication</span></p>)}
-   {quotes.length<2&&<p className="text-xs text-muted-foreground">Current gold/silver price evidence is incomplete. News continues independently.</p>}
   </div>
   <div className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground" aria-label="Official daily foreign exchange reference">
    {fxValid&&fx ? <>
@@ -38,7 +37,7 @@ export function MacroFastlanePanel(){
      {fx.rates.map(rate=><span key={rate.currency}>1 EUR = {rate.per_eur.toLocaleString("en-US",{maximumFractionDigits:5})} {rate.currency}</span>)}
     </div>
     <p className="mt-1">Official daily reference (not a live executable quote or trading rate). Weekends and holidays may retain the last working-day reference.</p>
-   </> : <p>Verified ECB daily FX reference temporarily unavailable.</p>}
+   </> : null}
   </div>
   <p className="mt-2 text-xs text-muted-foreground">News polling: 5-minute target; scheduled critical releases: 1-minute polling target. Delivery latency is not guaranteed. Intraday live FX quotes are not configured.</p>
  </section>;

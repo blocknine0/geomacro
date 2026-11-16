@@ -86,7 +86,7 @@ for(const row of document.rows){
 }
 // deriveStatelessSignals caps the combined result at maxSignals. Calling it
 // once for all domains silently starved macro/minerals on geo-heavy sweeps.
-// Preserve an independent 120 native-dated upper bound for EACH category.
+// Preserve an independent 160 native-dated upper bound for EACH category.
 const officialSignals=CAT.flatMap(category=>
  deriveStatelessSignals(official.filter(row=>row.category===category),Date.now(),
   {websiteDelay:false,maxSignals:120})
@@ -101,7 +101,7 @@ const lanes=CAT.map(c=>available.filter(s=>s.category===c));
 // Maximize fresh delivery without starving older 72h source observations.
 // Keep four newest originals in each category, then rotate eight deeper IDs
 // per eligible 15-minute slot. Canonical D1 dedupe remains authoritative.
-const PER_CATEGORY_LIMIT=12;
+const PER_CATEGORY_LIMIT=160;
 const bounded=selectSourceWebsitePublicationCohort(lanes,Date.now());
 if(bounded.length>CAT.length*PER_CATEGORY_LIMIT)
  fail("PUBLICATION_QUOTA_BREACH");

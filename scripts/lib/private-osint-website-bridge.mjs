@@ -8,6 +8,7 @@ import {readIntakeBaseline} from "./budgeted-news-intake.mjs";
  */
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from "./global-official-release-feeds.mjs";
 import {isSafeDerivedNewsReadbackSignal,projectSourceNeutralOsintSignal} from "./derived-news-readback-policy.mjs";
+import {concreteOsintPublication} from "./concrete-osint-publication.mjs";
 
 // Fixed first-party U.S. federal RSS paths already accepted by the private
 // production source inventory. Government-authored facts (not third-party
@@ -63,9 +64,9 @@ export function officialWebsiteCandidateFromOsint(row,now=Date.now()){
 
 /**
  * Safe, free website discovery projection of a private OSINT source observation.
- * A pinned FEED hostname is the only source credit here. This is not an
- * original-issuer identity, verified event, attribution licence or risk score.
- * Never copy the original title, URL or original publisher bytes to public D1.
+ * A pinned FEED hostname is not an original-issuer identity, verification,
+ * attribution licence or risk score. The raw title is parsed in memory and
+ * discarded after a concrete country/corridor and transformed action exist.
  */
 export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=null){
  if(!row||!Number.isFinite(now)||!CATEGORIES.has(row.category)||
@@ -105,12 +106,15 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
  };
  const observedTopic=hints[row.category].find(([p])=>p.test(row.title))?.[1]??fallbacks[row.category];
  const id=row.category+"-"+createHash("sha256").update(row.news_id).digest("hex").slice(0,8);
- // `summarize` remains an accepted argument for old callers, but is deliberately
- // never invoked: no source title or article prose enters the public journal.
- void summarize;
+ let event=null;
+ try{event=typeof summarize==="function"?summarize(row.title):null}catch{return null}
+ const concrete=concreteOsintPublication({category:row.category,title:row.title,event});
+ if(!concrete)return null;
  const projected=projectSourceNeutralOsintSignal({
-   id,category:row.category,topic:observedTopic,
-   geography:null,development_type:"unverified OSINT feed observation",
+   id,category:row.category,topic:concrete.topic||observedTopic,
+   title:concrete.title,what_changed:concrete.what_changed,
+   why_it_matters:concrete.why_it_matters,geography:concrete.geography,
+   development_type:"unverified OSINT feed observation",
    published_at:row.published_at,date_precision:"exact",observed_release_count:1,
    sources_credited:[],status:"osint_feed_observed_unverified",
    same_event_corrob_verified:false,severity:null,
@@ -127,7 +131,8 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
 export function privateWebsiteRetentionPriority(row){
  if(row?.status==="official_release_observed_unscored")return 2;
  if(row?.status==="osint_feed_observed_unverified"&&
-   isSafeDerivedNewsReadbackSignal(row))return 1;
+   isSafeDerivedNewsReadbackSignal(row)&&
+   projectSourceNeutralOsintSignal(row))return 1;
  return 0;
 }
 export function privateWebsiteRetentionNewestFirst(a,b){
@@ -157,7 +162,9 @@ export async function publishPrivateOsintWebsiteSignals({
         isSafeDerivedNewsReadbackSignal(s)))||
     (s.sources_credited.length===1&&
       (typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()))||
-    !isSafeDerivedNewsReadbackSignal(s)))
+    !isSafeDerivedNewsReadbackSignal(s)||
+    s.status==="osint_feed_observed_unverified"&&
+      !projectSourceNeutralOsintSignal(s)))
    throw Error("PRIVATE_OSINT_WEBSITE_BRIDGE_SIGNAL_UNSAFE");
  if(signals.length===0)return {candidates:0,new_derived_stories:0,
    journal_readback_verified:true,private_raw_published:false};
@@ -201,7 +208,10 @@ export async function publishPrivateOsintWebsiteSignals({
    .sort(recentFirst).slice(0,600).map(row=>row.id)):null;
  const eligibleWithinCap=survivors?
    eligible.filter(s=>survivors.has(s.id)):eligible;
- const pending=eligibleWithinCap.slice(0,150);
+ // Admit up to the observed 475-item direct/Private OSINT poll volume. The
+ // source lanes and D1 journal remain independently bounded, and writes stay
+ // split into acknowledged batches of 50 under the existing quota governor.
+ const pending=eligibleWithinCap.slice(0,475);
  for(let i=0;i<pending.length;i+=50){
    const batch=pending.slice(i,i+50);
    const res=await fetchImpl(controlPlaneRoot+JOURNAL,{

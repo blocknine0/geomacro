@@ -114,12 +114,12 @@ describe("website-only Supabase-free derived news continuity",()=>{
   });
 
   it("admits safe domain-only OSINT provenance and rejects a source URL/path",async()=>{
-    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(3);
-    const osint={...sample("macro"),topic:"official economic statistics",
-      title:"Geomacro finds official economic statistics source-feed observation",
-      what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
-      why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
-      geography:null,development_type:"unverified OSINT feed observation",
+    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(4);
+    const osint={...sample("macro"),topic:"Monetary Policy & FX Liquidity",
+      title:"Geomacro finds Monetary Policy & FX Liquidity · Reported Policy Action — Japan",
+      what_changed:"Unverified feed observation: Bank of Japan announced its policy rate decision for Japan.",
+      why_it_matters:"Risk: reported policy action affecting monetary policy in Japan. Effect: funding costs and local-currency hedging may need review if confirmed. Price channel to monitor: USD/JPY. Action Posture: REQUIRE_APPROVAL; no price move is asserted.",
+      geography:"Japan",development_type:"unverified OSINT feed observation",
       sources_credited:["Monitored feed: www.bankofcanada.ca"],
       status:"osint_feed_observed_unverified"};
     expect(verifyDerivedStory(osint,NOW)).toBe(true);
@@ -137,7 +137,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const doc=await feedResponse.json();
     expect(doc.signals).toHaveLength(1);
     expect(doc.signals[0].sources_credited).toEqual([]);
-    expect(doc.signals[0].title).toContain("unverified macro watch signal");
+    expect(doc.signals[0].title).toContain("Monetary Policy & FX Liquidity");
     expect(JSON.stringify(doc)).not.toContain("bankofcanada.ca");
     expect(data.size).toBe(1);
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
@@ -454,7 +454,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
       expect(worker).not.toContain(forbidden);
     }
   });
-  it("legacy 15m public feed excludes monitored OSINT that the frozen client cannot parse, while modern Website and canonical D1 retain it",async()=>{
+  it("legacy generic OSINT stays internal and never reaches an immediate, delayed or canonical public projection",async()=>{
     const genuine=sample("macro","2026-10-12T19:00:00.000Z");
     const monitored={...sample("rare_earth","2026-10-12T19:00:00.000Z"),
       topic:"critical-mineral inputs",
@@ -471,8 +471,8 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const immediate=await (await readDerivedStories(env,NOW,0,0)).json();
     const legacy=await (await readDerivedStories(env,NOW,0,15)).json();
     const canonical=await (await readDerivedStoriesBundle(env,NOW)).json();
-    expect(immediate.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
-    expect(canonical.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
+    expect(immediate.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
+    expect(canonical.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
     expect(legacy.original_release_delay_minutes).toBe(15);
     expect(legacy.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
     expect(legacy.first_ingest.map((s:{id:string})=>s.id)).toEqual([genuine.id]);

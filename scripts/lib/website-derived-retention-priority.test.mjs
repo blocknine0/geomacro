@@ -19,9 +19,14 @@ test("actual SQLite D1 pruning retains older actor/action OSINT over 600 newer g
    }),inserted);
   }
   const concrete={
-   id:"rare_earth-abcdef12",category:"rare_earth",topic:"critical-mineral inputs",
+   id:"rare_earth-abcdef12",category:"rare_earth",topic:"Copper Supply & Processing",
    status:"osint_feed_observed_unverified",
-   what_changed:"A monitored source feed reports: Ministry announced new mineral processing plans. This report has not been independently verified."
+   title:"Geomacro finds Copper Supply & Processing · Approval or Authorization — Chile",
+   what_changed:"Unverified feed observation: Chile's Ministry of Mines approved a copper processing project.",
+   why_it_matters:"Risk: approval affecting copper supply and processing in Chile. Effect: buyers and processors may need to recheck copper delivery timing, eligible suppliers and conversion capacity linked to Chile if the report is confirmed. Price channel to monitor: COMEX copper benchmark; concentrate treatment charges. Action Posture: REQUIRE_APPROVAL; no independent corroboration or price move is asserted.",
+   geography:"Chile",development_type:"unverified OSINT feed observation",
+   published_at:new Date(now-36*3600000).toISOString(),date_precision:"exact",
+   observed_release_count:1,sources_credited:[],same_event_corrob_verified:false,severity:null,
   };
   const older=new Date(now-36*3600000).toISOString();
   put.run(concrete.id,concrete.category,older,"exact",JSON.stringify(concrete),inserted);

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {officialWebsiteCandidateFromOsint,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals,
  privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst} from "./private-osint-website-bridge.mjs";
+import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const rows=[
@@ -173,16 +174,19 @@ test("collector captures the original RSS permalink ephemerally while keeping pr
 
 test("unverified native-dated OSINT becomes source-neutral watch cards across all categories",()=>{
  const categories=["geopolitics","macro","rare_earth"];
+ const headlines={
+  geopolitics:"Yemen Ministry of Transport introduces Red Sea tanker transit controls",
+  macro:"Bank of Japan announces policy rate decision for Japan",
+  rare_earth:"Chile Ministry of Mines approves lithium processing project",
+ };
  for(const category of categories){
   const row={
    news_id:"news-"+"c".repeat(64),category,
    source_url:"https://news.google.com/rss/search?q=energy",
-   title:category==="geopolitics"?"UN leaders discuss sanctions and security measures today":
-    category==="macro"?"Central bank reports inflation and monetary policy data":
-    "Regional mining group discusses lithium and copper mineral production",
+   title:headlines[category],
    published_at:"2026-10-25T11:40:00.000Z",article_url:null,
   };
-  const signal=unverifiedWebsiteSignalFromOsint(row,now);
+  const signal=unverifiedWebsiteSignalFromOsint(row,now,actorActionNewsObservation);
   assert.ok(signal,category);
   assert.equal(signal.status,"osint_feed_observed_unverified");
   assert.equal(signal.category,category);
@@ -190,11 +194,13 @@ test("unverified native-dated OSINT becomes source-neutral watch cards across al
   assert.equal(signal.same_event_corrob_verified,false);
   assert.equal(signal.date_precision,"exact");
   assert.match(signal.sources_credited[0],/Monitored feed: news.google.com \(aggregator; original publisher not verified\)/u);
-  assert.match(signal.title,/unverified .* watch signal/u);
-  assert.match(signal.what_changed,/No underlying event, actor, action, or market impact has been verified/u);
-  assert.ok(!JSON.stringify(signal).includes(row.title));
+  assert.match(signal.title,/· .+ — .+/u);
+  assert.match(signal.what_changed,/Unverified feed observation:/u);
+  assert.match(signal.why_it_matters,/Price channel to monitor:.+Action Posture: REQUIRE_APPROVAL/u);
+  assert.notEqual(signal.title.replace(/^Geomacro finds /u,""),row.title);
+  assert.ok(!signal.what_changed.includes(row.title));
   assert.ok(!JSON.stringify(signal).includes(row.source_url));
-  assert.equal(signal.geography,null);
+  assert.ok(signal.geography);
   assert.equal(signal.development_type,"unverified OSINT feed observation");
   assert.equal(unverifiedWebsiteSignalFromOsint({...row,published_at:"2026-10-26T11:40:00.000Z"},now),null);
   assert.equal(unverifiedWebsiteSignalFromOsint({...row,news_id:"news-unsafe"},now),null);
@@ -203,37 +209,32 @@ test("unverified native-dated OSINT becomes source-neutral watch cards across al
 
 test("summarizer callbacks cannot copy source headlines or prose into public watch cards",()=>{
  const examples=[
-  ["geopolitics","United States announced a new security policy","United States announced a new security policy across border agencies."],
-  ["macro","Federal Reserve announced new monetary policy measures","Federal Reserve announced new monetary policy measures affecting lending conditions."],
-  ["rare_earth","Canada announced a new critical minerals project","Canada announced a new critical minerals project to develop mineral processing."],
+  ["geopolitics","United States introduces expanded border security policy","U.S. officials announce a border-security change","The United States government announced expanded border security measures."],
+  ["macro","Federal Reserve announces a monetary policy rate decision for the United States","Federal Reserve maintains its rate guidance","The Federal Reserve retained its policy rate while citing persistent inflation."],
+  ["rare_earth","Canada launches a critical-mineral processing program","Canadian authorities approve a copper-processing investment","Canadian authorities approved a battery-grade lithium processing investment."],
  ];
- for(const [category,headline,change] of examples){
+ for(const [category,sourceTitle,headline,change] of examples){
   const row={news_id:"news-"+"b".repeat(64),category,
    source_url:"https://news.google.com/rss/search?q=economic",
-   title:"Named actor announces new action (source report)",
+   title:sourceTitle,
    published_at:"2026-10-25T11:40:00.000Z"};
   const signal=unverifiedWebsiteSignalFromOsint(row,now,()=>({headline,change}));
   assert.ok(signal,category);
   assert.equal(signal.status,"osint_feed_observed_unverified");
-  assert.match(signal.title,/unverified .* watch signal/u);
-  assert.doesNotMatch(signal.what_changed,/monitored source feed reports|announced|release|project/u);
-  assert.doesNotMatch(signal.why_it_matters,/source host|publisher/u);
-  assert.ok(!JSON.stringify(signal).includes(row.title));
-  assert.ok(!JSON.stringify(signal).includes(headline));
-  assert.ok(!JSON.stringify(signal).includes(change));
+  assert.match(signal.title,/· .+ — .+/u);
+  assert.notEqual(signal.title.replace(/^Geomacro finds /u,""),row.title);
+  assert.ok(signal.what_changed.includes(change));
+  assert.ok(!JSON.stringify(signal).includes(row.source_url));
   assert.equal(signal.sources_credited.length,1);
   assert.equal(signal.same_event_corrob_verified,false);
  }
 });
-test("unverified source observations do not claim actor from source host",()=>{
+test("signals without a location or transformed action stay out of public Intelligence",()=>{
  const row={news_id:"news-"+"a".repeat(64),source_url:"https://example.gov/rss",category:"macro",
   title:"A monthly central bank update reports financial conditions across regions",
   published_at:"2026-10-25T11:40:00.000Z"};
  const derived=unverifiedWebsiteSignalFromOsint(row,now,()=>null);
- assert.ok(derived);
- assert.match(derived.sources_credited[0],/Monitored feed: example.gov/u);
- assert.match(derived.what_changed,/No underlying event, actor, action, or market impact has been verified/u);
- assert.doesNotMatch(derived.title,/example.gov/u);
+ assert.equal(derived,null);
 });
 
 test("source-private U.S. federal original feed candidates are admitted only at pinned permalink path",()=>{
@@ -302,14 +303,12 @@ test("concrete OSINT displaces generic feed candidates without growing the 600-r
   category:"geopolitics",status:"official_feed_candidate_unscored",
   published_at:new Date(at-n*60000).toISOString(),
  }));
- const signal={id:"rare_earth-abc12345",category:"rare_earth",
-    title:"Geomacro finds an unverified critical-minerals watch signal",
-    published_at:new Date(at-36*3600000).toISOString(),date_precision:"exact",
-    status:"osint_feed_observed_unverified",development_type:"unverified OSINT feed observation",
-    topic:"critical-mineral inputs",geography:null,
-    what_changed:"A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
-    why_it_matters:"This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
-    observed_release_count:1,same_event_corrob_verified:false,severity:null,sources_credited:[]};
+ const signal=unverifiedWebsiteSignalFromOsint({
+   news_id:"news-"+"e".repeat(64),category:"rare_earth",
+   title:"Chile Ministry of Mines approves copper processing project",
+   source_url:"https://minerals.example/rss",published_at:new Date(at-36*3600000).toISOString(),
+ },at,actorActionNewsObservation);
+ assert.ok(signal);
  assert.equal(privateWebsiteRetentionPriority(signal),1);
  assert.equal(privateWebsiteRetentionPriority(candidates[0]),0);
  assert.equal(privateWebsiteRetentionNewestFirst(signal,candidates[0]),-1);
@@ -333,7 +332,31 @@ test("concrete OSINT displaces generic feed candidates without growing the 600-r
  assert.ok(!records.some(x=>x.id===candidates[candidates.length-1].id));
 });
 
-test("generic OSINT record cannot gain priority over a concrete event",()=>{
+test("publishes the full 475-row observed poll volume in bounded acknowledged batches",async()=>{
+ const signals=Array.from({length:475},(_,index)=>unverifiedWebsiteSignalFromOsint({
+  news_id:"news-"+index.toString(16).padStart(64,"0"),category:"rare_earth",
+  title:"Chile Ministry of Mines approves copper processing project",
+  source_url:"https://minerals.example/rss",published_at:new Date(now-1000).toISOString(),
+ },now,actorActionNewsObservation));
+ assert.ok(signals.every(Boolean));
+ let records=[],accepted=0,writes=0;
+ const result=await publishPrivateOsintWebsiteSignals({
+  signals,now,controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  controlToken:"b".repeat(64),readAll:async()=>records,
+  fetchImpl:async(_url,options)=>{
+   const batch=JSON.parse(options.body).signals;
+   if(batch.length){writes++;assert.ok(batch.length<=50);accepted+=batch.length;records.push(...batch);}
+   return Response.json({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
+    accepted:batch.length,persistent_derived_only:true,chargeable:false});
+  },
+ });
+ assert.equal(writes,10);
+ assert.equal(accepted,475);
+ assert.equal(result.new_derived_stories,475);
+ assert.equal(result.deferred_unpublished,0);
+});
+
+test("generic OSINT record cannot gain publication priority",()=>{
  const actor={id:"rare_earth-abc12345",category:"rare_earth",status:"osint_feed_observed_unverified",
    development_type:"unverified OSINT feed observation",date_precision:"exact",geography:null,
    published_at:"2026-10-25T11:25:00.000Z",observed_release_count:1,
@@ -343,7 +366,7 @@ test("generic OSINT record cannot gain priority over a concrete event",()=>{
    why_it_matters:"This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact."};
  assert.equal(privateWebsiteRetentionPriority({...actor,topic:"minerals publisher candidate"}),0);
  assert.equal(privateWebsiteRetentionPriority({...actor,what_changed:"Dated item about minerals"}),0);
- assert.equal(privateWebsiteRetentionPriority(actor),1);
+ assert.equal(privateWebsiteRetentionPriority(actor),0);
  assert.equal(privateWebsiteRetentionPriority({status:"official_feed_candidate_unscored"}),0);
 });
 

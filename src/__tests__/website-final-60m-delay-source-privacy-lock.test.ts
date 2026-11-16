@@ -80,7 +80,7 @@ describe("founder-final website release and privacy lock — GRI + Intelligence 
    expect(shell).not.toContain("GITHUB_URL");
    expect(shell).not.toContain("github.com/blocknine0/geomacro");
    expect(shell).not.toContain("<Github ");
-   expect(shell).toContain("Intelligence findings have no added publication delay · API keys coming soon");
+   expect(shell).toContain("GeoMacro Intelligence · Ed25519-Signed Risk Gates · Store &amp; API pricing available");
    const frozen=JSON.parse(readFileSync("config/global-risk-final-lock.json","utf8"));
    expect(frozen.locked).toBe(true);
    expect(frozen.frozen_paths).toEqual([

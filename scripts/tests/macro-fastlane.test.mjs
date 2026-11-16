@@ -156,7 +156,7 @@ test('The same bundle reuses one global fallback request across regional failure
  assert.ok(result.signals.every(s=>s.status==='osint_feed_observed_unverified'&&verifyDerivedStory(s,now)));
  assert.equal(result.receipt.google_is_original_verification,false);
  const spec={url:'https://www.mining.com/feed/'};
- const precious=parseSectorFeed(rss('Gold mine production increases as central bank buying grows','https://www.mining.com/gold-mine-output/'),spec,now);assert.ok(precious.length>0);assert.ok(precious.every(s=>s.category==='macro'));
+ const precious=parseSectorFeed(rss('Bank of Japan increases gold purchases as Japan currency liquidity tightens','https://www.mining.com/japan-gold-purchases/'),spec,now);assert.ok(precious.length>0);assert.ok(precious.every(s=>s.category==='macro'));
  assert.equal(parseSectorFeed(rss('Chile announces new copper and lithium export rules','https://evil.test/story'),spec,now).length,0);
  const projection=buildDerivedNewsStructural(result.signals,now,'attributed_research');assert.equal(projection.length,result.signals.length);assert.ok(projection.every(x=>x.confidence_state==='MONITORED_SOURCE_REPORT_UNVERIFIED'&&!x.qualifying_topic_release_verified));
 });

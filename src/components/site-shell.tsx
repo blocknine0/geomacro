@@ -332,7 +332,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span className="min-w-0 max-w-full leading-relaxed">Intelligence findings have no added publication delay · API keys coming soon</span>
+              <span className="min-w-0 max-w-full leading-relaxed">GeoMacro Intelligence · Ed25519-Signed Risk Gates · Store &amp; API pricing available</span>
               <nav aria-label="Legal and trust information" className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
                 <Link to="/about" hash="privacy" className="whitespace-nowrap hover:text-foreground">Privacy</Link>
                 <Link to="/about" hash="product-use" className="whitespace-nowrap hover:text-foreground">Product use</Link>
