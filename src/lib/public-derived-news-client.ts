@@ -120,11 +120,7 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
           s.geography===null) ||
         (s.status==="osint_feed_observed_unverified" &&
           s.development_type==="unverified OSINT feed observation" &&
-          s.date_precision==="exact" && s.geography===null &&
-          (isSourceNeutralOsintSignal(s) ||
-            Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
-            typeof s.sources_credited[0]==="string"&&
-            s.sources_credited[0].startsWith("Monitored feed: ")))) ||
+          s.date_precision==="exact" && projectSourceNeutralOsintSignal(s) !== null)) ||
       s.same_event_corrob_verified !== false || s.severity !== null ||
       s.observed_release_count !== 1 ||
       !Array.isArray(s.sources_credited) ||
