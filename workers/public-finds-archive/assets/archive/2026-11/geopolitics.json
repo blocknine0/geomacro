@@ -1,0 +1,270 @@
+{
+  "schema": "geomacro.permanent-derived-news-archive-month.v1",
+  "month": "2026-11",
+  "category": "geopolitics",
+  "updated_at": "2026-11-16T10:11:02.076Z",
+  "signals": [
+    {
+      "id": "geopolitics-3ecdebb1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: extended United Nations Interim Security Force for Abyei, Adopting Resolution 2838 (2026)",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council extended United Nations Interim Security Force for Abyei, Adopting Resolution 2838 (2026).",
+      "geography": null,
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-13T23:18:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7a809d63",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The United Kingdom stands in solidarity with our Gulf partners · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The United Kingdom stands in solidarity with our Gulf partners. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-13T21:42:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2bf68f19",
+      "category": "geopolitics",
+      "title": "Geomacro finds Humanitarians: called for swift entry of winter supplies in Gaza · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Humanitarians called for swift entry of winter supplies in Gaza. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-13T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-62e077e5",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026) · Africa",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026). Country or region mentioned: Africa.",
+      "geography": "Africa",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-12T22:52:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-886d2cd1",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Ukraine's armed forces are lawful combatants · United Kingdom",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Ukraine's armed forces are lawful combatants. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-12T10:09:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-07f157f3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Second Committee: approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Second Committee approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "approval",
+      "topic": "foreign policy",
+      "published_at": "2026-11-11T22:57:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d3376d8c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Third Committee: approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection · Ukraine",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Third Committee approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "approval",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-10T23:21:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ea497c95",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning South Sudan's authorities must allow UNMISS to operate without obstruction · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning South Sudan's authorities must allow UNMISS to operate without obstruction. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-10T17:04:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2fde2d37",
+      "category": "geopolitics",
+      "title": "Geomacro finds Members: welcomed the progress achieved while noting that further work is needed before the accession process can be concluded · Ethiopia",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Members welcomed the progress achieved while noting that further work is needed before the accession process can be concluded. Country or region mentioned: Ethiopia.",
+      "geography": "Ethiopia",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-10T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "World Trade Organization; attribution required; no article-text redistribution approval."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-05a5a3c3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Along with our partners we will stand with Ukraine for as long as it takes · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Along with our partners we will stand with Ukraine for as long as it takes. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T16:27:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-23d62ed6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: met in New York on Ukraine Monday · Ukraine",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council met in New York on Ukraine Monday. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-be331f64",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes.",
+      "geography": null,
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-05T17:10:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-dcd8ebf3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Continued violations of Abyei’s demilitarised status are unacceptable · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Continued violations of Abyei’s demilitarised status are unacceptable. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-05T16:11:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3d373de2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Secretary-General Strongly: condemned Escalating Drone Attacks in Sudan · Sudan",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Secretary-General Strongly condemned Escalating Drone Attacks in Sudan. Country or region mentioned: Sudan.",
+      "geography": "Sudan",
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-02T16:56:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    }
+  ]
+}

@@ -1,0 +1,389 @@
+{
+  "ok": true,
+  "schema": "geomacro.public-daily-official-finds.v1",
+  "generated_at": "2026-11-16T16:00:07.178Z",
+  "selection_window_days": 30,
+  "source_window": "archived_original_release",
+  "official_only": true,
+  "independently_corrob_verified": false,
+  "chargeable": false,
+  "scored": false,
+  "source_urls_returned": false,
+  "mandatory_source_credits_preserved": true,
+  "signals": [
+    {
+      "id": "geopolitics-3ecdebb1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: extended United Nations Interim Security Force for Abyei, Adopting Resolution 2838 (2026)",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council extended United Nations Interim Security Force for Abyei, Adopting Resolution 2838 (2026).",
+      "geography": null,
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-13T23:18:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7a809d63",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The United Kingdom stands in solidarity with our Gulf partners · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The United Kingdom stands in solidarity with our Gulf partners. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-13T21:42:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-62e077e5",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026) · Africa",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026). Country or region mentioned: Africa.",
+      "geography": "Africa",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-12T22:52:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-886d2cd1",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Ukraine's armed forces are lawful combatants · United Kingdom",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Ukraine's armed forces are lawful combatants. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-12T10:09:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d3f6681b",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for October 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-11-12",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-07f157f3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Second Committee: approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Second Committee approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "approval",
+      "topic": "foreign policy",
+      "published_at": "2026-11-11T22:57:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d3376d8c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Third Committee: approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection · Ukraine",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Third Committee approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "approval",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-10T23:21:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ea497c95",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning South Sudan's authorities must allow UNMISS to operate without obstruction · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning South Sudan's authorities must allow UNMISS to operate without obstruction. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-10T17:04:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-05a5a3c3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Along with our partners we will stand with Ukraine for as long as it takes · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Along with our partners we will stand with Ukraine for as long as it takes. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T16:27:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-23d62ed6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: met in New York on Ukraine Monday · Ukraine",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council met in New York on Ukraine Monday. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-be331f64",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes.",
+      "geography": null,
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-05T17:10:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-dcd8ebf3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Continued violations of Abyei’s demilitarised status are unacceptable · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Continued violations of Abyei’s demilitarised status are unacceptable. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-05T16:11:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7be2e943",
+      "category": "rare_earth",
+      "title": "Geomacro finds Ministry of Mines: launched the Ninth Tranche of Critical Mineral Block Auction and the Third Tranche of Exploration Licence Auction; Unveils Landmark Reform · India",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Ministry of Mines launched the Ninth Tranche of Critical Mineral Block Auction and the Third Tranche of Exploration Licence Auction; Unveils Landmark Reform. Country or region mentioned: India.",
+      "geography": "India",
+      "development_type": "approval",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-11-05T11:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-0da8c86b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cabinet: approved Capex Support Scheme to Promote Critical Mineral Processing with an Outlay of Rs.2,814 Crore for Lithium and Nickel processing · India",
+      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
+      "what_changed": "Cabinet approved Capex Support Scheme to Promote Critical Mineral Processing with an Outlay of Rs.2,814 Crore for Lithium and Nickel processing. Country or region mentioned: India.",
+      "geography": "India",
+      "development_type": "approval",
+      "topic": "critical-mineral inputs",
+      "published_at": "2026-11-04T10:11:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-be28ba3f",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T20:57:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2abe42c4",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published GDP estimates for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published GDP estimates for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-30",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-504170ac",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-29",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-18e81505",
+      "category": "macro",
+      "title": "Geomacro finds Federal Reserve issued FOMC statement",
+      "why_it_matters": "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal.",
+      "what_changed": "Federal Reserve issued FOMC statement.",
+      "geography": null,
+      "development_type": "announcement",
+      "topic": "monetary policy",
+      "published_at": "2026-10-28T18:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Federal Reserve Board"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e168f30f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested to unlock lithium potential and improve connectivity and industry in northern Quebec · Canada",
+      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
+      "what_changed": "Canada invested to unlock lithium potential and improve connectivity and industry in northern Quebec. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "critical-mineral inputs",
+      "published_at": "2026-10-28",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7da3d13a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Energy Department: awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Energy Department awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-10-26",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "U.S. Department of Energy"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "geomacro.permanent-derived-news-archive-month.v1",
+  "month": "2026-10",
+  "category": "rare_earth",
+  "updated_at": "2026-11-02T20:27:22.058Z",
+  "signals": [
+    {
+      "id": "rare_earth-e168f30f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested to unlock lithium potential and improve connectivity and industry in northern Quebec · Canada",
+      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
+      "what_changed": "Canada invested to unlock lithium potential and improve connectivity and industry in northern Quebec. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "critical-mineral inputs",
+      "published_at": "2026-10-28",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7da3d13a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Energy Department: awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Energy Department awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-10-26",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "U.S. Department of Energy"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    }
+  ]
+}
