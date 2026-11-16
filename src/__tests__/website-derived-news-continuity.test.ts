@@ -454,7 +454,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
       expect(worker).not.toContain(forbidden);
     }
   });
-  it("legacy 15m public feed excludes monitored OSINT that the frozen client cannot parse, while modern Website and canonical D1 retain it",async()=>{
+  it("legacy generic OSINT stays internal and never reaches an immediate, delayed or canonical public projection",async()=>{
     const genuine=sample("macro","2026-10-12T19:00:00.000Z");
     const monitored={...sample("rare_earth","2026-10-12T19:00:00.000Z"),
       topic:"critical-mineral inputs",
@@ -471,8 +471,8 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const immediate=await (await readDerivedStories(env,NOW,0,0)).json();
     const legacy=await (await readDerivedStories(env,NOW,0,15)).json();
     const canonical=await (await readDerivedStoriesBundle(env,NOW)).json();
-    expect(immediate.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
-    expect(canonical.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
+    expect(immediate.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
+    expect(canonical.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
     expect(legacy.original_release_delay_minutes).toBe(15);
     expect(legacy.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
     expect(legacy.first_ingest.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
