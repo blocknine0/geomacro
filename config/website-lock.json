@@ -1358,7 +1358,7 @@
   "approved_private_osint_website_projection_20261116": {
     "approval": "Owner explicitly requested the missing Private OSINT Website Intelligence feed be repaired end to end on 2026-11-16; source-neutral unverified watch cards are allowed while raw headlines, feed hosts, article URLs, and source text remain excluded from public responses.",
     "purpose": "Show fresh existing Private OSINT observations across all three categories as unverified watch signals and redact legacy journal rows in every public readback path.",
-    "approved_source_commit": "43ed162cdeff2bce911f742c493d539cd4bece41",
+    "approved_source_commit": "184a0a2991a9dd15d96aef9d178db6174edcea72",
     "approved_paths": [
       "src/routes/intelligence.tsx",
       "src/components/intelligence/stateless-live-desk.tsx"
