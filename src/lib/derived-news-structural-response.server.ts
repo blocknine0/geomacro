@@ -41,7 +41,7 @@ export function structuralNewsAvailability(
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Access-Control-Allow-Origin":"*","Referrer-Policy":"no-referrer"};
 /** GET /api/v1/intelligence/query?view=structural-72h[&domain=macro]
- * Public reads use the permanent static archive rolling latest.json (<=250
+ * Public reads use the permanent static archive rolling latest.json (<=475
  * records), never the D1 journal. The feed is filtered by original publication
  * time; a configured, down, review-gated or unobserved source is NOT
  * asserted to have published news. No x402, signing, new storage or raw text.
@@ -96,7 +96,7 @@ export async function derivedNewsStructuralResponse(
         return {...normalized,source_record_id:r.id,
           original_release_at:r.original_published_at,
           date_precision:r.date_precision,
-          source_material_class:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
+          source_material_class:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_475",
           upstream_source_rights_unverified:true};
       });
       const fromRegistered:typeof items=[];
@@ -107,7 +107,7 @@ export async function derivedNewsStructuralResponse(
       return Response.json({
         ok:true,schema:"geomacro.reusable-news-json-live-feed.v1",
         item_schema:REUSABLE_NEWS_JSON_SCHEMA,
-        source_scope:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
+        source_scope:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_475",
         registered_source_reader_state:"NOT_QUERIED_PUBLIC_READ_PATH_IS_STATIC_ONLY",
         registered_source_checks_24h:{},
         registered_source_items:0,
@@ -126,7 +126,7 @@ export async function derivedNewsStructuralResponse(
       ok:true,schema:"geomacro.derived-news-structural-feed.v1",
       item_schema:NEWS_STRUCTURAL_SCHEMA,retention_hours:72,
       original_release_delay_minutes:0,
-      source_scope:"ELIGIBLE_RELEASES_PRESENT_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
+      source_scope:"ELIGIBLE_RELEASES_PRESENT_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_475",
       exhaustive_all_global_sources:false,
       independent_same_event_verified:false,commercial_rights_verified:false,
       scored:false,signed:false,chargeable:false,payment_required_now:false,

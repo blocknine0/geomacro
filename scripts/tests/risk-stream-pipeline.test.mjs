@@ -364,6 +364,26 @@ test("publisher-parent independence is mandatory for Standard and Complex, not B
  assert.deepEqual(payload.source_originals.length,1);
  assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
 });
+test("one independently dual-attested open-license observation signs Basic in each category",async()=>{
+ const cases=[
+  ["GEOPOLITICS","GOVERNMENT_WIRE","SANCTIONS_POLICY: jurisdictional restrictions tighten."],
+  ["MACRO_FX","OFFICIAL_STATISTICS","CENTRAL_BANK_POLICY: monetary stance or policy settings change."],
+  ["CRITICAL_MINERALS","TRADE_CUSTOMS","CRITICAL_MINERAL_SUPPLY: material availability or supply-chain terms change."]
+ ];
+ for(const [index,[category,role,what]] of cases.entries()){
+  const c=ctx(),now=Date.now();c.db.sources.get("gov").source_role=role;
+  const a=candidate(c,700+index,"gov",now,category);a.derived.what=what;
+  const claims=riskStreamOriginalClaims(a);
+  a.proof={facts_signature_b64:prove(claims,c.facts,"geomacro.machine-original-facts.v1"),
+   rights_signature_b64:prove(claims,c.rights,"geomacro.machine-commercial-rights.v1")};
+  const result=await processRiskStreamBatch(c.env,[a],{now,sleeper:async()=>{},random:()=>0});
+  assert.equal(result.corroborated_and_signed,1,category);
+  const gro=JSON.parse([...c.db.gros.values()][0].payload_json);
+  assert.equal(gro.evidence_and_confidence.factual_confidence,"SINGLE_VERIFIED_ORIGINAL");
+  assert.deepEqual(gro.eligible_derived_score.eligible_tiers,["basic_focused"]);
+  assert.equal(gro.execution_authorized,false);
+ }
+});
 test("52-hour separated originals remain separate Basic observations",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,5,"gov",now,"GEOPOLITICS",-52*3600000);

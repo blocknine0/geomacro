@@ -52,6 +52,18 @@ for(const collector of ["direct","private"]){
  });
 }
 
+test("collector normalizes the Antarctica code to the sovereign Australia route before attestation",async()=>{
+ const antarctica={...original,country_iso3:"ATA",
+  event_identity:{...original.event_identity,country_iso3:"ATA"}};
+ const xml='<feed xmlns:gm="https://geomacro.live/ns/risk-stream/1"><entry><gm:geomacro_risk_stream_candidate>'+JSON.stringify(antarctica).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")+'</gm:geomacro_risk_stream_candidate></entry></feed>';
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
+  fetchImpl:async()=>({ok:true,text:async()=>xml}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(result.originals.length,1);
+ assert.equal(result.originals[0].country_iso3,"AUS");
+ assert.equal(result.originals[0].event_identity.country_iso3,"AUS");
+});
+
 test("metadata-only or non-opted-in feeds cannot produce a Risk Stream sidecar",async()=>{
  const noExtension=await collectRiskStreamFeedExtensions({collector:"direct",now,
   fetchImpl:async()=>({ok:true,text:async()=>"<feed><entry><title>ordinary headline</title></entry></feed>"}),

@@ -73,7 +73,7 @@ export function CommercialHome() {
                 <h3 className="mt-3 text-lg font-semibold"><Link to="/pricing" className="gm-heading-link">For applications &amp; agents <ArrowRight className="h-4 w-4 text-primary" aria-hidden /></Link></h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Country and corridor digests, profiles and answers delivered as structured JSON.</p>
                 <Link to="/data-api" className="gm-text-link mt-3">See products and prices <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-                <p className="mt-2 text-xs text-muted-foreground">API keys and self-service checkout coming soon.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Explore signed Risk Gates and structured AI-agent JSON in Store &amp; API.</p>
               </div>
             </div>
           </aside>

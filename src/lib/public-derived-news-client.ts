@@ -171,7 +171,7 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
       (value.original_release_delay_minutes!==0&&value.original_release_delay_minutes!==15) ||
       value.retention_days !== 3 || value.retention_hours !== 72 ||
       value.delivery_scope !== "free_website_only" ||
-      !Array.isArray(value.signals) || value.signals.length > 250) {
+      !Array.isArray(value.signals) || value.signals.length > 475) {
     throw Error("DERIVED_NEWS_PUBLIC_DOCUMENT_INVALID");
   }
   // A malformed object cannot be permitted to smuggle source metadata to UI.

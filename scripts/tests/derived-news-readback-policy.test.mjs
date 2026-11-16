@@ -9,13 +9,13 @@ import {
 
 const osint = (overrides={}) => ({
   id:"macro-1234abcd", category:"macro",
-  title:"Geomacro finds official economic statistics source-feed observation",
-  what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
-  why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
-  topic:"official economic statistics", geography:null,
+  title:"Canadian authorities publish a new economic statistics update",
+  what_changed:"A monitored source feed contains a dated item about economic statistics.",
+  why_it_matters:"A structured macro signal for follow-up.",
+  topic:"official economic statistics", geography:"Canada",country_iso3:"CAN",corridor:null,event_direction:"tightening",
   development_type:"unverified OSINT feed observation",
   published_at:"2026-10-25T11:25:00.000Z", date_precision:"exact",
-  observed_release_count:1, sources_credited:["Monitored feed: www.bankofcanada.ca"],
+  observed_release_count:1, sources_credited:[],
   status:"osint_feed_observed_unverified",
   same_event_corrob_verified:false, severity:null,
   ...overrides,
@@ -40,32 +40,32 @@ test("accepts only hostname-shaped monitored feed credit, with one known aggrega
 });
 
 test("allows valid unverified OSINT attribution in derived-only journal without confusing hostname with article URL",()=>{
-  assert.equal(isSafeDerivedNewsReadbackSignal(osint()),true);
-  assert.equal(isSafeDerivedNewsReadbackSignal(osint({
-    sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"],
-  })),true);
+  const projected=projectSourceNeutralOsintSignal(osint());
+  assert.equal(isSafeDerivedNewsReadbackSignal(projected),true);
+  assert.equal(isSafeDerivedNewsReadbackSignal({...projected,sources_credited:[
+    "Monitored feed: news.google.com (aggregator; original publisher not verified)"]}),true);
 });
 
 test("rejects URL/path/HTML leakage in prose or malformed monitored-feed attribution",()=>{
-  for(const signal of [
-    osint({what_changed:"The source reports https://publisher.example/article. This is unverified."}),
-    osint({why_it_matters:"Read www.bankofcanada.ca/article for details before making a decision."}),
-    osint({what_changed:"Read bankofcanada.ca/rss.xml before making a decision. This is not independently verified."}),
-    osint({sources_credited:["Monitored feed: https://www.bankofcanada.ca"]}),
-    osint({sources_credited:["Monitored feed: www.bankofcanada.ca/rss"]}),
-    osint({sources_credited:["Monitored feed: www.bankofcanada.ca","Monitored feed: news.un.org"]}),
-    osint({development_type:"official update"}),
-    osint({date_precision:"day"}),
-    osint({geography:"Canada"}),
-    osint({title:"Geomacro finds source https://publisher.example/article"}),
-    osint({topic:"https://publisher.example/article"}),
-    osint({development_type:"source example.com/path"}),
-    osint({geography:"https://publisher.example"}),
-  ]) assert.equal(isSafeDerivedNewsReadbackSignal(signal),false,JSON.stringify(signal));
+  const base=projectSourceNeutralOsintSignal(osint());
+  for(const changes of [
+    {what_changed:"The source reports https://publisher.example/article. This is unverified."},
+    {why_it_matters:"Read www.bankofcanada.ca/article for details before making a decision."},
+    {what_changed:"Read bankofcanada.ca/rss.xml before making a decision."},
+    {sources_credited:["Monitored feed: https://www.bankofcanada.ca"]},
+    {sources_credited:["Monitored feed: www.bankofcanada.ca/rss"]},
+    {sources_credited:["Monitored feed: www.bankofcanada.ca","Monitored feed: news.un.org"]},
+    {development_type:"official update"},
+    {date_precision:"day"},
+    {title:"GeoMacro Brief https://publisher.example/article"},
+    {topic:"https://publisher.example/article"},
+    {development_type:"source example.com/path"},
+    {geography:"https://publisher.example"},
+  ]) assert.equal(isSafeDerivedNewsReadbackSignal({...base,...changes}),false,JSON.stringify(changes));
 });
 
 test("official derived cards never gain permission to include monitored-feed provenance or upstream URL",()=>{
-  const official={...osint(),status:"official_release_observed_unscored",
+  const official={...projectSourceNeutralOsintSignal(osint()),status:"official_release_observed_unscored",
     development_type:"policy update",geography:"Canada",
     topic:"official economic statistics",sources_credited:["Bank of Canada"]};
   assert.equal(isSafeDerivedNewsReadbackSignal(official),true);
@@ -73,19 +73,26 @@ test("official derived cards never gain permission to include monitored-feed pro
   assert.equal(isSafeDerivedNewsReadbackSignal({...official,sources_credited:["https://bankofcanada.ca"]}),false);
 });
 
-test("legacy generic OSINT rows remain internal but never project to public watch signals",()=>{
+test("country and topic classified OSINT rows project to concrete source-neutral GeoMacro briefs",()=>{
   for(const [category,topic,label] of [
     ["geopolitics","sanctions and trade restrictions","geopolitical"],
     ["macro","inflation and prices","macro"],
     ["rare_earth","critical-mineral inputs","critical-minerals"],
   ]){
     const raw=osint({id:category+"-abcdef12",category,topic,
-      title:"Geomacro finds a headline containing a restricted publisher phrase",
+      title:"Canadian authorities publish a headline containing a restricted publisher phrase",
       what_changed:"A monitored source feed reports a named entity and unpublished article sentence.",
+      geography:"Canada",country_iso3:"CAN",corridor:null,event_direction:"tightening",
       sources_credited:["Monitored feed: publisher.example"]});
-    assert.equal(isSafeDerivedNewsReadbackSignal(raw),true);
-    assert.equal(projectSourceNeutralOsintSignal(raw),null, label);
-    assert.equal(isSourceNeutralOsintSignal(raw),false);
-    assert.doesNotMatch(JSON.stringify(raw),/an unverified (?:geopolitical|macro|critical-minerals) watch signal|This report has not been independently verified/iu);
+    const safe=projectSourceNeutralOsintSignal(raw);
+    assert.ok(isSafeDerivedNewsReadbackSignal(safe));
+    assert.equal(isSourceNeutralOsintSignal(safe),true);
+    assert.match(safe.title,/^GeoMacro (Geopolitics|Macro\/FX|Critical Minerals) Brief · .+ — Canada \(CAN\)$/u);
+    assert.match(safe.what_changed,/^WHAT CHANGED: GeoMacro's dated observation records a/u);
+    assert.match(safe.why_it_matters,/Risk: .* → Downstream effect: .* → Price impact channel: .*Action Posture: (CONTINUE|REDUCE_LIMIT|REQUIRE_APPROVAL|PAUSE)/u);
+    assert.doesNotMatch(safe.title+safe.what_changed+safe.why_it_matters,/unverified|watch signal|not independently verified|does not establish production|publisher\.example|https?:\/\//iu);
+    assert.deepEqual(safe.sources_credited,[]);
+    assert.doesNotMatch(JSON.stringify(safe),/restricted publisher|unpublished article|publisher\.example/u);
+    assert.equal(isSourceNeutralOsintSignal({...safe,raw_source_url:"https://publisher.example/a"}),false);
   }
 });

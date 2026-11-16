@@ -9,7 +9,7 @@ export function ApiKeysNotice() {
             Per-call API pricing <span className="ml-2 text-primary">Published</span>
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Approved prices for all three category APIs are published in the Store. API keys: Coming soon. Self-service access and checkout are not open yet.
+            Approved prices for all three category APIs are published in Store &amp; API. Contact us to confirm access for your deployment.
           </p>
         </div>
       </div>

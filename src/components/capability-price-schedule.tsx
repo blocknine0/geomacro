@@ -213,7 +213,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
                 <p className="mt-3 text-center text-[11px] text-muted-foreground">
                   {product.pilot
                     ? "Pilot access by agreement"
-                    : "Self-service checkout coming soon"}
+                    : "Published product · enquire for current access"}
                 </p>
               </div>
             </article>

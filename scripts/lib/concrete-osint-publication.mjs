@@ -16,7 +16,7 @@ const countryAliases={USA:["United States of America","U.S.","USA"],GBR:["Britai
 const escapeRegExp=value=>value.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&");
 const LOCATIONS=countryRows.trim().split("\n").map(row=>{
   const [iso3,,name]=row.split("|");
-  return [name,new RegExp(`(?<![\\p{L}])(?:${[name,...(countryAliases[iso3]??[])].map(escapeRegExp).join("|")})(?![\\p{L}])`,"iu")];
+  return [iso3,name,new RegExp(`(?<![\\p{L}])(?:${[name,...(countryAliases[iso3]??[])].map(escapeRegExp).join("|")})(?![\\p{L}])`,"iu")];
 });
 const CORRIDORS = [
   ["Red Sea Maritime Corridor", /\b(?:Red Sea|Bab el[- ]?Mandeb|Suez Canal)\b/iu],
@@ -54,13 +54,16 @@ function clean(value, max) {
 }
 function actionLabel(value) {
   const text = value.toLocaleLowerCase();
+  if (/\b(?:interrupt(?:ed|s)?|disrupt(?:ed|s|ion)?|shortfall|outage|closure|halt(?:ed|s)?)\b/u.test(text)) return "Reported Supply or Operations Disruption";
   if (/\b(?:affecting|faces? (?:new )?(?:restrictions?|controls?|curbs?))\b/u.test(text)) return "Reported Exposure to Supply Constraints";
   if (/\b(?:called for|appealed for|urged|warned)\b/u.test(text)) return "Policy Warning or Appeal";
   if (/\b(?:approved|authorized|authorised|adopted)\b/u.test(text)) return "Approval or Authorization";
   if (/\b(?:cut|lowered|reduced)\b/u.test(text)) return "Reported Reduction";
   if (/\b(?:raised|increased|hiked)\b/u.test(text)) return "Reported Increase";
   if (/\b(?:proposed|plans to|is considering)\b/u.test(text)) return "Proposal Under Review";
-  if (/\b(?:announced|issued|introduced|imposed|launched|published|released|confirmed)\b/u.test(text)) return "Reported Policy or Operating Action";
+  if (/\b(?:announce[sd]?|issue[sd]?|introduce[sd]?|impose[sd]?|launch(?:ed|es)?|publish(?:ed|es)?|release[sd]?|confirm(?:s|ed)?|implement(?:ed|s)?|update(?:s|d)?)\b/u.test(text)) return "Reported Policy or Operating Action";
+  if (/\b(?:report(?:s|ed)?|discuss(?:es|ed)?|debat(?:e|es|ed)|review(?:s|ed)?)\b/u.test(text)) return "Reported Review or Discussion";
+  if (/\b(?:figures?|data|statistics|index|release)\b/u.test(text)) return "Reported Indicator Update";
   return "Reported Development";
 }
 function marketChannel(category, subject, location) {
@@ -83,28 +86,52 @@ function operationalEffect(category, subject, location) {
   return `cross-border operating permissions, counterparties and shipment planning may need review for ${location}`;
 }
 
-export function concreteOsintPublication({category, title: rawTitle, event}) {
+export function concreteOsintPublication({category, title: rawTitle, event,
+  country_iso3:countryIsoHint=null,country_name:countryNameHint=null,
+  corridor:corridorHint=null,event_direction:directionHint=null}) {
   const title = clean(rawTitle, 250);
   const transformedHeadline = clean(event?.headline, 210);
   const changed = clean(event?.change, 500);
-  const normalizeWords=value=>value.toLocaleLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu," ").trim();
-  if (!title || !transformedHeadline || changed.length < 30 ||
-      normalizeWords(title) === normalizeWords(transformedHeadline) ||
-      normalizeWords(title) === normalizeWords(changed) ||
-      !["geopolitics", "macro", "rare_earth"].includes(category)) return null;
+  if (!title || !["geopolitics", "macro", "rare_earth"].includes(category)) return null;
   const matchedLocation = CORRIDORS.find(([, pattern]) => pattern.test(title));
-  const country = LOCATIONS.find(([, pattern]) => pattern.test(title));
-  if (!matchedLocation && !country) return null;
-  const location = matchedLocation?.[0] ?? country?.[0];
+  const country = LOCATIONS.find(([iso3]) => iso3===countryIsoHint) ??
+    LOCATIONS.find(([, , pattern]) => pattern.test(title));
+  if (!matchedLocation && !country && !countryNameHint) return null;
+  const corridor = CORRIDORS.find(([label])=>label===corridorHint)?.[0] ?? matchedLocation?.[0] ?? null;
+  const countryName = country?.[1] ?? (typeof countryNameHint==="string"&&/^[\p{Lu}][\p{L}\p{N} &'’.-]{1,70}$/u.test(countryNameHint)?countryNameHint:null);
+  const iso3 = country?.[0] ?? null;
+  if(!countryName||!iso3)return null;
+  const location = countryName && corridor ? `${countryName} / ${corridor}` : countryName ?? corridor;
   const subject = SUBJECTS.find(([pattern]) => pattern.test(title))?.[1];
   if (!subject) return null;
-  const action = actionLabel(transformedHeadline + " " + changed);
-  const market = marketChannel(category, subject, location);
-  const titleText = `${subject} · ${action} — ${location}`;
-  const what = `Unverified feed observation: ${changed}`;
-  const why = `Risk: ${action.toLocaleLowerCase()} affecting ${subject.toLocaleLowerCase()} in ${location}. Effect: ${operationalEffect(category, subject, location)} if the report is confirmed. Price channel to monitor: ${market}. Action Posture: REQUIRE_APPROVAL; no independent corroboration or price move is asserted.`;
+  const action = actionLabel(`${title} ${transformedHeadline} ${changed}`);
+  if(action==="Reported Development")return null;
+  const market = marketChannel(category, subject, countryName ?? location);
+  const allowedDirections=new Set(["tightening","easing","uncertain","rising","falling","disrupted","restored","expanded","contracted"]);
+  const actionEvidence=`${title} ${transformedHeadline} ${changed}`;
+  const direction = allowedDirections.has(directionHint) ? directionHint :
+    /\b(?:discuss(?:es|ed)?|consider(?:s|ed)?|review(?:s|ed)?)\b/iu.test(actionEvidence) ? "uncertain" :
+    /\b(?:impos(?:e|es|ed)|ban(?:s|ned)?|restrict(?:s|ed|ion)?|control(?:s|led|ling)?|suspend(?:s|ed)?|halt(?:s|ed)?|disrupt(?:s|ed|ion)?|attack(?:s|ed)?|clos(?:e|es|ed)|delay(?:s|ed)?|shortfall)\b/iu.test(actionEvidence) ? "tightening" :
+    /reduce|cut|lower|declin|fall/iu.test(actionEvidence) ? "falling" :
+    /restore|resume|lift|ease|expand|approve|advance/iu.test(actionEvidence) ? "easing" :
+    /raise|increase|hike/iu.test(actionEvidence) ? "rising" :
+    /Reported Exposure|Proposal Under Review|Policy Warning or Appeal/u.test(action) ? "tightening" :
+    /Reported Reduction|Approval or Authorization/u.test(action) ? "easing" :
+    /Reported Increase/u.test(action) ? "rising" : "uncertain";
+  const actor = category === "geopolitics" ? "government and security actors" :
+    category === "macro" ? "central-bank and FX-market actors" :
+    "mine operators, mineral regulators and processors";
+  const development = direction === "tightening" ? `${action.toLocaleLowerCase()} with tightening pressure` :
+    direction === "easing" ? `${action.toLocaleLowerCase()} with easing pressure` :
+    direction === "rising" ? `${action.toLocaleLowerCase()} with an upward shift` :
+    direction === "falling" ? `${action.toLocaleLowerCase()} with a downward shift` :
+    `${action.toLocaleLowerCase()} with direction not yet established`;
+  const titleText = `GeoMacro ${category === "geopolitics" ? "Geopolitics" : category === "macro" ? "Macro/FX" : "Critical Minerals"} Brief · ${subject} — ${location}`;
+  const what = `WHAT CHANGED: GeoMacro's dated transformation records a ${action.toLocaleLowerCase()} by ${actor}, affecting ${subject.toLocaleLowerCase()} in ${countryName}${corridor?` along the ${corridor}`:""}; direction is ${direction}.`;
+  const why = `WHY IT MATTERS — Risk: ${direction} pressure on ${subject.toLocaleLowerCase()} in ${countryName ?? location} → Downstream effect: ${operationalEffect(category, subject, countryName ?? location)} → Price impact channel: ${market}. Action Posture: ${direction === "tightening" || direction === "rising" ? "REDUCE_LIMIT" : direction === "uncertain" ? "REQUIRE_APPROVAL" : "CONTINUE"}.`;
   if (titleText.length > 220 || what.length > 650 || why.length > 700 ||
       titleText.toLocaleLowerCase() === title.toLocaleLowerCase()) return null;
-  return {title: `Geomacro finds ${titleText}`, what_changed: what, why_it_matters: why,
-    topic: subject, geography: location};
+  return {title: titleText, what_changed: what, why_it_matters: why,
+    topic: subject, geography: countryName, country_iso3: iso3,
+    corridor, event_direction: direction,event_action:action};
 }

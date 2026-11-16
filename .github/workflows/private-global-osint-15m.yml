@@ -374,6 +374,8 @@ jobs:
       maintenance: ${{ steps.budget.outputs.maintenance }}
       source_intake: ${{ steps.budget.outputs.source_intake }}
       source_intake_max_new_rows: ${{ steps.budget.outputs.source_intake_max_new_rows }}
+      risk_stream_sidecar_admitted: ${{ steps.budget.outputs.risk_stream_sidecar_admitted }}
+      risk_stream_sidecar_observed_rows_written: ${{ steps.budget.outputs.risk_stream_sidecar_observed_rows_written }}
       state: ${{ steps.budget.outputs.state }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -388,6 +390,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+          GEOMACRO_D1_PLAN_TIER: ${{ vars.GEOMACRO_D1_PLAN_TIER }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
@@ -397,6 +400,48 @@ jobs:
           D1_ADMISSION_STATE: ${{ steps.budget.outputs.state }}
         run: |
           echo "::notice::D1_BUDGET_ADMISSION_${D1_ADMISSION_STATE}; held source jobs are not completed ingestion. No records or coverage counts invented."
+
+  risk-stream-sidecar:
+    name: Paid-cap-admitted licensed Risk Stream candidates
+    needs: [verify, quota-admission]
+    if: >-
+      needs.quota-admission.result == 'success' &&
+      needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' &&
+      needs.quota-admission.outputs.source_intake != 'true' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Collect source-rights-verified candidate sidecar
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+      - name: Dual-attest and admit licensed candidates under daily D1 cap
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          GEOMACRO_RISK_STREAM_D1_CAP_REQUIRED: "true"
+          GEOMACRO_RISK_STREAM_D1_CAP_ADMITTED: "true"
+          GEOMACRO_RISK_STREAM_D1_DAILY_WRITES: ${{ needs.quota-admission.outputs.risk_stream_sidecar_observed_rows_written }}
+          CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+          CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
+          RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+        run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
+      - name: Remove transient licensed candidate sidecar
+        if: always()
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
 
   live-source-probe:
     name: Read-only live OSINT category and 195x3 source-health probe
@@ -614,14 +659,17 @@ jobs:
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
       - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
-        if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
         run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Emit only verified-original candidate sidecars through facts and rights attesters
-        if: vars.RISK_STREAM_ACTIVE == '1' && vars.STREAM_INGESTION_ENABLED == 'true'
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          GEOMACRO_RISK_STREAM_D1_CAP_REQUIRED: "true"
+          GEOMACRO_RISK_STREAM_D1_CAP_ADMITTED: "true"
+          GEOMACRO_RISK_STREAM_D1_DAILY_WRITES: ${{ needs.quota-admission.outputs.risk_stream_sidecar_observed_rows_written }}
           CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
           CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}

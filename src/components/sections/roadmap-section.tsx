@@ -14,13 +14,13 @@ export function RoadmapSection() {
         },
         {
           title: "Store catalog",
-          text: "Compare products and exact USDC prices. Self-service checkout is coming soon.",
+          text: "Compare structured intelligence products, signed Risk Gates and exact published prices.",
           href: "/pricing",
           label: "Browse Store",
         },
         {
-          title: "API keys · Coming soon",
-          text: "Self-service keys will follow launch readiness. Scoped pilot integrations remain available by agreement.",
+          title: "Store & API access",
+          text: "Explore machine-readable product tiers, signed Risk Gates and AI-agent JSON.",
           href: "/data-api",
           label: "Explore API & Agents",
         },

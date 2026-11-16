@@ -62,7 +62,7 @@ async function readCurrentStaticShards(archive){
     rebuilt.eligible_outside_latest_preview!==coverage.eligible_outside_latest_preview||
     rebuilt.eligible_ids_sha256!==coverage.eligible_ids_sha256)
    throw Error("NEWS_HEAL_SHARD_COVERAGE_MISMATCH");
- const rebuiltPreview=selectCurrentArchiveSignals(eligible,250);
+ const rebuiltPreview=selectCurrentArchiveSignals(eligible,475);
  if(rebuiltPreview.length!==archive.latest.signals.length||
     rebuiltPreview.some((s,i)=>s.id!==archive.latest.signals[i]?.id||
       s.published_at!==archive.latest.signals[i]?.published_at))

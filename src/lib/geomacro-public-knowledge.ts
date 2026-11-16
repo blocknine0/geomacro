@@ -29,14 +29,14 @@ export function geomacroPublicAnswer(question:string):HybridAskAnswer|null {
  if(/\b(?:secrets?|credentials?|passwords?|tokens?|seed phrases?|private keys?|internal|database|logs?|hidden|system prompt|raw (?:feeds?|sources?|articles?)|source (?:code|feeds?|list)|wallet balances?)\b/i.test(q))
   return publicAnswer("I can share Geomacro's published product information, pricing, documentation and contact details. Private records, credentials, internal operations and unpublished data are not available through public chat.",["about","docs","contact"]);
  if(/\bfree\b/i.test(q) && !/\b(?:pric(?:e|es|ing)|cost|fees?|usdc|pay|payment)\b/i.test(q))
-  return publicAnswer("Public Intelligence browsing and Ask Geomacro are free. Structured API products have separate published pay-per-use USDC prices. The public website lists API keys and self-service checkout as coming soon.",["intelligence","pricing","data_api"]);
+  return publicAnswer("Public Intelligence browsing and Ask Geomacro are free. Structured API products have separate published pay-per-use USDC prices. Visit Store & API for current product tiers and access details.",["intelligence","pricing","data_api"]);
  if(/\b(?:pric(?:e|es|ing)|cost|fees?|usdc|pay|payment|paid)\b/i.test(q)){
   const rows=publicCapabilityPricingCatalog();
   const plans=GEOMACRO_SUBSCRIPTIONS.map(p=>`${p.name}: ${p.price_usd}/month, ${p.credits_per_30_days.toLocaleString("en-US")} credits`).join("\n");
   const packs=GEOMACRO_ONE_TIME_PACKS.map(p=>`${p.name}: ${p.price_usd} one time, ${p.credits} credits`).join("\n");
   return publicAnswer("Public Intelligence browsing and Ask Geomacro are free.\n\nMonthly plans:\n"+plans+"\n\nOne-time credit packs:\n"+packs+"\n\nBase USDC x402: $"+GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc+"–$"+GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc+" per eligible delivery.\n\nPublished pay-per-use structured API prices in USDC per eligible delivery:\n\n"+
     rows.map(row=>PRODUCT_NAMES[row.capability]+": "+row.variants.map(v=>"$"+v.amount_usdc).join(" / ")).join("\n")+
-    "\n\nA published price does not confirm live product availability or payment acceptance. The public website lists API keys and self-service checkout as coming soon; check the product page or contact Geomacro for access.",["pricing","data_api","contact"]);
+    "\n\nA published price does not confirm live product availability or payment acceptance. Check the product page or contact Geomacro for access details.",["pricing","data_api","contact"]);
  }
  if(/\b(?:contact|email|support|sales|partnership|reach)\b/i.test(q))
   return publicAnswer("Contact Geomacro at contact@geomacro.live for product access, support, API integrations or partnerships. For support, include the page, time and issue you encountered.",["contact"]);
@@ -45,7 +45,7 @@ export function geomacroPublicAnswer(question:string):HybridAskAnswer|null {
  if(/\b(?:methodology|trust|verified|verification|reliable|accuracy|sources?|security|audit|certif|sla|guarantee|delay|freshness)\w*\b/i.test(q))
   return publicAnswer("Geomacro publishes derived intelligence across Geopolitics, Macro / FX and Critical Minerals, with original dates and coverage limits. Raw articles, source feeds and private retrieval records are not sold. Public findings have no added publication delay. Missing evidence is not a zero-risk reading. The public trust page does not claim an independent external security certification or production SLA unless completed or contracted.",["research","about","docs"]);
  if(/\b(?:api|agents?|json|integrat|products?|store|digests?|profiles?|risk gate|signed risk object|access|checkout)\w*\b/i.test(q))
-  return publicAnswer("Geomacro's public product catalog covers country and corridor digests and profiles, structured intelligence answers, Signed Risk Objects and Risk Gate bundles. Applications and AI agents receive structured Geomacro data. Public pricing is listed separately; API keys and self-service checkout are listed as coming soon. Contact Geomacro to discuss your product, geography and delivery format.",["data_api","pricing","docs","contact"]);
+  return publicAnswer("Geomacro's public product catalog covers country and corridor digests and profiles, structured intelligence answers, Signed Risk Objects and Risk Gate bundles. Applications and AI agents receive structured Geomacro data. Public pricing and access details are listed in Store & API. Contact Geomacro to discuss your product, geography and delivery format.",["data_api","pricing","docs","contact"]);
  if(/\b(?:docs?|documentation|use|start|work|find|read|explore|roadmap)\b/i.test(q))
   return publicAnswer("Start with Intelligence to read Geomacro findings, and Ask Geomacro to ask questions. For an application or AI agent, visit API & Agents, then the product documentation and pricing. The public roadmap describes planned work; a roadmap item is not a live feature guarantee.",["intelligence","data_api","docs","roadmap"]);
  if(/\b(?:founder|founded|owner|team|employees?|funding|investors?|revenue|valuation|customers?|partners?)\b/i.test(q))

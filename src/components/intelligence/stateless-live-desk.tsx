@@ -95,7 +95,7 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           </dl>
           <span className="mt-3 inline-flex rounded-full border border-border px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION POSTURE · {takeaways.posture}</span>
           <a href="/pricing" className="mt-4 flex min-h-11 items-center justify-center rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold leading-5 text-primary-foreground">
-            Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API (/pricing)
+            Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API
           </a>
         </div>
         <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
@@ -366,7 +366,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
 
       <section aria-label="Risk Gate API pricing" className="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
         <a href="/pricing" className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground">
-          Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API (/pricing)
+          Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API
         </a>
       </section>
 

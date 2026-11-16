@@ -349,6 +349,10 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
  return null;
 }
 export function concreteGeomacroAnalysis(s:StatelessIntelligenceSignal):string{
+ const projectedOsint=s?.status==="osint_feed_observed_unverified"
+  ?projectSourceNeutralOsintSignal(s):null;
+ if(projectedOsint&&isSourceNeutralOsintSignal(projectedOsint))
+  return projectedOsint.why_it_matters;
  const headline=concreteIntelligenceHeadline(s);
  // Rejected/anonymous statements must never acquire an invented actor.
  if(!headline)return s.why_it_matters;

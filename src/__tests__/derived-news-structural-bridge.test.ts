@@ -103,7 +103,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    }
    expect(body.chargeable).toBe(false);
    expect(body.exhaustive_all_global_sources).toBe(false);
-   expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250");
+   expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_475");
    expect(mock).toHaveBeenCalledTimes(1);
    expect(JSON.stringify(body)).not.toContain("source_url");
  });
@@ -166,7 +166,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(output.country_count).toBe(195);
    expect(output.total_country_category_cells).toBe(585);
    expect(output.returned_cells).toBe(585);
-   expect(output.source_neutral_derived_records_in_public_archive_latest_250).toBe(4);
+   expect(output.source_neutral_derived_records_in_public_archive_latest_475).toBe(4);
    expect(output.unassigned_or_regional_derived_records_72h).toBe(1);
    expect(output.cells.find(c=>c.country_iso3==="BRA"&&c.category==="geopolitics"))
      .toMatchObject({status:"DERIVED_COUNTRY_MENTION_OBSERVED_UNVERIFIED",
@@ -230,7 +230,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
      path+"?view=reusable-news-json"),mock as typeof fetch,NOW);
    expect(reusable.status).toBe(200);
    const reusableBody=await reusable.json();
-   expect(reusableBody.source_scope).toBe("PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250");
+   expect(reusableBody.source_scope).toBe("PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_475");
    expect(reusableBody.registered_source_reader_state).toBe("NOT_QUERIED_PUBLIC_READ_PATH_IS_STATIC_ONLY");
    expect(mock).toHaveBeenCalledTimes(4);
    expect(mock.mock.calls.every(([input])=>String(input)==="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json")).toBe(true);

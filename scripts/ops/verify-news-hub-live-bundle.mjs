@@ -30,7 +30,7 @@ export function assembleNewsHubReceipt(website,shared,coverage,now=new Date()){
   domains:Object.fromEntries(CATS.map(k=>[k,{
     website_latest_250:website.categories[k].stored_72h,
     source_neutral_machine_72h:shared.counts[k],
-    public_archive_latest_250:coverage.observed_journal_records_by_category[k]}])),
+    public_archive_latest_475:coverage.observed_journal_records_by_category[k]}])),
   country_routes:195,country_category_cells:585,
   cells_with_observed_country_mentions:coverage.observed_country_category_cells,
   cells_without_observed_country_mentions:coverage.cells_without_matching_derivation,

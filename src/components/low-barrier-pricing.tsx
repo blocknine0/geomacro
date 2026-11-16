@@ -49,7 +49,6 @@ export function LowBarrierPricing() {
                 className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
                 {selection.id === plan.id ? "Selected · View payment methods" : "Select plan & payment method"}
               </button>
-              <p className="mt-2 text-xs text-muted-foreground">Live checkout locked · no charge</p>
             </article>
           ))}
         </div>

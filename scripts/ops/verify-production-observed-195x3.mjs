@@ -22,7 +22,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
     doc.schema!=="geomacro.195x3-public-finds-coverage.v2"||
     doc.country_count!==195||doc.category_count!==3||
     doc.total_country_category_cells!==585||doc.returned_cells!==585||
-    doc.coverage_scope!=="OBSERVED_PUBLIC_GEOMACRO_FINDS_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250"||
+    doc.coverage_scope!=="OBSERVED_PUBLIC_GEOMACRO_FINDS_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_475"||
     doc.country_routing_basis!=="EXACT_PUBLIC_TITLE_OR_GEOGRAPHY_MENTION_ONLY"||
     doc.not_observed_means_no_news!==false||
     doc.exhaustive_country_news_coverage_verified!==false||
@@ -30,12 +30,12 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
     (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15)||doc.retention_hours!==72||
     doc.payment_required_now!==false||doc.chargeable!==false||
     doc.scored!==false||doc.signed!==false||doc.raw_upstream_delivered!==false||
-    !Number.isSafeInteger(doc.source_neutral_derived_records_in_public_archive_latest_250)||
-    doc.source_neutral_derived_records_in_public_archive_latest_250<0||
-    doc.source_neutral_derived_records_in_public_archive_latest_250>250||
+    !Number.isSafeInteger(doc.source_neutral_derived_records_in_public_archive_latest_475)||
+    doc.source_neutral_derived_records_in_public_archive_latest_475<0||
+    doc.source_neutral_derived_records_in_public_archive_latest_475>475||
     !Number.isSafeInteger(doc.unassigned_or_regional_derived_records_72h)||
     doc.unassigned_or_regional_derived_records_72h<0||
-    doc.unassigned_or_regional_derived_records_72h>250||
+    doc.unassigned_or_regional_derived_records_72h>475||
     !doc.observed_derived_records_by_category||
     typeof doc.observed_derived_records_by_category!=="object"||
     !Array.isArray(doc.cells)||doc.cells.length!==585)
@@ -96,9 +96,9 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
  if(countries.size!==195||occupied.size!==585||
    DOMAINS.some(d=>totals[d]>doc.observed_derived_records_by_category[d])||
    Object.values(doc.observed_derived_records_by_category).reduce((a,b)=>a+b,0)!==
-     doc.source_neutral_derived_records_in_public_archive_latest_250 ||
+     doc.source_neutral_derived_records_in_public_archive_latest_475 ||
    doc.unassigned_or_regional_derived_records_72h!==
-     doc.source_neutral_derived_records_in_public_archive_latest_250-totalObserved)
+     doc.source_neutral_derived_records_in_public_archive_latest_475-totalObserved)
    throw Error("LIVE_195X3_COUNTRY_MATRIX_INCOMPLETE");
  return {
    schema:"geomacro.production-observed-195x3-coverage-readback.v1",
@@ -106,7 +106,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
    live_response_valid:true,country_routes:195,category_routes:3,
    returned_cells:585,observed_country_category_cells:585-empty,
    cells_without_matching_derivation:empty,
-   actual_72h_public_archive_latest_records:doc.source_neutral_derived_records_in_public_archive_latest_250,
+   actual_72h_public_archive_latest_records:doc.source_neutral_derived_records_in_public_archive_latest_475,
    assigned_country_news_mentions_72h:totalObserved,
    unassigned_or_regional_news_72h:doc.unassigned_or_regional_derived_records_72h,
    latest_original_published_at:Number.isFinite(latest)?new Date(latest).toISOString():null,

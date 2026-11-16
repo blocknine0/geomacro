@@ -53,7 +53,7 @@ export function verifyPublicStaticArchiveReadback({
  if(withoutClock(liveCoverage)!==withoutClock(expectedCoverage))
   fail("COVERAGE_EXACT_PAYLOAD_MISMATCH");
  if(!Number.isSafeInteger(liveIndex.total_signals)||liveIndex.total_signals<0||
-    !Array.isArray(liveLatest.signals)||liveLatest.signals.length>250)
+    !Array.isArray(liveLatest.signals)||liveLatest.signals.length>475)
   fail("BOUNDED_ARCHIVE_INVALID");
  return Object.freeze({
   schema:"geomacro.permanent-public-finds-static-readback.v1",
@@ -67,7 +67,7 @@ export function verifyPublicStaticArchiveReadback({
   latest_signals:liveLatest.signals.length,
   full_72h_original_eligible:liveCoverage.original_release_eligible_total,
   all_current_free_displayable:liveCoverage.free_displayable_findings_total,
-  outside_250_preview:liveCoverage.free_displayable_outside_latest_preview,
+  outside_475_preview:liveCoverage.free_displayable_outside_latest_preview,
   max_verified_snapshot_age_seconds:Math.ceil((now-Math.min(latestAt,coverageAt))/1000),
   d1_reads:0,d1_writes:0,b2_requests:0,predge_gets:0,payments:0,
  });

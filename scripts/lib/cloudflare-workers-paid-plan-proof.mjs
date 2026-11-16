@@ -38,29 +38,40 @@ export function assessProviderWorkersPaidSubscription(body,now=new Date()){
 export async function readCloudflareWorkersPaidProof({
  env=process.env,fetchImpl=fetch,now=new Date(),
 }={}){
- const token=env.CLOUDFLARE_BILLING_READ_TOKEN;
+ const billingToken=env.CLOUDFLARE_BILLING_READ_TOKEN;
+ const apiToken=env.CLOUDFLARE_API_TOKEN;
  const account=env.CLOUDFLARE_ACCOUNT_ID;
- if(typeof token!=="string"||token.length<20||
+ if((typeof billingToken!=="string"||billingToken.length<20)&&
+    (typeof apiToken!=="string"||apiToken.length<20)||
     typeof account!=="string"||!accountPattern.test(account))
   throw Error("WORKERS_PAID_BILLING_READ_PERMISSION_REQUIRED");
- let response;
- try{
-  response=await fetchImpl(
-   "https://api.cloudflare.com/client/v4/accounts/"+account+"/subscriptions",{
-    method:"GET",redirect:"error",cache:"no-store",
-    headers:{Authorization:"Bearer "+token,Accept:"application/json"},
-    signal:AbortSignal.timeout(12000),
-   });
- }catch{throw Error("WORKERS_PAID_BILLING_READ_UNAVAILABLE")}
- if(response?.status!==200){
-  // Safe integer HTTP status only. Do not log headers, response body, account or credentials.
-  const status=Number(response?.status);
-  throw Error(Number.isInteger(status)&&status>=400&&status<=599?
-    "WORKERS_PAID_BILLING_READ_HTTP_"+status:
-    "WORKERS_PAID_BILLING_READ_REJECTED");
+ const tokens=[...new Set([billingToken,apiToken].filter(x=>typeof x==="string"&&x.length>=20))];
+ let lastStatus=null;
+ for(const token of tokens){
+  let response;
+  try{response=await fetchImpl("https://api.cloudflare.com/client/v4/accounts/"+account+"/subscriptions",{
+   method:"GET",redirect:"error",cache:"no-store",
+   headers:{Authorization:"Bearer "+token,Accept:"application/json"},
+   signal:AbortSignal.timeout(12000),
+  });}catch{continue}
+  if(response?.status!==200){
+   lastStatus=Number(response?.status);
+   if(lastStatus===403)continue;
+   throw Error(Number.isInteger(lastStatus)&&lastStatus>=400&&lastStatus<=599?
+    "WORKERS_PAID_BILLING_READ_HTTP_"+lastStatus:"WORKERS_PAID_BILLING_READ_REJECTED");
+  }
+  let body;try{body=await response.json()}catch{throw Error("WORKERS_PAID_BILLING_READ_INVALID_JSON")}
+  if(body?.result_info?.total_count>100)throw Error("WORKERS_PAID_SUBSCRIPTIONS_TRUNCATED");
+  return assessProviderWorkersPaidSubscription(body,now);
  }
- let body;
- try{body=await response.json()}catch{throw Error("WORKERS_PAID_BILLING_READ_INVALID_JSON")}
- if(body?.result_info?.total_count>100)throw Error("WORKERS_PAID_SUBSCRIPTIONS_TRUNCATED");
- return assessProviderWorkersPaidSubscription(body,now);
+ // This is an explicit bounded-cap mode, never provider billing proof. It is
+ // useful only to the risk-stream sidecar when the independently read D1
+ // write counter is below the reviewed 1.1M daily ceiling.
+ if(lastStatus===403&&env.GEOMACRO_D1_PLAN_TIER==="paid")return Object.freeze({
+  schema:WORKERS_PAID_PROOF_SCHEMA,verified:false,source:"OWNER_DECLARED_D1_PLAN_TIER",
+  declared_tier:"paid",bounded_risk_stream_only:true,observed_at:now.toISOString(),
+  subscription_changed:false,billing_action_performed:false,
+ });
+ throw Error(Number.isInteger(lastStatus)&&lastStatus>=400&&lastStatus<=599?
+  "WORKERS_PAID_BILLING_READ_HTTP_"+lastStatus:"WORKERS_PAID_BILLING_READ_UNAVAILABLE");
 }

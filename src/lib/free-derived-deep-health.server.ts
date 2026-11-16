@@ -157,7 +157,7 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
 }
 /**
  * Independent, same-origin static census of ALL 72h archived records,
- * including qualifying originals beyond the 250-row latest.json preview.
+ * including qualifying originals beyond the 475-row latest.json preview.
  * This is FREE only. It does not grant signed, scored or paid eligibility.
  */
 export function attachArchiveEligibilityCensus(

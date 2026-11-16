@@ -31,7 +31,8 @@ const TOPICS = new Set([...Object.values(MACRO_TOPICS).map(x=>x.name),"sanctions
   "official economic statistics","energy supply and cost outlook",
   "resources and energy export outlook","international trade measures and disputes","strategic mineral and rare-earth inputs","critical-mineral processing and supply chains","rare-earth supply",
   "critical-mineral inputs","critical-minerals policy",
-  "mineral exploration and production",
+  "mineral exploration and production","maritime corridor security","trade and border measures",
+  "sovereign financing","trade and economic conditions","mineral processing","mineral trade controls",
   "Sanctions & Trade Restrictions","Security & Diplomatic Developments",
   "Trade Policy & Market Access","Maritime Transit & Freight",
   "Monetary Policy & FX Liquidity","Inflation & Consumer Prices",
@@ -44,7 +45,7 @@ const TOPICS = new Set([...Object.values(MACRO_TOPICS).map(x=>x.name),"sanctions
   "minerals publisher candidate"]);
 const SIGNAL_KEYS = new Set(["id","category","title","why_it_matters","topic",
   "what_changed","geography","development_type","published_at","date_precision",
-  "observed_release_count","sources_credited","status",
+  "country_iso3","corridor","event_direction","event_action","observed_release_count","sources_credited","status",
   "same_event_corrob_verified","severity"]);
 const PUBLIC_DERIVED_NEWS_CACHE_CONTROL =
   "public, max-age=60, stale-while-revalidate=300, stale-if-error=900";
@@ -85,7 +86,9 @@ export function verifyDerivedStory(s, now=Date.now()) {
       typeof s.id!=="string" ||
       !/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id) ||
       !TOPICS.has(s.topic) ||
-      !safeProse(s.title, 240, "Geomacro finds ") ||
+      !(s.status==="osint_feed_observed_unverified"?
+        safeProse(s.title,240,"GeoMacro "):
+        safeProse(s.title,240,"Geomacro finds ")) ||
       !safeProse(s.what_changed, 650) ||
       !safeProse(s.why_it_matters, 700) ||
       typeof s.development_type!=="string" || s.development_type.length>80 ||
@@ -104,11 +107,13 @@ export function verifyDerivedStory(s, now=Date.now()) {
           s.geography===null) ||
         (s.status==="osint_feed_observed_unverified" &&
           s.development_type==="unverified OSINT feed observation" &&
-          s.date_precision==="exact" &&
+          s.date_precision==="exact" && typeof s.geography==="string"&&s.geography.length>1 &&
+          /^[A-Z]{3}$/u.test(s.country_iso3??"")&&
+          ["tightening","easing","uncertain","rising","falling","disrupted","restored","expanded","contracted"].includes(s.event_direction)&&
+          (s.corridor===null||typeof s.corridor==="string"&&s.corridor.length<=72)&&
           Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
           typeof s.sources_credited[0]==="string"&&
-          s.sources_credited[0].startsWith("Monitored feed: ")&&
-          (s.geography===null||projectSourceNeutralOsintSignal({...s,sources_credited:[]})))) ||
+          s.sources_credited[0].startsWith("Monitored feed: "))) ||
       s.same_event_corrob_verified!==false ||
       s.severity!==null ||
       !Array.isArray(s.sources_credited) || s.sources_credited.length>2 ||
@@ -235,8 +240,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
         if(verifyDerivedStory(signal,now)&&original&&
            original.at>=now-AUTO_INGEST_RETENTION_MS&&
            original.eligibleAt+legacyDelayMinutes*60_000<=now&&
-           (legacyDelayMinutes!==15||signal.status!=="osint_feed_observed_unverified")&&
-           publicProjection(signal))
+           (legacyDelayMinutes!==15||signal.status!=="osint_feed_observed_unverified"))
           filtered.push({signal,ingest:snapshot.first_ingest[i]});
       }
       const page=filtered.slice(offset,offset+250),hasMore=filtered.length>offset+250;
@@ -280,13 +284,11 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
               signal.status!=="osint_feed_observed_unverified") &&
             (originalTime(signal,now)?.eligibleAt??Infinity)+legacyDelayMinutes*60_000<=now &&
             (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS) {
-          const safeSignal=publicProjection(signal);
-          if(!safeSignal)continue;
           // Audit provenance: server-generated D1 first insertion timestamp,
           // not upstream fetch time and not a claim that website was rendered.
           // Keep this OUTSIDE the strict source-neutral signal schema.
           const firstMs=Date.parse(row.first_seen_at);
-          signals.push(safeSignal);
+          signals.push(publicProjection(signal));
           // NEVER drop a verified existing story merely because its metadata
           // was absent in a legacy row/test transport. The journal audit
           // separately fails closed for missing trusted first-ingest clocks.
@@ -334,8 +336,7 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
         const signal=stored.signals[i],time=originalTime(signal,now);
         if(time&&verifyDerivedStory(signal,now)&&
            time.at>=now-AUTO_INGEST_RETENTION_MS){
-          const safeSignal=publicProjection(signal);
-          if(safeSignal){signals.push(safeSignal);firstIngest.push(stored.first_ingest[i]);}
+          signals.push(publicProjection(signal));firstIngest.push(stored.first_ingest[i]);
         }
       }
       const output=json({...stored,checked_at:new Date(now).toISOString(),
@@ -364,10 +365,8 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
         const signal=JSON.parse(row.story_json);
         if(verifyDerivedStory(signal,now)&&
            (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS){
-          const safeSignal=publicProjection(signal);
-          if(!safeSignal)continue;
           const firstMs=Date.parse(row.first_seen_at);
-          signals.push(safeSignal);
+          signals.push(publicProjection(signal));
           firstIngest.push({id:signal.id,
             first_seen_at:Number.isFinite(firstMs)&&firstMs<=now+60_000&&
               firstMs>=(originalTime(signal,now)?.eligibleAt??Infinity)
@@ -419,11 +418,11 @@ export async function renderDerivedStoriesHtml(
   const body=await response.json();
   const labels={geopolitics:"Geopolitics",macro:"Macro Economics",rare_earth:"Critical Minerals"};
   const records=body.signals.filter(s=>verifyDerivedStory(s,now))
-    .map(publicProjection).filter(Boolean).slice(0,150);
+    .map(publicProjection).filter(Boolean).slice(0,475);
   const stories=records.map(s=>'<article><div class="label">'+
     (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
-    '</time></div>'+(s.status==="osint_feed_observed_unverified"?"":'<p class=label>Country or region: '+escapeHtml(s.geography??'Not specified in the release')+'</p>')+'<h2>'+escapeHtml(s.title.replace(/^Geomacro finds\s+/iu,''))+
+    '</time></div>'+'<p class=label>Country or region: '+escapeHtml(s.geography??'Not specified in the release')+'</p><h2>'+escapeHtml(s.title.replace(/^Geomacro finds\s+/iu,''))+
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+
     '</p></div><div><strong>Why it matters</strong><p>'+escapeHtml(s.why_it_matters)+
     '</p></div></section>'+s.sources_credited.map(credit=>'<p class=label>Required credit: '+escapeHtml(credit)+'</p>').join('')+'</article>').join("");

@@ -40,7 +40,7 @@ function ContactPage() {
         },
         {
           title: "API & agents",
-          text: "Share the application or agent workflow you are building. API keys are coming soon.",
+          text: "Share the application or agent workflow you are building, and the Store & API product you need.",
           href: "mailto:contact@geomacro.live?subject=Geomacro%20integration",
           label: "Email integrations",
         },

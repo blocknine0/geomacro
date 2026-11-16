@@ -11,7 +11,7 @@ function item(category,index){
   id_is_cryptographic_proof:false,category,country_iso3:"IND",
   source:{publisher_name:null,original_url:null,
    original_published_at:new Date(NOW-index*60_000).toISOString()},
-  facts:{event_types:[category],action_terms:[category],named_organizations:[],
+  facts:{event_types:[category==="geopolitics"?"sanctions":category==="macro"?"monetary policy":"copper supply"],action_terms:["restricts"],named_organizations:[],
    numeric_mentions:[],fact_extraction_status:"MACHINE_EXTRACTED_UNVERIFIED"},
   usage_rights:{declared_source_license:"unknown",declaration_is_verified:false,
    article_specific_permission_verified:false,commercial_reuse_authorized:false,
@@ -24,10 +24,11 @@ function item(category,index){
  };
 }
 
-test("held private observations without a concrete country/action never become public cards",()=>{
+test("held private observations project to source-neutral cards in all three existing Website Intelligence categories",()=>{
  const items=categories.map((category,index)=>item(category,index));
  const projection=buildHeldPrivateOsintProjection(items,NOW);
- assert.equal(projection.signals.length,0);
+ assert.equal(projection.signals.length,3);
+ assert.deepEqual(new Set(projection.signals.map(row=>row.category)),new Set(categories));
  assert.ok(projection.signals.every(row=>isPermanentArchiveSignal(row,NOW,{allowHistorical:false})));
  assert.equal(projection.raw_source_text_included,false);
  assert.equal(projection.source_urls_included,false);
@@ -36,15 +37,18 @@ test("held private observations without a concrete country/action never become p
  assert.equal(projection.chargeable,false);
  assert.equal(projection.paid_eligible,false);
  const serialized=JSON.stringify(projection);
- for(const forbidden of ["publisher_name","original_url","source.example","country_iso3","IND","raw headline"])
+ for(const forbidden of ["publisher_name","original_url","source.example","raw headline"])
   assert.ok(!serialized.includes(forbidden),`projection leaked ${forbidden}`);
- assert.doesNotMatch(JSON.stringify(projection),/unverified .* watch signal|This report has not been independently verified/iu);
+ assert.ok(projection.signals.every(row=>row.country_iso3==="IND"&&row.geography==="India"));
+ assert.ok(projection.signals.every(row=>!row.title.includes("UNVERIFIED WATCH · NO SCORE")));
 });
 
 test("held projection retains native publication clocks, caps rows, and rejects invalid/expired normalized records",()=>{
  const rows=Array.from({length:8},(_,index)=>item(categories[index%3],index));
  const bounded=buildHeldPrivateOsintProjection(rows,NOW,4);
- assert.equal(bounded.signals.length,0);
+ assert.equal(bounded.signals.length,4);
+ assert.deepEqual(bounded.signals.slice(0,3).map(row=>row.category),categories);
+ assert.equal(bounded.signals[0].published_at,new Date(NOW).toISOString());
  const expired=item("macro",9);
  expired.source.original_published_at=new Date(NOW-26*60*60_000).toISOString();
  assert.throws(()=>projectHeldPrivateOsintItem(expired,NOW),/REUSABLE_SOURCE_NEWS_INVALID/);
