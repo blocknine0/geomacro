@@ -108,4 +108,3 @@ export function concreteOsintPublication({category, title: rawTitle, event}) {
   return {title: `Geomacro finds ${titleText}`, what_changed: what, why_it_matters: why,
     topic: subject, geography: location};
 }
-
