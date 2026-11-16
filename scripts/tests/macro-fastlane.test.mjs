@@ -322,6 +322,7 @@ test('Oceania fallback uses independently observed Mining Monthly XML instead of
  const rows=parseSectorFeed(rss('Australian lithium and copper mine faces new export restrictions',
   'https://www.miningmonthly.com/news/australian-lithium-copper-export-restrictions/'),oceania.fallback,now);
  assert.ok(rows.some(row=>row.category==='rare_earth'));
+ assert.ok(rows.every(row=>row.geography==='Australia'));
  assert.ok(rows.every(row=>row.status==='osint_feed_observed_unverified'));
 });
 test('One-megabyte bounded Stockhead mineral RSS remains valid without unbounded raw bytes',async()=>{

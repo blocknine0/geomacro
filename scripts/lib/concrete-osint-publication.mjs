@@ -55,7 +55,7 @@ function clean(value, max) {
 function actionLabel(value) {
   const text = value.toLocaleLowerCase();
   if (/\b(?:interrupt(?:ed|s)?|disrupt(?:ed|s|ion)?|shortfall|outage|closure|halt(?:ed|s)?)\b/u.test(text)) return "Reported Supply or Operations Disruption";
-  if (/\b(?:affecting|faces? (?:new )?(?:restrictions?|controls?|curbs?))\b/u.test(text)) return "Reported Exposure to Supply Constraints";
+  if (/\b(?:affecting|faces? (?:new )?(?:(?:export|trade|supply) )?(?:restrictions?|controls?|curbs?))\b/u.test(text)) return "Reported Exposure to Supply Constraints";
   if (/\b(?:called for|appealed for|urged|warned)\b/u.test(text)) return "Policy Warning or Appeal";
   if (/\b(?:approved|authorized|authorised|adopted)\b/u.test(text)) return "Approval or Authorization";
   if (/\b(?:cut|lowered|reduced)\b/u.test(text)) return "Reported Reduction";

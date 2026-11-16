@@ -3,6 +3,9 @@ import {createHash} from 'node:crypto';
 import {boundedMacroGet,macroPreciousTopic} from './macro-fx-metals.mjs';
 import {MINERAL_RELEASE_TOPIC} from './global-official-release-feeds.mjs';
 import {unverifiedWebsiteSignalFromOsint} from './private-osint-website-bridge.mjs';
+import {derivedCountryName} from './derived-news-readback-policy.mjs';
+import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
 import {actorActionNewsObservation} from '../../src/lib/release-news-observation.ts';
 import {sectorFeed as feed,MINERALS_MESH} from "./critical-minerals-registry.mjs";
 export {MINERALS_MESH,MINERALS_SOURCE_IDS} from "./critical-minerals-registry.mjs";
@@ -37,7 +40,9 @@ export function parseSectorFeed(xml,spec,now){
   seen.add(url.href);
   for(const category of [...(substantiveMineral?['rare_earth']:[]),...(macro?['macro']:[])]){
    const row={category,title,article_url:url.href,source_url:spec.url,published_at:new Date(at).toISOString(),news_id:'news-'+createHash('sha256').update(category+'|'+url.href).digest('hex')};
-   const signal=unverifiedWebsiteSignalFromOsint(row,now,actorActionNewsObservation);
+   const iso3=privateOsintCountryMention(title,COUNTRIES_195);
+   const country_name=iso3?derivedCountryName(iso3):null;
+   const signal=unverifiedWebsiteSignalFromOsint({...row,country_iso3:iso3,country_name},now,actorActionNewsObservation);
    if(signal){if(category==='macro'&&precious)signal.topic=precious.name;result.push(signal);}
   }
  }

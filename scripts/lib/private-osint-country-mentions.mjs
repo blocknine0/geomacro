@@ -1,6 +1,7 @@
 /** Offline native-language country routing. Source location never assigns event country. */
 import {countryMentionFromTitle} from "./country-news-mentions-195.mjs";
 const languages=["fr","es","pt","de","ar","ru","zh","ja","ko","hi","bn","it","tr","vi","id","pl","nl","sv","no","da","fi","hu","ro","cs","el","bg","hr","fa","he","uk"];
+const ENGLISH_DEMONYMS=Object.freeze([["Australian","AUS"]]);
 const normalize=s=>s.normalize("NFKC").toLocaleLowerCase("en").replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
 const cache=new WeakMap();
 export function privateOsintCountryMentions(title,countries){
@@ -34,6 +35,9 @@ export function privateOsintCountryMentions(title,countries){
  const matches=new Set(found.filter(n=>!found.some(m=>m.start<=n.start&&m.end>=n.end&&
   m.end-m.start>n.end-n.start)).map(n=>n.iso3));
  if(base)matches.add(base);
+ for(const [demonym,iso3] of ENGLISH_DEMONYMS){
+  if(new RegExp(`\\b${demonym}\\b`,"iu").test(title))matches.add(iso3);
+ }
  return [...matches].sort();
 }
 /** Single-country convenience API; never infer location from source alone. */
