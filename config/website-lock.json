@@ -1391,6 +1391,34 @@
     "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
   },
+  "approved_transformative_osint_riskstream_conversion_20261116": {
+    "approval": "Owner explicitly directed on 2026-11-16 to replace placeholder OSINT watch cards with concrete source-neutral intelligence, add the exact Store & API CTA, and remove specified confidence-killing copy.",
+    "purpose": "Authorize only the exact 12 protected presentation blobs changed for the concrete Intelligence cards, card/feed CTAs, and Store/API copy cleanup. Preserve source rights and neutrality, unscored evidence semantics, paid execution controls, Global Risk lock, canary hold, and public route read paths.",
+    "approved_source_commit": "82c9962a50bccacc3376fbafa0d160f291984678",
+    "approved_paths": [
+      "src/components/api-endpoint-directory.tsx",
+      "src/components/api-keys-notice.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/customer-care.tsx",
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/sections/roadmap-section.tsx",
+      "src/routes/about.tsx",
+      "src/routes/contact.tsx",
+      "src/routes/intelligence.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_flags_enabled": false,
+    "durable_objects_added": false,
+    "extra_public_route_d1_reads_added": false,
+    "canary_hold_unchanged": true,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
   "approved_current_main_website_blob_carryforward_20261116": {
     "approval": "The owner directed this PR to start from current main and update the Website Lock as needed. Pin the exact protected website blobs already present on current main 56d26d1bf7a80de933a7fc67b8c3a3ca06407efc so this branch verifies only its own scoped UI edits against the published baseline; this records repository carry-forward state and does not claim those blobs are live-deployed.",
     "purpose": "Exact-blob carry-forward for pre-existing current-main website changes. The general lock and independent Global Risk lock remain active.",

@@ -191,6 +191,9 @@ const approvedPricing = [
   config.approved_concrete_intelligence_findings_20261116,
   // Pin exact protected website blobs that were already on current main.
   config.approved_current_main_website_blob_carryforward_20261116,
+  // Exact 2026-11-16 owner-authorized transformative OSINT and Store/API copy;
+  // only the explicitly listed presentation blobs are admitted.
+  config.approved_transformative_osint_riskstream_conversion_20261116,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
