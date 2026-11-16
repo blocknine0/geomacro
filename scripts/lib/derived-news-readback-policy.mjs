@@ -112,16 +112,17 @@ export function isSafeDerivedNewsReadbackSignal(signal) {
         typeof value !== "string" || value.length > 230 || /[<>]/u.test(value))) return false;
 
   if (signal.status === "osint_feed_observed_unverified") {
-    // Old host-credited rows may still contain generic or copied wording.
-    // Accept only a complete concrete projection; host provenance is not a
-    // reason to bypass the public wording and market-channel checks.
-    const sourceNeutral = signal.sources_credited.length === 0
-      ? signal
-      : signal.sources_credited.length === 1 &&
-        isSafeMonitoredFeedCredit(signal.sources_credited[0])
-        ? {...signal, sources_credited: []}
-        : null;
-    return Boolean(sourceNeutral && isSourceNeutralOsintSignal(sourceNeutral));
+    // This internal intake validator is also used by non-public research
+    // consumers. Website publication must separately pass the stricter
+    // projectSourceNeutralOsintSignal concrete wording gate.
+    return isSourceNeutralOsintSignal(signal) ||
+      signal.sources_credited.length === 1 &&
+      isSafeMonitoredFeedCredit(signal.sources_credited[0]) &&
+      isSourceNeutralOsintSignal({...signal, sources_credited: []}) ||
+      signal.development_type === "unverified OSINT feed observation" &&
+      signal.date_precision === "exact" && signal.geography === null &&
+      signal.sources_credited.length === 1 &&
+      isSafeMonitoredFeedCredit(signal.sources_credited[0]);
   }
 
   // Only the explicit unverified-OSINT shape may contain a monitored-feed

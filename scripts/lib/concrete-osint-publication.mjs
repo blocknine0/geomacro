@@ -9,6 +9,7 @@ const countrySource=readFileSync(new URL("../../src/lib/canonical-country-regist
 const countryRows=/const COUNTRY_ROWS=`([\s\S]*?)`;/u.exec(countrySource)?.[1];
 if(!countryRows)throw Error("CONCRETE_OSINT_COUNTRY_REGISTRY_UNAVAILABLE");
 const countryAliases={USA:["United States of America","U.S.","USA"],GBR:["Britain","Great Britain","UK","U.K."],
+  AUS:["Australian"],
   RUS:["Russian Federation"],IRN:["Islamic Republic of Iran"],KOR:["Republic of Korea","South Korea"],
   PRK:["Democratic People's Republic of Korea","North Korea","DPR Korea"],COD:["DR Congo","DRC","Congo-Kinshasa"],
   COG:["Congo-Brazzaville"],CZE:["Czech Republic"],TUR:["Turkey"],VNM:["Viet Nam"],MMR:["Burma"]};
@@ -53,6 +54,7 @@ function clean(value, max) {
 }
 function actionLabel(value) {
   const text = value.toLocaleLowerCase();
+  if (/\b(?:affecting|faces? (?:new )?(?:restrictions?|controls?|curbs?))\b/u.test(text)) return "Reported Exposure to Supply Constraints";
   if (/\b(?:called for|appealed for|urged|warned)\b/u.test(text)) return "Policy Warning or Appeal";
   if (/\b(?:approved|authorized|authorised|adopted)\b/u.test(text)) return "Approval or Authorization";
   if (/\b(?:cut|lowered|reduced)\b/u.test(text)) return "Reported Reduction";

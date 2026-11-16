@@ -161,7 +161,7 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(coverage.latest_preview_rows,1);
   assert.equal(coverage.paid_customer_eligible,false);
  });
- it("publishes source-neutral held OSINT candidates with an enforced zero-D1-read mode",async()=>{
+ it("drops held OSINT without a concrete transformed country/action and performs no D1 read",async()=>{
   const p=temp();
   const item={
    schema:"geomacro.reusable-news-json.v1",id:"news-"+"a".repeat(64),
@@ -182,18 +182,16 @@ describe("permanent derived-only website archive",()=>{
   const urls=[];
   const result=await publishPermanentDerivedNewsArchive({...p,allowD1Reads:false,
    fetchImpl:async url=>{urls.push(String(url));return new Response("unavailable",{status:503})},now:NOW});
-  assert.equal(result.new_signals_added,1);
-  assert.equal(result.deploy_needed,true);
+  assert.equal(projection.signals.length,0);
+  assert.equal(result.new_signals_added,0);
+  assert.equal(result.deploy_needed,false);
   assert.equal(result.zero_d1_mode,true);
   assert.equal(result.d1_reads_performed,0);
   assert.equal(result.d1_used_for_public_reads,false);
   assert.equal(urls.some(url=>url=== "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate"),false);
-  assert.ok(urls.every(url=>url.startsWith("https://geomacro-public-finds-archive.")));
-  const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
-  assert.equal(latest.signals[0].category,"rare_earth");
-  assert.equal(latest.chargeable,false);
-  assert.equal(latest.scored,false);
-  assert.equal(JSON.stringify(latest).includes("news-"+"a".repeat(64)),false);
+  assert.deepEqual(urls,[]);
+  assert.equal(existsSync(join(p.assetsDir,"latest.json")),false);
+  assert.equal(JSON.parse(readFileSync(p.candidatePath,"utf8")).signals.length,0);
  });
  it("refuses to combine zero-D1 publication mode with canonical catch-up",async()=>{
   const p=temp();

@@ -104,10 +104,11 @@ export function verifyDerivedStory(s, now=Date.now()) {
           s.geography===null) ||
         (s.status==="osint_feed_observed_unverified" &&
           s.development_type==="unverified OSINT feed observation" &&
-          s.date_precision==="exact" && typeof s.geography==="string" &&
+          s.date_precision==="exact" &&
           Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
           typeof s.sources_credited[0]==="string"&&
-          s.sources_credited[0].startsWith("Monitored feed: "))) ||
+          s.sources_credited[0].startsWith("Monitored feed: ")&&
+          (s.geography===null||projectSourceNeutralOsintSignal({...s,sources_credited:[]})))) ||
       s.same_event_corrob_verified!==false ||
       s.severity!==null ||
       !Array.isArray(s.sources_credited) || s.sources_credited.length>2 ||
@@ -234,7 +235,8 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
         if(verifyDerivedStory(signal,now)&&original&&
            original.at>=now-AUTO_INGEST_RETENTION_MS&&
            original.eligibleAt+legacyDelayMinutes*60_000<=now&&
-           (legacyDelayMinutes!==15||signal.status!=="osint_feed_observed_unverified"))
+           (legacyDelayMinutes!==15||signal.status!=="osint_feed_observed_unverified")&&
+           publicProjection(signal))
           filtered.push({signal,ingest:snapshot.first_ingest[i]});
       }
       const page=filtered.slice(offset,offset+250),hasMore=filtered.length>offset+250;
@@ -278,11 +280,13 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
               signal.status!=="osint_feed_observed_unverified") &&
             (originalTime(signal,now)?.eligibleAt??Infinity)+legacyDelayMinutes*60_000<=now &&
             (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS) {
+          const safeSignal=publicProjection(signal);
+          if(!safeSignal)continue;
           // Audit provenance: server-generated D1 first insertion timestamp,
           // not upstream fetch time and not a claim that website was rendered.
           // Keep this OUTSIDE the strict source-neutral signal schema.
           const firstMs=Date.parse(row.first_seen_at);
-          signals.push(publicProjection(signal));
+          signals.push(safeSignal);
           // NEVER drop a verified existing story merely because its metadata
           // was absent in a legacy row/test transport. The journal audit
           // separately fails closed for missing trusted first-ingest clocks.
@@ -330,7 +334,8 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
         const signal=stored.signals[i],time=originalTime(signal,now);
         if(time&&verifyDerivedStory(signal,now)&&
            time.at>=now-AUTO_INGEST_RETENTION_MS){
-          signals.push(publicProjection(signal));firstIngest.push(stored.first_ingest[i]);
+          const safeSignal=publicProjection(signal);
+          if(safeSignal){signals.push(safeSignal);firstIngest.push(stored.first_ingest[i]);}
         }
       }
       const output=json({...stored,checked_at:new Date(now).toISOString(),
@@ -359,8 +364,10 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
         const signal=JSON.parse(row.story_json);
         if(verifyDerivedStory(signal,now)&&
            (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS){
+          const safeSignal=publicProjection(signal);
+          if(!safeSignal)continue;
           const firstMs=Date.parse(row.first_seen_at);
-          signals.push(publicProjection(signal));
+          signals.push(safeSignal);
           firstIngest.push({id:signal.id,
             first_seen_at:Number.isFinite(firstMs)&&firstMs<=now+60_000&&
               firstMs>=(originalTime(signal,now)?.eligibleAt??Infinity)

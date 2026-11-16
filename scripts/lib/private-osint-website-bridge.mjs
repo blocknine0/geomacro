@@ -131,7 +131,8 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
 export function privateWebsiteRetentionPriority(row){
  if(row?.status==="official_release_observed_unscored")return 2;
  if(row?.status==="osint_feed_observed_unverified"&&
-   isSafeDerivedNewsReadbackSignal(row))return 1;
+   isSafeDerivedNewsReadbackSignal(row)&&
+   projectSourceNeutralOsintSignal(row))return 1;
  return 0;
 }
 export function privateWebsiteRetentionNewestFirst(a,b){
@@ -161,7 +162,9 @@ export async function publishPrivateOsintWebsiteSignals({
         isSafeDerivedNewsReadbackSignal(s)))||
     (s.sources_credited.length===1&&
       (typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()))||
-    !isSafeDerivedNewsReadbackSignal(s)))
+    !isSafeDerivedNewsReadbackSignal(s)||
+    s.status==="osint_feed_observed_unverified"&&
+      !projectSourceNeutralOsintSignal(s)))
    throw Error("PRIVATE_OSINT_WEBSITE_BRIDGE_SIGNAL_UNSAFE");
  if(signals.length===0)return {candidates:0,new_derived_stories:0,
    journal_readback_verified:true,private_raw_published:false};
