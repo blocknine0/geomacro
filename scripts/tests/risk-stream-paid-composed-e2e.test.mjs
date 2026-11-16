@@ -140,7 +140,10 @@ test("composed verified-original -> dual attesters -> signed GRO -> reviewer -> 
     severity_weight:62,corroboration_weight:.6,corridors:["USA>GBR"]}));
   }
   const controlFetch=async(url,init)=>{
-   const path=new URL(url).pathname,packet=JSON.parse(init.body);
+   const path=new URL(url).pathname;
+   if(path==="/v1/internal/risk-stream/runtime")return Response.json({ok:true,
+    schema:"geomacro.risk-stream-runtime-status.v1",ready:true,deployed_source_sha:null});
+   const packet=init.body?JSON.parse(init.body):{};
    if(path==="/v1/internal/risk-stream/attest"){
     const draft=packet.draft,context=redactedContexts.get(draft.category);
     const attested={...draft,risk_context:context};
@@ -154,17 +157,29 @@ test("composed verified-original -> dual attesters -> signed GRO -> reviewer -> 
     assert.equal(f.ok,true,JSON.stringify(fb));assert.equal(r.ok,true,JSON.stringify(rb));
     return Response.json({ok:true,proof:{...fb.proof,...rb.proof},risk_context:context});
    }
-   assert.equal(path,"/v1/internal/risk-stream/events");
-   const result=await enqueueRiskStreamEvents(groEnv,packet,now);
-   return new Response(await result.text(),{status:result.status,headers:{"content-type":"application/json"}});
+   if(path==="/v1/internal/risk-stream/events"){
+    const result=await enqueueRiskStreamEvents(groEnv,packet,now);
+    return new Response(await result.text(),{status:result.status,headers:{"content-type":"application/json"}});
+   }
+   assert.equal(path,"/v1/internal/risk-stream/readback");
+   if(!consumed){
+    queueMessages=queue.map(message=>({body:message.body,ack(){this.acked=true;},retry(){this.retried=true;}}));
+    consumed=await consumeRiskStreamQueue({messages:queueMessages},groEnv);
+   }
+   const found=packet.observation_ids.filter(id=>db.native.prepare(
+    "SELECT observation_id FROM risk_stream_evidence WHERE observation_id=?").get(id));
+   return Response.json({ok:true,requested:packet.observation_ids.length,
+    readback_count:found.length,readback_verified:found.length===packet.observation_ids.length,
+    observation_ids:found});
   };
+  let queueMessages,consumed;
   const emitted=await emitRiskStreamCandidates({originals,sourceRegistry,rightsManifest:manifest,now,
    dryRun:false,controlPlaneUrl:"https://control-plane.example",controlPlaneToken:"c".repeat(64),
    factsPublicB64:spki(pairs.facts),rightsPublicB64:spki(pairs.rights),fetchImpl:controlFetch,sleepImpl:async()=>{}});
   assert.equal(emitted.status,"POSTED");assert.equal(emitted.candidate_count,6);
   assert.equal(queue.length,6);
-  const queueMessages=queue.map(message=>({body:message.body,ack(){this.acked=true;},retry(){this.retried=true;}}));
-  const consumed=await consumeRiskStreamQueue({messages:queueMessages},groEnv);
+  queueMessages??=queue.map(message=>({body:message.body,ack(){this.acked=true;},retry(){this.retried=true;}}));
+  consumed??=await consumeRiskStreamQueue({messages:queueMessages},groEnv);
   assert.equal(consumed.status,"PASS");assert.equal(consumed.corroborated_and_signed,3);
   assert(queueMessages.every(message=>message.acked&&!message.retried));
   assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_signed_gro").get().n,3);

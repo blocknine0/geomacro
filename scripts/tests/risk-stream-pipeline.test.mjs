@@ -2,6 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,randomBytes,sign} from "node:crypto";
 import {processRiskStreamBatch,enqueueRiskStreamEvents,consumeRiskStreamQueue,
+ riskStreamRuntimeStatus,readRiskStreamEventReadback,
  inspectRiskStreamCandidates,riskStreamOriginalClaims,deriveRiskStreamEligibleScore}
  from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {normalizeRiskStreamInternalCorroboration}
@@ -229,6 +230,37 @@ function ctx(){
   RISK_STREAM_GRO_VERIFY_SPKI_B64:spki(gro)};
  return {db,r2,env,facts,rights,gro};
 }
+test("runtime preflight reports only deployed source, research flags, auth, Queue and D1 readiness",()=>{
+ const status=riskStreamRuntimeStatus({GEOMACRO_SOURCE_SHA:"a".repeat(40),
+  RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",STREAM_MODE:"PRODUCTION",
+  RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1",CONTROL_PLANE_TOKEN:"x".repeat(48),
+  RISK_STREAM_QUEUE:{sendBatch(){}},DB:{prepare(){},batch(){}}});
+ assert.equal(status.ready,true);
+ assert.equal(status.deployed_source_sha,"a".repeat(40));
+ assert.equal(status.queue_binding_present,true);
+ assert.equal(status.d1_binding_present,true);
+ assert.equal(status.auth_configured,true);
+ assert.equal(JSON.stringify(status).includes("x".repeat(48)),false);
+ const held=riskStreamRuntimeStatus({RISK_STREAM_ACTIVE:"0",STREAM_INGESTION_ENABLED:"false"});
+ assert.equal(held.ready,false);
+ assert.equal(held.queue_binding_present,false);
+});
+test("collector D1 readback is authenticated-route ready, bounded, and exact by observation id",async()=>{
+ const ids=["a".repeat(64),"b".repeat(64)];let sqlSeen="";
+ const env={DB:{prepare(sql){sqlSeen=sql;return {bind(json){assert.deepEqual(JSON.parse(json),ids);
+  return {all:async()=>({results:[{observation_id:ids[1]},{observation_id:ids[0]}]})}}}}}};
+ const response=await readRiskStreamEventReadback(env,{schema:"geomacro.risk-stream-readback-request.v1",
+  observation_ids:ids});
+ const receipt=await response.json();
+ assert.equal(response.status,200);
+ assert.equal(receipt.readback_verified,true);
+ assert.deepEqual(new Set(receipt.observation_ids),new Set(ids));
+ assert.match(sqlSeen,/risk_stream_evidence/u);
+ assert.match(sqlSeen,/json_each/u);
+ const invalid=await readRiskStreamEventReadback(env,{schema:"geomacro.risk-stream-readback-request.v1",
+  observation_ids:["bad"]});
+ assert.equal(invalid.status,400);
+});
 test("transient Risk Stream Queue 503 retries three times with bounded backoff",async()=>{
  const c=ctx(),now=Date.now(),delays=[];let attempts=0;
  const item=candidate(c,3,"gov",now);

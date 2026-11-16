@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import {pathToFileURL} from "node:url";
 import {prepareRiskStreamCandidate,buildCandidate} from "../lib/risk-stream-candidate-builder.mjs";
 import {pairRiskStreamOriginals} from "../lib/risk-stream-pairing.mjs";
 import {eventFingerprint} from "../lib/risk-stream-event-fingerprint.mjs";
-import {inspectRiskStreamCandidates} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
+import {inspectRiskStreamCandidates,riskStreamOriginalClaims}
+ from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {validateAttesterKeys,verifyIndependentAttestations}
  from "../lib/risk-stream-shadow-attesters.mjs";
 
@@ -36,14 +38,25 @@ async function requestJson(fetchImpl,url,options,{sleepImpl=wait,retries=5}={}){
  for(let attempt=0;attempt<=retries;attempt++){
   let response;
   try{response=await fetchImpl(url,{...options,redirect:"error"})}
-  catch(error){if(attempt===retries)fail("HTTP_UNAVAILABLE");await sleepImpl(Math.min(30000,500*2**attempt));continue}
+  catch{if(attempt===retries)fail("HTTP_UNAVAILABLE");await sleepImpl(Math.min(30000,500*2**attempt));continue}
   if(response.ok){
    try{return await response.json()}catch{fail("HTTP_JSON_INVALID")}
   }
+  let responseCode="";
+  try{
+   const body=await response.json();
+   if(typeof body?.error==="string"&&
+      /^(?:RISK_STREAM_[A-Z0-9_]+|UNAUTHORIZED|CONTROL_PLANE_AUTH_UNCONFIGURED)$/u.test(body.error))
+    responseCode=body.error;
+  }catch{}
+  // A configured fail-closed hold is not a transient edge failure. Surface
+  // the actual deployment/binding reason instead of exhausting blind retries.
+  if(responseCode==="RISK_STREAM_DISABLED")
+   fail("HTTP_REJECTED_"+response.status+"_"+responseCode);
   if((response.status===429||response.status>=500)&&attempt<retries){
    await sleepImpl(retryAfter(response,attempt));continue;
   }
-  fail("HTTP_REJECTED_"+response.status);
+  fail("HTTP_REJECTED_"+response.status+(responseCode?"_"+responseCode:""));
  }
  fail("HTTP_RETRIES_EXHAUSTED");
 }
@@ -51,6 +64,7 @@ async function requestJson(fetchImpl,url,options,{sleepImpl=wait,retries=5}={}){
 /** Injectable network boundary for offline tests. */
 export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Date.now(),
  dryRun=true,controlPlaneUrl,controlPlaneToken,
+ expectedControlPlaneSourceSha=process.env.GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA,
  factsPublicB64=process.env.RISK_STREAM_MACHINE_FACTS_SPKI_B64,
  rightsPublicB64=process.env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64,
  fetchImpl=fetch,sleepImpl=wait,rightsManifest}={}){
@@ -98,6 +112,19 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
   candidate_count:0,contradictions:pairing.contradictions.length,
   item_license_skipped:itemLicenseSkipped,network_requests:0,posted_items:0};
  if(typeof controlPlaneUrl!=="string"||!controlPlaneToken)fail("SEND_CONFIGURATION_MISSING");
+ const runtime=await requestJson(fetchImpl,new URL("/v1/internal/risk-stream/runtime",controlPlaneUrl).href,
+  {method:"GET",headers:{Authorization:"Bearer "+controlPlaneToken,
+   Accept:"application/json"}},{sleepImpl});
+ if(runtime?.schema!=="geomacro.risk-stream-runtime-status.v1"||runtime.ready!==true){
+  const flags=runtime?.research_flags??{};
+  const missing=[!flags.active&&"ACTIVE",!flags.ingestion_enabled&&"INGESTION",
+   !flags.production_mode&&"MODE",!flags.hot50_research_enabled&&"RESEARCH",
+   runtime?.queue_binding_present!==true&&"QUEUE",runtime?.d1_binding_present!==true&&"D1",
+   runtime?.auth_configured!==true&&"AUTH"].filter(Boolean).join("_")||"STATUS";
+  fail("CONTROL_PLANE_RUNTIME_NOT_READY_"+missing);
+ }
+ if(expectedControlPlaneSourceSha&&runtime.deployed_source_sha!==expectedControlPlaneSourceSha)
+  fail("CONTROL_PLANE_DEPLOYMENT_STALE");
  let trustedAttesters;
  try{trustedAttesters=validateAttesterKeys(factsPublicB64,rightsPublicB64)}
  catch{fail("INDEPENDENT_TRUSTED_ATTESTER_KEYS_MISSING_OR_INVALID")}
@@ -131,9 +158,27 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
   if(receipt?.ok!==true||receipt.accepted!==items.length||receipt.commercial_delivery!==false)
    fail("CONTROL_PLANE_RECEIPT_INVALID");
  }
+ const observationIds=candidates.map(item=>createHash("sha256")
+  .update(riskStreamOriginalClaims(item)).digest("hex"));
+ const readbackUrl=new URL("/v1/internal/risk-stream/readback",controlPlaneUrl).href;
+ let readback=null;
+ for(let attempt=0;attempt<16;attempt++){
+  readback=await requestJson(fetchImpl,readbackUrl,{method:"POST",
+   headers:{Authorization:"Bearer "+controlPlaneToken,"Content-Type":"application/json"},
+   body:JSON.stringify({schema:"geomacro.risk-stream-readback-request.v1",
+    observation_ids:observationIds})},{sleepImpl});
+  if(readback?.ok===true&&readback.readback_verified===true&&
+     readback.requested===observationIds.length&&readback.readback_count===observationIds.length&&
+     Array.isArray(readback.observation_ids)&&
+     observationIds.every(id=>readback.observation_ids.includes(id)))break;
+  if(attempt===15)fail("D1_READBACK_TIMEOUT");
+  await sleepImpl(1000);
+ }
  return {status:"POSTED",paired_events:pairing.pairs.length,
   candidate_count:candidates.length,contradictions:pairing.contradictions.length,
-  item_license_skipped:itemLicenseSkipped,posted_items:candidates.length};
+  item_license_skipped:itemLicenseSkipped,posted_items:candidates.length,
+  collector_acknowledged:true,d1_readback_verified:true,
+  control_plane_source_sha:runtime.deployed_source_sha};
 }
 
 function argValue(args,name){const index=args.indexOf(name);return index<0?null:args[index+1]??null}

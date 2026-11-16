@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {generateKeyPairSync,sign} from "node:crypto";
+import {generateKeyPairSync,sign,createHash} from "node:crypto";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {normalizeRiskStreamInternalCorroboration} from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
@@ -90,12 +90,30 @@ test("a batch containing only excluded items stops without attestation or D1",as
  assert.equal(calls,0);
 });
 
-test("send mode obtains genuine stubbed signatures then posts exact worker batch",async()=>{
+test("collector does not spend attestations or retry a held Control Plane runtime",async()=>{
+ const calls=[];
+ await assert.rejects(emitRiskStreamCandidates({originals:[originals[0]],sourceRegistry,
+  rightsManifest,now,dryRun:false,controlPlaneUrl:"https://control.invalid",
+  controlPlaneToken:"root-test-token",fetchImpl:async(url)=>{
+   calls.push(new URL(url).pathname);
+   return {ok:true,status:200,json:async()=>({ok:true,
+    schema:"geomacro.risk-stream-runtime-status.v1",ready:false,
+    research_flags:{active:false,ingestion_enabled:false,production_mode:false,
+     hot50_research_enabled:false},queue_binding_present:false,
+    d1_binding_present:false,auth_configured:false})};
+  }}),/CONTROL_PLANE_RUNTIME_NOT_READY_ACTIVE_INGESTION_MODE_RESEARCH_QUEUE_D1_AUTH/u);
+ assert.deepEqual(calls,["/v1/internal/risk-stream/runtime"]);
+});
+
+test("send mode checks live runtime, obtains genuine signatures, gets Queue ACK and D1 receipt",async()=>{
  const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
- const paths=[],batches=[],delays=[];let throttled=false;
+ const paths=[],batches=[],delays=[];let throttled=false,readbackAttempts=0;
  const fetchImpl=async(url,options)=>{
-  paths.push(new URL(url).pathname);
+  const path=new URL(url).pathname;paths.push(path);
   assert.equal(options.redirect,"error");
+  if(path==="/v1/internal/risk-stream/runtime")return {ok:true,status:200,
+   json:async()=>({ok:true,schema:"geomacro.risk-stream-runtime-status.v1",
+    ready:true,deployed_source_sha:"a".repeat(40)})};
   if(new URL(url).pathname==="/v1/internal/risk-stream/attest"){
    assert.equal(options.headers.Authorization,"Bearer root-test-token");
    if(!throttled){throttled=true;return {ok:false,status:429,
@@ -110,8 +128,20 @@ test("send mode obtains genuine stubbed signatures then posts exact worker batch
    }})};
   }
   assert.equal(options.headers.Authorization,"Bearer root-test-token");
-  const body=JSON.parse(options.body);batches.push(body);
-  return {ok:true,status:202,json:async()=>({ok:true,accepted:body.items.length,commercial_delivery:false})};
+  if(path==="/v1/internal/risk-stream/events"){
+   const body=JSON.parse(options.body);batches.push(body);
+   return {ok:true,status:202,json:async()=>({ok:true,accepted:body.items.length,commercial_delivery:false})};
+  }
+  assert.equal(path,"/v1/internal/risk-stream/readback");
+  const request=JSON.parse(options.body);
+  const ids=batches.flatMap(batch=>batch.items).map(item=>
+   createHash("sha256").update(riskStreamOriginalClaims(item)).digest("hex"));
+  assert.deepEqual(request.observation_ids,ids);
+  readbackAttempts++;
+  if(readbackAttempts===1)return {ok:true,status:200,json:async()=>({ok:true,
+   requested:ids.length,readback_count:0,readback_verified:false,observation_ids:[]})};
+  return {ok:true,status:200,json:async()=>({ok:true,requested:ids.length,
+   readback_count:ids.length,readback_verified:true,observation_ids:ids})};
  };
  const originalsWithPrivate=[{...originals[0],risk_context:normalizeRiskStreamInternalCorroboration({
   source_kind:"PRIVATE_OSINT",country_iso3:"USA",category:"GEOPOLITICS",
@@ -124,10 +154,14 @@ test("send mode obtains genuine stubbed signatures then posts exact worker batch
  rightsPublicB64:rights.publicKey.export({format:"der",type:"spki"}).toString("base64"),
   fetchImpl,sleepImpl:async ms=>delays.push(ms)});
  assert.equal(result.status,"POSTED");
- assert.deepEqual(paths,["/v1/internal/risk-stream/attest","/v1/internal/risk-stream/attest",
+ assert.equal(result.collector_acknowledged,true);
+ assert.equal(result.d1_readback_verified,true);
+ assert.deepEqual(paths,["/v1/internal/risk-stream/runtime",
+  "/v1/internal/risk-stream/attest","/v1/internal/risk-stream/attest",
   "/v1/internal/risk-stream/attest",
-  "/v1/internal/risk-stream/events"]);
- assert.deepEqual(delays,[2000]);
+  "/v1/internal/risk-stream/events","/v1/internal/risk-stream/readback",
+  "/v1/internal/risk-stream/readback"]);
+ assert.deepEqual(delays,[2000,1000]);
  assert.equal(batches[0].schema,"geomacro.risk-stream-ingest-batch.v1");
  assert.equal(batches[0].items.length,2);
  assert.equal(batches[0].items[0].event_fingerprint,batches[0].items[1].event_fingerprint);
