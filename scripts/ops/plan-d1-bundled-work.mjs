@@ -220,6 +220,10 @@ const held=(reason,now)=>Object.freeze({
   reason,critical:false,research:false,maintenance:false,phase2h_raw_archive:false,source_intake:false,
   retention_cleanup:false,retention_cleanup_max_rows:0,
   registered_private_max_new_rows:0,
+  owner_d1_paid_envelope_admission:false,
+  paid_capacity_verified_by_provider:false,
+  workers_paid_subscription_verified:false,
+  paid_subscription_change_performed:false,
   governed_measurement:false,historical_recovery:false,historical_recovery_max_rows:0,
   predge_account_headroom_guard_enabled:true,
   predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
@@ -255,7 +259,7 @@ export function admitPaidCanonicalReadOnlyCatchup({
   ownerEnvelope.normal_rows_read_remaining>reserve&&
   snapshot.observed_rows_read+reserve<ownerEnvelope.normal_daily_rows_read_ceiling;
 }
-export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerPaidAdmission=false}={}){
+export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerEnvelope=null}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
   if(!snapshot||snapshot.schema!=="geomacro.d1-account-daily-quota-readonly.v1"||
@@ -285,19 +289,30 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerP
     Number.isFinite(Date.parse(paidProof.observed_at))&&
     Date.parse(paidProof.observed_at)<=now.getTime()&&
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
-  if(paid||ownerPaidAdmission===true){
-    const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
-    const progress=Math.max(0,Math.min(1,elapsed));
-    // Pace owner paid daily ceilings; the separate monthly reserve cannot
-    // be automatically used by an unqualified discretionary workload.
-    const dailyReads=Math.floor(
-      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_read*
-      (0.05+0.95*progress));
-    const dailyWrites=Math.floor(
-      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_written*
-      (0.05+0.95*progress));
-    const admitted=snapshot.observed_rows_read+4_000<dailyReads&&
-      snapshot.observed_rows_written+2_000<dailyWrites;
+  const ownerEnvelopeAdmitted=paid&&
+    ownerEnvelope?.schema==="geomacro.owner-d1-paid-utc-envelope.v2"&&
+    ownerEnvelope.day_utc===snapshot.day_utc&&
+    ownerEnvelope.observed_rows_read===snapshot.observed_rows_read&&
+    ownerEnvelope.observed_rows_written===snapshot.observed_rows_written&&
+    ownerEnvelope.held===false&&
+    ownerEnvelope.normal_daily_rows_read_ceiling===
+      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_read&&
+    ownerEnvelope.normal_daily_rows_written_ceiling===
+      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_written&&
+    safeInt(ownerEnvelope.paced_rows_read_ceiling)&&
+    ownerEnvelope.paced_rows_read_ceiling<=ownerEnvelope.normal_daily_rows_read_ceiling&&
+    safeInt(ownerEnvelope.paced_rows_written_ceiling)&&
+    ownerEnvelope.paced_rows_written_ceiling<=ownerEnvelope.normal_daily_rows_written_ceiling&&
+    snapshot.observed_rows_read+4_000<ownerEnvelope.paced_rows_read_ceiling&&
+    snapshot.observed_rows_written+2_000<ownerEnvelope.paced_rows_written_ceiling;
+  if(paid){
+    // The signed-off owner envelope is the source of the daily paced limits.
+    // A missing/unverified Workers Paid subscription or held/stale envelope
+    // cannot fall back to an owner-only admission path. Monthly headroom is
+    // independently re-proved by each publishing workflow before writes.
+    const dailyReads=ownerEnvelopeAdmitted?ownerEnvelope.paced_rows_read_ceiling:0;
+    const dailyWrites=ownerEnvelopeAdmitted?ownerEnvelope.paced_rows_written_ceiling:0;
+    const admitted=ownerEnvelopeAdmitted;
     const readRoom=Math.max(0,dailyReads-snapshot.observed_rows_read);
     const writeRoom=Math.max(0,dailyWrites-snapshot.observed_rows_written);
     const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
@@ -327,8 +342,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerP
     return Object.freeze({
       schema:"geomacro.d1-free-bundled-work-admission.v1",
       day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
-      reason:admitted?(paid?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
-        "OWNER_D1_PAID_ENVELOPE_SOURCE_ADMISSION"):
+      reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_OWNER_ENVELOPE_ADMISSION":
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
       phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
@@ -358,17 +372,15 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerP
       source_intake_does_not_admit_signing_or_audits:true,
       observed_rows_read:snapshot.observed_rows_read,
       observed_rows_written:snapshot.observed_rows_written,
-      // Provider-verified paid capacity is not subjected to the Free physical
-      // daily 5M cap; the existing conservative paid soft budget still applies.
-      // The paid source planner still subtracts the same protected Predge
-      // read/write reserve from all remaining-day source slots.
+      // Provider-verified paid capacity uses the current owner envelope's
+      // paced ceilings. All source schedules retain the protected reserves.
       predge_account_headroom_guard_enabled:true,
       predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
       predge_account_headroom_is_hard_partition:false,
       predge_request_governor_is_separate_and_unchanged:true,
       paid_capacity_verified_by_provider:paid,
       workers_paid_subscription_verified:paid,
-      owner_d1_paid_envelope_admission:!paid&&ownerPaidAdmission===true,
+      owner_d1_paid_envelope_admission:admitted&&ownerEnvelopeAdmitted,
       free_plan_5m_cap_not_applied_only_with_verified_subscription:paid,
       daily_account_soft_limit_read:dailyReads,
       daily_account_soft_limit_write:dailyWrites,
@@ -542,6 +554,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerP
     predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
     predge_account_headroom_is_hard_partition:false,
     predge_request_governor_is_separate_and_unchanged:true,
+    owner_d1_paid_envelope_admission:false,
+    paid_capacity_verified_by_provider:false,
+    workers_paid_subscription_verified:false,
+    paid_subscription_change_performed:false,
     predge_protected_read_headroom_observed:
       snapshot.remaining_rows_read>PREDGE_D1_FREE_HEADROOM.rows_read,
     predge_protected_write_headroom_observed:
@@ -681,6 +697,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         // Keep the real policy diagnostic without making it a capacity gate.
         const guard=await readFiveUsdSpendGuard({env:billingEnv,fetchImpl,now});
         if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;paidProbe="VERIFIED";}
+        else paidProbe="SUBSCRIPTION_VERIFIED_SPEND_POLICY_ADVISORY";
       }catch(error){
         const code=String(error?.message??"");
         paidProbe=/^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
@@ -695,21 +712,9 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       observedRowsWritten:quota.observed_rows_written,
       now,policy:FIVE_USD_BUDGET.d1_budget_policy,
     });
-    const ownerNormalHeadroomWritten=Math.max(0,
-      ownerBudget.normal_rows_written-quota.observed_rows_written);
-    const d1Id=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-      env.D1_DATABASE_ID??"");
-    // The owner envelope independently carries the reviewed Workers Paid
-    // 1.1M/day paced budget. If optional subscription/billing reads are denied,
-    // allow only this bounded source-ingestion lane with a pinned production
-    // D1 binding and >=50k owner-normal write headroom. This does not set the
-    // provider subscription proof, admit migrations/canaries, or bypass the
-    // separate monthly 30%-reserve governor used before writes.
-    const ownerPaidSourceAdmission=!paidSubscriptionVerified&&d1Id&&
-      ownerEnvelope.schema==="geomacro.owner-d1-paid-utc-envelope.v2"&&
-      ownerEnvelope.held===false&&
-      ownerEnvelope.reason==="OWNER_D1_PAID_PACED_ADMISSION_READY"&&
-      ownerNormalHeadroomWritten>=50_000;
+    // The envelope can pace work only after the existing Workers Paid
+    // subscription has been independently verified. It never substitutes
+    // for the provider entitlement or the monthly headroom proof.
     const ownerNormalHold=ownerEnvelope.held||quota.day_utc!==now.toISOString().slice(0,10);
     const canonicalArchiveReadOnly=admitPaidCanonicalReadOnlyCatchup({
       snapshot:quota,ownerEnvelope,paidSubscriptionVerified,now
@@ -718,8 +723,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       held(ownerEnvelope.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"?
         "GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD":
         "GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
-      planD1BundledWork(quota,{now,paidProof,spendGuardProof,
-        ownerPaidAdmission:ownerPaidSourceAdmission});
+      planD1BundledWork(quota,{now,paidProof,ownerEnvelope});
     // All writes, including recovery, belong to the same 140k owner target.
     // Emergency restoration requires separate explicit authorization; this
     // read-only receipt does NOT grant any emergency query or write.

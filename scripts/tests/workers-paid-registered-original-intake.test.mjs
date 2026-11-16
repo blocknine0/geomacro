@@ -4,6 +4,8 @@ import {readFileSync} from "node:fs";
 import {planD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 import {WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
+import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
+const budget=JSON.parse(readFileSync(new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 const now=new Date("2026-11-10T18:08:12.000Z");
 const quota=(rowsRead,rowsWritten)=>({
  schema:"geomacro.d1-account-daily-quota-readonly.v1",
@@ -19,8 +21,13 @@ const paidProof={
  observed_at:now.toISOString(),subscription_changed:false,
  billing_action_performed:false
 };
+const ownerEnvelope=(s,at=now)=>evaluateOwnerD1DailyEnvelope({
+ observedRowsRead:s.observed_rows_read,observedRowsWritten:s.observed_rows_written,
+ now:at,policy:budget.d1_budget_policy,
+});
 test("real Paid original intake incident no longer starves observed source originals at zero Free cap",()=>{
- const x=planD1BundledWork(quota(15_846_041,392_683),{now,paidProof});
+ const s=quota(15_846_041,392_683);
+ const x=planD1BundledWork(s,{now,paidProof,ownerEnvelope:ownerEnvelope(s)});
  assert.equal(x.state,"CRITICAL_ONLY");
  assert.equal(x.source_intake,true);
  assert.equal(x.phase2h_raw_archive,true);

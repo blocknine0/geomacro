@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {assessProviderWorkersPaidSubscription,readCloudflareWorkersPaidProof,
  WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {planD1BundledWork,checkD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 import {assessFiveUsdSpendPolicies} from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
+
+const budget=JSON.parse(readFileSync(new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 
 const now=new Date("2026-10-27T18:00:00.000Z");
 const paid={success:true,errors:[],result:[{
@@ -18,6 +22,11 @@ const usage=(read,written)=>({
  limits:{...D1_FREE_DAILY},
  remaining_rows_read:Math.max(0,5_000_000-read),
  remaining_rows_written:Math.max(0,100_000-written),
+});
+const ownerEnvelope=(snapshot,at=now)=>evaluateOwnerD1DailyEnvelope({
+ observedRowsRead:snapshot.observed_rows_read,
+ observedRowsWritten:snapshot.observed_rows_written,
+ now:at,policy:budget.d1_budget_policy,
 });
 test("only active account-scoped Workers Paid subscription is accepted",()=>{
  const proof=assessProviderWorkersPaidSubscription(paid,now);
@@ -62,10 +71,12 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
    threshold_cents:1,version:1,current_state:{status:"below_limit"},
   })),
  ]},now);
- assert.equal(planD1BundledWork(usage(5_763_167,25_745),
-  {now,paidProof:proof}).critical,true);
+ const noEnvelope=planD1BundledWork(usage(5_763_167,25_745),
+  {now,paidProof:proof});
+ assert.equal(noEnvelope.critical,false);
+ assert.equal(noEnvelope.owner_d1_paid_envelope_admission,false);
  const grant=planD1BundledWork(usage(1500,1500),
-  {now,paidProof:proof,spendGuardProof});
+  {now,paidProof:proof,ownerEnvelope:ownerEnvelope(usage(1500,1500)),spendGuardProof});
  assert.equal(grant.critical,true);
  assert.equal(grant.state,"CRITICAL_ONLY");
  assert.equal(grant.paid_capacity_verified_by_provider,true);
@@ -84,16 +95,18 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.ok(grant.daily_account_soft_limit_read<=580_000_000);
  assert.ok(grant.daily_account_soft_limit_write<=1_100_000);
  assert.equal(grant.paid_subscription_change_performed,false);
- const reset=new Date("2026-10-27T00:00:00.000Z");
- const atReset=planD1BundledWork(usage(0,0),{now:reset,
+ const reset=new Date("2026-10-27T01:00:00.000Z");
+ const resetUsage=usage(0,0);
+ const atReset=planD1BundledWork(resetUsage,{now:reset,
   paidProof:{...proof,observed_at:reset.toISOString()},
+  ownerEnvelope:ownerEnvelope(resetUsage,reset),
   spendGuardProof:{...spendGuardProof,observed_at:reset.toISOString()}});
  assert.equal(atReset.critical,true);
  assert.equal(atReset.source_intake,true);
  assert.ok(atReset.source_intake_max_new_rows>=3);
  assert.equal(atReset.phase2h_raw_archive,true);
  const tight=planD1BundledWork(usage(60_000,1_100_000),
-  {now,paidProof:proof,spendGuardProof});
+  {now,paidProof:proof,ownerEnvelope:ownerEnvelope(usage(60_000,1_100_000)),spendGuardProof});
  assert.equal(tight.critical,false);
  assert.equal(tight.source_intake,false);
  assert.equal(tight.source_intake_max_new_rows,0);
@@ -148,7 +161,7 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  const granted=await checkD1BundledWork({env,now,fetchImpl});
  assert.equal(reads,3);
  assert.equal(granted.critical,true);
- assert.equal(granted.reason,"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET");
+ assert.equal(granted.reason,"PROVIDER_VERIFIED_WORKERS_PAID_OWNER_ENVELOPE_ADMISSION");
  assert.equal(granted.workers_paid_subscription_verified,true);
  assert.equal(granted.owner_d1_utc_budget_held,false);
  assert.equal(granted.d1_queries,0);
@@ -227,7 +240,7 @@ test("Paid account has distinct 580M/1.1M owner daily ceilings",async()=>{
   fetchImpl:mock(1500,1500,404)});
  assert.equal(missingSpend.owner_d1_utc_budget_held,false);
  assert.equal(missingSpend.workers_paid_subscription_verified,true);
- assert.equal(missingSpend.reason,"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET");
+ assert.equal(missingSpend.reason,"PROVIDER_VERIFIED_WORKERS_PAID_OWNER_ENVELOPE_ADMISSION");
  assert.equal(missingSpend.spend_policy_verified,false);
  assert.equal(missingSpend.spend_policy_verification_enforced,false);
  assert.equal(missingSpend.paid_capacity_probe_status,
@@ -244,14 +257,20 @@ test("1.1M daily write ceiling holds even with monthly 30pct reserve",async()=>{
    id:"lock-"+i,product_id,action:"usage_block",enabled:true,
    threshold_cents:1,version:1,current_state:{status:"below_limit"},
   }))},now);
- const normal=planD1BundledWork(usage(3000,3000),{now,paidProof:proof,spendGuardProof});
+ const normalUsage=usage(3000,3000);
+ const normal=planD1BundledWork(normalUsage,{now,paidProof:proof,
+  ownerEnvelope:ownerEnvelope(normalUsage),spendGuardProof});
  assert.equal(normal.critical,true);
  assert.ok(normal.daily_account_soft_limit_read<=580000000);
  assert.ok(normal.daily_account_soft_limit_write<=1100000);
- const afterNormal=planD1BundledWork(usage(3000,1100000),{now,paidProof:proof,spendGuardProof});
+ const ceilingUsage=usage(3000,1100000);
+ const afterNormal=planD1BundledWork(ceilingUsage,{now,paidProof:proof,
+  ownerEnvelope:ownerEnvelope(ceilingUsage),spendGuardProof});
  assert.equal(afterNormal.critical,false);
  assert.equal(afterNormal.source_intake,false);
- const noOverride=planD1BundledWork(usage(3000,1200000),{now,paidProof:proof,spendGuardProof});
+ const overrideUsage=usage(3000,1200000);
+ const noOverride=planD1BundledWork(overrideUsage,{now,paidProof:proof,
+  ownerEnvelope:ownerEnvelope(overrideUsage),spendGuardProof});
  assert.equal(noOverride.critical,false);
  assert.equal(noOverride.phase2h_raw_archive,false);
 });
