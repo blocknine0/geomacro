@@ -97,7 +97,10 @@ test('protected candidate receives existing independent read-only Billing token'
  assert.ok(candidate);
  assert.match(candidate,/environment: production/u);
  assert.match(candidate,/CLOUDFLARE_BILLING_READ_TOKEN: \$\{\{ secrets\.CLOUDFLARE_BILLING_READ_TOKEN \}\}/u);
- assert.match(proof,/const token=env\.CLOUDFLARE_BILLING_READ_TOKEN/u);
+ assert.match(proof,/const billingToken=env\.CLOUDFLARE_BILLING_READ_TOKEN/u);
+ assert.match(proof,/const apiToken=env\.CLOUDFLARE_API_TOKEN/u);
+ assert.match(proof,/new Set\(\[billingToken,apiToken\]/u);
+ assert.match(proof,/for\(const token of tokens\)/u);
  assert.match(proof,/method:"GET"/u);
  assert.match(proof,/\/subscriptions/u);
  assert.doesNotMatch(candidate,/npm run release:hold|--promote|deployments.*POST/u);
