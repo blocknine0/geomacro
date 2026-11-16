@@ -111,7 +111,7 @@ export function actorActionNewsObservation(title:string):{headline:string;change
   let actor=match[1].replace(/^The /u,"");
   // A named institution/country/person must actually occupy the grammatical
   // actor position; a generic publisher topic is not an actor.
-  const named=/^(?:UN(?:ited Nations)?(?: agencies| independent experts| experts| chief| Secretary-General| Security Council| human rights office| rights chief)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|European Commission|European Union|Security Council|Government of [\p{Lu}][\p{L} .'-]{1,45}|[\p{Lu}][\p{L}.'-]*(?:\s+(?:of|the|and|[\p{Lu}][\p{L}.'-]*)){0,6})$/u;
+  const named=/^(?:UN(?:ited Nations)?(?: agencies| independent experts| experts| chief| Secretary-General| Security Council| human rights office| rights chief)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|Bank of Japan|Bank of Canada|Reserve Bank of India|Swiss National Bank|People's Bank of China|European Commission|European Union|Security Council|Government of [\p{Lu}][\p{L} .'-]{1,45}|[\p{Lu}][\p{L}.'-]*(?:\s+(?:of|the|and|[\p{Lu}][\p{L}.'-]*)){0,6})$/u;
   if(!named.test(actor))continue;
   actor=({UK:"United Kingdom",US:"United States",UN:"United Nations",ECB:"European Central Bank"} as Record<string,string>)[actor]??actor;
   const object=match[3].replace(/\s*[\u2013\u2014]\s*/gu,", ").trim();

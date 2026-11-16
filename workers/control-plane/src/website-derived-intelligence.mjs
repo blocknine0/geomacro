@@ -32,6 +32,14 @@ const TOPICS = new Set([...Object.values(MACRO_TOPICS).map(x=>x.name),"sanctions
   "resources and energy export outlook","international trade measures and disputes","strategic mineral and rare-earth inputs","critical-mineral processing and supply chains","rare-earth supply",
   "critical-mineral inputs","critical-minerals policy",
   "mineral exploration and production",
+  "Sanctions & Trade Restrictions","Security & Diplomatic Developments",
+  "Trade Policy & Market Access","Maritime Transit & Freight",
+  "Monetary Policy & FX Liquidity","Inflation & Consumer Prices",
+  "Currency & External Balances","Copper Supply & Processing",
+  "Lithium & Battery-Grade Supply","Nickel Supply & Processing",
+  "Cobalt & Battery-Grade Supply","Graphite & Anode Supply",
+  "Rare-Earth Supply & Processing","Critical-Mineral Supply & Processing",
+  "Mining & Mineral Processing",
   "geopolitical publisher candidate","macro publisher candidate",
   "minerals publisher candidate"]);
 const SIGNAL_KEYS = new Set(["id","category","title","why_it_matters","topic",
@@ -96,7 +104,7 @@ export function verifyDerivedStory(s, now=Date.now()) {
           s.geography===null) ||
         (s.status==="osint_feed_observed_unverified" &&
           s.development_type==="unverified OSINT feed observation" &&
-          s.date_precision==="exact" && s.geography===null &&
+          s.date_precision==="exact" && typeof s.geography==="string" &&
           Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
           typeof s.sources_credited[0]==="string"&&
           s.sources_credited[0].startsWith("Monitored feed: "))) ||

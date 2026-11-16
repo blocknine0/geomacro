@@ -60,7 +60,7 @@ const CATEGORY_STYLE = {
 function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
   const mandatoryCredits=intelligenceRequiredSourceCredits(signal);
-  const takeaways=intelligenceRiskTakeaways(signal.category);
+  const takeaways=intelligenceRiskTakeaways(signal.category,signal);
   return (
     <article data-testid="geomacro-concrete-intelligence-card"
       data-geomacro-story-id={signal.id}
@@ -94,10 +94,9 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
             <div><dt className="font-semibold text-foreground">Affected FX / commodity / corridor</dt><dd className="text-foreground/80">{takeaways.market}</dd></div>
           </dl>
           <span className="mt-3 inline-flex rounded-full border border-border px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION POSTURE · {takeaways.posture}</span>
-          <div className="mt-4 border-t border-border/60 pt-3 text-[11px] leading-5 text-muted-foreground">
-            <span className="font-semibold text-foreground/80">Paid Tier Unlocks</span>
-            <span> · agent_decision machine JSON · 24–72h / 7–30d horizons · cross-corridor contagion · Ed25519 commercial rights</span>
-          </div>
+          <a href="/pricing" className="mt-4 flex min-h-11 items-center justify-center rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold leading-5 text-primary-foreground">
+            Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API (/pricing)
+          </a>
         </div>
         <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
         {mandatoryCredits.length > 0 ? (
@@ -365,9 +364,10 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         </p>
       </header>
 
-      <section aria-label="Risk Gate API pricing" className="mt-5 flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm leading-6"><span className="font-semibold text-foreground">Risk Gate API</span><span className="text-muted-foreground"> · Focused $0.15 · Standard $0.20 · Complex Full $0.30 per delivered check</span></p>
-        <a href="/pricing" className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Get API Key &amp; Recharge Credits</a>
+      <section aria-label="Risk Gate API pricing" className="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <a href="/pricing" className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground">
+          Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API (/pricing)
+        </a>
       </section>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/30 px-4 py-3">

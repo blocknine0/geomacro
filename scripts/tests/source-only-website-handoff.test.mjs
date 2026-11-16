@@ -14,10 +14,10 @@ test("fresh native original observations get bounded, newest-first source-privat
   ...Array.from({length:3},(_,i)=>row(i+100,"macro")),
   row(200,"rare_earth")];
  const h=planSourceWebsiteHandoff(rows,{now});
- assert.equal(SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY,120);
- assert.equal(h.rows.length,SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY+4);
+ assert.equal(SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY,160);
+ assert.equal(h.rows.length,140+4);
  assert.deepEqual(Object.fromEntries(Object.entries(h.by_category).map(([k,v])=>[k,v.selected])),
-   {geopolitics:120,macro:3,rare_earth:1});
+   {geopolitics:140,macro:3,rare_earth:1});
  assert.equal(h.requires_full_research_admission,true);
  assert.equal(h.source_fetched_once,true);
 });
@@ -49,7 +49,7 @@ test("existing source-only sweep remains source-only and research publisher is a
  assert.match(publisher,/canonicalOriginToken:token/);
  assert.match(publisher,/isPermanentArchiveSignal/);
  assert.match(publisher,/permanent-archive-candidates\.json/);
- assert.match(publisher,/PER_CATEGORY_LIMIT=12/);
+ assert.match(publisher,/PER_CATEGORY_LIMIT=160/);
  assert.match(workflow,/verifyConvergedPublicStaticArchiveReadback/);
  assert.match(workflow,/scripts\/ops\/publish-permanent-derived-news-archive\.mjs/);
  assert.match(workflow,/npx -y wrangler@4\.136\.3 deploy/);
@@ -62,14 +62,14 @@ test("existing source-only sweep remains source-only and research publisher is a
 
 });
 
-test("120 per-domain handoff stays bounded, preserves every native clock and rejects cross-category noise",()=>{
+test("160 per-domain handoff stays bounded, preserves every native clock and rejects cross-category noise",()=>{
  const rows=["geopolitics","macro","rare_earth"].flatMap((c,i)=>
-  Array.from({length:135},(_,n)=>row(1000+i*1000+n,c)));
+  Array.from({length:190},(_,n)=>row(1000+i*1000+n,c)));
  const result=planSourceWebsiteHandoff(rows,{now});
- assert.equal(result.rows.length,360);
- assert.equal(new Set(result.rows.map(x=>x.category+"|"+x.article_url+"|"+x.published_at)).size,360);
+ assert.equal(result.rows.length,480);
+ assert.equal(new Set(result.rows.map(x=>x.category+"|"+x.article_url+"|"+x.published_at)).size,480);
  assert.deepEqual(Object.fromEntries(Object.entries(result.by_category).map(([c,n])=>[c,n.selected])),
-  {geopolitics:120,macro:120,rare_earth:120});
+  {geopolitics:160,macro:160,rare_earth:160});
  assert.ok(result.rows.every(x=>x.published_at==="2026-11-02T06:00:00.000Z"));
  assert.equal(result.payments,0);
  assert.equal(result.predge_unchanged,true);
@@ -83,20 +83,20 @@ test("even under 400 newer same-category originals, older still-native 72h items
  }));
  const first=planSourceWebsiteHandoff(initial,{now});
  const second=planSourceWebsiteHandoff(initial,{now:new Date(now.getTime()+900_000)});
- assert.equal(first.by_category.geopolitics.selected,120);
+ assert.equal(first.by_category.geopolitics.selected,160);
  assert.equal(first.by_category.geopolitics.newest_native_candidates,24);
- assert.equal(first.by_category.geopolitics.deferred_to_fresh_reobservation,280);
+ assert.equal(first.by_category.geopolitics.deferred_to_fresh_reobservation,240);
  assert.deepEqual(first.rows.slice(0,24).map(x=>x.article_url),
   second.rows.slice(0,24).map(x=>x.article_url));
- assert.ok(new Set([...first.rows,...second.rows].map(x=>x.article_url)).size>120);
- assert.equal(first.rows.filter(x=>x.category==="geopolitics").length,120);
+ assert.ok(new Set([...first.rows,...second.rows].map(x=>x.article_url)).size>160);
+ assert.equal(first.rows.filter(x=>x.category==="geopolitics").length,160);
  assert.ok(first.rows.every(x=>Date.parse(x.published_at)<=now.getTime()));
 });
 
-test("each domain publishes its newest four immediately while rotating eight older native IDs",()=>{
+test("each domain publishes its newest four immediately while rotating larger batches of older native IDs",()=>{
  const categories=["geopolitics","macro","rare_earth"];
  const lanes=categories.map((category,c)=>
-   Array.from({length:90},(_,i)=>({
+   Array.from({length:210},(_,i)=>({
      id:category+"-"+(c*1000+i),category,
      published_at:new Date(now.getTime()-(i+1)*60_000).toISOString()
    })));
@@ -106,14 +106,14 @@ test("each domain publishes its newest four immediately while rotating eight old
    const original=lanes[categories.indexOf(category)];
    const a=first.filter(x=>x.category===category);
    const b=second.filter(x=>x.category===category);
-   assert.equal(a.length,12);
-   assert.equal(b.length,12);
+   assert.equal(a.length,160);
+   assert.equal(b.length,160);
    assert.deepEqual(a.slice(0,4).map(x=>x.id),original.slice(0,4).map(x=>x.id));
    assert.deepEqual(b.slice(0,4).map(x=>x.id),original.slice(0,4).map(x=>x.id));
-   assert.ok(new Set([...a,...b].map(x=>x.id)).size>12);
+   assert.ok(new Set([...a,...b].map(x=>x.id)).size>160);
  }
- assert.equal(first.length,36);
- assert.equal(new Set(first.map(x=>x.id)).size,36);
+ assert.equal(first.length,480);
+ assert.equal(new Set(first.map(x=>x.id)).size,480);
  assert.throws(()=>selectSourceWebsitePublicationCohort([],now.getTime()),
   /SOURCE_WEBSITE_PUBLICATION_INPUT_INVALID/);
 });

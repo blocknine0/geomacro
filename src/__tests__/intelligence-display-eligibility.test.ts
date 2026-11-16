@@ -42,19 +42,26 @@ describe("all-three-category credited concrete Intelligence display rules",()=>{
    expect(findCardFromObservedRelease(row,Date.parse(at)+3600000)).toBeNull();
   }
  });
- it("retains an explicit not-independently-verified state for source reports",()=>{
+ it("publishes a concrete source-reported finding without claiming corroboration",()=>{
   const legacy=observation({
    status:"osint_feed_observed_unverified",
    development_type:"unverified OSINT feed observation",
-   title:"Geomacro finds Bank of Canada announced a new monetary policy review",
-   what_changed:"A monitored source feed reports: Bank of Canada announced a new monetary policy review. This report has not been independently verified.",
+   title:"Geomacro finds Monetary Policy & FX Liquidity · Policy Rate Decision — Canada",
+   what_changed:"Unverified feed observation: Bank of Canada retained its policy rate in a new decision.",
+   why_it_matters:"Risk: a policy-rate decision can alter rate differentials in Canada. Effect: import settlement and local-currency hedging may need review if confirmed. Price channel to monitor: USD/CAD. Action Posture: REQUIRE_APPROVAL; no price move is asserted.",
+   topic:"Monetary Policy & FX Liquidity",geography:"Canada",
    sources_credited:["Monitored feed: economics.example"]
   });
-  const row=projectSourceNeutralOsintSignal(legacy)! as StatelessIntelligenceSignal;
+  const row=projectSourceNeutralOsintSignal(legacy) as StatelessIntelligenceSignal;
+  expect(row).not.toBeNull();
   expect(isConcretePublicIntelligence(row)).toBe(true);
-  expect(concreteIntelligenceHeadline(row)).toContain("unverified macro watch signal");
+  expect(concreteIntelligenceHeadline(row)).toContain("Monetary Policy & FX Liquidity");
   expect(intelligenceRequiredSourceCredits(row)).toEqual([]);
-  expect(isConcretePublicIntelligence({...row,what_changed:"A private source says the bank changed policy."})).toBe(true);
+  expect(isConcretePublicIntelligence({...row,what_changed:"This report has not been independently verified."})).toBe(false);
+  const generic=projectSourceNeutralOsintSignal({...legacy,
+    title:"Geomacro finds an unverified macro watch signal",
+    what_changed:"This report has not been independently verified."});
+  expect(generic).toBeNull();
  });
  it("never upgrades generic updates, unknown actors, scores or unsourced headlines to news",()=>{
   expect(intelligenceDisplayRejection(observation({status:"official_feed_candidate_unscored"})))

@@ -2,7 +2,7 @@
  * This never reads another feed, publishes original text, grants rights,
  * or asserts that a 195x3 routing cell contains genuine news.
  */
-export const SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY=120;
+export const SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY=160;
 const CAT=["geopolitics","macro","rare_earth"];
 const AGE=72*3600_000;
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
@@ -48,9 +48,9 @@ export function planSourceWebsiteHandoff(candidates,{now=new Date()}={}){
    const rows=[...lanes.get(category).values()].sort((a,b)=>
      b.published_at.localeCompare(a.published_at)||
      a.article_url.localeCompare(b.article_url));
-   // A permanently newest-120 selection starves the 121st native article
+   // A permanently newest-160 selection starves later native articles
    // whenever a high-volume global source remains busy. Keep the 24 freshest
-   // original dates immediately discoverable, then rotate 96 deeper originals
+   // original dates immediately discoverable, then rotate 136 deeper originals
    // through the same 15-minute protected production slots. This is a finite
    // in-memory sweep, not a durable queue or a promise of complete coverage.
    const limit=SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY;
@@ -78,9 +78,9 @@ export function planSourceWebsiteHandoff(candidates,{now=new Date()}={}){
 }
 
 /** Fair, freshness-first selection for already-derived, source-neutral cards.
- * Every category has an independent 12-card bound. Its four newest original
- * releases are eligible on every sweep; deeper distinct 72h observations
- * rotate without restarting at the head when busy feeds add new records.
+ * Every category has an independent 160-card bound. Its four newest original
+ * releases are eligible on every sweep; larger, non-overlapping batches of
+ * deeper distinct 72h observations rotate as volume grows.
  * The caller must perform canonical D1 admission and independent readback.
  */
 export function selectSourceWebsitePublicationCohort(lanes,now=Date.now()){
@@ -95,9 +95,9 @@ export function selectSourceWebsitePublicationCohort(lanes,now=Date.now()){
    throw Error("SOURCE_WEBSITE_PUBLICATION_LANE_INVALID");
   const newest=lane.slice(0,4);
   const older=lane.slice(4);
-  const depthSlots=Math.min(12-newest.length,older.length);
+  const depthSlots=Math.min(160-newest.length,older.length);
   result.push(...newest);
-  const offset=older.length?(quarter*8)%older.length:0;
+  const offset=older.length?(quarter*depthSlots)%older.length:0;
   for(let i=0;i<depthSlots;i++)result.push(older[(offset+i)%older.length]);
  }
  return result;
