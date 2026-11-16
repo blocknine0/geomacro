@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const read = (file: string) => readFileSync(file, "utf8");
 
-describe("Coming Soon status is truthful across commercial website", () => {
+describe("published pricing and current access status are truthful across commercial website", () => {
   const guide = read("src/components/commercial-access-guide.tsx");
   const pricing = read("src/routes/pricing.tsx");
   const homepage = read("src/components/home/live-intelligence-showcase.tsx");
@@ -14,13 +14,14 @@ describe("Coming Soon status is truthful across commercial website", () => {
   const commerce = read("src/components/agent-commerce-status.tsx");
   const policy = read("src/content/docs/48-status-labels.md");
 
-  it("marks store browsing free while API keys and self-service checkout remain coming soon", () => {
+  it("shows published per-call pricing and an access enquiry without an API-key coming-soon banner", () => {
     const notice = read("src/components/api-keys-notice.tsx");
     expect(pricing).toContain("Just exploring?");
     expect(pricing).toContain("<ApiKeysNotice />");
-    expect(notice).toContain("API keys");
-    expect(notice).toContain("Coming soon");
-    expect(notice).toContain("Self-service access and checkout are not open yet.");
+    expect(notice).toContain("Per-call API pricing");
+    expect(notice).toContain("Published");
+    expect(notice).toContain("Contact us to confirm access for your deployment.");
+    expect(notice).not.toMatch(/API keys.*coming soon/iu);
     expect(shell).not.toContain("<CommercialAccessGuide />");
     expect(pricing).not.toContain("Subscribe now");
   });
@@ -48,7 +49,8 @@ describe("Coming Soon status is truthful across commercial website", () => {
     const buyer = read("src/components/category-api-launch-panel.tsx");
     expect(buyer).toContain("published_only");
     expect(buyer).toContain("response.status!==402");
-    expect(roadmap).toContain("API keys · Coming soon");
+    expect(roadmap).not.toContain("API keys · Coming soon");
+    expect(roadmap).toContain("Store & API access");
     expect(roadmap).toContain("Scoped pilot integrations remain available by agreement.");
     expect(roadmap).toContain("Marketplace listings · Planned");
     expect(policy).toContain("PLANNED / COMING SOON");

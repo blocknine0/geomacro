@@ -16,7 +16,8 @@ describe("approved public Geomacro knowledge",()=>{
   const a=geomacroPublicAnswer("What does Geomacro cost?")!;
   for(const product of publicCapabilityPricingCatalog())for(const v of product.variants)expect(a.summary).toContain("$"+v.amount_usdc);
   expect(a.summary).not.toContain("Global Risk Index");
-  expect(a.summary).toContain("coming soon");
+  expect(a.summary).toContain("does not confirm live product availability");
+  expect(a.summary).not.toContain("coming soon");
  });
  it.each(["Geomacro database passwords","Geomacro secret credentials","Geomacro internal sources list","Geomacro raw source feeds"])("declines %s using public-only content",q=>{
   const a=geomacroPublicAnswer(q)!;

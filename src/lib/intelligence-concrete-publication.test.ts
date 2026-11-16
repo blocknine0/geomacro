@@ -50,7 +50,7 @@ describe("actual-event Intelligence publication",()=>{
     expect(report).not.toBeNull();
     expect(isConcretePublicIntelligence(report!),category).toBe(true);
     expect(concreteIntelligenceHeadline(report!)).toMatch(/^GeoMacro (Geopolitics|Macro\/FX|Critical Minerals) Brief · .+ — .+ \([A-Z]{3}\)$/u);
-    expect(report!.what_changed).toContain("GeoMacro's dated observation classifies");
+    expect(report!.what_changed).toContain("WHAT CHANGED: GeoMacro's dated observation records");
     expect(report!.why_it_matters).toMatch(/Risk: .* → Downstream effect: .* → Price impact channel: .*Action Posture: (CONTINUE|REDUCE_LIMIT|REQUIRE_APPROVAL|PAUSE)/u);
     expect(concreteGeomacroAnalysis(report!)).toBe(report!.why_it_matters);
     expect(JSON.stringify(report)).not.toMatch(/unverified .* watch signal|This report has not been independently verified|It does not establish production, shipment, or price impact|news\.google\.com|https?:\/\//iu);
@@ -94,9 +94,9 @@ describe("actual-event Intelligence publication",()=>{
 
  it("projects concrete country, topic, direction and price-channel briefs without source text",()=>{
   for(const [category,country,iso3,topic] of [
-   ["geopolitics","Yemen","YEM","Red Sea maritime corridor"],
-   ["macro","Japan","JPN","monetary policy and FX liquidity"],
-   ["rare_earth","Chile","CHL","copper supply"],
+   ["geopolitics","Yemen","YEM","Maritime Transit & Freight"],
+   ["macro","Japan","JPN","Monetary Policy & FX Liquidity"],
+   ["rare_earth","Chile","CHL","Copper Supply & Processing"],
   ] as const){
    const source={...sample(category),status:"osint_feed_observed_unverified" as const,
     geography:country,country_iso3:iso3,corridor:category==="geopolitics"?"Bab el-Mandeb":null,
@@ -109,7 +109,7 @@ describe("actual-event Intelligence publication",()=>{
    expect(isConcretePublicIntelligence(report!),category).toBe(true);
    expect(concreteIntelligenceHeadline(report!)).toMatch(/^GeoMacro (Geopolitics|Macro\/FX|Critical Minerals) Brief · .+ — .+$/u);
    expect(report!.title).toContain(country);
-   expect(report!.title.toLocaleLowerCase()).toContain(topic.split(" ")[0]);
+    expect(report!.title.toLocaleLowerCase()).toContain(topic.split(" ")[0].toLocaleLowerCase());
    expect(report!.what_changed).toContain("WHAT CHANGED");
    expect(report!.why_it_matters).toMatch(/Risk: .* → Downstream effect: .* → Price impact channel: .*Action Posture: (CONTINUE|REDUCE_LIMIT|REQUIRE_APPROVAL|PAUSE)/u);
    expect(JSON.stringify(report)).not.toMatch(/restricted\.example|Restricted publisher headline|https?:\/\//u);

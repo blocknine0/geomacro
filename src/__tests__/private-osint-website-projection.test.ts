@@ -37,7 +37,7 @@ describe("private OSINT public Intelligence projection",()=>{
    expect(JSON.stringify(doc)).not.toMatch(/Secret publisher headline|private-publisher\.example|sanctions announced|inflation figures|exports interrupted/u);
    expect(doc.signals[0].sources_credited).toEqual([]);
    expect(doc.signals[0].title).toMatch(/^GeoMacro (Geopolitics|Macro\/FX|Critical Minerals) Brief · .+ — .+ \([A-Z]{3}\)$/u);
-   expect(doc.signals[0].what_changed).toContain("GeoMacro's dated observation classifies");
+   expect(doc.signals[0].what_changed).toMatch(/^WHAT CHANGED: GeoMacro's dated observation records/u);
    expect(doc.signals[0].why_it_matters).toMatch(/Risk: .* → Downstream effect: .* → Price impact channel: .*Action Posture:/u);
    const browser=checkedDerivedNews({...doc,original_release_delay_minutes:0,
     retention_days:3,retention_hours:72,delivery_scope:"free_website_only"},now);

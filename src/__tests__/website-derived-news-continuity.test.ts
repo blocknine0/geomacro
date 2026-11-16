@@ -115,7 +115,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
   });
 
   it("admits safe domain-only OSINT provenance and rejects a source URL/path",async()=>{
-    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(4);
+    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(5);
     const osint=projectSourceNeutralOsintSignal({...sample("macro"),topic:"official economic statistics",
       title:"Canadian authorities publish a new economic statistics update",
       what_changed:"A dated official source observation concerns economic statistics.",
@@ -460,7 +460,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
   it("legacy 15m public feed excludes monitored OSINT that the frozen client cannot parse, while modern Website and canonical D1 retain it",async()=>{
     const genuine=sample("macro","2026-10-12T19:00:00.000Z");
     const monitored=projectSourceNeutralOsintSignal({...sample("rare_earth","2026-10-12T19:00:00.000Z"),
-      topic:"critical-mineral inputs",
+      topic:"Copper Supply & Processing",
       title:"Chile copper supply terms change after mine policy update",
       what_changed:"A dated observation concerns critical-mineral supply conditions.",
       why_it_matters:"A structured minerals signal.",

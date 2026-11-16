@@ -50,6 +50,9 @@ describe("keyless merchant x402 buyer catalog is exact-price and no-funds",()=>{
   const dataApi=readFileSync("src/routes/data-api.tsx","utf8");
   expect(price).not.toContain("KeylessBuyerQuickstart");
   expect(dataApi).not.toContain("KeylessBuyerQuickstart");
-  expect(readFileSync("src/components/api-keys-notice.tsx","utf8")).toContain("Coming soon");
+  const accessNotice=readFileSync("src/components/api-keys-notice.tsx","utf8");
+  expect(accessNotice).toContain("Per-call API pricing");
+  expect(accessNotice).toContain("Published");
+  expect(accessNotice).not.toMatch(/API keys.*coming soon/iu);
  });
 });

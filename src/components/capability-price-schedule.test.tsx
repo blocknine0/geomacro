@@ -41,17 +41,18 @@ describe("store catalog and launch availability", () => {
   it("keeps enquiry actions distinct from payment and labels pilot scope", () => {
     const html = renderToStaticMarkup(createElement(CapabilityPriceSchedule));
     expect((html.match(/mailto:contact@geomacro.live/g) ?? [])).toHaveLength(7);
-    expect(html).toContain("Self-service checkout coming soon");
+    expect(html).toContain("Published product · enquire for current access");
     expect(html).toContain("Private pilot");
     expect(html).toContain("physical routes are not modeled");
     expect(html).not.toContain('data-capability="gri_read"');
     expect(html).not.toContain("Buy now");
     expect(html).not.toContain("Connect wallet");
   });
-  it("states API key and checkout availability before the catalog", () => {
+  it("states published pricing and the access enquiry path before the catalog", () => {
     const html = renderToStaticMarkup(createElement(ApiKeysNotice));
-    expect(html).toContain("API keys");
-    expect(html).toContain("Coming soon");
-    expect(html).toContain("Self-service access and checkout are not open yet.");
+    expect(html).toContain("Per-call API pricing");
+    expect(html).toContain("Published");
+    expect(html).toContain("Contact us to confirm access for your deployment.");
+    expect(html).not.toMatch(/API keys.*coming soon/iu);
   });
 });

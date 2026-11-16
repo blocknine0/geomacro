@@ -134,7 +134,7 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
   expect(code).toContain("Risk mechanism");
   expect(code).toContain("Downstream effect");
   expect(code).toContain("Affected FX / commodity / corridor");
-  expect(code).toContain("Get Ed25519-Signed Risk Gate &amp; AI-Agent JSON");
+  expect(code).toContain("Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON");
   expect(code).toContain("What changed");
   expect(code).not.toContain("function OsintStory");
   expect(code).not.toContain("OsintCard");
