@@ -156,7 +156,8 @@ export function classifyMinimumFreeProduction({
   if(siteStatus!==200||typeof siteHtml!=="string")
     return invalid("FREE_INTELLIGENCE_HTML_UNAVAILABLE",counts);
   const html=decodeHtml(siteHtml);
-  if(!html.includes("What changed in the world")||!html.includes("GEOMACRO FINDS")||
+  if(!html.includes("Real-Time Geopolitical, Macro/FX & Critical Minerals Risk Gates")||
+    !html.includes("What changed in the world")||!html.includes("GEOMACRO FINDS")||
     !titles.some(title=>html.includes(title))||
     html.includes("No current verified scored development"))
     return invalid("FREE_ARCHIVE_STORIES_NOT_RENDERED_IN_FIRST_HTML",counts);

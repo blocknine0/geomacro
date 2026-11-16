@@ -32,6 +32,13 @@ const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
 export const Route = createFileRoute("/intelligence")({
   validateSearch: intelligenceCategorySearch,
+  pendingMs: 0,
+  pendingMinMs: 0,
+  pendingComponent: () => <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+    <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">GEOMACRO · LIVE INTELLIGENCE</p>
+    <h1 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight sm:text-5xl">Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates — Built for Both Analysts &amp; Autonomous AI Agents.</h1>
+    <p className="mt-4 text-sm text-muted-foreground">Loading the source-neutral public briefing…</p>
+  </main>,
   loader: async () => {
     const now = Date.now();
     // All THREE actual publisher categories must be present in the first

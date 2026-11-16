@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { createD1ControlPlaneStateClient } from "./lib/d1-control-plane-state.mjs";
 import { officialSourcePollCursorOutcome } from "./lib/official-source-poll-cursor.mjs";
 import { recognizeDegradedOfficialMeshObservation } from "./lib/scheduled-official-mesh-observation.mjs";
+import { recognizeDegradedSourceRuntimeObservation } from "./lib/scheduled-source-runtime-observation.mjs";
 import {
   DEFAULT_HEARTBEAT_BUDGET_MS,
   DEFAULT_HEARTBEAT_RESERVE_MS,
@@ -410,12 +411,16 @@ async function runTask(task) {
         stepResults.push(result);
         if (!result.ok) {
           const degraded = task.key === "official_native_rss"
-            ? recognizeDegradedOfficialMeshObservation(result) : null;
+            ? recognizeDegradedOfficialMeshObservation(result)
+            : task.key === "supabase_free_source_runtime"
+              ? recognizeDegradedSourceRuntimeObservation(result) : null;
           if (degraded) {
             // Exit 3 + exact red source receipt is a completed measurement,
             // NOT a healthy source, current event, commercial grant or score.
             return {ok:true,observation_degraded:true,
-              source_transport_failures:degraded.active_transport_failures,
+              source_transport_failures:degraded.active_transport_failures??null,
+              unreadable_source_families:degraded.unreadable_source_families??null,
+              archive_integrity_failures:degraded.archive_integrity_failures??null,
               attempts:attempt,steps:stepResults};
           }
           attemptOk = false;
@@ -537,22 +542,25 @@ async function main() {
     }
 
     const result = await runTask(task);
-    const observationDegraded = task.key === "official_native_rss" &&
-      result.ok === true && result.observation_degraded === true;
+    const observationDegraded = result.ok === true && result.observation_degraded === true;
     const success = result.ok && !observationDegraded;
     // A signed-proof-free degraded transport census is an OBSERVATION, so
     // retry on the regular bounded cadence, never a 5-minute retry storm.
     // Actual fatal failures still retry/fail closed as before.
-    state.cursor.next_due_at = nextDueFrom(task, attemptMs, result.ok);
+    state.cursor.next_due_at = observationDegraded
+      ? new Date(attemptMs + RETRY_SECONDS * 1000).toISOString()
+      : nextDueFrom(task, attemptMs, result.ok);
     state.cursor.last_error = success ? null : observationDegraded
       ? "official_native_transport_degraded" : "task_failed";
-    state.cursor.retry_pending = !result.ok;
+    state.cursor.retry_pending = !result.ok || observationDegraded;
     state.cursor.consecutive_failures = success
       ? 0
       : Number(state.cursor.consecutive_failures ?? 0) + 1;
     if (observationDegraded) {
       summary.degraded_source_observations.push({
-        task: task.key,transport_failures:result.source_transport_failures,
+        task: task.key,transport_failures:result.source_transport_failures??null,
+        unreadable_source_families:result.unreadable_source_families??null,
+        archive_integrity_failures:result.archive_integrity_failures??null,
         source_status:"degraded",current_signed_event_verified:false,
         commercial_eligible:false,
       });
@@ -563,6 +571,11 @@ async function main() {
       const sourceOutcome = officialSourcePollCursorOutcome(success);
       state.cursor.status = sourceOutcome.status;
       state.cursor.failure_class = sourceOutcome.failure_class;
+    } else if (task.key === "supabase_free_source_runtime") {
+      state.cursor.status = observationDegraded ? "degraded" : success ? "healthy" :
+        Number(state.cursor.consecutive_failures ?? 0) >= 2 ? "degraded" : "unavailable";
+      state.cursor.failure_class = observationDegraded
+        ? "source_transport_degraded" : success ? null : "source_runtime_execution_failed";
     } else if (!success && task.key === "gdelt_gal") {
       const detail = result.steps?.find((step) => step && step.ok === false);
       const text = `${detail?.stderr ?? ""}\n${detail?.stdout ?? ""}`;

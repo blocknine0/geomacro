@@ -19,7 +19,7 @@ function fixture(stories=[goodStory()]){
     original_release_delay_minutes:0,retention_hours:72,retention_days:3,
     delivery_scope:"free_website_only",scored:false,chargeable:false,
     supabase_dependency:false,signals:stories,
-  },siteStatus:200,siteHtml:"<html>What changed in the world GEOMACRO FINDS "+
+  },siteStatus:200,siteHtml:"<html>Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates What changed in the world GEOMACRO FINDS "+
     stories.map(x=>x.title).join(" ")+"</html>",
   buildStatus:200,build:{schema_version:"geomacro.deployment-build.v1",
     canonical_repository:"blocknine0/geomacro",production_activation_performed:false,
@@ -93,7 +93,7 @@ test("never accepts bogus score, rightsholder URLs, or missing SSR",()=>{
     assert.equal(r.ok,false,JSON.stringify(field));
   }
   const f=fixture();
-  f.siteHtml="<html>GEOMACRO FINDS What changed in the world</html>";
+  f.siteHtml="<html>GEOMACRO FINDS Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates What changed in the world</html>";
   assert.equal(classifyMinimumFreeProduction(f).ok,false);
 });
 test("a wrong build SHA, unavailable D1, or quiet 72h journal cannot be green",()=>{
@@ -239,7 +239,7 @@ test("72h expiry between three-hour static snapshots does not invalidate current
  assert.equal(classifyMinimumFreeProduction(fixture([expiredOfficial])).ok,false);
  // Original must be displayed in FIRST HTML, not the expired card.
  const noFreshSSR=fixture([goodStory(),osint]);
- noFreshSSR.siteHtml="What changed in the world GEOMACRO FINDS "+osint.title;
+ noFreshSSR.siteHtml="Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates What changed in the world GEOMACRO FINDS "+osint.title;
  assert.equal(classifyMinimumFreeProduction(noFreshSSR).ok,false);
 });
 test("rolling archive still fails closed for old-at-build rows, exposed private metadata and abandoned refresh",()=>{

@@ -92,7 +92,7 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
     // Require the actual Intelligence H1 in the real DOM, not a mock 200.
     let intelligenceHeadingVisible=false;
     try{
-      await page.getByRole("heading",{level:1,name:/what changed in the world/i})
+      await page.getByRole("heading",{level:1,name:/real-time geopolitical.*risk gates/i})
         .waitFor({state:"visible",timeout:4_000});
       intelligenceHeadingVisible=true;
     }catch{/* classified below without logging story text */}

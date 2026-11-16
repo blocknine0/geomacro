@@ -41,6 +41,26 @@ const [edge, site, overlay] = await Promise.all([
   probe(endpoints.overlay),
 ]);
 const proof = summarizePublicIntelligenceFreshness({ edge, site, overlay });
+const derived=Array.isArray(site.payload?.derived_signals)?site.payload.derived_signals:[];
+const derivedCounts={geopolitics:0,macro:0,rare_earth:0};
+let derivedNewest=-Infinity;
+for(const row of derived){
+  if(!Object.hasOwn(derivedCounts,row?.category)||row?.severity!==null||
+     row?.same_event_corrob_verified!==false||typeof row?.title!=="string"||
+     !row.title.startsWith("Geomacro finds ")||/(?:https?:\/\/|www\.)/iu.test(JSON.stringify(row)))continue;
+  derivedCounts[row.category]++;
+  const published=Date.parse(String(row?.published_at??""));
+  if(Number.isFinite(published))derivedNewest=Math.max(derivedNewest,published);
+}
+proof.derived_feed={
+  read_status:site.payload?.derived_read_status??"missing",
+  rows:derived.length,
+  category_counts:derivedCounts,
+  categories_covered:Object.entries(derivedCounts).filter(([,count])=>count>0).map(([category])=>category),
+  newest_at:Number.isFinite(derivedNewest)?new Date(derivedNewest).toISOString():null,
+  current_within_24h:Number.isFinite(derivedNewest)&&derivedNewest<=Date.now()&&Date.now()-derivedNewest<=24*60*60_000,
+  scored:false,paid_eligible:false,
+};
 mkdirSync("artifacts/public-intelligence-freshness", {recursive: true});
 writeFileSync(OUTPUT, JSON.stringify(proof,null,2)+"\n", {mode:0o600});
 console.log(JSON.stringify(proof));

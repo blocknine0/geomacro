@@ -579,7 +579,9 @@ export async function publishPermanentDerivedNewsArchive({
     withoutCheckClock(previousLatest)!==withoutCheckClock(nextLatest)||
     withoutCheckClock(previousCoverage)!==withoutCheckClock(nextCoverage)||
     withoutDailyClock(previousDaily)!==withoutDailyClock(nextDaily)||
-    previousDaily?.generated_at!==previousLatest?.checked_at;
+    previousDaily?.generated_at!==previousLatest?.checked_at||
+    previousCoverage?.checked_at!==previousLatest?.checked_at||
+    index.updated_at!==previousLatest?.checked_at;
   const shouldUpdateSnapshots=added>0||seedCompleteThisRun||
     snapshotClockDue||snapshotMembershipChanged;
   if(shouldUpdateSnapshots){
