@@ -438,6 +438,9 @@ jobs:
           GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
+          RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
+          RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
@@ -666,35 +669,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import {appendFileSync} from 'node:fs';
-          const token=String(process.env.CLOUDFLARE_API_TOKEN??'');
-          const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??'');
-          if(token.length<32||! /^[a-f0-9]{32}$/i.test(account))
-            throw Error('RISK_STREAM_QUEUE_PROVIDER_AUTH_MISSING');
-          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/queues';
-          const get=async path=>{
-            const response=await fetch(root+path,{headers:{Authorization:'Bearer '+token},
-              redirect:'error',signal:AbortSignal.timeout(15000)});
-            const body=await response.json();
-            if(!response.ok||body.success!==true)throw Error('RISK_STREAM_QUEUE_PROVIDER_READBACK_FAILED');
-            return body.result;
-          };
-          const queues=await get('?per_page=100');
-          const matches=Array.isArray(queues)?queues.filter(x=>x.queue_name==='geomacro-risk-stream'):[];
-          if(matches.length!==1||!/^[a-f0-9]{32}$/i.test(matches[0].queue_id))
-            throw Error('RISK_STREAM_QUEUE_PROVIDER_ID_UNVERIFIED');
-          const consumers=await get('/'+matches[0].queue_id+'/consumers');
-          const consumer=Array.isArray(consumers)&&consumers.length===1?consumers[0]:null;
-          if(consumer?.type!=='worker'||consumer?.script_name!=='geomacro-control-plane'||
-             consumer?.dead_letter_queue!=='geomacro-risk-stream-dlq'||
-             consumer?.settings?.batch_size!==10||consumer?.settings?.max_retries!==8)
-            throw Error('RISK_STREAM_QUEUE_CONSUMER_PROVIDER_READBACK_UNVERIFIED');
-          appendFileSync(process.env.GITHUB_OUTPUT,'verified=true\n');
-          console.log('RISK_STREAM_QUEUE_CONSUMER_PROVIDER_READBACK_PASS');
-          NODE
+        run: node scripts/ops/verify-risk-stream-queue-provider.mjs
       - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
@@ -712,6 +687,9 @@ jobs:
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
+          RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
+          RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
