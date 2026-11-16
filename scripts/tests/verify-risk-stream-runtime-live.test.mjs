@@ -38,6 +38,7 @@ test("live runtime fails closed for missing Queue, D1, auth, flags, or source SH
   ["d1",{...ready,d1_binding_present:false},/D1_BINDING_MISSING/],
   ["auth",{...ready,auth_configured:false},/AUTH_NOT_CONFIGURED/],
   ["flags",{...ready,research_flags:{...ready.research_flags,hot50_research_enabled:false}},/RESEARCH_FLAGS_NOT_READY/],
+  ["readiness",{...ready,ready:false},/CONTROL_PLANE_NOT_READY/],
   ["sha",{...ready,deployed_source_sha:"0".repeat(40)},/DEPLOYED_SOURCE_SHA_MISMATCH/]]){
   await assert.rejects(()=>verifyRiskStreamRuntimeLive({controlPlaneUrl:"https://control.example",
    controlPlaneToken:"t".repeat(64),expectedSourceSha:sha,

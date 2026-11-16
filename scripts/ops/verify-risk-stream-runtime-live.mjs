@@ -30,11 +30,12 @@ export async function verifyRiskStreamRuntimeLive({controlPlaneUrl,controlPlaneT
    if(runtime.deployed_source_sha!==expectedSourceSha)fail("DEPLOYED_SOURCE_SHA_MISMATCH");
    const flags=runtime.research_flags??{};
    if(flags.active!==true||flags.ingestion_enabled!==true||flags.production_mode!==true||
-      flags.hot50_research_enabled!==true||runtime.ready!==true)
+      flags.hot50_research_enabled!==true)
     fail("RESEARCH_FLAGS_NOT_READY");
    if(runtime.queue_binding_present!==true)fail("QUEUE_BINDING_MISSING");
    if(runtime.d1_binding_present!==true)fail("D1_BINDING_MISSING");
    if(runtime.auth_configured!==true)fail("AUTH_NOT_CONFIGURED");
+   if(runtime.ready!==true)fail("CONTROL_PLANE_NOT_READY");
    return {status:"PASS",source_sha:runtime.deployed_source_sha,
     queue_binding_present:true,d1_binding_present:true,auth_configured:true,
     research_flags:flags};
