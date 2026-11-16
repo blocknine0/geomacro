@@ -51,7 +51,7 @@ describe("published pricing and current access status are truthful across commer
     expect(buyer).toContain("response.status!==402");
     expect(roadmap).not.toContain("API keys · Coming soon");
     expect(roadmap).toContain("Store & API access");
-    expect(roadmap).toContain("Scoped pilot integrations remain available by agreement.");
+    expect(roadmap).toContain("Each commercial request needs its own eligible result and payment quote.");
     expect(roadmap).toContain("Marketplace listings · Planned");
     expect(policy).toContain("PLANNED / COMING SOON");
     expect(policy).toContain("Coming Soon");

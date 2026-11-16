@@ -111,9 +111,10 @@ export function verifyDerivedStory(s, now=Date.now()) {
           /^[A-Z]{3}$/u.test(s.country_iso3??"")&&
           ["tightening","easing","uncertain","rising","falling","disrupted","restored","expanded","contracted"].includes(s.event_direction)&&
           (s.corridor===null||typeof s.corridor==="string"&&s.corridor.length<=72)&&
-          Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
-          typeof s.sources_credited[0]==="string"&&
-          s.sources_credited[0].startsWith("Monitored feed: "))) ||
+          Array.isArray(s.sources_credited)&&
+          (s.sources_credited.length===0 || s.sources_credited.length===1&&
+            typeof s.sources_credited[0]==="string"&&
+            s.sources_credited[0].startsWith("Monitored feed: ")))) ||
       s.same_event_corrob_verified!==false ||
       s.severity!==null ||
       !Array.isArray(s.sources_credited) || s.sources_credited.length>2 ||

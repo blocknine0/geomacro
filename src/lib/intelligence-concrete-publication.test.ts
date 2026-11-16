@@ -103,7 +103,7 @@ describe("actual-event Intelligence publication",()=>{
     event_direction:"tightening",topic,
     title:"Restricted publisher headline must not appear",
     what_changed:"Structured country, topic, direction and dated-event dimensions are available.",
-    sources_credited:["Monitored feed: restricted.example (aggregator; original publisher not verified)"]};
+    sources_credited:["Monitored feed: restricted.example"]};
    const report=projectSourceNeutralOsintSignal(source);
    expect(report).not.toBeNull();
    expect(isConcretePublicIntelligence(report!),category).toBe(true);

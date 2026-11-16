@@ -44,7 +44,7 @@ describe("public production coverage proof", () => {
     const cta = "Unlock Ed25519-Signed Risk Gate &amp; AI-Agent JSON ($0.15 · $0.20 · $0.30) → Store &amp; API";
 
     expect(desk.match(new RegExp(cta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gu"))?.length).toBe(2);
-    expect(desk).toContain('to="/pricing"');
+    expect(desk).toContain('href="/pricing"');
     expect(read("src/routes/intelligence.tsx")).toContain('to="/pricing"');
     expect(desk).not.toContain("an unverified geopolitical watch signal");
     expect(desk).not.toContain("an unverified macro watch signal");

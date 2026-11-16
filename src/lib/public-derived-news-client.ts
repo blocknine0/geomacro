@@ -91,34 +91,38 @@ const PERMANENT_ARCHIVE_CATEGORIES=["geopolitics","macro","rare_earth"] as const
 
 const SIGNAL_FIELDS = new Set(["id","category","title","what_changed","why_it_matters",
   "topic","geography","development_type","published_at","date_precision",
-  "observed_release_count","sources_credited","status","same_event_corrob_verified","severity"]);
+  "observed_release_count","sources_credited","status","same_event_corrob_verified","severity",
+  "country_iso3","corridor","event_direction","event_action"]);
 function safeSignal(value: unknown, now: number, allowHistorical = false): value is StatelessIntelligenceSignal {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
   if (!isSafeDerivedNewsReadbackSignal(s) ||
-      Object.keys(s).length!==SIGNAL_FIELDS.size ||
       Object.keys(s).some(key=>!SIGNAL_FIELDS.has(key)) ||
       !["geopolitics", "macro", "rare_earth"].includes(String(s.category)) ||
       typeof s.id !== "string" ||
       !/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id) ||
-      typeof s.title !== "string" || s.title.length>240 || !s.title.startsWith("Geomacro finds ") ||
+      typeof s.title !== "string" || s.title.length>240 ||
+      !(s.status==="osint_feed_observed_unverified" ? s.title.startsWith("GeoMacro ") : s.title.startsWith("Geomacro finds ")) ||
       typeof s.topic!=="string" || s.topic.length>120 ||
       !(s.geography===null || typeof s.geography==="string"&&s.geography.length<=70) ||
       typeof s.development_type!=="string" || s.development_type.length>80 ||
       typeof s.what_changed !== "string" || s.what_changed.length < 30 || s.what_changed.length>650 ||
       typeof s.why_it_matters !== "string" || s.why_it_matters.length < 30 || s.why_it_matters.length>700 ||
       !((s.status==="official_release_observed_unscored" &&
+          Object.keys(s).length===SIGNAL_FIELDS.size-4 &&
           !String(s.topic).endsWith(" publisher candidate") &&
           s.development_type!=="unverified OSINT feed observation" &&
           Array.isArray(s.sources_credited) &&
           !s.sources_credited.some(x=>typeof x==="string"&&x.startsWith("Monitored feed: "))) ||
         (s.status==="official_feed_candidate_unscored" &&
+          Object.keys(s).length===SIGNAL_FIELDS.size-4 &&
           ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
            (s.category==="macro"&&s.topic==="macro publisher candidate")||
            (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")) &&
           s.development_type==="unclassified publisher update" &&
           s.geography===null) ||
         (s.status==="osint_feed_observed_unverified" &&
+          Object.keys(s).length===SIGNAL_FIELDS.size &&
           s.development_type==="unverified OSINT feed observation" &&
           s.date_precision==="exact" && projectSourceNeutralOsintSignal(s) !== null)) ||
       s.same_event_corrob_verified !== false || s.severity !== null ||
