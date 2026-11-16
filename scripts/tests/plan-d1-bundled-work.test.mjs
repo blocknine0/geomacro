@@ -86,17 +86,53 @@ test("stale partial impossible or forged counter state cannot authorize D1",()=>
   assert.equal(p.critical,false);
  }
 });
-test("provider-observed Paid usage bypasses only Free physical counters for bounded intake",()=>{
+test("owner envelope alone cannot bypass missing Workers Paid subscription proof",()=>{
  const at=new Date("2026-10-27T12:00:00.000Z");
  const paidUsage=quota(8_000_000,296_438);
- const p=planD1BundledWork(paidUsage,{now:at,ownerPaidAdmission:true});
- assert.equal(p.source_intake,true);
- assert.equal(p.owner_d1_paid_envelope_admission,true);
+ const ownerEnvelope={schema:"geomacro.owner-d1-paid-utc-envelope.v2",
+  day_utc:paidUsage.day_utc,observed_rows_read:paidUsage.observed_rows_read,
+  observed_rows_written:paidUsage.observed_rows_written,held:false,
+  normal_daily_rows_read_ceiling:580_000_000,
+  normal_daily_rows_written_ceiling:1_100_000,
+  paced_rows_read_ceiling:500_000_000,paced_rows_written_ceiling:542_000};
+ const p=planD1BundledWork(paidUsage,{now:at,ownerEnvelope});
+ assert.equal(p.source_intake,false);
+ assert.equal(p.state,"HELD");
+ assert.equal(p.owner_d1_paid_envelope_admission,false);
  assert.equal(p.paid_capacity_verified_by_provider,false);
  assert.equal(p.paid_subscription_change_performed,false);
  assert.equal(p.workers_paid_subscription_verified,false);
- const held=planD1BundledWork(paidUsage,{now:at,ownerPaidAdmission:false});
- assert.equal(held.state,"HELD");
+});
+test("verified Paid proof admits only within the matching owner paced envelope",()=>{
+ const at=new Date("2026-10-27T12:00:00.000Z");
+ const observed=quota(8_000_000,203_878);
+ const paidProof={schema:"geomacro.cloudflare-workers-paid-provider-proof.v1",
+  verified:true,source:"CLOUDFLARE_ACCOUNT_SUBSCRIPTIONS_BILLING_READ",
+  subscription_changed:false,billing_action_performed:false,
+  observed_at:"2026-10-27T11:59:00.000Z"};
+ const ownerEnvelope={schema:"geomacro.owner-d1-paid-utc-envelope.v2",
+  day_utc:observed.day_utc,observed_rows_read:observed.observed_rows_read,
+  observed_rows_written:observed.observed_rows_written,held:false,
+  normal_daily_rows_read_ceiling:580_000_000,
+  normal_daily_rows_written_ceiling:1_100_000,
+  paced_rows_read_ceiling:500_000_000,paced_rows_written_ceiling:1_073_438};
+ const admitted=planD1BundledWork(observed,{now:at,paidProof,ownerEnvelope});
+ assert.equal(admitted.state,"CRITICAL_ONLY");
+ assert.equal(admitted.owner_d1_paid_envelope_admission,true);
+ assert.equal(admitted.source_intake,true);
+ assert.equal(admitted.paid_derived_news_source_lane,true);
+ assert.equal(admitted.paid_registered_original_source_lane,true);
+ assert.equal(admitted.paid_capacity_verified_by_provider,true);
+ assert.equal(admitted.daily_account_soft_limit_write,ownerEnvelope.paced_rows_written_ceiling);
+ const exceeded=planD1BundledWork(observed,{now:at,paidProof,
+  ownerEnvelope:{...ownerEnvelope,observed_rows_written:203_877,
+   paced_rows_written_ceiling:203_878}});
+ assert.equal(exceeded.state,"HELD");
+ assert.equal(exceeded.source_intake,false);
+ assert.equal(exceeded.owner_d1_paid_envelope_admission,false);
+ const heldEnvelope=planD1BundledWork(observed,{now:at,paidProof,
+  ownerEnvelope:{...ownerEnvelope,held:true}});
+ assert.equal(heldEnvelope.source_intake,false);
 });
 test("UTC paced watermarks bound early-day spikes without paying or minting new requests",()=>{
  const morning=new Date("2026-10-27T06:45:00.000Z");
@@ -147,7 +183,7 @@ test("provider error or denied GraphQL is safe HOLD with no writes",async()=>{
  assert.equal(x.reason,"D1_ACCOUNT_QUOTA_PROBE_FAILED");
  assert.equal(x.d1_rows_written,0);
 });
-test("Workers Paid usage evidence keeps optional billing 403/404 from applying Free write lockout",async()=>{
+test("unverified Workers Paid subscription stays held despite owner envelope headroom",async()=>{
  const at=new Date("2026-10-27T12:00:00.000Z");
  for(const billingStatus of [403,404]){
   const x=await checkD1BundledWork({
@@ -160,10 +196,10 @@ test("Workers Paid usage evidence keeps optional billing 403/404 from applying F
   });
   assert.equal(x.owner_d1_normal_envelope.held,false);
   assert.equal(x.owner_d1_normal_headroom_rows_written,803_562);
-  assert.equal(x.owner_d1_paid_envelope_admission,true);
+  assert.equal(x.owner_d1_paid_envelope_admission,false);
   assert.equal(x.paid_capacity_verified_by_provider,false);
   assert.equal(x.workers_paid_subscription_verified,false);
-  assert.equal(x.source_intake,true);
+  assert.equal(x.source_intake,false);
   assert.equal(x.remaining_rows_written,0); // legacy Free counter stays diagnostic only
   assert.equal(x.d1_rows_written,0);
  }
@@ -456,7 +492,7 @@ test("Phase2I burst must fall back to 5 on critical denial or unreliable provide
  assert.equal(q.source_intake_max_new_rows,0);
 });
 
-test("owner-paid envelope admits bounded intake when optional billing read is denied",async()=>{
+test("verified Workers Paid subscription admits bounded intake when five-dollar usage block is advisory",async()=>{
  const written=296_438,read=1_000_000;
  const env={CLOUDFLARE_API_TOKEN:"x".repeat(32),
   CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
@@ -467,17 +503,27 @@ test("owner-paid envelope admits bounded intake when optional billing read is de
    return {ok:true,status:200,json:async()=>({data:{viewer:{accounts:[{
     d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:"db1234567890",date:"2026-10-27"},
      sum:{rowsRead:read,rowsWritten:written}}]}]}}})};
-  if(url.endsWith("/subscriptions")){subscriptions++;return {ok:false,status:403};}
+  if(url.endsWith("/subscriptions")){subscriptions++;return {ok:true,status:200,json:async()=>({
+   success:true,result:[{state:"Paid",rate_plan:{id:"workers_paid",scope:"account"}}],
+  })};}
+  if(url.endsWith("/billing/spend-policies"))return {ok:true,status:200,json:async()=>({
+   success:true,result:[{id:"do-policy",version:1,product_id:"durable_objects",
+    enabled:true,action:"usage_block",threshold_cents:1,current_state:{status:"below_limit"}}],
+  })};
   throw Error("unexpected provider URL");
  }});
  assert.equal(subscriptions,1);
  assert.equal(result.owner_d1_normal_envelope.held,false);
  assert.equal(result.owner_d1_normal_headroom_rows_written,803_562);
  assert.equal(result.owner_d1_paid_envelope_admission,true);
- assert.equal(result.workers_paid_subscription_verified,false);
+ assert.equal(result.workers_paid_subscription_verified,true);
  assert.equal(result.source_intake,true);
  assert.equal(result.paid_derived_news_source_lane,true);
- assert.equal(result.paid_capacity_verified_by_provider,false);
+ assert.equal(result.paid_registered_original_source_lane,true);
+ assert.equal(result.paid_capacity_verified_by_provider,true);
+ assert.equal(result.paid_capacity_probe_status,"CLOUDFLARE_FIVE_USD_USAGE_BLOCK_MISSING_WORKERS");
+ assert.equal(result.spend_policy_verification_status,"UNVERIFIED_ADVISORY");
+ assert.ok(result.source_intake_max_new_rows>0);
  assert.equal(result.paid_calls,0);
  const diagnostic=phase2fQuotaDiagnostic(result);
  assert.equal(diagnostic.bounded_original_intake_admitted,true);
