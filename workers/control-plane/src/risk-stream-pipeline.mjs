@@ -71,6 +71,45 @@ export const riskStreamOriginalClaims=e=>JSON.stringify({
  derived:e.derived,item_license_evidence:e.rights_verification?.item_license_evidence,
  risk_context:e.risk_context??null
 });
+/** Read-only runtime facts for the authenticated collector preflight. */
+export function riskStreamRuntimeStatus(env){
+ const sourceSha=/^[a-f0-9]{40}$/u.test(String(env?.GEOMACRO_SOURCE_SHA??""))?
+  env.GEOMACRO_SOURCE_SHA:null;
+ const researchFlags={active:env?.RISK_STREAM_ACTIVE==="1",
+  ingestion_enabled:env?.STREAM_INGESTION_ENABLED==="true",
+  production_mode:env?.STREAM_MODE==="PRODUCTION",
+  hot50_research_enabled:env?.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1"};
+ const ready=Object.values(researchFlags).every(Boolean)&&
+  typeof env?.RISK_STREAM_QUEUE?.sendBatch==="function"&&
+  typeof env?.DB?.prepare==="function"&&typeof env?.DB?.batch==="function"&&
+  String(env?.CONTROL_PLANE_TOKEN??"").trim().length>=32;
+ return {ok:true,schema:"geomacro.risk-stream-runtime-status.v1",
+  ready,deployed_source_sha:sourceSha,research_flags:researchFlags,
+  queue_binding_present:typeof env?.RISK_STREAM_QUEUE?.sendBatch==="function",
+  d1_binding_present:typeof env?.DB?.prepare==="function"&&typeof env?.DB?.batch==="function",
+  auth_configured:String(env?.CONTROL_PLANE_TOKEN??"").trim().length>=32};
+}
+/** Bounded authenticated D1 receipt lookup after a real Queue ACK. */
+export async function readRiskStreamEventReadback(env,body){
+ const ids=body?.observation_ids;
+ if(body?.schema!=="geomacro.risk-stream-readback-request.v1"||
+    !Array.isArray(ids)||ids.length<1||ids.length>100||
+    ids.some(x=>typeof x!=="string"||!HEX.test(x))||new Set(ids).size!==ids.length)
+  return Response.json({ok:false,error:"RISK_STREAM_READBACK_REQUEST_INVALID"},{status:400});
+ if(typeof env?.DB?.prepare!=="function")
+  return Response.json({ok:false,error:"RISK_STREAM_D1_UNAVAILABLE"},{status:503});
+ try{
+  const result=await env.DB.prepare("SELECT observation_id FROM risk_stream_evidence "+
+   "WHERE observation_id IN (SELECT value FROM json_each(?))")
+   .bind(JSON.stringify(ids)).all();
+  const found=(result?.results??[]).map(x=>x.observation_id).filter(x=>ids.includes(x));
+  return Response.json({ok:true,schema:"geomacro.risk-stream-readback-receipt.v1",
+   requested:ids.length,readback_count:found.length,readback_verified:found.length===ids.length,
+   observation_ids:found},{status:200});
+ }catch{
+  return Response.json({ok:false,error:"RISK_STREAM_D1_READBACK_UNAVAILABLE"},{status:503});
+ }
+}
 function validateCandidate(e,now){
  if(!e||e.schema!=="geomacro.risk-stream-candidate.v1"||
   !ISO3.test(e.country_iso3??"")||!NAME.test(e.category??"")||
@@ -639,7 +678,11 @@ export async function enqueueRiskStreamEvents(env,body,now=Date.now(),{
 }={}){
  if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
     !env?.RISK_STREAM_QUEUE?.sendBatch)
-  return Response.json({ok:false,error:"RISK_STREAM_DISABLED"},{status:503});
+  return Response.json({ok:false,error:"RISK_STREAM_DISABLED",
+   active:env?.RISK_STREAM_ACTIVE==="1",
+   ingestion_enabled:env?.STREAM_INGESTION_ENABLED==="true",
+   queue_binding_present:typeof env?.RISK_STREAM_QUEUE?.sendBatch==="function"},
+   {status:503});
  if(body?.schema!=="geomacro.risk-stream-ingest-batch.v1"||
     !Array.isArray(body.items)||body.items.length<1||body.items.length>100)
   return Response.json({ok:false,error:"RISK_STREAM_INGEST_INVALID"},{status:400});

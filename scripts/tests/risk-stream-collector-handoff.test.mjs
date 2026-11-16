@@ -21,8 +21,17 @@ test("scheduled direct and private collectors hand only complete licensed sideca
  assert.match(sidecar,/emitRiskStreamCandidates/u);
  const emitter=read("scripts/ops/emit-risk-stream-candidates.mjs");
  assert.match(emitter,/prepareRiskStreamCandidate/u);
+ assert.match(emitter,/risk-stream\/runtime/u);
+ assert.match(emitter,/CONTROL_PLANE_RUNTIME_NOT_READY/u);
  assert.match(emitter,/risk-stream\/attest/u);
  assert.match(emitter,/risk-stream\/events/u);
+ assert.match(emitter,/risk-stream\/readback/u);
+ assert.match(emitter,/d1_readback_verified:true/u);
+ assert.match(read(".github/workflows/private-global-osint-15m.yml"),
+  /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ github\.sha \}\}/u);
+ assert.match(read(".github/workflows/private-global-osint-15m.yml"),
+  /RISK_STREAM_QUEUE_CONSUMER_PROVIDER_READBACK_PASS/u);
+ assert.match(read(".github/workflows/private-global-osint-15m.yml"),/readback='\+Date\.now\(\)/u);
 });
 
 test("Render collector does not promote ordinary article metadata and invokes both internal attest and event endpoints only for opt-in originals",()=>{

@@ -37,7 +37,8 @@ import {predgePaidRiskGateD1,predgeRiskGateD1,predgeRiskGateD1Readiness,verifyPr
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
-import {enqueueRiskStreamEvents,consumeRiskStreamQueue} from "./risk-stream-pipeline.mjs";
+import {enqueueRiskStreamEvents,consumeRiskStreamQueue,riskStreamRuntimeStatus,
+ readRiskStreamEventReadback} from "./risk-stream-pipeline.mjs";
 import {attestRiskStreamOriginal} from "./risk-stream-attester-bridge.mjs";
 import {dispatchRiskStreamOutbox,consumeRiskStreamDelivery} from "./risk-stream-delivery.mjs";
 import {dispatchLicensedCommercialOutbox} from "./risk-stream-commercial-outbox.mjs";
@@ -1886,6 +1887,10 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    if(url.pathname==="/v1/internal/risk-stream/runtime"&&request.method==="GET")
+      return json(riskStreamRuntimeStatus(env));
+    if(url.pathname==="/v1/internal/risk-stream/readback"&&request.method==="POST")
+      return readRiskStreamEventReadback(env,await readJson(request,16_384));
     // Owner-only, signed and signature-verified today-news GRO feed.
     // No public/Predge route or payment can read this private evidence ledger.
     if(url.pathname==="/v1/internal/risk-stream/daily-news-gros"&&
