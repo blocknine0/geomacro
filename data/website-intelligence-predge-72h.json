@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-15T23:56:43.397Z",
+  "checked_at": "2026-11-16T06:13:19.169Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 20,
+  "item_count": 19,
   "counts": {
     "geopolitics": 3,
     "macro": 6,
-    "rare_earth": 11
+    "rare_earth": 10
   },
-  "source_native_ids_sha256": "64e0ef0e83c45d088ee1b78e6b454a33340595e21d717d93ee7bd23554b7ffaa",
+  "source_native_ids_sha256": "5728a6504f1d2a4ed0b7b892614bbcc801edd44871f55c2fc536f6b3cae651d1",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-751193d4",
+      "category": "macro",
+      "title": "Geomacro finds Gold held steady as investors await Warsh remarks for rate signals - Reuters",
+      "what_changed": "A monitored source feed reports: Gold held steady as investors await Warsh remarks for rate signals - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T01:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-b8c0f4cb",
       "category": "rare_earth",
@@ -364,44 +383,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-fafa9ade",
-      "category": "rare_earth",
-      "title": "Geomacro finds Tianqi Lithium reported Filing of Cuola Spodumene Mine Resource Report - TipRanks",
-      "what_changed": "A monitored source feed reports: Tianqi Lithium reported Filing of Cuola Spodumene Mine Resource Report - TipRanks. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-13T05:15:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-607e3ef1",
-      "category": "macro",
-      "title": "Geomacro finds Fed's Williams said central bank has 'work to do' to get inflation back on target - Reuters",
-      "what_changed": "A monitored source feed reports: Fed's Williams said central bank has 'work to do' to get inflation back on target - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-13T01:35:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
