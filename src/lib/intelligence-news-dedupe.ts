@@ -42,6 +42,6 @@ export function dedupeIntelligenceStories(rows:readonly StatelessIntelligenceSig
   if(!previous||previous.status!=="official_release_observed_unscored"&&
      row.status==="official_release_observed_unscored")byId.set(row.id,row);
  }
- return boundedRecentRows([...byId.values()]).sort((a,b)=>
+ return [...boundedRecentRows([...byId.values()])].sort((a,b)=>
   Date.parse(b.published_at)-Date.parse(a.published_at)||a.id.localeCompare(b.id));
 }
