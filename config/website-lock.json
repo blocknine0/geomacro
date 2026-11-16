@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 21915)
-Total output lines: 1341
-
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
@@ -208,7 +205,835 @@ Total output lines: 1341
     "purpose": "Replace legacy scored-only homepage hero feed with bounded server-rendered and client-refreshable, source-private derived-only original-dated D1 Find Cards. 15-minute original-release delay/day-only protection, one meaningful unscored card, truthful 24h/history and per-domain states, free API and existing D1 read fallback. Adds independent no-funds homepage/Ask/Finds/D1 monitoring without suppressing strict signed hot/deep-health checks.",
     "approved_pr": 2376,
     "approved_ui_commit": "ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e",
-    "previous_baseline_sha": "7ad7e57f1b67873de3dbc050cf0eaa8…12915 tokens truncated…"predge_unchanged": true,
+    "previous_baseline_sha": "7ad7e57f1b67873de3dbc050cf0eaa847e471081",
+    "global_risk_final_lock_unmodified": true,
+    "free_derived_find_card_only": true,
+    "original_timestamp_embargo_enforced": true,
+    "no_external_reviewer_or_paid_gro_claim": true,
+    "supabase_reactivated": false,
+    "funds_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_website_final_audit": {
+    "approval": "Founder explicitly instructed final cross-check and permanent fixes of every Geomacro website part, missing Home and Intelligence design in ChatGPT on 2026-10-19.",
+    "scope": [
+      "src/components/site-shell.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/routes/intelligence.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/ask/ask-workspace.tsx"
+    ],
+    "purpose": "Explicit Home navigation; compact searchable original-dated newsroom with publication-window/category filters and bounded pagination; honest limited detail, required attribution and failure states; bounded homepage continuity; correct discovery links; canonical UI/API pricing parity.",
+    "approved_ui_commit": "972d987f44f328d727fb3147daf2b6807a344a38",
+    "previous_baseline_sha": "ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_price_amounts_unmodified": true,
+    "funds_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_predge_free_news_presentation_alignment": {
+    "approval": "Founder explicitly instructed permanent repair of the stateless-live-desk.tsx website lock for the Predge pilot in ChatGPT on 2026-10-19 (Asia/Kolkata).",
+    "approved_ui_commit": "0e595227c9dba46f7e456bdc5f1e0532cc0f6c90",
+    "previous_baseline_sha": "972d987f44f328d727fb3147daf2b6807a344a38",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "reviewed_changes": [
+      "Replace imprecise 30-day selector wording with All available releases; no source, API or 72-hour D1 expiry changed.",
+      "Present actual 72-hour free D1-derived journal and original-dated earlier items honestly.",
+      "Replace earlier Last 30 days heading with Dated.",
+      "Add public existing derived-structural-72h research endpoint link with Predge pilot context and explicit not-licensed-for-resale restriction."
+    ],
+    "purpose": "Ratify the existing founder-requested website-to-Predge free derived-news presentation alignment without reverting truthful data-retention labels; eliminate baseline drift while preserving the strict Website Lock and the independent immutable Global Risk presentation lock.",
+    "website_presentation_source_diff_reviewed": true,
+    "global_risk_final_lock_unmodified": true,
+    "backend_auto_ingest_unmodified": true,
+    "upstream_source_rights_not_approved_by_this_change": true,
+    "partner_news_redistribution_not_authorized_by_this_change": true,
+    "source_original_publication_delay_minutes": 15,
+    "public_structured_retention_hours": 72,
+    "x402_prices_unchanged": true,
+    "funds_authorized": false,
+    "supabase_reactivated": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_intelligence_news_country_presentation": {
+    "approval": "Founder explicitly requested actual news with country and no em dash in the website Intelligence section on 19 October 2026 in this ChatGPT conversation.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/routes/intelligence.tsx"
+    ],
+    "approved_ui_commit": "acbbfa547ba720cd93586440f51b100016819672",
+    "previous_baseline_sha": "0e595227c9dba46f7e456bdc5f1e0532cc0f6c90",
+    "global_risk_final_lock_unmodified": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_195_country_full_journal_browser": {
+    "approval": "Founder expressly requested 195 countries in all three Intelligence news categories, matching the website Intelligence news feed in ChatGPT on 2026-10-20 (Asia/Kolkata).",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Enable all 195 UN-member-plus-two-observer countries as exact ISO3-filtered free Intelligence news views; read all 600 existing D1 72-hour derived release records using three validated pages at average quota-neutral six-minute journal refresh, preserve live original-source two-minute refresh, native original dates, 15-minute embargo, zero-news uncertainty and public source-safe output.",
+    "approved_ui_commit": "0b3f72c2a845376eefb57fbe107cc3cf184adaca",
+    "previous_baseline_sha": "acbbfa547ba720cd93586440f51b100016819672",
+    "global_risk_final_lock_unmodified": true,
+    "source_upstream_unchanged": true,
+    "no_unverified_585_country_news_claim": true,
+    "source_commercial_rights_not_implied": true,
+    "signed_score_or_current_gri_unmodified": true,
+    "supabase_reactivated": false,
+    "funds_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "three_chain_launch_presentation_approval": {
+    "approval": "Founder explicitly approved GitHub push, Base/Polygon/Arc mainnet USDC using the same new receiving address, and taking the existing website to full launch mode in ChatGPT on 21 October 2026 (Asia/Kolkata).",
+    "scope": [
+      "src/routes/data-api.tsx",
+      "src/components/category-api-launch-panel.tsx",
+      "src/components/agent-commerce-status.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "public/.well-known/geomacro-agent.json"
+    ],
+    "approved_ui_commit": "2746afdd404f0e3477b5a8aa08a18de20712c3df",
+    "previous_baseline_sha": "0b3f72c2a845376eefb57fbe107cc3cf184adaca",
+    "purpose": "Add an exact-quote wallet buyer flow, three question agents and observable rendered-story identifiers. Preserve runtime-dependent paid availability, current product/source eligibility, native asset checks, existing prices, immutable delivery and same-proof recovery. The owner-supplied public receiver is pinned separately; authenticated Lovable publishing access and runtime activation remain required.",
+    "all_three_chain_merchant_activation_claimed": false,
+    "global_risk_final_lock_unmodified": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_three_category_toggle_presentation": {
+    "approval": "Founder explicitly requested clearer actor/action news and only three Intelligence page category toggles with no extra country toggle in ChatGPT on 2026-10-22.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Show only Geopolitics, Macro / FX and Critical Minerals category toggles, default to Geopolitics, remove All findings and country dropdown. Preserve factual location in story text, all-category background checks, original publication clocks, embargo and source-safe retained journal.",
+    "approved_ui_commit": "f8b8100ed4d371674708f91e1470697492ce1463",
+    "previous_baseline_sha": "2746afdd404f0e3477b5a8aa08a18de20712c3df",
+    "global_risk_final_lock_unmodified": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_store_reader_redesign": {
+    "approval": "Founder explicitly requests full geomacro.live redesign, minimal unnecessary text, launch pricing as a Store, API keys coming soon, every page corrected, and useful reasons for visitors to return, in ChatGPT on 23 October 2026 (Asia/Kolkata).",
+    "approved_ui_commit": "baa79ba2cc6401a96f010499d7ffabac70d13b43",
+    "previous_baseline_sha": "f8b8100ed4d371674708f91e1470697492ce1463",
+    "scope": [
+      "src/components/api-keys-notice.tsx",
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/customer-care.tsx",
+      "src/components/editorial-page.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/components/risk-indices/risk-indices-workspace.tsx",
+      "src/components/sections/roadmap-section.tsx",
+      "src/components/site-shell.tsx",
+      "src/routes/about.tsx",
+      "src/routes/contact.tsx",
+      "src/routes/data-api.tsx",
+      "src/routes/docs.tsx",
+      "src/routes/ecosystem.tsx",
+      "src/routes/index.tsx",
+      "src/routes/institutional.tsx",
+      "src/routes/pricing.tsx",
+      "src/routes/research.tsx",
+      "src/styles.css"
+    ],
+    "purpose": "Concise shared visual system and navigation; canonical 8-product/14-variant Store with unchanged prices and launch enquiries; reader category, saved IDs and prior-visit metadata in browser only; preserve source reads, original dates, public delays, signed risk contracts and production payment gates.",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_pricing_unmodified": true,
+    "source_upstream_unchanged": true,
+    "funds_authorized": false,
+    "marketplace_listings_claimed": false,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "github_publication_approval": "User explicitly approved GitHub push, PR creation and merge after checks with 'ha koro' on 23 October 2026 (Asia/Kolkata).",
+    "reader_metadata_refinement": {
+      "parent_sha": "3a67be3343928b949a60c457c2e52b0c8f0168a9",
+      "purpose": "Keep official source reader and page storage-free; serialize only validated category, saved IDs and last-visit metadata through a dedicated reader-preferences boundary. Patch Vitest and @vitest/mocker to 4.1.12; regenerate canonical Bun lock without advisory exceptions."
+    }
+  },
+  "approved_home_clarity_gri_reader": {
+    "approval": "Owner explicitly requests a homepage that explains Geomacro within 30 seconds and a permanent repair for stale GRI data before API/AI-agent launch work, in ChatGPT on 23 October 2026 (Asia/Kolkata). Existing publication and checks-before-merge authorization remains in force.",
+    "approved_ui_commit": "2a2f32f2ae4e475a570678b3b6245ad47a3c7453",
+    "previous_baseline_sha": "baa79ba2cc6401a96f010499d7ffabac70d13b43",
+    "scope": [
+      "src/components/home/commercial-home.tsx",
+      "src/lib/global-risk-edge.server.ts",
+      "src/lib/global-risk-read.server.ts",
+      "src/lib/use-global-risk.ts",
+      "src/lib/use-risk-indices.ts",
+      "src/lib/website-historical-risk-view.ts"
+    ],
+    "purpose": "Make product identity, scope, outputs, audience and free entry points explicit. Read archive and existing quota-governed verified edge concurrently and select the newest eligible original source clock, preserve the 60-minute embargo, bound stalled lagged RPCs and prevent stale client rollback. No direct B2 or frozen database recovery.",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_pricing_unmodified": true,
+    "original_score_and_proof_clocks_preserved": true,
+    "current_scored_gri_published": false,
+    "funds_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_no_added_news_publication_delay": {
+    "approval": "Owner explicitly requested '15 minutes er delay sorie daao dorkar hole' followed by 'eta full permanent ready koro' in this conversation on 23 October 2026.",
+    "approved_ui_commit": "01e0bfa9c044d5861d32b6cb2cf6aff04addeaa9",
+    "previous_baseline_sha": "2a2f32f2ae4e475a570678b3b6245ad47a3c7453",
+    "scope": [
+      "src/routes/intelligence.tsx",
+      "src/routes/about.tsx",
+      "src/components/site-shell.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Remove artificial 15-minute news publication wait consistently across intake, current journal readers, Ask, category observations, homepage and derived structured output. Preserve all evidence, rights, signing, retention and pricing checks.",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_pricing_unmodified": true,
+    "funds_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_launch_api_endpoint_directory": {
+    "approval": "Owner explicitly requests reviewing the latest Geomacro website and adding all endpoints to the API section for launch in ChatGPT on 24 October 2026 (Asia/Kolkata). Existing publish-after-checks authorization remains in force.",
+    "approved_ui_commit": "35a713b7cf977cb0d84006250c3d86f632f067df",
+    "previous_baseline_sha": "f1b7ad236c1a6090ce6b38243a3c00a47dd1cbec",
+    "scope": [
+      "src/routes/data-api.tsx",
+      "src/routes/docs.tsx",
+      "src/components/api-endpoint-directory.tsx",
+      "public/llms.txt",
+      "public/openapi-x402.json"
+    ],
+    "purpose": "Connect the API page, Documentation and agent discovery to 17 active public endpoint contracts; show seven valid request examples and synchronize canonical OpenAPI while retaining legacy provider paths.",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_pricing_unmodified": true,
+    "funds_authorized": false,
+    "payment_or_evidence_gates_changed": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_store_product_creation": {
+    "approval": "Owner explicitly requests fully completing all Geomacro Store structured-data creation for paid mainnet launch in ChatGPT on 24 October 2026; existing GitHub PR and merge-after-checks authorization remains in force.",
+    "approved_ui_commit": "a6aa3f9df55120b11717fed20385b82c375ec0b4",
+    "previous_baseline_sha": "73a40a781e36c194ce468cd800f99efa1f838f98",
+    "scope": [
+      "src/components/api-endpoint-directory.tsx",
+      "public/llms.txt",
+      "public/openapi-x402.json"
+    ],
+    "purpose": "Document twelve exact active Store request variants on the shared qualified canonical query/MCP engine. Bind requested product and price, require exact-country and both-endpoint multi-dimension proof, distinguish actually published new signed objects, and preserve immutable x402 delivery and replay.",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_pricing_unmodified": true,
+    "synthetic_fixtures_are_not_production_evidence": true,
+    "production_runtime_or_secrets_changed": false,
+    "funds_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_reusable_news_json_mvp_20261025": {
+    "approval": "Owner explicitly requests a paste commercial/noncommercial news -> reusable JSON MVP and directs Geomacro to shape the interface around that flow in ChatGPT on 25 October 2026 (Asia/Kolkata).",
+    "approved_ui_commit": "4b51cbc84d7d94b810924efd07bf687f34e515dc",
+    "previous_baseline_sha": "a6aa3f9df55120b11717fed20385b82c375ec0b4",
+    "scope": [
+      "src/components/news-json-workbench.tsx",
+      "src/routes/data-api.tsx"
+    ],
+    "purpose": "One news paste->normalize->JSON export interface on the existing API page, preserving the three-category menu and source licence declaration status.",
+    "global_risk_final_lock_unmodified": true,
+    "existing_paid_pricing_unmodified": true,
+    "third_party_source_licence_automatically_created": false,
+    "existing_facts_rights_signing_gates_preserved": true,
+    "funds_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_private_osint_intelligence_cards_20261025": {
+    "approval": "Founder explicitly instructed that newly observed OSINT news appear in /intelligence with source attribution and a distinctive Geomacro card for Geopolitics, Macro/FX and Critical Minerals on 25 October 2026 (Asia/Kolkata); necessary website setting changes authorized.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Distinctive three-domain visual cards show source-credited publisher, native release clock, what changed, and why it matters. Existing derived-only 72-hour D1 website journal is refreshed every two minutes while visible. A strict first-party, original-permalink private intake bridge submits unscored derived observations to the existing public journal, never copies private D1 records or upstream article content, and requires D1 readback.",
+    "approved_ui_commit": "440d7fa5999cf8f15b40f3793585937f17e3f1f3",
+    "previous_baseline_sha": "4b51cbc84d7d94b810924efd07bf687f34e515dc",
+    "global_risk_final_lock_unmodified": true,
+    "private_osint_source_rights_not_granted": true,
+    "source_original_article_or_url_publication": false,
+    "signed_commercial_products_unmodified": true,
+    "x402_prices_unmodified": true,
+    "predge_unmodified": true,
+    "existing_paid_payment_gates_unmodified": true,
+    "published_source_sha_unchanged": true,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_unverified_private_osint_web_cards_20261025": {
+    "approval": "Owner explicitly requests that every newly ingested Private OSINT news item show in website Intelligence with displayed source and distinctive Geomacro card across all three categories (25 October 2026); change only necessary settings.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Display source-host credited, native-dated unverified OSINT news separately from first-party publisher releases and signed intelligence. Preserve private D1 redaction; existing 72h free website D1 journal; exact three category toggles and source-specific card styling.",
+    "previous_baseline_sha": "440d7fa5999cf8f15b40f3793585937f17e3f1f3",
+    "approved_ui_commit": "a0aec989701e6333770f3088fb3b2c704279192b",
+    "global_risk_final_lock_unmodified": true,
+    "existing_prices_and_predge_unmodified": true,
+    "commercial_rights_not_granted": true,
+    "raw_articles_not_redistributed": true,
+    "lambasted_source_attribution_not_claimed": true,
+    "funds_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_concrete_news_source_private_20261025": {
+    "approval": "Founder explicitly requested on 25 October 2026 to show actual news events rather than unverified OSINT publisher candidates, hide unverified cards and all news source/publisher display, show exact point-specific What changed and Geomacro analysis, and a unique three-category homepage showcase. Necessary prior Intelligence UI settings may be updated but unrelated components must stay unchanged.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/components/home/live-intelligence-showcase.tsx"
+    ],
+    "purpose": "Public Intelligence requires named-action first-party derived facts and hides anonymous observations and unverified OSINT news; no publisher details or fallback iframe bypass. Restrict public journal writes to eligible concrete first-party events, keep raw upstream news in private D1. Distinguish three category home/showcase visuals; dates, prices and rights constraints retained.",
+    "approved_ui_commit": "ae47180dc6347023be7e6fb28439c7d3d5e14bf8",
+    "previous_baseline_sha": "a0aec989701e6333770f3088fb3b2c704279192b",
+    "raw_upstream_articles_republished": false,
+    "mandatory_attribution_sources_not_silently_republished": true,
+    "global_risk_final_lock_unmodified": true,
+    "existing_prices_and_predge_unmodified": true,
+    "funds_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_restore_concrete_intelligence_20261025": {
+    "approval": "The owner supplied a production screenshot showing zero news after the prior over-strict source-credit/actor gate and explicitly requested a working fix. Original pinned first-party news must reach the existing three-domain Intelligence cards without inventing or displaying publisher metadata.",
+    "purpose": "Keep unverified/private OSINT hidden. Permit grounded official issuer action headlines, correct blanket-credit mismatch and the official D1 bridge writer. Add exact first-party U.S. federal native RSS provenance and summary-only safety. Card design and pricing otherwise unchanged.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "previous_baseline_sha": "ae47180dc6347023be7e6fb28439c7d3d5e14bf8",
+    "approved_ui_commit": "9098323e67dd5a7f9f5b1fcf735562aea9fe8f66",
+    "required_visible_credit_licences_preserved": true,
+    "upstream_articles_and_raw_headlines_not_published": true,
+    "global_risk_final_lock_unmodified": true,
+    "existing_prices_and_predge_unmodified": true,
+    "existing_supabase_nonuse_unmodified": true,
+    "paid_payment_gates_unmodified": true,
+    "funds_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_intelligence_eligibility_and_credit_20261025": {
+    "approval": "Founder explicitly requested fixing the Geomacro news display rules across Geopolitics, Macro/FX and Critical Minerals on 25 October 2026. Legitimate first-party actor/action releases must not disappear only because display attribution is mandatory.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Permit already-derived concrete first-party stories with their required publisher attribution visibly displayed. Preserve unverified status labels for source-reported OSINT; never display generic publisher candidates as events or invent actor, numeric outcomes, original publisher identity, native clocks or source licence. Source-neutral homepage Find rejects credited releases independently.",
+    "previous_baseline_sha": "b4e2bb95d3c45363f88e08076db9cbfded582b08",
+    "approved_ui_commit": "8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6",
+    "existing_three_categories_unmodified": true,
+    "original_publication_clocks_unchanged": true,
+    "mandatory_attribution_visible_on_concrete_cards": true,
+    "source_neutral_homepage_remains_attribution_safe": true,
+    "global_risk_final_lock_unmodified": true,
+    "predge_and_store_prices_unmodified": true,
+    "signed_paid_evidence_gates_unmodified": true,
+    "supabase_not_reenabled": true,
+    "funds_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_intelligence_per_category_event_dedup_20261025": {
+    "approval": "Owner specifically requested that the same news never appear twice in any category on Geomacro Intelligence. Prevent duplicates across official publisher releases and OSINT using public-derived actor/action/date evidence without source disclosure.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Category-scoped deterministic dedup within public 72h D1 journal, mixed OSINT and official intake and SSR/browser refresh, with bounded date/number/action safeguards retaining distinct news.",
+    "previous_baseline_sha": "9098323e67dd5a7f9f5b1fcf735562aea9fe8f66",
+    "approved_ui_commit": "b4e2bb95d3c45363f88e08076db9cbfded582b08",
+    "private_osint_ingestion_unmodified": true,
+    "original_publication_clocks_unchanged": true,
+    "third_party_raw_content_not_disclosed": true,
+    "global_risk_final_lock_unmodified": true,
+    "predge_and_store_prices_unmodified": true,
+    "existing_paid_payment_gates_unmodified": true,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_three_category_api_pricing_20261025": {
+    "approval": "Founder explicitly approved publishing canonical per-call USDC prices for the Geopolitics, Macro/FX and Critical Minerals / Rare Earths category APIs on 2026-10-25. All three remain aliases of the same canonical engine and pricing schedule; Predge's 90-day pilot remains free.",
+    "approved_ui_commit": "9ce9e002230e6e05bbf2e022a5e228cc4c61b3c5",
+    "previous_baseline_sha": "8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6",
+    "scope": [
+      "src/components/category-api-pricing.tsx",
+      "src/components/api-keys-notice.tsx",
+      "src/components/category-api-pricing.test.tsx",
+      "src/routes/pricing.tsx",
+      "src/routes/data-api.tsx"
+    ],
+    "canonical_intelligence_query_prices_unchanged": true,
+    "three_category_aliases_share_canonical_engine": true,
+    "no_separate_category_charge": true,
+    "predge_free_pilot_unchanged": true,
+    "global_risk_final_lock_unmodified": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_permanent_finds_archive_d1_free_reads_20261026": {
+    "approval": "Founder explicitly instructed on 2026-10-26 in ChatGPT to persist previously published Geomacro Finds in a permanent public archive, keep live verified ingestion appending new eligible items, and eliminate D1 quota use from ordinary website reads.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Load immutable published monthly/category Finds from the public static-asset archive; merge the static rolling latest feed without replacing existing IDs; remove D1/server-function fallback from the public Intelligence newsroom read path. Preserve existing category, date, validation, privacy and no-payment boundaries.",
+    "approved_ui_commit": "3e710cc283c3a97e94a475bb3d8eb78af26568a3",
+    "previous_baseline_sha": "9ce9e002230e6e05bbf2e022a5e228cc4c61b3c5",
+    "global_risk_final_lock_unmodified": true,
+    "supabase_reactivated": false,
+    "paid_infrastructure_added": false,
+    "payment_authorized": false,
+    "archive_is_append_only": true,
+    "ordinary_public_reads_use_d1": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_language_pack_navigation_fix_20261026": {
+    "approval": "Founder explicitly requested fixing the non-working Geomacro website language pack in ChatGPT on 2026-10-26. This record authorizes only the shared-controller language navigation correction.",
+    "scope": [
+      "public/geomacro-language.js",
+      "src/components/site-shell.tsx"
+    ],
+    "purpose": "Use one shared window.GeomacroLanguage controller for all 15 supported locales; remove competing global menu event interception; preserve path, query and hash through the translated-host proxy. Keep all Global Risk presentation, commercial pricing, source/data policy and payment gates unchanged.",
+    "approved_ui_commit": "5a9468e787df7e8124f3911004562fefeba75f0f",
+    "previous_baseline_sha": "3e710cc283c3a97e94a475bb3d8eb78af26568a3",
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "sources_and_payments_unchanged": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_language_pack_fallback_20261026": {
+    "approval": "Founder explicitly reported on 2026-10-26 that the already-published language pack still failed, and requested a permanent working fix. This record authorizes the canonical Translate redirect and no-op fallback repair.",
+    "scope": [
+      "public/geomacro-language.js",
+      "src/components/site-shell.tsx",
+      "src/__tests__/website-language-pack-static.test.ts",
+      ".github/workflows/minimum-free-derived-production-health.yml"
+    ],
+    "purpose": "Use the canonical Google Translate website endpoint rather than depending on a translated-host proxy; preserve the original route, query and fragment; fall back to the same controlled navigation if the static language controller is missing or fails. Keep translation free, and keep Global Risk presentation, source/data policy, commercial pricing and payment gates unchanged.",
+    "approved_ui_commit": "49d13acbedcf6dd191251da6dbea10056e5b74b1",
+    "previous_baseline_sha": "5a9468e787df7e8124f3911004562fefeba75f0f",
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "sources_and_payments_unchanged": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_osint_status_label_hide_20261027": {
+    "approval": "Founder explicitly requested on 2026-10-27 that the public Intelligence website hide the 'Not independently verified' OSINT label.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Keep OSINT verification status internal while retaining the existing shared Intelligence card layout and any legally required safe source attribution.",
+    "previous_baseline_sha": "49d13acbedcf6dd191251da6dbea10056e5b74b1",
+    "approved_ui_commit": "0d742df4aa4366345cf8a4d27aeaee4fea40aea8",
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "payment_authorized": false
+  },
+  "approved_intelligence_unscored_word_hide_20261027": {
+    "approval": "Founder explicitly requested on 2026-10-27 that the word 'Unscored' never appear anywhere on the public Website Intelligence page.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "purpose": "Remove the visible status label and the header wording while retaining internal research status, existing card layout, source attribution and all data/verification semantics.",
+    "previous_baseline_sha": "0d742df4aa4366345cf8a4d27aeaee4fea40aea8",
+    "approved_ui_commit": "333f82ece05a640529ffb00a035069643dcfa1fc",
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "payment_authorized": false
+  },
+  "approved_macro_minerals_fastlanes_20261027": {
+    "approval": "Founder explicitly instructed full implementation of Forex, Gold and Silver under Macro Economics with maximum bundled quotas on 2026-10-27, then added global Critical Minerals timeliness and alternate sources in the same task.",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/components/intelligence/macro-fastlane-panel.tsx"
+    ],
+    "purpose": "Name the existing Macro category Macro Economics and add its bounded shared FX/precious-metals snapshot panel. Use the existing news journal and quota gate for FX/bullion and global Critical Minerals. Preserve all other locked presentation, pricing, payment and Global Risk contracts.",
+    "previous_baseline_sha": "333f82ece05a640529ffb00a035069643dcfa1fc",
+    "approved_ui_commit": "23decb6bbaec05eaf5409b8a91dd6cfd9108f842",
+    "global_risk_final_lock_unmodified": true,
+    "payment_authorized": false,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_news_factory_pricing_setup_20261027": {
+    "approval": "Founder explicitly instructed deployment and end-to-end testing of the structured news-product setup in PR #2988.",
+    "approved_ui_commit": "7678071ff8c68f238968943556295545491f98b6",
+    "previous_baseline_sha": "23decb6bbaec05eaf5409b8a91dd6cfd9108f842",
+    "scope": [
+      "src/components/structured-product-setup.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_publish_acceptance": true
+  },
+  "approved_api_agent_buyer_overview_20261027": {
+    "approval": "Founder explicitly requested removal of the internal news-to-JSON UI from the public API & Agents page, showing only what users receive and each price, without detailed implementation.",
+    "previous_baseline_sha": "7678071ff8c68f238968943556295545491f98b6",
+    "approved_ui_commit": "e63d716d65c0fccf17a54bfc0a2b4c86fef72276",
+    "scope": [
+      "src/routes/data-api.tsx",
+      "src/components/capability-price-schedule.tsx"
+    ],
+    "internal_tool_implementation_retained": true,
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_publish_acceptance": true
+  },
+  "approved_homepage_navigation_motion_20261028": {
+    "approval": "Founder requests a homepage explaining Geomacro in thirty seconds, permanent navigation fixes, readable moving global-intelligence theme, and continuation to completion.",
+    "previous_baseline_sha": "e63d716d65c0fccf17a54bfc0a2b4c86fef72276",
+    "approved_ui_commit": "eadb760c769a76726c6344ed93d79a5a7b6c4df7",
+    "scope": [
+      "src/components/home/commercial-home.tsx",
+      "src/components/site-shell.tsx",
+      "src/components/intelligence-background.tsx",
+      "src/components/wordmark.tsx",
+      "src/routes/index.tsx",
+      "src/styles.css",
+      "vite.config.ts"
+    ],
+    "predge_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "internal_workbench_not_public": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_publish_acceptance": true
+  },
+  "approved_homepage_finds_visibility_20261028": {
+    "approval": "Founder supplied a homepage screenshot with an empty journal and three empty category tiles and explicitly requested a permanent fix of this section.",
+    "previous_baseline_sha": "eadb760c769a76726c6344ed93d79a5a7b6c4df7",
+    "approved_ui_commit": "4d561d4a9c0291aea149da8b066349ae90d7d36f",
+    "scope": [
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/lib/intelligence-concrete-publication.ts",
+      "src/lib/find-card-v1.ts"
+    ],
+    "predge_unmodified": true,
+    "payment_authorized": false,
+    "paid_pricing_unmodified": true,
+    "source_clocks_and_rights_unchanged": true,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_publish_acceptance": true
+  },
+  "approved_ask_three_category_chat_20261028": {
+    "approval": "Founder explicitly requests Ask Geomacro fully working like ChatGPT but restricted to the existing three categories in ChatGPT on 2026-10-28 (Asia/Kolkata).",
+    "previous_baseline_sha": "4d561d4a9c0291aea149da8b066349ae90d7d36f",
+    "approved_ui_commit": "d48283193247283b6167de2a501cd7e7a7f200c5",
+    "scope": [
+      "src/components/ask/ask-workspace.tsx",
+      "src/components/ask/ask-answer-view.tsx",
+      "src/lib/ask-answer.server.ts",
+      "src/lib/ask-domain-guide.ts",
+      "src/lib/ask-commercial-brief.ts",
+      "src/lib/ask-geomacro-core.server.ts",
+      "src/lib/ask-legacy-transport.ts",
+      "src/lib/ask-sse-client.ts",
+      "src/lib/hybrid-agent-chat.server.ts",
+      "src/lib/hybrid-ask-intelligence.server.ts",
+      "server/api/ask/v2/turn.post.ts",
+      "src/lib/ask-geomacro.functions.ts",
+      "server/api/public-ask.get.ts"
+    ],
+    "purpose": "Separate timeless editorial explanations from current evidence; enforce three-domain scope, support bounded concept/country/news follow-ups, immediate cancellation with stale-request isolation, retry and original date/status display. Preserve private question/source boundaries and the existing governed current/numeric/risk retrieval. No general-model parity or fresh-source availability claim.",
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "source_rights_and_original_clocks_preserved": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_ask_public_geomacro_info_20261028": {
+    "approval": "Founder explicitly requests on 2026-10-28 that Ask Geomacro also answer searches about Geomacro itself, limited to information appropriate for the public.",
+    "previous_baseline_sha": "d48283193247283b6167de2a501cd7e7a7f200c5",
+    "approved_ui_commit": "15fabb0cbd725a43ee0d982059a281e0163cf2dd",
+    "scope": [
+      "src/components/ask/ask-answer-view.tsx",
+      "src/components/ask/ask-workspace.tsx",
+      "src/lib/geomacro-public-links.ts",
+      "src/lib/geomacro-public-knowledge.ts",
+      "src/lib/ask-domain-guide.ts",
+      "src/lib/ask-commercial-brief.ts",
+      "src/lib/hybrid-agent-chat.server.ts",
+      "src/lib/hybrid-ask-intelligence.server.ts"
+    ],
+    "purpose": "Add an explicit allowlist of public website product facts and same-site links; use the active public price catalog, distinguish listed availability from live payment readiness, refuse unpublished company/operational information, and support public product follow-ups. Company/product help is separate from the existing three research categories. No private repository search, source feeds or runtime credentials are exposed.",
+    "public_information_only": true,
+    "private_retrieval_added": false,
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_store_price_dedup_news_coverage_20261028": {
+    "approval": "Founder explicitly requests duplicate pricing removal on Store and API & Agents, news coverage aligned to pricing across three categories, and timely global war/corridor/hot-topic updates with regression locks.",
+    "previous_baseline_sha": "15fabb0cbd725a43ee0d982059a281e0163cf2dd",
+    "approved_ui_commit": "cf590f4ce5c5a6f3cddd7e3743f3597d3f8a854c",
+    "scope": [
+      "src/routes/pricing.tsx",
+      "src/routes/data-api.tsx",
+      "src/components/api-keys-notice.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/category-api-pricing.tsx",
+      "src/components/structured-product-setup.tsx",
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/category-api-pricing.test.tsx"
+    ],
+    "purpose": "One visible canonical Store price inventory, output-only API cards and price-free setup selection. Preserve prices, live deliverability gates and private discovery boundaries.",
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_geomacro_self_certified_news_severity_20261028": {
+    "authorization": "Founder requested: risk indices based on news severity; display certified GRI via GeoMacro. Previous request preserved the page layout.",
+    "approved_source_commit": "77d2aaa11bfec0df6c1a6ed6b7f2d2012b1225ca",
+    "scope": "Only the three locked Risk Indices/home preview/SEO presentation files already altered in this approved baseline; layout and global risk freeze unchanged.",
+    "classification": "GeoMacro self-attested calculation over both officially observed public news and monitored low-confidence OSINT. Neither source is independently event-fact-certified by this rubric.",
+    "publication": "Source approval only; actual website publication and live signed HTTP acceptance remain pending.",
+    "unchanged": "PREDGE, /global-risk final freeze, pricing, payment and historical data"
+  },
+  "approved_lovable_types_github_20261028": {
+    "authorization": "Founder explicitly requested GitHub-authoritative type-only repairs for the Lovable mirror after restoring its tsconfig code-check scope.",
+    "previous_baseline_sha": "77d2aaa11bfec0df6c1a6ed6b7f2d2012b1225ca",
+    "approved_ui_commit": "53d23787e14a89fa01b54635364647212f3480b2",
+    "scope": [
+      "src/components/home/risk-indices-preview.tsx",
+      "src/routes/intelligence.tsx",
+      "src/routes/__root.tsx",
+      "vite.config.ts"
+    ],
+    "type_only": true,
+    "visual_layout_unchanged": true,
+    "seven_ask_ui_files_unmodified": true,
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "vite_nitro_runtime_unchanged": true
+  },
+  "approved_risk_indices_72h_dashboard_20261029": {
+    "approval": "Founder explicitly requests an entirely redesigned GeoMacro Risk Indices page; display ONLY up to the existing 72-hour source journal and use 'GeoMacro OSINT' as the public OSINT display label, 29 October 2026 (Asia/Kolkata).",
+    "previous_baseline_sha": "53d23787e14a89fa01b54635364647212f3480b2",
+    "approved_ui_commit": "c2bb76f4657f17db132b740e675a22bb42754fd7",
+    "scope": [
+      "src/components/risk-indices/risk-indices-workspace.tsx"
+    ],
+    "purpose": "New source-aware responsive dashboard, exactly three independent risk domains, 24H/48H/72H actual source-clock observed severity bins, privacy-preserving GeoMacro OSINT naming, HMAC self-certification boundaries; no 7D/30D invented retrospective GRI. Production publication and live D1 receipt separately required.",
+    "global_risk_final_lock_unmodified": true,
+    "predge_unchanged": true,
+    "ask_unchanged": true,
+    "pricing_and_payments_unchanged": true,
+    "historical_repository_unchanged": true,
+    "website_lock_remains_active": true,
+    "published_source_sha_unchanged_until_live_acceptance": true
+  },
+  "approved_low_barrier_pricing_20261031": {
+    "approval": "Founder explicitly requested 31 Oct 2026 to permanently replace all new-sale prices with $9/$29/$99 subscriptions, $5/$15/$30 credit packs, Base x402 $0.02-$0.05; old public tiers retired.",
+    "approved_source_commit": "98521e58e2ee1b7e368ed8fff2c877d4f8263144",
+    "approved_paths": [
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "payment_activation_unchanged": true,
+    "exact_blob_lock": true
+  },
+  "approved_unified_store_api_20261031": {
+    "approval": "Founder explicitly requested on 31 October 2026 to combine /data-api and Store into ONE polished responsive commercial storefront at /pricing; preserve the original /data-api URL through a no-payment redirect.",
+    "approved_source_commit": "cba23f57f06f7952a7b39eab751d44d316cb8200",
+    "approved_paths": [
+      "src/routes/pricing.tsx",
+      "src/routes/data-api.tsx",
+      "src/components/site-shell.tsx"
+    ],
+    "canonical_route": "/pricing",
+    "legacy_alias": "/data-api",
+    "redirect_only": true,
+    "shared_pricing_catalogs": [
+      "geomacro.low-barrier.v1",
+      "geomacro.capability-usdc.v2"
+    ],
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "payment_activation_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_geomacro_api_branding_20261031": {
+    "approval": "Founder explicitly directed GeoMacro-branded public API names instead of displaying POST as a public-facing product label on the unified Store & API page. Actual HTTP methods and API paths stay unchanged.",
+    "approved_source_commit": "a91aaba335f0c6ca94057238aa41afdb2da2dbe2",
+    "approved_paths": [
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx"
+    ],
+    "official_api_catalog": "src/lib/geomacro-official-api-branding.ts",
+    "rendered_labels": [
+      "GEOMACRO Geopolitics API",
+      "GEOMACRO Macro/FX API",
+      "GEOMACRO Critical Minerals API",
+      "GEOMACRO Intelligence API"
+    ],
+    "transport_methods_unchanged": true,
+    "canonical_store": "/pricing",
+    "legacy_data_api_redirect_preserved": true,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "payment_activation_unchanged": true,
+    "exact_blob_lock": true
+  },
+  "approved_sitewide_api_endpoint_domain_labels_20261031": {
+    "approval": "Founder explicitly requires ALL website and internal human-facing API labels, agent discovery URLs, pricing manifest names, developer directory, and structured product descriptions to render geomacro.live /api/... instead of HTTP method plus endpoint.",
+    "approved_source_commit": "c7b0ffb0e234521a367252f915bf4aec9a8d3133",
+    "approved_paths": [
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx",
+      "src/components/api-endpoint-directory.tsx",
+      "public/llms.txt"
+    ],
+    "display_host": "geomacro.live",
+    "display_prefix": "geomacro.live /api/",
+    "canonical_query": "geomacro.live /api/v1/intelligence/query",
+    "internal_catalog_source": "src/lib/geomacro-official-api-branding.ts",
+    "internal_catalog_consistent": true,
+    "backend_http_methods_unchanged": true,
+    "machine_api_transport_fields_preserved": true,
+    "legacy_transport_contract_preserved": true,
+    "payment_activation_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "predge_unchanged": true,
+    "exact_blob_lock": true,
+    "live_acceptance_pending": true
+  },
+  "approved_card_to_usdc_no_funds_readiness_20261031": {
+    "approval": "Founder requests customers to pay by card and merchant receive crypto, while having no business licence. Approve ONLY non-payable website readiness presentation; never authorize card processing, onramp, automatic USDC deposit, credit issuance or bypass of KYC.",
+    "approved_source_commit": "2bbaeeb2aba85459b60e96bc322659fd141c6f8c",
+    "approved_paths": [
+      "src/components/low-barrier-pricing.tsx"
+    ],
+    "checkout_enabled": false,
+    "merchant_kyc_kyb_complete": false,
+    "customer_kyc_bypass": false,
+    "provider_verified": false,
+    "card_to_base_usdc_settlement_verified": false,
+    "customer_funds_collected": false,
+    "credits_issued": 0,
+    "global_risk_presentation_unchanged": true,
+    "predge_unchanged": true,
+    "exact_blob_lock": true,
+    "live_acceptance_pending": true
+  },
+  "approved_locked_dual_rail_checkout_20261101": {
+    "approval": "Founder explicitly requests on 2026-11-01 that the GeoMacro website permanently prepare both Base/Polygon native USDC and direct PayPal/card checkout, with external payments locked during testing. Approval is scoped to non-payable website presentation only.",
+    "approved_source_commit": "93d382b1df98e3fd6586032577ba306133be3303",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "preview_only": true,
+    "production_funds_authorized": false,
+    "paypal_capture_authorized": false,
+    "usdc_transfer_authorized": false,
+    "credits_issued": 0,
+    "website_lock_remains_active": true,
+    "global_risk_presentation_unchanged": true,
+    "predge_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_inline_dual_rail_pricing_20261101": {
+    "approval": "Founder explicitly requested on 2026-11-01 that the payment methods be shown directly and separately on the GeoMacro /pricing page as in the Lovable experience, without opening a checkout modal. Real-money payments remain locked.",
+    "approved_source_commit": "276b8bed82abe6b06420d08a2e61d0486956245c",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "design": "Always-visible inline payment methods section with plan/pack selection and PayPal/card + Base/Polygon USDC tabs; no modal.",
+    "preview_only": true,
+    "production_funds_authorized": false,
+    "paypal_capture_authorized": false,
+    "usdc_transfer_authorized": false,
+    "credits_issued": 0,
+    "website_lock_remains_active": true,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "obsolete_card_to_usdc_offer_removed": true
+  },
+  "approved_deferred_catalog_removal_20261101": {
+    "approval": "Founder on 2026-11-01 explicitly instructed completely removing the Structured Product Catalog / What every delivery includes / Find your intelligence, all seven per-delivery USDC product cards, filters, variants and Delivery & pricing details from /pricing because these services will not start yet.",
+    "approved_source_commit": "db271d6eb817b73096dbadcb95f695eb57b838ea",
+    "approved_paths": [
+      "src/routes/pricing.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/category-api-pricing.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/category-api-pricing.test.tsx"
+    ],
+    "scope": "Public pricing presentation only. Remove the deferred capability catalog section, x402 per-delivery promotional copy and dead #product-catalog anchor. Preserve six approved prepaid plan/credit pack prices, inline locked PayPal and native Base/Polygon USDC choices, published API endpoint descriptions and existing backend pricing contracts.",
+    "backend_capability_pricing_unmodified": true,
+    "payment_activation_unchanged": true,
+    "production_funds_authorized": false,
+    "website_lock_remains_active": true,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "historical_data_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "test_changes_scope": "Update exact storefront component presentation checks for absent catalog links; no price catalog logic changed."
+  },
+  "approved_public_intelligence_reliability_20261101": {
+    "approval": "Founder explicitly requested permanent repair of Home Finds auto-fetch, Risk Indices first-load, and footer links on 2026-11-01.",
+    "approved_source_commit": "7c6757ed10e8209147c7deec8c4e65541c4f3f52",
+    "approved_paths": [
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/components/site-shell.tsx",
+      "src/routes/index.tsx"
+    ],
+    "scope": "Home and free verified Find Cards public fallback, bounded signed news-severity Risk Indices auto-retry and responsive legal footer only. Verified D1 public derived fallback applies only to Home and no-pay public Finds API when archival current read is empty/unavailable. Original-source date/qualification is enforced and no fabricated static digests or scores are allowed.",
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "pricing_and_payments_unchanged": true,
+    "production_funds_authorized": false,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_ecb_official_fx_reference_20261101": {
+    "approval": "Founder explicitly requested reliable FX and precious-metals source intake in Macro Intelligence on 2026-11-01.",
+    "approved_source_commit": "b79abe5d65a2cde2b17ee84dd8339894155ba40f",
+    "approved_paths": [
+      "src/components/intelligence/macro-fastlane-panel.tsx"
+    ],
+    "scope": "Verified ECB daily FX reference through existing quota-gated Macro ingestion and D1 control state; source-date and non-live label required. Gold/silver, PREDGE, global-risk, payment unchanged.",
+    "fx_intraday_quote_claims": false,
+    "paid_source_added": false,
+    "production_funds_authorized": false,
+    "predge_unchanged": true,
     "global_risk_presentation_unchanged": true,
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true

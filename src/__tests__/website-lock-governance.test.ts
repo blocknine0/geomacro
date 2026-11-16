@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 9552)
-Total output lines: 540
-
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -244,7 +241,38 @@ describe("website lock governance", () => {
     expect(concrete.mandatory_attribution_sources_not_silently_republished).toBe(true);
     const privateOsint = config.approved_unverified_private_osint_web_cards_20261025;
     expect(privateOsint.previous_baseline_sha).toBe("440d7fa5999cf8f15b40f3793585937f17e3f1f3");
-    expect(privat…552 tokens truncated…_licence_automatically_created).toBe(false);
+    expect(privateOsint.approved_ui_commit).toBe(concrete.previous_baseline_sha);
+    expect(privateOsint.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(privateOsint.raw_articles_not_redistributed).toBe(true);
+    expect(privateOsint.global_risk_final_lock_unmodified).toBe(true);
+    expect(privateOsint.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const osintCards = config.approved_private_osint_intelligence_cards_20261025;
+    expect(osintCards.previous_baseline_sha).toBe("4b51cbc84d7d94b810924efd07bf687f34e515dc");
+    expect(osintCards.approved_ui_commit).toBe(privateOsint.previous_baseline_sha);
+    expect(osintCards.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(osintCards.private_osint_source_rights_not_granted).toBe(true);
+    expect(osintCards.global_risk_final_lock_unmodified).toBe(true);
+    expect(osintCards.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const launch = config.three_chain_launch_presentation_approval;
+    const toggle = config.approved_three_category_toggle_presentation;
+    const redesign = config.approved_store_reader_redesign;
+    const home = config.approved_home_clarity_gri_reader;
+    const immediate=config.approved_no_added_news_publication_delay;
+    const retired = config.approved_gri_store_retirement;
+    const api = config.approved_launch_api_endpoint_directory;
+    const actorApproval=config.approved_ask_3domain_actor_fix_20261024;
+    const homeFindApproval=config.approved_ask_index_home_find_copy_followup_20261024;
+    const store = config.approved_store_product_creation;
+    const newsJsonApproval = config.approved_reusable_news_json_mvp_20261025;
+    expect(newsJsonApproval.previous_baseline_sha).toBe(store.approved_ui_commit);
+    expect(newsJsonApproval.approved_ui_commit).toBe(osintCards.previous_baseline_sha);
+    expect(newsJsonApproval.scope).toEqual([
+      "src/components/news-json-workbench.tsx",
+      "src/routes/data-api.tsx",
+    ]);
+    expect(newsJsonApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(newsJsonApproval.existing_paid_pricing_unmodified).toBe(true);
+    expect(newsJsonApproval.third_party_source_licence_automatically_created).toBe(false);
     expect(newsJsonApproval.funds_authorized).toBe(false);
     expect(newsJsonApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(store.previous_baseline_sha).toBe(homeFindApproval.approved_ui_commit);
