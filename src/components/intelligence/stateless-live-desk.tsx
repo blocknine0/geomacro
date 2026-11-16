@@ -351,11 +351,11 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           GEOMACRO FINDS · LIVE INTELLIGENCE DESK
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
-          Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates — Built for Both Analysts &amp; Autonomous AI Agents.
+          Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates: Built for Both Analysts &amp; Autonomous AI Agents.
         </h1>
         <p className="sr-only">What changed in the world</p>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          A source-neutral briefing across Geopolitics, Macro/FX and Critical Minerals. Public findings are unscored observations; delivered Risk Gates require sufficient evidence.
+          A source-neutral briefing across Geopolitics, Macro/FX and Critical Minerals. Public findings are observations; delivered Risk Gates require sufficient evidence.
         </p>
         <p className="mt-3 rounded-lg border border-border/70 bg-card/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
           Ed25519 Cryptographically Signed · Zero Copyrighted Republishing · Pay-Per-Call from $0.15/check ($0 on Insufficient Evidence)

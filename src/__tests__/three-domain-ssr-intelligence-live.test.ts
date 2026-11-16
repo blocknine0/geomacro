@@ -51,7 +51,8 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
       expect(html).toContain(intelligenceActorHeadline(signal(category)));
       for(const other of ["geopolitics","macro","rare_earth"] as const)
         if(other!==category)expect(html).not.toContain(intelligenceActorHeadline(signal(other)));
-      const categories = html.slice(html.indexOf('aria-label="Intelligence category"'), html.indexOf("</section>"));
+      const categoryStart = html.indexOf('aria-label="Intelligence category"');
+      const categories = html.slice(categoryStart, html.indexOf("</section>", categoryStart));
       expect((categories.match(/aria-pressed=/gu)??[]).length).toBe(3);
       expect((categories.match(/aria-pressed="true"/gu)??[]).length).toBe(1);
       expect(html).not.toContain("All findings</button>");

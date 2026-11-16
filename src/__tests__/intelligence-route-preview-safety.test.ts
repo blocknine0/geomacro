@@ -24,6 +24,7 @@ describe("public intelligence preview route failure boundary", () => {
   it("exposes fresh derived-feed coverage separately from signed/scored row counts",()=>{
     expect(route).toContain("derived_rows:derived_signals.length");
     expect(route).toContain("derived_category_counts:derived_counts");
+    expect(route).toContain("derived_latest_by_category");
     expect(route).toContain("derived_current_within_24h");
     expect(route).toContain("live_observed_rows:0");
     expect(route).not.toContain("live_observed_rows:derived_signals.length");

@@ -40,11 +40,20 @@ export default defineEventHandler(async (event) => {
       derived_read_status=classifyDerivedNewsD1Failure(error);
     }
     const derived_counts={geopolitics:0,macro:0,rare_earth:0};
-    for(const signal of derived_signals)derived_counts[signal.category]++;
-    const derived_newest_at=derived_signals[0]?.published_at??null;
-    const derived_newest_ms=Date.parse(derived_newest_at??"");
-    const derived_current_within_24h=Number.isFinite(derived_newest_ms)&&
-      derived_newest_ms<=Date.now()&&Date.now()-derived_newest_ms<=24*60*60_000;
+    const derived_latest_by_category:{geopolitics:number|null;macro:number|null;rare_earth:number|null}=
+      {geopolitics:null,macro:null,rare_earth:null};
+    for(const signal of derived_signals){
+      derived_counts[signal.category]++;
+      const published=Date.parse(signal.published_at);
+      if(Number.isFinite(published))derived_latest_by_category[signal.category]=Math.max(
+        derived_latest_by_category[signal.category]??-Infinity,published);
+    }
+    const derived_newest_ms=Math.max(-Infinity,...Object.values(derived_latest_by_category)
+      .filter((value):value is number=>value!==null));
+    const derived_newest_at=Number.isFinite(derived_newest_ms)?new Date(derived_newest_ms).toISOString():null;
+    const derived_now=Date.now();
+    const derived_current_within_24h=Object.values(derived_latest_by_category).every(value=>
+      value!==null&&value<=derived_now&&derived_now-value<=24*60*60_000);
     if(!payload&&!derived_signals.length)
       return {ok:false,error:"INTELLIGENCE_UNAVAILABLE",rows:[],mode:"live_observed_only",
         verified_rows:0,live_observed_rows:0,newest_at:null,current_within_24h:false,
@@ -57,6 +66,8 @@ export default defineEventHandler(async (event) => {
       current_within_24h:false,generated_at:derived_checked_at};
     return {...fallback,ok:true,derived_signals,derived_checked_at,
       derived_rows:derived_signals.length,derived_category_counts:derived_counts,
+      derived_latest_by_category:Object.fromEntries(Object.entries(derived_latest_by_category)
+        .map(([category,value])=>[category,value===null?null:new Date(value).toISOString()])),
       derived_categories_covered:Object.entries(derived_counts).filter(([,count])=>count>0).map(([category])=>category),
       derived_current_within_24h,derived_newest_at,
       derived_read_status,

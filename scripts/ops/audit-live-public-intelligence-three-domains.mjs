@@ -43,22 +43,26 @@ const [edge, site, overlay] = await Promise.all([
 const proof = summarizePublicIntelligenceFreshness({ edge, site, overlay });
 const derived=Array.isArray(site.payload?.derived_signals)?site.payload.derived_signals:[];
 const derivedCounts={geopolitics:0,macro:0,rare_earth:0};
-let derivedNewest=-Infinity;
+const derivedLatest={geopolitics:null,macro:null,rare_earth:null};
 for(const row of derived){
   if(!Object.hasOwn(derivedCounts,row?.category)||row?.severity!==null||
      row?.same_event_corrob_verified!==false||typeof row?.title!=="string"||
      !row.title.startsWith("Geomacro finds ")||/(?:https?:\/\/|www\.)/iu.test(JSON.stringify(row)))continue;
   derivedCounts[row.category]++;
   const published=Date.parse(String(row?.published_at??""));
-  if(Number.isFinite(published))derivedNewest=Math.max(derivedNewest,published);
+  if(Number.isFinite(published))derivedLatest[row.category]=Math.max(derivedLatest[row.category]??-Infinity,published);
 }
+const derivedNewest=Math.max(-Infinity,...Object.values(derivedLatest).filter(value=>value!==null));
 proof.derived_feed={
   read_status:site.payload?.derived_read_status??"missing",
   rows:derived.length,
   category_counts:derivedCounts,
+  latest_by_category:Object.fromEntries(Object.entries(derivedLatest).map(([category,value])=>[
+    category,value===null?null:new Date(value).toISOString(),
+  ])),
   categories_covered:Object.entries(derivedCounts).filter(([,count])=>count>0).map(([category])=>category),
   newest_at:Number.isFinite(derivedNewest)?new Date(derivedNewest).toISOString():null,
-  current_within_24h:Number.isFinite(derivedNewest)&&derivedNewest<=Date.now()&&Date.now()-derivedNewest<=24*60*60_000,
+  current_within_24h:Object.values(derivedLatest).every(value=>value!==null&&value<=Date.now()&&Date.now()-value<=24*60*60_000),
   scored:false,paid_eligible:false,
 };
 mkdirSync("artifacts/public-intelligence-freshness", {recursive: true});

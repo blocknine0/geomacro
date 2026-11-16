@@ -13,18 +13,22 @@ const body = await response.json().catch(() => null);
 const rows = Array.isArray(body?.rows) ? body.rows : [];
 const derivedRows = Array.isArray(body?.derived_signals) ? body.derived_signals : [];
 const derivedCategories = new Map<string, number>([["geopolitics", 0], ["macro", 0], ["rare_earth", 0]]);
-let derivedNewest = -Infinity;
+const derivedLatest = new Map<string, number>();
 for (const row of derivedRows) {
   if (derivedCategories.has(row?.category) && typeof row?.title === "string" &&
       row.title.startsWith("Geomacro finds ") && row?.same_event_corrob_verified === false &&
       row?.severity === null && !/(?:https?:\/\/|www\.)/i.test(JSON.stringify(row))) {
     derivedCategories.set(row.category, (derivedCategories.get(row.category) ?? 0) + 1);
     const published = Date.parse(String(row?.published_at ?? ""));
-    if (Number.isFinite(published)) derivedNewest = Math.max(derivedNewest, published);
+    if (Number.isFinite(published)) derivedLatest.set(row.category,
+      Math.max(derivedLatest.get(row.category) ?? -Infinity, published));
   }
 }
-const derivedCurrentWithin24h = Number.isFinite(derivedNewest) && derivedNewest <= Date.now() &&
-  Date.now() - derivedNewest <= DAY_MS;
+const derivedNewest = Math.max(-Infinity, ...derivedLatest.values());
+const derivedCurrentWithin24h = [...derivedCategories.keys()].every(category=>{
+  const published=derivedLatest.get(category);
+  return Number.isFinite(published)&&published!<=Date.now()&&Date.now()-published!<=DAY_MS;
+});
 const scoredCategories = new Set<string>();
 let verifiedRowsValid = true;
 let liveRowsValid = true;
@@ -101,6 +105,9 @@ const report = {
   live_observed_rows: liveCount,
   derived_rows: derivedRows.length,
   derived_category_counts: Object.fromEntries(derivedCategories),
+  derived_latest_by_category: Object.fromEntries([...derivedCategories.keys()].map(category=>[
+    category,derivedLatest.has(category)?new Date(derivedLatest.get(category)!).toISOString():null,
+  ])),
   derived_categories_covered: [...derivedCategories].filter(([, count]) => count > 0).map(([category]) => category),
   derived_current_within_24h: derivedCurrentWithin24h,
   derived_read_status: body?.derived_read_status ?? "missing",
