@@ -76,7 +76,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     expect(missing).not.toContain(intelligenceActorHeadline(signal("macro")));
     expect(missing).toContain("Loading Macro Economics");
   });
-  it("shows the supplied country and actual derived change without em dashes",()=>{
+  it("shows the supplied country and transforms the derived change into clear prose",()=>{
     const geo=state("geopolitics");
     geo.signals[0]={...geo.signals[0],geography:"Sudan",
       title:"Geomacro finds United Nations announced new ceasefire talks concerning Sudan",
@@ -87,7 +87,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     expect(html).toContain("Sudan");
     expect(html).not.toContain("Actor not verified:");
     expect(html).toContain("United Nations announced new ceasefire talks concerning Sudan; implementation remains unconfirmed.");
-    expect(html).not.toContain("\u2014");
+    expect(html).not.toContain("United Nations announced new ceasefire talks concerning Sudan — implementation remains unconfirmed.");
     expect(html).not.toContain("Official publisher issues");
   });
   it("forces first-paint routes to ask all three official source families in parallel",()=>{
