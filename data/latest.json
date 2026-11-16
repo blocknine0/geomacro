@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-16T08:01:27.223Z",
+  "checked_at": "2026-11-16T09:17:24.119Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-c3f13f8f",
+      "category": "rare_earth",
+      "title": "Geomacro finds an unverified critical-minerals watch signal",
+      "what_changed": "A private watch feed surfaced a critical-minerals signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of critical-mineral sourcing and supply-chain exposure. It does not establish production, shipment, or price impact.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T07:20:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d58badc3",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:10:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f8bfdc2f",
       "category": "macro",

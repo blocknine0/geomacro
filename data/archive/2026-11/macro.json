@@ -2,8 +2,483 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-16T07:12:05.073Z",
+  "updated_at": "2026-11-16T09:17:24.119Z",
   "signals": [
+    {
+      "id": "macro-bc80234a",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T08:03:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e5348e7e",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T07:40:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3d7814b9",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T07:39:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6e909283",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T07:29:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f2f305e8",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T07:20:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3f1d9398",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T06:59:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-fcaf9537",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T06:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b3e07e02",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T06:47:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2314f144",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T06:45:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c31efa15",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T06:24:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-51967109",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T06:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-032e4325",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:50:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cdc9efe6",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:23:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-43f3a9da",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d58badc3",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:10:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1315f2d9",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T05:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b8adb73f",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:57:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-27f2e832",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:52:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-95c3e659",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:49:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e2ad8833",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:44:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1c2b09cd",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:35:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ef106605",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:30:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-44d4ee85",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:29:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c61a9f11",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:26:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cbc524e5",
+      "category": "macro",
+      "title": "Geomacro finds an unverified macro watch signal",
+      "what_changed": "A private watch feed surfaced a macro signal for review. No underlying event, actor, action, or market impact has been verified.",
+      "why_it_matters": "This unverified watch signal may warrant review of macroeconomic, currency, or financing exposure. It does not establish a figure or market move.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-16T04:24:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f8bfdc2f",
       "category": "macro",
