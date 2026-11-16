@@ -2,6 +2,7 @@ import {test} from "node:test";
 import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {classifyMinimumFreeProduction,classifyPublishedSourceEquivalence,verifyPublishedSourceEquivalence,readPublicHealthResource} from "./verify-minimum-free-production-health.mjs";
+import {projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 
 const now=Date.parse("2026-10-21T00:00:00.000Z");
 const sha="a".repeat(40);
@@ -12,6 +13,13 @@ const goodStory=()=>({
   severity:null,same_event_corrob_verified:false,
   status:"official_release_observed_unscored",
 });
+const unverifiedStory=({id="macro-acde1234",published_at="2026-10-20T22:00:00.000Z"}={})=>
+ projectSourceNeutralOsintSignal({id,category:"macro",status:"osint_feed_observed_unverified",
+   development_type:"unverified OSINT feed observation",date_precision:"exact",
+   published_at,sources_credited:[],geography:"Japan",country_iso3:"JPN",
+   corridor:null,event_direction:"tightening",event_action:"Reported Policy or Operating Action",
+   topic:"Monetary Policy & FX Liquidity",what_changed:"A dated policy observation is classified.",
+   title:"Source headline is discarded"});
 function fixture(stories=[goodStory()]){
   return {journalStatus:200,journal:{
     ok:true,schema:"geomacro.website-derived-news-feed.v1",
@@ -43,18 +51,13 @@ test("minimum free site accepts ONE native-dated official story, never claims al
 });
 test("unverified OSINT can coexist in the archive but never counts as official-source proof",()=>{
  const official=goodStory();
- const osint={...goodStory(),id:"macro-acde1234",category:"macro",
-   title:"Geomacro finds an observed feed item that is explicitly unverified",
-   status:"osint_feed_observed_unverified",date_precision:"exact",
-   development_type:"unverified OSINT feed observation",geography:null,
-   sources_credited:["Monitored feed: example.net"]};
+ const osint=unverifiedStory();
  const r=classifyMinimumFreeProduction(fixture([official,osint]));
  assert.equal(r.ok,true);
  assert.equal(r.derived_rows,1);
  assert.deepEqual(r.categories,{geopolitics:1,macro:0,rare_earth:0});
- // www feed-host attribution is allowed; it is not an article URL or a verification claim.
- const wwwCredit={...osint,sources_credited:["Monitored feed: www.bankofcanada.ca"]};
- const accepted=classifyMinimumFreeProduction(fixture([official,wwwCredit]));
+ // Source-neutral public projections carry no publisher host or raw source URL.
+ const accepted=classifyMinimumFreeProduction(fixture([official,osint]));
  assert.equal(accepted.ok,true);
  assert.equal(accepted.derived_rows,1);
  assert.deepEqual(accepted.categories,{geopolitics:1,macro:0,rare_earth:0});
@@ -224,12 +227,7 @@ test("network-bounded GitHub comparison refuses invalid, unavailable and noncano
 
 test("72h expiry between three-hour static snapshots does not invalidate current native officials",()=>{
  const expired="2026-10-17T23:30:00.000Z";
- const osint={...goodStory(),id:"macro-abcd1234",category:"macro",
-   title:"Geomacro finds a distinct unverified macro feed notice",
-   published_at:expired,
-   status:"osint_feed_observed_unverified",
-   development_type:"unverified OSINT feed observation",geography:null,
-   sources_credited:["Monitored feed: example.org"]};
+ const osint=unverifiedStory({id:"macro-abcd1234",published_at:expired});
  const r=classifyMinimumFreeProduction(fixture([goodStory(),osint]));
  assert.equal(r.ok,true);
  assert.equal(r.derived_rows,1);

@@ -5,6 +5,7 @@
  * settlement, publisher secrets, or new database. Legacy signed products remain optional.
  */
 import {fileURLToPath} from "node:url";
+import {isSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
 
 const ROOT="https://geomacro.live";
 const ARCHIVE_FEED="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
@@ -12,6 +13,16 @@ const RETENTION_MS=72*60*60_000;
 const MAX_STATIC_REFRESH_LAG_MS=6*60*60_000;
 const DELAY_MS=0;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
+const OSINT_TITLE_CATEGORY=Object.freeze({geopolitics:"Geopolitics",macro:"Macro/FX",rare_earth:"Critical Minerals"});
+function validPublicTitle(row){
+  if(typeof row?.title!=="string")return false;
+  if(row.title.startsWith("Geomacro finds "))return true;
+  const category=OSINT_TITLE_CATEGORY[row.category];
+  const prefix=`GeoMacro ${category} Brief · `;
+  if(!category||!row.title.startsWith(prefix))return false;
+  const [topic,place,...extra]=row.title.slice(prefix.length).split(" — ");
+  return Boolean(topic?.trim()&&place?.trim()&&!extra.length);
+}
 const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
 /**
  * Release parity is content-specific for FREE website health only. Ops-only
@@ -126,7 +137,7 @@ export function classifyMinimumFreeProduction({
     return invalid("FREE_ARCHIVE_CLOCK_INVALID",counts);
   const titles=[];
   for(const row of journal.signals){
-    const common=typeof row?.title==="string"&&row.title.startsWith("Geomacro finds ")&&
+    const common=validPublicTitle(row)&&
       CATEGORIES.includes(row.category)&&
       row.severity===null&&row.same_event_corrob_verified===false&&
       // A row must have been valid at static snapshot creation. A harmless
@@ -136,9 +147,8 @@ export function classifyMinimumFreeProduction({
     if(row?.status==="osint_feed_observed_unverified"){
       const credits=Array.isArray(row.sources_credited)?row.sources_credited:[];
       const validOsint=common&&row.date_precision==="exact"&&
-        row.development_type==="unverified OSINT feed observation"&&row.geography===null&&
-        credits.length===1&&typeof credits[0]==="string"&&
-        credits[0].startsWith("Monitored feed: ");
+        row.development_type==="unverified OSINT feed observation"&&
+        isSourceNeutralOsintSignal(row)&&credits.length===0;
       if(!validOsint)return invalid("FREE_ARCHIVE_OSINT_ROW_INVALID",counts);
       // An OSINT feed observation is visible unverified, but cannot stand in
       // for an original-dated official release in this launch receipt.

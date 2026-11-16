@@ -13,6 +13,7 @@ import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-st
 import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+import {country195ByIso3} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {officialWebsiteCandidateFromOsint,isKnownOfficialWebsiteFeed,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
 import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
@@ -185,8 +186,11 @@ const firstPartySignals=deriveStatelessSignals(balanced,Date.now(),
 // No generic publisher-candidate card, no third-party headline copy or links.
 const observed=[...observedByCategory.values()].flatMap(lane=>[...lane.values()])
  .sort((a,b)=>b.published_at.localeCompare(a.published_at));
-const osintSignals=observed.map(row=>
- unverifiedWebsiteSignalFromOsint(row,Date.now(),()=>row.event))
+const osintSignals=observed.map(row=>{
+ const iso3=privateOsintCountryMention(row.title,COUNTRIES_195);
+ const place=iso3?country195ByIso3(iso3)?.name??null:null;
+ return unverifiedWebsiteSignalFromOsint(row,Date.now(),null,place);
+})
  .filter(Boolean).filter(isConcretePublicIntelligence);
 // Fair latest-first scheduling; small categories cannot be buried by a large
 // geopolitics batch, and the public journal retains up to 72h.
