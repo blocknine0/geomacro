@@ -32,7 +32,10 @@ const GLOBAL_RISK_FROZEN_PATHS = [
 ];
 
 function git(args) {
-  return execFileSync("git", args, { encoding: "utf8" }).trim();
+  return execFileSync("git", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
 }
 
 function requireCommit(commit, label) {
