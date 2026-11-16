@@ -687,9 +687,6 @@ jobs:
           GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
           RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
           RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
-          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
-          RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
-          RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
