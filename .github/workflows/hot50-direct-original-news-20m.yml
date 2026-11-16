@@ -265,6 +265,7 @@ jobs:
           GEOMACRO_RISK_STREAM_D1_DAILY_WRITES: ${{ needs.quota-admission.outputs.risk_stream_sidecar_observed_rows_written }}
           CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
           CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
@@ -349,6 +350,7 @@ jobs:
           GEOMACRO_RISK_STREAM_D1_DAILY_WRITES: ${{ needs.quota-admission.outputs.risk_stream_sidecar_observed_rows_written }}
           CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
           CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs

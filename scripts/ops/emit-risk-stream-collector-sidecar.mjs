@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {readFileSync,existsSync} from "node:fs";
+import {createHmac} from "node:crypto";
 import {emitRiskStreamCandidates} from "./emit-risk-stream-candidates.mjs";
 
 const fail=code=>{throw Error("RISK_STREAM_COLLECTOR_SIDECAR_"+code)};
@@ -22,7 +23,7 @@ if(!input||!existsSync(input)){
   commercial_rights_approved:1,rights_expire_at:entry.rights_expire_at}));
  emitRiskStreamCandidates({originals,sourceRegistry,rightsManifest:manifest,
   dryRun:false,controlPlaneUrl:process.env.CONTROL_PLANE_URL,
-  controlPlaneToken:process.env.CONTROL_PLANE_TOKEN,
+  controlPlaneToken:((!process.env.CONTROL_PLANE_TOKEN||process.env.CONTROL_PLANE_TOKEN===process.env.ROOT_LEDGER_TOKEN)&&process.env.ROOT_LEDGER_TOKEN)?createHmac("sha256",process.env.ROOT_LEDGER_TOKEN).update("geomacro-control-plane-v1").digest("hex"):process.env.CONTROL_PLANE_TOKEN,
   factsPublicB64:process.env.RISK_STREAM_MACHINE_FACTS_SPKI_B64,
   rightsPublicB64:process.env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64})
   .then(result=>console.log(JSON.stringify(result)))
