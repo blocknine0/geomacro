@@ -34,6 +34,11 @@ test("the held lane retains the existing encrypted private artifact and truthful
  assert.ok(held.includes("assert-private-osint-three-category-live-receipt.mjs"));
  assert.ok(held.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
  assert.ok(held.includes("public_source_text_included:false"));
+ const stage=readFileSync("scripts/ops/private-osint-stage-held.ts","utf8");
+ assert.ok(stage.includes("buildHeldPrivateOsintProjection(prepared.items,Date.now())"));
+ assert.ok(stage.includes("GEOMACRO_OSINT_PUBLIC_CANDIDATES_FILE"));
+ assert.ok(stage.includes("mode:0o600,flag:'wx'"));
+ assert.ok(stage.includes("source_neutral_public_candidates:publicProjection.signals.length"));
 });
 
 test("OSINT Website Intelligence keeps the existing card layout and omits the unwanted watch/no-score badge",()=>{
