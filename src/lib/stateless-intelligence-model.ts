@@ -70,7 +70,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
     { test: /\b(border|conflict|attacks?|war|military|disarmament|humanitarian|airstrikes?|missile strikes?|drone strikes?|bombardment|hostilities|ceasefire violations?|evacuations?|forced displacement|refugees?|asylum seekers?|peacekeeping|militias?)\b/i, name: "geopolitical security",
       implication: "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary." },
     { test: /\b(visa|foreign secretary|foreign policy|diplomacy|treaty|foreign minister|iran|ukraine|gaza|west bank|myanmar|sudan|eritrea|ethiopia|israel|lebanon|international sanctions|state threats|national security|cyber-attack|hybrid attacks|democratic participation|election interference|political prisoners?)\b/i, name: "foreign policy",
-      implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
+      implication: "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence." },
   ],
   macro: [
     { test: /\b(?:fx reserves?|foreign[- ]exchange|exchange rates?|currencies|current account|trade balance|balance of trade|capital flows?|sovereign debt|bond yields?|treasury yields?|industrial production|manufacturing output|purchasing managers? index|\bPMI\b|tariffs?|commodity prices?|energy prices?)\b/i,

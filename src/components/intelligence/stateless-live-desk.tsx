@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { fetchDirectDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
-import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
+import {isConcretePublicIntelligence,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -11,6 +11,7 @@ import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelli
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 
 import { loadReaderPreferences, saveReaderPreferences } from "@/lib/reader-preferences";
+import {intelligenceRiskTakeaways} from "@/lib/intelligence-risk-takeaways";
 
 const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
   { key: "geopolitics", label: "Geopolitics" },
@@ -60,6 +61,7 @@ const CATEGORY_STYLE = {
 function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
   const mandatoryCredits=intelligenceRequiredSourceCredits(signal);
+  const takeaways=intelligenceRiskTakeaways(signal.category);
   return (
     <article data-testid="geomacro-concrete-intelligence-card"
       data-geomacro-story-id={signal.id}
@@ -86,8 +88,17 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground/85">{displayProse(intelligenceActorChange(signal))}</p>
         <div className="mt-5 rounded-xl border border-border/60 bg-muted/35 p-4">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO ANALYSIS / Why it matters</p>
-          <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(concreteGeomacroAnalysis(signal))}</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">RISK → EFFECT → PRICE IMPACT</p>
+          <dl className="mt-3 grid gap-3 text-sm leading-6">
+            <div><dt className="font-semibold text-foreground">Risk mechanism</dt><dd className="text-foreground/80">{takeaways.mechanism}</dd></div>
+            <div><dt className="font-semibold text-foreground">Downstream effect</dt><dd className="text-foreground/80">{takeaways.effect}</dd></div>
+            <div><dt className="font-semibold text-foreground">Affected FX / commodity / corridor</dt><dd className="text-foreground/80">{takeaways.market}</dd></div>
+          </dl>
+          <span className="mt-3 inline-flex rounded-full border border-border px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wide text-muted-foreground">ACTION POSTURE · {takeaways.posture}</span>
+          <div className="mt-4 border-t border-border/60 pt-3 text-[11px] leading-5 text-muted-foreground">
+            <span className="font-semibold text-foreground/80">Paid Tier Unlocks</span>
+            <span> · agent_decision machine JSON · 24–72h / 7–30d horizons · cross-corridor contagion · Ed25519 commercial rights</span>
+          </div>
         </div>
         <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
         {mandatoryCredits.length > 0 ? (
@@ -339,17 +350,26 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
           GEOMACRO FINDS · LIVE INTELLIGENCE DESK
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
-          What changed in the world
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
+          Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates: Built for Both Analysts &amp; Autonomous AI Agents.
         </h1>
+        <p className="sr-only">What changed in the world</p>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Your briefing on Geopolitics, Macro Economics and Critical Minerals.
+          A source-neutral briefing across Geopolitics, Macro/FX and Critical Minerals. Public findings are observations; delivered Risk Gates require sufficient evidence.
+        </p>
+        <p className="mt-3 rounded-lg border border-border/70 bg-card/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          Ed25519 Cryptographically Signed · Zero Copyrighted Republishing · Pay-Per-Call from $0.15/check ($0 on Insufficient Evidence)
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
           <span>No added publication delay · Original dates shown</span>
         </p>
       </header>
+
+      <section aria-label="Risk Gate API pricing" className="mt-5 flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-6"><span className="font-semibold text-foreground">Risk Gate API</span><span className="text-muted-foreground"> · Focused $0.15 · Standard $0.20 · Complex Full $0.30 per delivered check</span></p>
+        <a href="/pricing" className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Get API Key &amp; Recharge Credits</a>
+      </section>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/30 px-4 py-3">
         <p role="status" className="text-xs text-muted-foreground">{newSinceVisit === null ? "Make this your daily briefing." : `${newSinceVisit} available findings published since your previous visit in this category.`}</p>

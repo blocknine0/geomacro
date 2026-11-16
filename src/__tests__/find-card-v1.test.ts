@@ -130,7 +130,11 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
   expect(code).not.toContain("Source-reported observation · Not independently verified");
   expect(code).toContain("function Story({ signal, saved, onSave }");
   expect(code.split("<Story key={signal.id} signal={signal}").length-1).toBe(2);
-  expect(code).toContain("GEOMACRO ANALYSIS / Why it matters");
+  expect(code).toContain("RISK → EFFECT → PRICE IMPACT");
+  expect(code).toContain("Risk mechanism");
+  expect(code).toContain("Downstream effect");
+  expect(code).toContain("Affected FX / commodity / corridor");
+  expect(code).toContain("Paid Tier Unlocks");
   expect(code).toContain("What changed");
   expect(code).not.toContain("function OsintStory");
   expect(code).not.toContain("OsintCard");

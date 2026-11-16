@@ -27,7 +27,10 @@ export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Da
     const work=(async()=>{
       // The bundle and journal views share the Worker's public edge cache and
       // retain all three categories, including explicitly unverified OSINT.
-      const signals=await fetchAllDerivedNews(fetchImpl,now,{fresh:false});
+      // This endpoint is the existing bounded D1 projection read. Revalidate
+      // its one cached Worker bundle on the same request so a 15-minute edge
+      // snapshot cannot hide newly admitted Private OSINT observations.
+      const signals=await fetchAllDerivedNews(fetchImpl,now,{fresh:true});
       const data:WebsiteDerivedNewsResult={ok:true,
         schema:"geomacro.website-derived-news-feed.v1",
         checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,

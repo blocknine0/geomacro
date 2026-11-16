@@ -12,6 +12,9 @@ describe("public Intelligence freshness cache contract", () => {
     expect(reader).toContain('s.status==="osint_feed_observed_unverified"');
     expect(route).toContain("INTELLIGENCE_UNAVAILABLE");
     expect(route).toContain("publicResponseCache");
+    expect(route).toContain("derived_read_status");
+    const serverReader=readFileSync("src/lib/website-derived-news-reader.server.ts","utf8");
+    expect(serverReader).toContain("fetchAllDerivedNews(fetchImpl,now,{fresh:true})");
   });
 
   it("SSR and browser hydration read the checked immediate-feed snapshot through the shared client", () => {

@@ -252,6 +252,32 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(refreshed.checked_at,new Date(NOW+6*60*60_000).toISOString());
   assert.equal(refreshed.signals[0].published_at,first.signals[0].published_at);
  });
+ it("repairs any split static-snapshot cohort clock immediately",async()=>{
+  const p=temp();
+  writeCandidates(p.candidatePath,[signal("1234abcd")]);
+  await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
+  const latestPath=join(p.archiveDir,"data/latest.json");
+  const coveragePath=join(p.archiveDir,"data/coverage-72h.json");
+  const dailyPath=join(p.archiveDir,"data/daily-highlights.json");
+  const indexPath=join(p.archiveDir,"data/index.json");
+  const latest=JSON.parse(readFileSync(latestPath,"utf8"));
+  const coverage=JSON.parse(readFileSync(coveragePath,"utf8"));
+  const daily=JSON.parse(readFileSync(dailyPath,"utf8"));
+  const index=JSON.parse(readFileSync(indexPath,"utf8"));
+  coverage.checked_at=new Date(NOW-60_000).toISOString();
+  index.updated_at=new Date(NOW-120_000).toISOString();
+  writeFileSync(coveragePath,JSON.stringify(coverage));
+  writeFileSync(indexPath,JSON.stringify(index));
+  const repaired=await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW+1_000});
+  assert.equal(repaired.deploy_needed,true);
+  const stamp=JSON.parse(readFileSync(latestPath,"utf8")).checked_at;
+  assert.equal(JSON.parse(readFileSync(coveragePath,"utf8")).checked_at,stamp);
+  assert.equal(JSON.parse(readFileSync(dailyPath,"utf8")).generated_at,stamp);
+  assert.equal(JSON.parse(readFileSync(indexPath,"utf8")).updated_at,stamp);
+  assert.equal(JSON.parse(readFileSync(latestPath,"utf8")).signals[0].published_at,
+    latest.signals[0].published_at);
+  assert.equal(JSON.parse(readFileSync(dailyPath,"utf8")).signals.length,daily.signals.length);
+ });
  it("fails closed instead of silently dropping a corrupt previously published shard",async()=>{
   const p=temp();
   writeCandidates(p.candidatePath,[signal("1234abcd")]);

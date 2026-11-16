@@ -77,6 +77,9 @@ describe("Auto Ingest News reliability contract", () => {
     expect(freshnessProbe).toContain("row?.delta !== null");
     expect(freshnessProbe).toContain("synthetic_freshness: false");
     expect(freshnessProbe).toContain("raw_source_score_inference: false");
+    expect(freshnessProbe).toContain("derived_category_counts");
+    expect(freshnessProbe).toContain("derived_current_within_24h");
+    expect(freshnessProbe).toContain("derived_three_category_coverage");
     expect(productionReader).not.toContain("earthquake.usgs.gov");
     expect(productionReader).toContain('public_status: "verified_b2" | "live_observed"');
   });
