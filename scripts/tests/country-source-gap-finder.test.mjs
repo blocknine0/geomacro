@@ -104,3 +104,16 @@ test("provider row identity drift keeps a source in the gap report",()=>{
  assert.ok(cell.gap_reasons.includes("RIGHTS_REGISTRY_IDENTITY_MISMATCH"));
  assert.equal(cell.candidate_sources[0].registry_identity_matches_reviewed_entry,false);
 });
+
+test("HTTP 200 without a native publisher timestamp stays a redacted gap",()=>{
+ const report=buildCountrySourceGapReport({countries,hot50:["AAA"],sourceCatalog:[source],
+  riskStreamSources:[{source_id:source.source_id,enabled:1,commercial_rights_approved:1,
+   publisher_root_domain:approved.publisher_root_domain,parent_media_entity:approved.parent_media_entity,
+   source_role:approved.source_role,reviewed_at:approved.rights_evidence.reviewed_at,
+   rights_expire_at:approved.rights_expire_at}],
+  probes:[{...probe,last_source_native_publication_at:null}],rightsEntries:[approved],now});
+ const cell=report.cells.find(x=>x.country_iso3==="AAA"&&x.category==="MACRO_FX");
+ assert.ok(cell.gap_reasons.includes("LIVE_HEALTH_UNVERIFIED_OR_STALE"));
+ assert.equal(cell.candidate_sources[0].raw_source_redacted,true);
+ assert.equal(cell.candidate_sources[0].licensed_source_text_included,false);
+});
