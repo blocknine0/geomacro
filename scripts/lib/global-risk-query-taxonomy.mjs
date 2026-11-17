@@ -86,7 +86,7 @@ export const GLOBAL_RISK_QUERY_BUCKETS = Object.freeze({
     freezeBucket("macro_release_surprises", ["ppi","pce","wages","nfp","retail_sales","breakevens"],
       ["PPI PCE inflation breakeven surprise","wage growth NFP payroll surprise","retail sales PMI GDP release shock","consumer price producer price macro data surprise"]),
     freezeBucket("equity_indices_and_volatility", ["local_equity_index","vix","move","fx_implied_vol","risk_reversals","circuit_breaker","short_selling_ban"],
-      ["national stock exchange benchmark index selloff","VIX MOVE FX implied volatility risk reversal","circuit breaker short selling ban market volatility","equity index futures turnover liquidity shock"],
+      ["national stock exchange benchmark index selloff","US S&P 500 Nasdaq STOXX 600 DAX FTSE equity index","Japan Nikkei TOPIX China CSI 300 HSI India Nifty Sensex","Brazil Ibovespa BIST Tadawul JSE ASX TSX KOSPI TAIEX","VIX MOVE FX implied volatility risk reversal","circuit breaker short selling ban market volatility","equity index futures turnover liquidity shock"],
       ["equity_indices","equity_volatility","volatility_indices","market_microstructure"]),
     freezeBucket("portfolio_and_cross_border_flows", ["ndf","fpi","fii","etf_flow","margin_liquidation"],
       ["NDF non deliverable forward market stress","FPI FII cross border capital outflow","ETF capital flow sovereign FX market","margin call liquidation cascade equity FX"],
