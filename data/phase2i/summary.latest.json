@@ -39,7 +39,7 @@
       "commercially_eligible_country_events": 0
     }
   },
-  "phase2ib_archive_cycle_status": "QUOTA_HELD_MAINTENANCE_NOT_ADMITTED",
+  "phase2ib_archive_cycle_status": "ARCHIVE_FAILED_NO_POSITIVE_RECEIPT",
   "phase2ib_per_country_original_events_verified": 0,
   "phase2ib_d1_census": null
 }
