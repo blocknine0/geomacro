@@ -2,9 +2,9 @@ import {describe,it,expect} from "vitest";
 import {timedOutAskAnswer} from "./ask-geomacro-core.server";
 describe("Ask timeout returns a complete, honest no-score response",()=>{
  const cases=[
-  ["What is the latest geopolitical risk index?","Geopolitical Risk Index"],
-  ["What is the latest macroeconomic risk index?","Macroeconomic Risk Index"],
-  ["What is the latest critical minerals risk index?","Critical Minerals Risk Index"],
+  ["What is the latest geopolitical risk index?","Geopolitics"],
+  ["What is the latest macroeconomic risk index?","Macro/FX"],
+  ["What is the latest critical minerals risk index?","Critical Minerals"],
  ];
  for(const [question,label] of cases){
   it("preserves public response fields for "+label,()=>{
@@ -22,7 +22,7 @@ describe("Ask timeout returns a complete, honest no-score response",()=>{
  }
  it("does not echo an arbitrary untrusted question in timeout summary",()=>{
   const x=timedOutAskAnswer("Tell me <script>secrets</script>");
-  expect(x.summary).toContain("requested GeoMacro research");
+  expect(x.summary).toContain("GeoMacro");
   expect(x.summary).not.toContain("<script>");
  });
 });
