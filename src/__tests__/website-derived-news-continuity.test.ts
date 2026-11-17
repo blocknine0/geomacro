@@ -469,7 +469,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
       sources_credited:["Monitored feed: www.bankofcanada.ca"],
       status:"osint_feed_observed_unverified" as const})!;
     expect(verifyDerivedStory(monitored,NOW)).toBe(true);
-    const {env}=db();
+    const {data,env}=db();
     expect((await publishDerivedStories(env,
       {schema:"geomacro.website-derived-news-batch.v1",signals:[genuine,monitored]},NOW)).status).toBe(200);
     const immediate=await (await readDerivedStories(env,NOW,0,0)).json();
@@ -477,6 +477,10 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const canonical=await (await readDerivedStoriesBundle(env,NOW)).json();
     expect(immediate.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
     expect(canonical.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
+    expect(JSON.stringify(immediate)).not.toMatch(/bankofcanada|Chile copper supply terms change/iu);
+    expect(JSON.stringify([...data.values()])).not.toMatch(/bankofcanada|Chile copper supply terms change/iu);
+    expect(immediate.signals.find((s:{id:string})=>s.id===monitored.id)?.status)
+      .toBe("osint_feed_observed_unverified");
     expect(legacy.original_release_delay_minutes).toBe(15);
     expect(legacy.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
     expect(legacy.first_ingest.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
