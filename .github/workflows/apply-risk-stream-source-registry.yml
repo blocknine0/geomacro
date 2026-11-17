@@ -72,12 +72,20 @@ jobs:
           console.log(JSON.stringify({schema:'geomacro.risk-stream-source-registry-preflight.v1',
             provider_database_identity_verified:true,provider_write_performed:false}));
           NODE
+      - name: Probe global institutional feeds and prepare rights-filtered sync manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/global-institutional-sources
+          node scripts/ops/discover-global-institutional-sources.mjs --probe --probe-limit 24 \
+            --out artifacts/global-institutional-sources/audit.json \
+            --eligible-manifest artifacts/global-institutional-sources/eligible-rights-manifest.json
       - name: Read-only provider schema preflight and manifest dry run
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/register-risk-stream-source.mjs --dry-run
-          node scripts/ops/register-risk-stream-source.mjs --preflight
+          node scripts/ops/register-risk-stream-source.mjs --dry-run --manifest artifacts/global-institutional-sources/eligible-rights-manifest.json
+          node scripts/ops/register-risk-stream-source.mjs --preflight --manifest artifacts/global-institutional-sources/eligible-rights-manifest.json
       - name: Verify paid D1 headroom before source registration
         if: inputs.mode == 'apply'
         shell: bash
@@ -86,7 +94,7 @@ jobs:
           node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
           import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
-          const manifest=JSON.parse(readFileSync('config/risk-stream-source-rights-reviewed.v1.json','utf8'));
+          const manifest=JSON.parse(readFileSync('artifacts/global-institutional-sources/eligible-rights-manifest.json','utf8'));
           const approved=manifest.entries.filter(x=>x.status==='APPROVED').length;
           const proof=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
             estimatedMigrationRowsRead:approved*10+100,
@@ -103,4 +111,4 @@ jobs:
           CONFIRM: ${{ inputs.approval }}
         run: |
           set -euo pipefail
-          node scripts/ops/register-risk-stream-source.mjs --apply
+          node scripts/ops/register-risk-stream-source.mjs --apply --manifest artifacts/global-institutional-sources/eligible-rights-manifest.json

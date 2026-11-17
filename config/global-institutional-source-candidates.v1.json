@@ -1,0 +1,226 @@
+{
+  "schema": "geomacro.global-institutional-source-candidates.v1",
+  "policy": "Discovery candidates are never commercially approved by transport success. Only an exact current APPROVED source-rights manifest entry with matching identity may be included in an eligible registry subset; all others remain PRIVATE_OSINT_REDACTED_CORROBORATION.",
+  "sources": [
+    {
+      "source_id": "uk_fcdo_ogl_official_atom",
+      "url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+      "format": "atom",
+      "category": "GEOPOLITICS",
+      "source_role": "GOVERNMENT_WIRE",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_fcdo",
+      "country_iso3": "GBR",
+      "pillar": "sanctions_export_controls"
+    },
+    {
+      "source_id": "uk_mod_ogl_security_atom",
+      "url": "https://www.gov.uk/government/organisations/ministry-of-defence.atom",
+      "format": "atom",
+      "category": "GEOPOLITICS",
+      "source_role": "GOVERNMENT_WIRE",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_ministry_of_defence",
+      "country_iso3": "GBR",
+      "pillar": "maritime_conflict_alerts"
+    },
+    {
+      "source_id": "uk_cabinet_ogl_security_atom",
+      "url": "https://www.gov.uk/government/organisations/cabinet-office.atom",
+      "format": "atom",
+      "category": "GEOPOLITICS",
+      "source_role": "GOVERNMENT_WIRE",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_cabinet_office",
+      "country_iso3": "GBR",
+      "pillar": "sanctions_export_controls"
+    },
+    {
+      "source_id": "uk_hmt_ogl_official_atom",
+      "url": "https://www.gov.uk/government/organisations/hm-treasury.atom",
+      "format": "atom",
+      "category": "MACRO_FX",
+      "source_role": "OFFICIAL_STATISTICS",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_hm_treasury",
+      "country_iso3": "GBR",
+      "pillar": "macro_policy"
+    },
+    {
+      "source_id": "uk_obr_ogl_macro_atom",
+      "url": "https://www.gov.uk/government/organisations/office-for-budget-responsibility.atom",
+      "format": "atom",
+      "category": "MACRO_FX",
+      "source_role": "OFFICIAL_STATISTICS",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_office_for_budget_responsibility",
+      "country_iso3": "GBR",
+      "pillar": "macro_policy"
+    },
+    {
+      "source_id": "uk_dbt_ogl_minerals_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+      "format": "atom",
+      "category": "CRITICAL_MINERALS",
+      "source_role": "TRADE_CUSTOMS",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_department_for_business_and_trade",
+      "country_iso3": "GBR",
+      "pillar": "export_controls_trade"
+    },
+    {
+      "source_id": "uk_desnz_ogl_minerals_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+      "format": "atom",
+      "category": "CRITICAL_MINERALS",
+      "source_role": "TRADE_CUSTOMS",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_department_for_energy_security_and_net_zero",
+      "country_iso3": "GBR",
+      "pillar": "mineral_energy_supply"
+    },
+    {
+      "source_id": "uk_bist_ogl_minerals_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-business-innovation-and-skills.atom",
+      "format": "atom",
+      "category": "CRITICAL_MINERALS",
+      "source_role": "TRADE_CUSTOMS",
+      "publisher_root_domain": "gov.uk",
+      "parent_media_entity": "uk_department_for_business_innovation_science_and_trade",
+      "country_iso3": "GBR",
+      "pillar": "export_controls_trade"
+    },
+    {
+      "source_id": "global_voices_original_cc_by_3",
+      "url": "https://globalvoices.org/feed/",
+      "format": "rss",
+      "category": "GEOPOLITICS",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "publisher_root_domain": "globalvoices.org",
+      "parent_media_entity": "global_voices",
+      "country_iso3": null,
+      "pillar": "independent_regional"
+    },
+    {
+      "source_id": "gdelt_v2_factual_events",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=%28sanctions%20OR%20%22export%20controls%22%20OR%20%22Red%20Sea%22%20OR%20Hormuz%20OR%20Malacca%20OR%20Panama%29&mode=ArtList&format=rss&maxrecords=50&sort=DateDesc",
+      "format": "rss",
+      "category": "GEOPOLITICS",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "publisher_root_domain": "gdeltproject.org",
+      "parent_media_entity": "gdelt_project",
+      "country_iso3": null,
+      "pillar": "sanctions_corridors"
+    },
+    {
+      "source_id": "un_reliefweb_api_ccby",
+      "url": "https://api.reliefweb.int/v1/reports?appname=geomacro-source-audit&limit=10&sort[]=date.created:desc&fields[include][]=date.created&fields[include][]=title&fields[include][]=country.name",
+      "format": "json_reliefweb",
+      "category": "GEOPOLITICS",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "publisher_root_domain": "reliefweb.int",
+      "parent_media_entity": "un_ocha_reliefweb",
+      "country_iso3": null,
+      "pillar": "conflict_humanitarian"
+    },
+    {
+      "source_id": "ecb_press_rss_unreviewed",
+      "url": "https://www.ecb.europa.eu/rss/press.html",
+      "format": "rss",
+      "category": "MACRO_FX",
+      "source_role": "OFFICIAL_STATISTICS",
+      "publisher_root_domain": "ecb.europa.eu",
+      "parent_media_entity": "european_central_bank",
+      "country_iso3": null,
+      "pillar": "central_bank_policy"
+    },
+    {
+      "source_id": "fed_monetary_press_unreviewed",
+      "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+      "format": "rss",
+      "category": "MACRO_FX",
+      "source_role": "OFFICIAL_STATISTICS",
+      "publisher_root_domain": "federalreserve.gov",
+      "parent_media_entity": "us_federal_reserve",
+      "country_iso3": "USA",
+      "pillar": "central_bank_policy"
+    },
+    {
+      "source_id": "usgs_minerals_public_domain",
+      "url": "https://www.usgs.gov/news/minerals/feed",
+      "format": "rss",
+      "category": "CRITICAL_MINERALS",
+      "source_role": "INDEPENDENT_INDUSTRY",
+      "publisher_root_domain": "usgs.gov",
+      "parent_media_entity": "us_geological_survey",
+      "country_iso3": "USA",
+      "pillar": "mineral_supply"
+    },
+    {
+      "source_id": "wto_trade_monitoring_rss_candidate",
+      "url": "https://www.wto.org/english/news_e/rss_e.xml",
+      "format": "rss",
+      "category": "CRITICAL_MINERALS",
+      "source_role": "TRADE_CUSTOMS",
+      "publisher_root_domain": "wto.org",
+      "parent_media_entity": "world_trade_organization",
+      "country_iso3": null,
+      "pillar": "trade_customs"
+    },
+    {
+      "source_id": "un_security_council_press_rss_candidate",
+      "url": "https://press.un.org/en/rss.xml",
+      "format": "rss",
+      "category": "GEOPOLITICS",
+      "source_role": "GOVERNMENT_WIRE",
+      "publisher_root_domain": "un.org",
+      "parent_media_entity": "un_security_council_press",
+      "country_iso3": null,
+      "pillar": "sanctions_conflict"
+    },
+    {
+      "source_id": "marad_maritime_advisories_rss_candidate",
+      "url": "https://www.maritime.dot.gov/rss.xml",
+      "format": "rss",
+      "category": "GEOPOLITICS",
+      "source_role": "GOVERNMENT_WIRE",
+      "publisher_root_domain": "maritime.dot.gov",
+      "parent_media_entity": "us_maritime_administration",
+      "country_iso3": "USA",
+      "pillar": "maritime_chokepoints"
+    },
+    {
+      "source_id": "gdacs_global_alerts_rss_candidate",
+      "url": "https://www.gdacs.org/xml/rss.xml",
+      "format": "rss",
+      "category": "GEOPOLITICS",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "publisher_root_domain": "gdacs.org",
+      "parent_media_entity": "gdacs_global_alerts",
+      "country_iso3": null,
+      "pillar": "conflict_disaster_disruption"
+    },
+    {
+      "source_id": "ecb_fx_reference_rates",
+      "url": "https://www.ecb.europa.eu/rss/fxref-usd.html",
+      "format": "rss",
+      "category": "MACRO_FX",
+      "source_role": "MARKET_PRICE",
+      "publisher_root_domain": "ecb.europa.eu",
+      "parent_media_entity": "european_central_bank",
+      "country_iso3": null,
+      "pillar": "official_fx_reference"
+    },
+    {
+      "source_id": "us_fed_h10_public_domain",
+      "url": "https://www.federalreserve.gov/feeds/data/H10_H10_RXI$US_N.B.EU.xml",
+      "format": "rss",
+      "category": "MACRO_FX",
+      "source_role": "MARKET_PRICE",
+      "publisher_root_domain": "federalreserve.gov",
+      "parent_media_entity": "us_federal_reserve",
+      "country_iso3": "USA",
+      "pillar": "official_fx_reference"
+    }
+  ]
+}
