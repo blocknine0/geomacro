@@ -152,8 +152,16 @@ export async function readPublicNewsR2Snapshot(request,env,now=Date.now()){
     // The authenticated no-cache D1 routes bypass this offload entirely.
     const age=now-Date.parse(bundle?.produced_at??"");
     const lastKnown=age>PUBLIC_NEWS_R2_MAX_AGE_MS;
+    // Immediate Website Intelligence must never let a last-known R2
+    // bundle mask a newer canonical D1 write. After the normal eight-minute
+    // snapshot window it falls through to the existing indexed D1 read path.
+    // The explicit legacy/latest aliases retain their bounded 24-hour
+    // last-known behavior for degraded availability.
+    const immediateJournal=url.pathname==="/v1/public/website-derived-news-immediate";
     validatePublicNewsR2Bundle(bundle,now,{
-      maxAgeMs:PUBLIC_NEWS_R2_LAST_KNOWN_MAX_AGE_MS,
+      maxAgeMs:immediateJournal
+        ?PUBLIC_NEWS_R2_MAX_AGE_MS
+        :PUBLIC_NEWS_R2_LAST_KNOWN_MAX_AGE_MS,
     });
     if(typeof env.GEOMACRO_SOURCE_SHA==="string"&&
        /^[a-f0-9]{40}$/.test(env.GEOMACRO_SOURCE_SHA)&&
