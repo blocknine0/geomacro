@@ -46,6 +46,8 @@ const EVENT_ASSETS=Object.freeze({
  LNG_SUPPLY_DISRUPTION:["lng_spot","oil_supply"],
  CENTRAL_BANK_RATE_DECISION:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
  FX_RESERVE_CHANGE:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
+ MARITIME_BLOCKADE:["shipping_routes","maritime_chokepoints","brent_crude","lng_spot","freight_rates"],
+ TRADE_POLICY:["cross_border_trade","export_controls"],
  MARITIME_CHOKEPOINT_DISRUPTION:["freight_rates","brent_crude","lng_spot","shipping_routes"],
  CHOKEPOINT_DISRUPTION:["freight_rates","brent_crude","lng_spot","shipping_routes"],
  EXPORT_CONTROL:["export_controls","lithium","copper","rare_earths"],
