@@ -151,15 +151,25 @@ export async function answerQuestion(
   const observations = [];
   const adapterResults = {};
 
-  // At most the three canonical domain adapters run concurrently. Preserve
-  // deterministic category order when collecting results; a slow/erroring
-  // provider cannot serialize or prevent the other category fetches.
+  // At most the three canonical domain adapters run concurrently. Each
+  // settles within 4–6 seconds so one slow source cannot consume the public
+  // request budget or block the remaining categories.
+  const adapterTimeoutMs=Math.max(4_000,Math.min(6_000,
+    Number(options.adapterTimeoutMs)||5_500));
   const settled = await Promise.allSettled(categories.map(async category => {
     const adapter = activeAdapters[category];
     if (!adapter) return {unavailable:true,rows:[],requested:null};
-    const result = await adapter({question:normalizedQuestion,countryIso3});
-    return {unavailable:false,rows:unwrapRows(result),
-      requested:result?.requested_indicators ?? null};
+    let timer;
+    try{
+      const result=await Promise.race([
+        adapter({question:normalizedQuestion,countryIso3}),
+        new Promise((_,reject)=>{
+          timer=setTimeout(()=>reject(new Error("ASK_DOMAIN_ADAPTER_TIMEOUT")),adapterTimeoutMs);
+        }),
+      ]);
+      return {unavailable:false,rows:unwrapRows(result),
+        requested:result?.requested_indicators ?? null};
+    }finally{if(timer!==undefined)clearTimeout(timer);}
   }));
   for (let i=0;i<categories.length;i++){
     const category=categories[i];

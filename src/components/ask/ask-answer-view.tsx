@@ -12,7 +12,13 @@ export function UserBubble({ children }: { children: string }) {
   );
 }
 
-export function AssistantAnswer({ answer }: { answer: AskAnswer }) {
+export function AssistantAnswer({
+  answer,followUpQuestions=[],onAskFollowUp,
+}:{
+  answer:AskAnswer;
+  followUpQuestions?:string[];
+  onAskFollowUp?:(question:string)=>void;
+}) {
   const evidence = answer.evidence.slice(0, 5);
   const evidenceLabel = answer.answer_kind === "public_info" ? "Public product information" : answer.answer_kind === "explainer" ? "General explanation" :
     answer.answer_kind === "guidance" ? "Three-category research assistant" :
@@ -90,8 +96,19 @@ export function AssistantAnswer({ answer }: { answer: AskAnswer }) {
 
       {answer.insufficient_evidence ? (
         <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
-          Geomacro will not fill an evidence gap with a synthetic claim.
+          I won't fill an evidence gap with a guess.
         </p>
+      ) : null}
+
+      {followUpQuestions.length>0&&onAskFollowUp ? (
+        <nav aria-label="Suggested follow-up questions" className="mt-5 flex flex-wrap gap-2">
+          {followUpQuestions.slice(0,3).map(question=>(
+            <button key={question} type="button" onClick={()=>onAskFollowUp(question)}
+              className="rounded-full border border-border/70 bg-card/40 px-3 py-2 text-left text-xs leading-5 text-foreground transition hover:border-primary/50 hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+              {question}
+            </button>
+          ))}
+        </nav>
       ) : null}
     </div>
   );

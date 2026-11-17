@@ -11,15 +11,15 @@ function normalize(text: string): string {
     )
     .replace(
       /This interpretation comes from the published GRI attribution, not from a separate model-generated narrative\.?/gi,
-      "Based on published GRI attribution.",
+      "The published index attributes this reading to the reported factors."
     )
     .replace(
       /The selected records should be read as supporting context, not as a separate index\.?/gi,
-      "These records are supporting context, not a separate index.",
+      "These records add context; they are not another index reading."
     )
     .replace(
       /The canonical GRI is currently unavailable, so Geomacro is limiting this answer to the stored matched evidence instead of producing a private fallback score\.?/gi,
-      "Canonical GRI is unavailable; this answer is limited to stored matched evidence.",
+      "A current signed index isn't available, so this answer sticks to the matched stored evidence."
     )
     .trim();
 }
@@ -59,7 +59,7 @@ function isBoilerplate(text: string): boolean {
 function firstUseful(...values: string[]): string {
   return values.map(normalize).find((value) => value && !isBoilerplate(value))
     ?? values.map(normalize).find(Boolean)
-    ?? "Geomacro does not have enough verified evidence to answer that directly.";
+    ?? "I don't have enough verified information to answer that yet.";
 }
 
 /**

@@ -1,5 +1,6 @@
-import {describe,expect,it} from "vitest";
+import {afterEach,describe,expect,it,vi} from "vitest";
 import {answerQuestion} from "../../global-intelligence/engine/intelligence-engine.mjs";
+afterEach(()=>vi.useRealTimers());
 describe("bounded parallel hybrid live adapters",()=>{
  it("launches all three categories without serializing, but keeps ordered diagnostics",async()=>{
   const called:string[]=[];
@@ -13,7 +14,8 @@ describe("bounded parallel hybrid live adapters",()=>{
     options:{forceLive:true,bypassCache:true,cacheTtlMs:0},
   });
   await Promise.resolve();
-  expect(called).toEqual(["minerals","macro","geo"]);
+  expect(called).toHaveLength(3);
+  expect(new Set(called)).toEqual(new Set(["geo","macro","minerals"]));
   release();
   const output=await resultPromise;
   expect(output.adapter_results.GEOPOLITICS.unavailable).toBe(false);
@@ -22,5 +24,23 @@ describe("bounded parallel hybrid live adapters",()=>{
   expect(output.insufficient_evidence).toBe(true);
   expect(output.durable_live_storage_write).toBe(false);
   expect(output.source_identity_exposed).toBe(false);
+ });
+
+ it("times out only the slow adapter and still returns the completed category results",async()=>{
+  vi.useFakeTimers();
+  const pending=answerQuestion("conflict inflation lithium bounded timeout",{
+    adapters:{
+      GEOPOLITICS:()=>new Promise(()=>{}),
+      MACRO:async()=>[],
+      CRITICAL_MINERALS:async()=>[],
+    },
+    options:{forceLive:true,bypassCache:true,cacheTtlMs:0,adapterTimeoutMs:4_000},
+  });
+  await vi.advanceTimersByTimeAsync(4_000);
+  const output=await pending;
+  expect(output.adapter_results.GEOPOLITICS.unavailable).toBe(true);
+  expect(output.adapter_results.MACRO.unavailable).toBe(false);
+  expect(output.adapter_results.CRITICAL_MINERALS.unavailable).toBe(false);
+  expect(output.insufficient_evidence).toBe(true);
  });
 });

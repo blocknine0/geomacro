@@ -14,11 +14,44 @@ import {
 } from "@/lib/public-runtime-timeout";
 
 const SUGGESTIONS = [
-  "What is Geomacro?",
-  "Explain geopolitical risk",
+  "What geopolitical developments could affect trade or security?",
   "How do interest rates affect currencies?",
-  "What are rare earths?",
+  "Where are the main critical-mineral supply bottlenecks?",
 ] as const;
+
+function followUpQuestions(question:string,_answer:AskAnswer):string[]{
+  const text=question.toLowerCase();
+  const groups:string[][]=[];
+  if(/geopolit|sanction|conflict|diplomac|security|shipping|country|corridor/.test(text))
+    groups.push([
+      "What confirmed action could affect this country's trade or security?",
+      "How could sanctions or shipping disruption reach prices?",
+      "Which country or corridor should we examine next?",
+    ]);
+  if(/macro|fx|currency|inflation|interest rate|gdp|growth|yield/.test(text))
+    groups.push([
+      "Which currency pair and reporting period should we compare?",
+      "What verified rate or inflation data is available?",
+      "How could an interest-rate surprise transmit into FX?",
+    ]);
+  if(/critical mineral|rare earth|lithium|cobalt|nickel|graphite|copper|refin|processing|mining/.test(text))
+    groups.push([
+      "Which stage—mining, refining or processing—is most exposed?",
+      "What verified output data is available for this mineral?",
+      "Which countries are key to this supply chain?",
+    ]);
+  if(!groups.length)return[
+    "What geopolitical developments could affect trade or security?",
+    "How do interest rates affect currencies?",
+    "Where are the main critical-mineral supply bottlenecks?",
+  ];
+  const selected=groups.map(group=>group[0]);
+  for(const group of groups)for(const prompt of group.slice(1)){
+    if(selected.length>=3)break;
+    selected.push(prompt);
+  }
+  return selected.slice(0,3);
+}
 
 const MAX_LEN = 1200;
 const MAX_VISIBLE_TURNS = 12;
@@ -313,8 +346,7 @@ export function AskWorkspace() {
                   What would you like to understand?
                 </h2>
                 <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
-                  Explore Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Ask for an explanation, check developments, or continue with a follow-up.
-                  You can also ask about Geomacro’s public products, pricing and documentation.
+                  Explore Geopolitics, Macro/FX and Critical Minerals. Ask a question, then follow the evidence wherever it leads.
                 </p>
                 <div className="mt-8 grid w-full gap-3 text-left sm:grid-cols-2">
                   {SUGGESTIONS.map((suggestion) => (
@@ -336,7 +368,9 @@ export function AskWorkspace() {
               <div key={turn.id} className="space-y-4">
                 <UserBubble>{turn.question}</UserBubble>
                 <div className="min-w-0">
-                  <AssistantAnswer answer={turn.answer} />
+                  <AssistantAnswer answer={turn.answer}
+                    followUpQuestions={followUpQuestions(turn.resolvedQuestion,turn.answer)}
+                    onAskFollowUp={question=>void ask(question)} />
                   <button
                     type="button"
                     aria-label="Copy Geomacro answer"
@@ -358,8 +392,13 @@ export function AskWorkspace() {
             {currentPending ? (
               <div className="space-y-4">
                 <UserBubble>{currentPending}</UserBubble>
-                <div role="status" className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> {researchStage === "finalizing" ? "Preparing verified answer…" : "Checking current evidence…"}
+                <div role="status" aria-live="polite" className="flex items-center gap-3 px-1 text-sm text-muted-foreground">
+                  <span aria-hidden="true" className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                  </span>
+                  {researchStage === "finalizing" ? "Putting the answer together…" : "Checking current evidence…"}
                 </div>
               </div>
             ) : null}

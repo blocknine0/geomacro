@@ -201,10 +201,10 @@ function deterministicStructuredAnswer(hits: SearchHit[]): GroundedShape {
   });
   const domains = new Set(hits.map((hit) => hit.domain).filter((domain) => domain !== "unknown"));
   return {
-    summary: `Current search found activity across ${grouped.size} Geomacro risk ${grouped.size === 1 ? "domain" : "domains"}.`,
+    summary: `I found recent search leads in ${grouped.size} GeoMacro ${grouped.size === 1 ? "category" : "categories"}, but they are not yet confirmed events.`,
     what_changed: points.join("; "),
-    why_it_matters: `${hits.length} recently indexed observations were checked${domains.size ? ` across ${domains.size} independent publication paths` : ""}; raw source headlines and provider identity remain private.`,
-    geomacro_view: "This is a current-evidence brief, not a synthetic risk score or forecast.",
+    why_it_matters: `${hits.length} recent index entries point to activity worth checking${domains.size ? ` across ${domains.size} publication paths` : ""}. An index timestamp is not the original release time.`,
+    geomacro_view: "I’d treat these as leads, not confirmed developments, a forecast or a risk score.",
     source_indexes: Array.from({ length: Math.min(3, hits.length) }, (_, index) => index),
   };
 }
@@ -266,10 +266,11 @@ function publicEvidenceLabel(hit: SearchHit, index: number) {
 export async function realtimeSearchAnswer(
   question: string,
   prior: HybridAskAnswer,
-  options: { deterministicOnly?: boolean } = {},
+  options: { deterministicOnly?: boolean; allowBrowserFallback?: boolean } = {},
 ): Promise<HybridAskAnswer | null> {
   const hits = await currentSearch(question);
   if (!hits.length) {
+    if(options.allowBrowserFallback===false)return null;
     // Strict FALLBACK only: existing free first-party and public GDELT indexes
     // have already returned no matching leads. No raw customer question, B2,
     // payment, independent reviewer or original license is forwarded.
@@ -296,9 +297,9 @@ export async function realtimeSearchAnswer(
     return {
       summary:"Provisional live research leads were found, but no exact current event is independently verified.",
       what_changed:selected.map((lead,i)=>
-        `${i+1}) Unverified research lead: ${lead.what_changed}`).join("; ").slice(0,900),
+        `${i+1}) A preliminary lead points to ${lead.what_changed}`).join("; ").slice(0,900),
       why_it_matters:selected.map(lead=>lead.why_it_matters).join("; ").slice(0,800),
-      geomacro_view:"This is Geomacro-authored provisional analysis from Groq browser research, not an original publisher readback, verified numerical value, signed GRI or licensed paid result.",
+      geomacro_view:"Treat these as preliminary leads. They aren't a confirmed original report, verified number or signed risk reading.",
       evidence,insufficient_evidence:true,mean_relevance:null,low_confidence:true,
       gri:null,generatedAt:new Date().toISOString(),
       data_mode:"ephemeral_live",cache_status:"bypassed",
@@ -326,13 +327,10 @@ export async function realtimeSearchAnswer(
   const lowConfidence = true;
 
   const answer: AskAnswer = {
-    summary: "An exact current answer is unavailable: search-index leads do not verify original publisher facts.",
-    what_changed: "Indexed leads were observed, but original publisher dates and exact country/topic claims are unconfirmed.",
-    why_it_matters: "Indexed observation dates are not original publisher release dates. " + String(
-      grounded.why_it_matters ??
-        "These are current externally observed developments and should be read as evidence, not as a synthetic risk score.",
-    ).trim(),
-    geomacro_view: "Search discovery does not certify an event, exact figure, risk score, source rights or signature.",
+    summary: "I found a few current search leads, but they don't confirm the underlying events.",
+    what_changed: "The search index surfaced possible developments; original publication dates and exact details still need confirmation.",
+    why_it_matters: "These leads can help focus the next check, but they don't establish a current figure, market impact or event.",
+    geomacro_view: "I’d use this as a pointer for further checking, not as a confirmed update or risk score.",
     evidence,
     insufficient_evidence: true,
     mean_relevance: null,

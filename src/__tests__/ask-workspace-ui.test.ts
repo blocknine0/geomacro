@@ -19,6 +19,10 @@ describe("Ask Geomacro conversational workspace", () => {
       "aria-label=\"Copy Geomacro answer\"",
       "Shift+Enter for a new line",
       "Chats stay in this tab only",
+      "Suggested follow-up questions",
+      "followUpQuestions={followUpQuestions(turn.resolvedQuestion,turn.answer)}",
+      "animate-bounce",
+      "Where are the main critical-mineral supply bottlenecks?",
     ]) {
       expect(workspace).toContain(marker);
     }

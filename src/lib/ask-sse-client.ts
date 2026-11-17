@@ -57,6 +57,9 @@ export async function streamPublicAsk(
    throw new LegacyAskTransportOnlyError();
  if(!response.body)throw new LegacyAskTransportOnlyError();
  const reader=response.body.getReader();
+ const abortReader=()=>{void reader.cancel(signal?.reason).catch(()=>{});};
+ signal?.addEventListener("abort",abortReader,{once:true});
+ if(signal?.aborted)abortReader();
  const decoder=new TextDecoder("utf-8",{fatal:true});
  let buffer="",total=0;
  let completed:StreamedAsk|null=null;
@@ -89,6 +92,9 @@ export async function streamPublicAsk(
     }
     boundary=buffer.indexOf("\n\n");
    }
+   // The answer event is final. Do not wait for a proxy/server to close the
+   // body after the client already has a complete verified answer.
+   if(completed)break;
   }
  }catch(error){
    if(signal?.aborted) throw signal.reason ?? new DOMException("Stopped", "AbortError");
@@ -98,7 +104,11 @@ export async function streamPublicAsk(
       (error instanceof Error&&["TimeoutError","AbortError"].includes(error.name)))
      throw new LegacyAskTransportOnlyError();
    throw error;
- }finally{reader.releaseLock();}
+ }finally{
+  signal?.removeEventListener("abort",abortReader);
+  void reader.cancel().catch(()=>{});
+  reader.releaseLock();
+ }
  if(!completed)throw new LegacyAskTransportOnlyError();
  // Never cache a response resolved to a different underlying question.
  if(completed.resolvedQuestion.trim()===question.trim())
@@ -112,6 +122,9 @@ export function withAskCancellation<T>(operation: Promise<T>, signal: AbortSigna
   const cancel=()=>reject(signal.reason ?? new DOMException("Stopped","AbortError"));
   if(signal.aborted){cancel();return;}
   signal.addEventListener("abort",cancel,{once:true});
-  operation.then(resolve,reject).finally(()=>signal.removeEventListener("abort",cancel));
+  operation.then(
+   value=>{signal.removeEventListener("abort",cancel);resolve(value);},
+   error=>{signal.removeEventListener("abort",cancel);reject(error);},
+  );
  });
 }
