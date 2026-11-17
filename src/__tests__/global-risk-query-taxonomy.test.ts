@@ -46,9 +46,10 @@ describe("rotating global risk search taxonomy", () => {
         "sovereign bond auction bid to cover tail", "PPI PCE inflation breakeven surprise",
         "VIX MOVE FX implied volatility risk reversal", "FPI FII cross border capital outflow",
         "stablecoin liquidity redemption flow",
-        "US S&P 500 Nasdaq STOXX 600 DAX FTSE equity index",
-        "Japan Nikkei TOPIX China CSI 300 HSI India Nifty Sensex",
-        "Brazil Ibovespa BIST Tadawul JSE ASX TSX KOSPI TAIEX",
+        "US S&P 500 Nasdaq benchmark index", "STOXX 600 DAX FTSE European equity index",
+        "Japan Nikkei TOPIX equity benchmark", "China CSI 300 HSI India Nifty Sensex",
+        "Brazil Ibovespa BIST Turkey equity index", "Tadawul Saudi exchange JSE South Africa index",
+        "ASX Australia TSX Canada equity market",
       ],
       CRITICAL_MINERALS: [
         "lithium", "cobalt", "nickel", "copper", "rare earths", "ndpr",
