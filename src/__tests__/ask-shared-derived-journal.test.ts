@@ -78,8 +78,10 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    expect(src).toContain("answerHybridQuestion(question)");
    expect(src.indexOf("collectSharedOfficialNews(categories)"))
      .toBeLessThan(src.indexOf("answerFromCurrentOriginals(question)"));
-   expect(src.indexOf("answerFromCurrentOriginals(question)"))
-     .toBeLessThan(src.indexOf("const primary = await answerHybridQuestion(question)"));
+   expect(src).toContain('const [originalResult,derivedResult,indexedResult]=await Promise.allSettled([');
+   expect(src).toContain('boundedAskAdapter("current_originals"');
+   expect(src).toContain('boundedAskAdapter("derived_intelligence"');
+   expect(src).toContain('boundedAskAdapter("indexed_discovery"');
    const helper=readFileSync("src/lib/ask-shared-derived-journal.server.ts","utf8");
    expect(helper).toContain("sources_credited.length===0");
    expect(helper).not.toContain("settleCoinbaseX402");

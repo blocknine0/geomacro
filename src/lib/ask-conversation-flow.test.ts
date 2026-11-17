@@ -24,13 +24,13 @@ describe("real public conversation core (no provider or funds)",()=>{
  it("accepts short greetings through canonical validation",async()=>{
   const result=await executeHybridChatTurn({question:"Hi"},"flow-greeting");
   expect(result.answer.answer_kind).toBe("guidance");
-  expect(result.answer.summary).toContain("I'm Geomacro");
+  expect(result.answer.summary).toMatch(/GeoMacro/i);
  });
  it("declines unrelated chat through the same canonical core",async()=>{
   const answer=await executeAskGeomacro({question:"Latest football news in India?"},"flow-sports");
   expect(answer.answer_kind).toBe("guidance");
   expect(answer.evidence).toEqual([]);
-  expect(answer.summary).toContain("three categories");
+  expect(answer.summary).toMatch(/Geopolitics.*Macro\/FX.*Critical Minerals/);
  });
  it("never labels an explanation live or verified",async()=>{
   const answer=await executeAskGeomacro({question:"Explain geopolitical risk"},"flow-render");

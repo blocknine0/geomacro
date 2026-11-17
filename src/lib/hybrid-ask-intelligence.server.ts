@@ -142,16 +142,18 @@ function compactStoredAnswer(
   if (!statements.length) return null;
 
   const categories = Array.from(new Set(selected.map(({ row }) => row.category).filter(Boolean)));
+  const categoryNames=categories.map(category=>category==="rare_earth"?"Critical Minerals":
+    category==="macro"?"Macro/FX":category==="geopolitics"?"Geopolitics":category??"");
   const newest = selected
     .map(({ row }) => row.published_at ?? row.created_at)
     .sort()
     .at(-1) ?? new Date().toISOString();
 
   return {
-    summary: `Geomacro found ${selected.length} relevant verified intelligence records for your question${categories.length ? ` across ${categories.join(", ")}` : ""}.`,
+    summary: `I found ${selected.length} relevant stored intelligence ${selected.length===1?"item":"items"}${categoryNames.length ? ` in ${categoryNames.join(", ")}` : ""}.`,
     what_changed: statements.slice(0, 3).join(" "),
-    why_it_matters: `These findings come from Geomacro's verified B2 intelligence continuity layer. The newest matched record is dated ${newest}.`,
-    geomacro_view: "The stored evidence is sufficiently relevant to answer this question without a new external retrieval.",
+    why_it_matters: `The newest matched item is dated ${newest}; the records come from GeoMacro's verified intelligence continuity data.`,
+    geomacro_view: "This is a grounded read of the stored evidence. I haven't inferred a new score or event from it.",
     evidence: selected.map(({ row, relevance }) => ({
       eventId: row.id,
       title: (row.summary ?? row.narrative ?? "Geomacro finding").slice(0, 180),
@@ -203,9 +205,9 @@ async function riskIndexAnswer(question: string): Promise<AskAnswer | null> {
     .filter((value): value is string => Boolean(value));
 
   return {
-    summary: `Geomacro's latest verified Risk Indices package shows ${levels.join("; ")}.`,
+    summary: `The latest reviewed Risk Index reading is ${levels.join("; ")}.`,
     what_changed: /\b(changed|change|movement|moved)\b/i.test(question)
-      ? "The B2 continuity package preserves the verified current category levels but does not contain standalone per-index score-to-score change history. Geomacro therefore does not infer a movement from the historical combined-index attribution."
+      ? "The stored package has current category levels but no per-index history to compare. I can't infer a movement from the combined historical attribution."
       : `Verified category levels: ${levels.join("; ")}.`,
     why_it_matters: leadingEvents.length
       ? `Leading verified context includes: ${leadingEvents.slice(0, 3).join("; ")}.`
@@ -284,16 +286,18 @@ function liveToAskAnswer(runtime: HybridRuntimeAnswer): HybridAskAnswer {
   const insufficient = Boolean(runtime.insufficient_evidence) || !sentences.length;
 
   return {
-    summary: runtime.message,
+    summary: sentences.length
+      ? sentences.slice(0,2).join(" ")
+      : "I couldn't verify enough live evidence to answer that directly.", 
     what_changed: sentences.length
       ? sentences.slice(0, 3).join(" ")
-      : "Geomacro did not find enough independently verified real-time evidence to make a stronger claim.",
+      : "The live checks didn't return enough independently verified evidence for a stronger answer.",
     why_it_matters: insufficient
-      ? "Geomacro is withholding a stronger conclusion until the live evidence is sufficient."
-      : `Geomacro cross-checked the live findings internally${independent ? ` across up to ${independent} independent source paths` : ""} before producing this structured answer.`,
+      ? "I’d hold off on a stronger conclusion until more live evidence is available."
+      : `The live findings were checked internally${independent ? ` across up to ${independent} independent source paths` : ""} before I summarized them.`,
     geomacro_view: insufficient
-      ? "No stronger interpretation is produced when real-time evidence is insufficient."
-      : "These are real-time structured findings generated for this question. Source identities remain private and are not exposed in the public response.",
+      ? "I can't support a stronger interpretation from the evidence available right now."
+      : "This is a structured read of the available evidence, not a forecast or execution instruction.",
     evidence: flattened.map(({ finding }, index) => ({
       eventId: `live:${index + 1}`,
       title: (findingSentence(finding) || "Geomacro real-time finding").slice(0, 180),
@@ -332,6 +336,7 @@ export async function answerQuestion(question: string): Promise<HybridAskAnswer>
       cacheTtlMs: 5 * 60 * 1000,
       cacheMaxEntries: 128,
       maxFindingsPerGroup: 3,
+      adapterTimeoutMs:5_500,
     },
   });
 

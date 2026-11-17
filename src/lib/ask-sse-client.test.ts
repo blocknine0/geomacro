@@ -52,6 +52,16 @@ describe("Ask Geomacro reliable free public transport with old Lovable edge",()=
    vi.stubGlobal("fetch",vi.fn(async()=>new Response(s,{headers:{"content-type":"text/event-stream"}})));
    await expect(ask()).rejects.toThrow("Rate limited");
  });
+ it("stops waiting on a buffered body when the user cancels",async()=>{
+  const controller=new AbortController();
+  const body=new ReadableStream<Uint8Array>({pull(){return new Promise(()=>{});}});
+  vi.stubGlobal("fetch",vi.fn(async()=>new Response(body,{
+    headers:{"content-type":"text/event-stream"}})));
+  const pending=streamPublicAsk("Explain inflation buffering 881",[],undefined,controller.signal);
+  await Promise.resolve();
+  controller.abort();
+  await expect(pending).rejects.toMatchObject({name:"AbortError"});
+ });
  it("incomplete SSE stream is a transport failure and uses safe legacy retry",async()=>{
   vi.stubGlobal("fetch",vi.fn(async()=>new Response(
    'event: stage\ndata: {"stage":"researching"}\n\n',

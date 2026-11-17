@@ -25,6 +25,21 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(await enhanceAskWithFreeGroq("Why does nickel matter?",a,"client",{fetchImpl:req as any})).toBe(a);
    expect(req).not.toHaveBeenCalled();
  });
+ it("uses a safe shared public-model-cache paraphrase when Groq is not enabled",async()=>{
+   delete process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED;
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const fields={summary:"Copper refining faces policy exposure, but no supply shortage is confirmed.",
+     what_changed:"The approved answer describes sanctions affecting transport.",
+     why_it_matters:"Processing access can shape downstream availability.",
+     geomacro_view:"Check the restriction's scope before drawing a conclusion."};
+   const cache=vi.fn(async()=>Response.json({ok:true,hit:true,fields}));
+   const result=await enhanceAskWithFreeGroq("Explain sanctions and copper refining cache 34871",a,
+     "cache-fallback-34871",{cacheFetchImpl:cache as unknown as typeof fetch});
+   expect(result.model_rendering).toBe("assisted");
+   expect(result.model_render_cache).toBe("hit");
+   expect(result.summary).toBe(fields.summary);
+   expect(cache).toHaveBeenCalledTimes(1);
+ });
  it("converses only through free Groq endpoint with no original source metadata",async()=>{
    process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
    process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
@@ -53,7 +68,7 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(mock.mock.calls[0][1].cache).toBeUndefined();
    expect(mock.mock.calls[0][1].headers["Cache-Control"]).toBe("no-store");
    expect(sent.max_completion_tokens).toBe(1100);
-   expect(sent.messages[0].content).toContain("REPHRASE the summary");
+   expect(sent.messages[0].content).toContain("Speak like a clear, thoughtful analyst");
    expect(sent.model).toBe("openai/gpt-oss-20b");
    expect(sent.response_format).toMatchObject({type:"json_schema",json_schema:{
      name:"geomacro_ask_formatter",strict:true,

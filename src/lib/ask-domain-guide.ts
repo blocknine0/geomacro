@@ -1,4 +1,3 @@
-import { geomacroPublicAnswer } from "./geomacro-public-knowledge";
 import { COUNTRIES_195 } from "./canonical-country-registry-195";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
@@ -70,12 +69,10 @@ function crossDomainGuideAnswer(question: string, domains: readonly AskDomain[])
 
 export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   const q = question.trim();
-  const publicInfo = geomacroPublicAnswer(q);
-  if (publicInfo) return publicInfo;
   if (/^(?:hi|hello|hey|help|what can you do|who are you|thanks|thank you)[!?.]*$/i.test(q))
-    return response("I'm Geomacro. Ask me about Geopolitics, Macro Economics or Critical Minerals / Rare Earths. I can explain concepts, check available news and data, and explore follow-up questions.");
+    return response("Hi, I'm GeoMacro. I can help with Geopolitics, Macro/FX and Critical Minerals. What would you like to explore?");
   if (/\b(?:football|cricket|sports?|recipes?|cake|poems?|songs?|javascript|python|diagnos(?:e|is)|symptoms?|horoscope)\b/i.test(q))
-    return response("I cover Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Please ask a research question within these three categories.");
+    return response("I focus on Geopolitics, Macro/FX and Critical Minerals. Want to look at a country, a currency or a mineral instead?");
   const domains = askDomains(q);
   const generic = /^(?:what (?:has )?changed today|what (?:is|'s) new today|what happened today|what(?: is|'s) happening today|latest (?:news|developments)|(?:give me )?(?:the )?(?:news|updates) today|what is (?:happening|driving risk)(?: today)?)\??$/i.test(q);
   // Country names and common abbreviated mentions are in scope even when
@@ -90,10 +87,10 @@ export function domainGuideAnswer(question: string): HybridAskAnswer | null {
     (country.iso3 === "GBR" && /\b(?:UK|U\.K\.)\b/.test(q))
   );
   if (!domains.length && !generic && !countrySpecific)
-    return response("Ask Geomacro covers Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Please ask a question in one of these three areas—for example, how interest rates affect currencies or how export controls affect mineral supply.");
+    return response("I focus on Geopolitics, Macro/FX and Critical Minerals. We could look at a geopolitical development, how rates affect a currency, or where a mineral supply chain is exposed.");
   // Explicit unrelated tasks must not be laundered through an in-scope keyword.
   if (/\b(?:write|generate|create|debug)\b.{0,40}\b(?:code|script|poem|recipe|song|website)\b/i.test(q))
-    return response("I can help explain or research Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Please ask a research question in one of those categories.");
+    return response("I can't help create that, but I can help analyze a geopolitical issue, a Macro/FX question or a critical-mineral supply chain.");
   // Time-sensitive, numeric, country-specific and predictive requests always
   // use governed retrieval. Editorial knowledge never fills a current-data gap.
   if (countrySpecific || /\b(?:today|latest|current|now|yesterday|this (?:week|month|year)|in 20\d\d|forecast|predict|price|how much|how many|what.{0,12}rate)\b/i.test(q) || /\b(?:news|updates?|announced|happened|changed)\b/i.test(q)) return null;

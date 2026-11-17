@@ -83,12 +83,12 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
   ).join(", ");
   const latestOriginal = signals.map(signal => signal.published_at).sort().at(-1)!;
   return {
-    summary: "Geomacro observed " + signals.length + " recent official release" +
+    summary: "I found " + signals.length + " recent official release" +
       (signals.length === 1 ? "" : "s") + " " + categoryLabel +
-      "; these are unscored observations, not independently corroborated risk assessments.",
+      "; this is observed news, not a corroborated risk assessment.",
     what_changed: signals.map(signal => signal.what_changed).join(" "),
     why_it_matters: signals.map(signal => signal.why_it_matters).join(" "),
-    geomacro_view: "First-party publication dates were checked. No independent same-event corroboration, risk score or signed GRO is claimed.",
+    geomacro_view: "I checked the original release dates. These items haven't been independently matched to the same event, scored or signed as a Risk Gate.",
     evidence: signals.map(signal => ({
       eventId: "live:official:" + signal.id,
       title: signal.title,
@@ -115,10 +115,10 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
 
 function noCurrentPublisherNewsAnswer(): HybridAskAnswer {
   return {
-    summary: "Geomacro cannot confirm a new original-dated official release from the checked feeds in the past 24 hours.",
-    what_changed: "No qualifying fresh original release was verified from the bounded first-party sources checked for this request.",
-    why_it_matters: "This does not mean no developments occurred globally. Unavailable, delayed or out-of-scope publications may exist.",
-    geomacro_view: "Geomacro will not substitute stale historical scores or manufacture a fresh signed intelligence claim.",
+    summary: "I couldn't confirm a fresh original release in the feeds checked over the past 24 hours.",
+    what_changed: "The checked first-party feeds didn't return a qualifying new release for this question.",
+    why_it_matters: "That doesn't mean nothing happened; some sources may be delayed, unavailable or outside this check.",
+    geomacro_view: "I won't replace the gap with an old score or a newly invented claim.",
     evidence: [], insufficient_evidence: true, mean_relevance: null,
     low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
     data_mode: "ephemeral_live", cache_status: "bypassed",
@@ -142,10 +142,10 @@ function canonicalScoredIndexQuestion(question: string): string | null {
 }
 function unavailableScoredIndex(label: string): HybridAskAnswer {
   return {
-    summary: label+" has no verified current signed reading available.",
-    what_changed: "No current signed index value passed the existing retrieval and freshness checks for this request.",
-    why_it_matters: "An official news item, historical snapshot or annual dataset is not a substitute for a current signed risk index.",
-    geomacro_view: "Geomacro will not generate a numeric score or describe stale index values as live. Retry when verified current data is available.",
+    summary: "I don't have a current signed "+label+" reading to share.",
+    what_changed: "No reading passed the current signature and freshness checks.",
+    why_it_matters: "News, an old snapshot or an annual statistic can't stand in for a current signed index.",
+    geomacro_view: "I won't present an old value as live or fill the gap with a made-up score. Try again later.",
     evidence: [],insufficient_evidence:true,mean_relevance:null,
     low_confidence:true,gri:null,generatedAt:new Date().toISOString(),
     data_mode:"ephemeral_live",cache_status:"bypassed",
@@ -153,6 +153,22 @@ function unavailableScoredIndex(label: string): HybridAskAnswer {
     real_time_message:"CURRENT_SIGNED_RISK_INDEX_UNAVAILABLE",
     signed_gro_generated:false,independent_same_event_verification:false
   };
+}
+
+
+type AskAdapterLabel="reviewed_indices"|"official_numeric"|"official_news"|"current_originals"|"derived_intelligence"|"indexed_discovery";
+async function boundedAskAdapter<T>(label:AskAdapterLabel,run:()=>Promise<T>,timeoutMs:number):Promise<T>{
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{
+  return await Promise.race([
+   run(),
+   new Promise<T>((_,reject)=>{timer=setTimeout(()=>reject(new Error("ASK_ADAPTER_"+label.toUpperCase()+"_TIMEOUT")),timeoutMs);}),
+  ]);
+ }catch{
+  // Keep diagnostics to fixed adapter labels; never log provider errors or user content.
+  console.warn("[ask-answer] adapter unavailable",label);
+  throw new Error("ASK_ADAPTER_"+label.toUpperCase()+"_UNAVAILABLE");
+ }finally{if(timer!==undefined)clearTimeout(timer);}
 }
 
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
@@ -169,7 +185,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     // This is a bounded direct read of a CURRENT, reviewer-gated GRI v1.2
     // with verified Ed25519 issuer delivery. No prompt, Groq call or
     // self-certified news-severity score is used for numeric index answers.
-    const signed=await readCurrentReviewedSignedIndices();
+    const signed=await boundedAskAdapter("reviewed_indices",readCurrentReviewedSignedIndices,5_500).catch(()=>null);
     const matched=signed?signedCategoryReading(signed,domain):null;
     if(matched&&signed){
       return {
@@ -194,15 +210,15 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   // source period or fail closed: an indexed headline is never a numeric value.
   if (planAskOfficialNumeric(question)) {
     let safeFailureCode = "ASK_OFFICIAL_NUMERIC_SOURCE_NO_VERIFIED_DATA";
-    const official = await answerOfficialNumeric(question, {
+    const official = await boundedAskAdapter("official_numeric",()=>answerOfficialNumeric(question, {
       onFailure: code => { safeFailureCode = code; },
-    });
+    }),5_500).catch(()=>null);
     if (official) return official;
     return {
-      summary: "The requested exact official observation could not be verified from the live source.",
-      what_changed: "No matching original numerical series was safely retrieved for this request.",
-      why_it_matters: "A missing release or API timeout does not establish a zero value or an unchanged rate.",
-      geomacro_view: "Geomacro will not invent numerical data or substitute news-index timestamps for a statistical reporting period.",
+      summary: "I couldn't verify the requested official number.",
+      what_changed: "The check didn't return a matching original data series.",
+      why_it_matters: "A missing release or a slow source doesn't mean the value is zero or unchanged.",
+      geomacro_view: "I won't guess the number or treat a news-index timestamp as the statistical period.",
       evidence: [], insufficient_evidence: true, mean_relevance: null,
       low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
       data_mode: "ephemeral_live", cache_status: "bypassed",
@@ -214,41 +230,36 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   // Broad free-news requests use original releases and bounded index discovery.
   // Country, corridor and scored questions keep the governed path below.
   if (selectOfficialNewsCategories(question).length > 0) {
-    try {
-      const official = await officialUnscoredReleaseAnswer(question);
-      if (official) return official;
-    } catch (error) {
-      console.error("[ask-answer] official release lookup unavailable",
-        error instanceof Error ? error.message : "unknown error");
-    }
-    const unavailable = noCurrentPublisherNewsAnswer();
-    try {
-      return (await realtimeSearchAnswer(question, unavailable, { deterministicOnly: true }))
-        ?? unavailable;
-    } catch {
-      return unavailable;
-    }
+    const unavailable=noCurrentPublisherNewsAnswer();
+    const [officialResult,indexedResult]=await Promise.allSettled([
+      boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500),
+      boundedAskAdapter("indexed_discovery",()=>realtimeSearchAnswer(question,unavailable,
+        {deterministicOnly:true,allowBrowserFallback:false}),6_000),
+    ]);
+    if(officialResult.status==="fulfilled"&&officialResult.value)return officialResult.value;
+    if(indexedResult.status==="fulfilled"&&indexedResult.value)return indexedResult.value;
+    return unavailable;
   }
-  // Narrow first-party source reads are separate from signed/payable intelligence.
-  try {
-    const original = await answerFromCurrentOriginals(question);
-    if (original) return original;
-  } catch (error) {
-    console.error("[ask-answer] original retrieval unavailable",
-      error instanceof Error ? error.message : "unknown error");
-  }
-  const primary = await answerHybridQuestion(question);
-  if (!primary.insufficient_evidence) return primary;
-  // An unverified general web search cannot manufacture a requested exact
-  // numerical risk index. Give a category-specific unavailable answer instead.
-  try {
-    const realtime = await realtimeSearchAnswer(question, primary);
-    return realtime ?? primary;
-  } catch (error) {
-    console.error(
-      "[ask-answer] realtime fallback unavailable; preserving fail-closed answer",
-      error instanceof Error ? error.message : "unknown error",
-    );
-    return primary;
-  }
+
+  // These readers are independent. Start them together and bound each one so
+  // a stalled original feed or adapter cannot consume the 14-second request cap.
+  const [originalResult,derivedResult,indexedResult]=await Promise.allSettled([
+    boundedAskAdapter("current_originals",()=>answerFromCurrentOriginals(question),5_500),
+    boundedAskAdapter("derived_intelligence",()=>answerHybridQuestion(question),6_000),
+    boundedAskAdapter("indexed_discovery",()=>realtimeSearchAnswer(question,
+      noCurrentPublisherNewsAnswer(),{deterministicOnly:true,allowBrowserFallback:false}),6_000),
+  ]);
+  const original=originalResult.status==="fulfilled"?originalResult.value:null;
+  const derived=derivedResult.status==="fulfilled"?derivedResult.value:null;
+  const indexed=indexedResult.status==="fulfilled"?indexedResult.value:null;
+  if(original&&!original.insufficient_evidence)return original;
+  if(derived&&!derived.insufficient_evidence)return derived;
+  // A real indexed lead can add context when stronger GeoMacro reads are
+  // unavailable, but it remains explicitly provisional and never becomes a score.
+  const candidates=[original,derived,indexed].filter((answer):answer is HybridAskAnswer=>Boolean(answer));
+  candidates.sort((a,b)=>
+    Number(a.insufficient_evidence)-Number(b.insufficient_evidence)||
+    b.evidence.length-a.evidence.length||
+    Number(a.low_confidence)-Number(b.low_confidence));
+  return candidates[0]??noCurrentPublisherNewsAnswer();
 }

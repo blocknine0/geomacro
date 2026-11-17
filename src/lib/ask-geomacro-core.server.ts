@@ -33,16 +33,38 @@ export class AskGeomacroRateLimitError extends Error {
 export type AskAnswer = HybridAskAnswer;
 
 /** Honest, complete public fallback after the bounded evidence deadline. */
+function askScopeLabel(question:string):string {
+  return /\bgeopolitical\s+risk\s+index\b/iu.test(question)?"Geopolitical risk":
+    /\bmacroeconomic\s+risk\s+index\b/iu.test(question)?"Macro/FX":
+    /\bcritical\s+minerals?\s+risk\s+index\b/iu.test(question)?"Critical Minerals":
+    /\b(?:geopolitic|sanction|conflict|diplomac|security)\w*/iu.test(question)?"Geopolitics":
+    /\b(?:macro|inflation|gdp|currency|forex|fx|interest rate)\w*/iu.test(question)?"Macro/FX":
+    /\b(?:critical mineral|rare earth|lithium|cobalt|nickel|graphite|copper)\w*/iu.test(question)?"Critical Minerals":
+    "GeoMacro";
+}
+
+/** Complete, plain-language fallback when evidence retrieval hits its deadline. */
 export function timedOutAskAnswer(question:string):AskAnswer {
-  const scope=/\bgeopolitical\s+risk\s+index\b/iu.test(question)?"Geopolitical Risk Index":
-    /\bmacroeconomic\s+risk\s+index\b/iu.test(question)?"Macroeconomic Risk Index":
-    /\bcritical\s+minerals?\s+risk\s+index\b/iu.test(question)?"Critical Minerals Risk Index":
-    "The requested GeoMacro research";
+  const scope=askScopeLabel(question);
   return {
-    summary:scope+" check took too long to complete; verified results are temporarily unavailable.",
-    what_changed:"The verification request timed out; no current event, movement or risk-index value was established.",
-    why_it_matters:"A timeout is not proof of either a new event or an absence of change.",
-    geomacro_view:"The answer remains evidence-limited. Retry later; no invented score or unsupported fact is substituted.",
+    summary:"I couldn't finish checking "+scope+" in time.",
+    what_changed:"The live checks did not finish, so I can't confirm a current development or value.",
+    why_it_matters:"A delayed check doesn't show that conditions are unchanged.",
+    geomacro_view:"Try again in a moment, or narrow the question to one country, indicator or mineral.",
+    evidence:[],insufficient_evidence:true,mean_relevance:null,low_confidence:true,
+    gri:null,generatedAt:new Date().toISOString(),data_mode:"ephemeral_live",
+    cache_status:"miss",source_identity_exposed:false,durable_live_storage_write:false,
+  };
+}
+
+/** Keep the public route available when an unexpected reader rejects. */
+function unavailableAskAnswer(question:string):AskAnswer {
+  const scope=askScopeLabel(question);
+  return {
+    summary:"I couldn't complete a verified "+scope+" answer just now.",
+    what_changed:"The available checks did not return a result I can safely confirm.",
+    why_it_matters:"That leaves the current picture uncertain; it does not establish that nothing changed.",
+    geomacro_view:"Try again, or ask about a specific country, FX indicator or critical mineral.",
     evidence:[],insufficient_evidence:true,mean_relevance:null,low_confidence:true,
     gri:null,generatedAt:new Date().toISOString(),data_mode:"ephemeral_live",
     cache_status:"miss",source_identity_exposed:false,durable_live_storage_write:false,
@@ -85,7 +107,12 @@ export async function executeAskGeomacro(
       "ASK_RESEARCH_DEADLINE",
     );
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== "ASK_RESEARCH_DEADLINE") throw error;
-    return timedOutAskAnswer(data.question);
+    if (error instanceof AskGeomacroRateLimitError) throw error;
+    if (error instanceof Error && error.message === "ASK_RESEARCH_DEADLINE")
+      return timedOutAskAnswer(data.question);
+    // Retrieval and optional presentation are best-effort behind the stable
+    // public contract. Never turn an upstream exception into an HTTP 500 or
+    // echo an internal error into the conversation.
+    return unavailableAskAnswer(data.question);
   }
 }

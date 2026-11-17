@@ -40,12 +40,14 @@ describe("approved public Geomacro knowledge",()=>{
  it("does not replace a branded research question with a company answer",()=>{
   expect(geomacroPublicAnswer("Geomacro, what is inflation?")).toBeNull();
  });
- it("answers public pricing follow-ups through the real canonical chat core",async()=>{
-  const first=await executeHybridChatTurn({question:"What is Geomacro?"},"public-brand-first");
-  expect(first.answer.answer_kind).toBe("public_info");
+ it("keeps the real canonical chat core within its three research categories",async()=>{
+  const first=await executeHybridChatTurn({question:"What is GeoMacro?"},"public-brand-first");
+  expect(first.answer.answer_kind).toBe("guidance");
+  expect(first.answer.summary).toMatch(/Geopolitics.*Macro\/FX.*Critical Minerals/);
   const next=await executeHybridChatTurn({question:"How much does it cost?",history:[{role:"user",content:first.resolved_question}]},"public-brand-cost");
-  expect(next.answer.summary).toContain("Country Structural Digest: $0.02");
-  expect(next.answer.summary).toContain("Risk Gate — Basic / Focused | Standard | Complex / Full: $0.15 / $0.20 / $0.30");
+  expect(next.answer.answer_kind).toBe("guidance");
+  expect(next.answer.summary).toMatch(/Geopolitics.*Macro\/FX.*Critical Minerals/);
+  expect(next.answer.summary).not.toContain("$");
   expect(next.answer.source_identity_exposed).toBe(false);
  });
 });
