@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {deployBaseline,deployVersions,distribution,verifyDistribution}
- from "../canary-promoter.ts";
+import {deployBaseline,deployVersions,distribution,verifyDistribution,
+ assertD1ObservedHourlyPace} from "../canary-promoter.ts";
 
 const BASE="11111111-1111-4111-8111-111111111111";
 const CANDIDATE="22222222-2222-4222-8222-222222222222";
@@ -104,4 +104,37 @@ test("rollback refuses a provider response that is not a settled baseline-only d
   {version_id:BASE,percentage:100},{version_id:CANDIDATE,percentage:0}
  ]});
  await assert.rejects(deployBaseline(BASE,{providerApi}),/CANARY_REMOTE_SPLIT_MISMATCH/);
+});
+
+
+function paidPacePair({writes=0,reads=0,pacedRemaining=10_000_000,
+ remaining=29_000_000}={}) {
+ const start={cycle_start_utc:"2026-11-05",cycle_end_exclusive_utc:"2026-12-05",
+  observed_at_ms:1_000_000,rows_read:100,rows_written:200};
+ const latest={...start,observed_at_ms:start.observed_at_ms+5*60_000,
+  rows_read:start.rows_read+reads,rows_written:start.rows_written+writes,
+  paced_remaining_rows_written:pacedRemaining,
+  remaining_rows_written:remaining};
+ return {start,latest};
+}
+
+test("healthy Paid monthly headroom admits normal short-window background cron bursts",()=>{
+ for(const writesPerHour of [60_000,150_000]){
+  const {start,latest}=paidPacePair({writes:writesPerHour/12});
+  const result=assertD1ObservedHourlyPace(start,latest);
+  assert.equal(result.status,"PASS_OBSERVED_PAID_MONTHLY_PACE");
+  assert.equal(result.writes_per_hour,writesPerHour);
+  assert.equal(result.max_writes_per_hour,250_000);
+ }
+});
+
+test("canary pace still holds on burst, read-cap, low-monthly-headroom, or exhausted paced headroom",()=>{
+ const cases=[
+  [paidPacePair({writes:20_834}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:1,reads:2_000_001}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:5_000,remaining:1_000_000}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:5_000,pacedRemaining:0}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/]
+ ];
+ for(const [{start,latest},expected] of cases)
+  assert.throws(()=>assertD1ObservedHourlyPace(start,latest),expected);
 });

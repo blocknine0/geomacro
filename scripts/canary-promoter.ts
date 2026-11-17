@@ -21,6 +21,10 @@ const MONTHLY_WRITE_SOFT=35_000_000;
 const D1_MONTHLY_RESERVE_PCT=30;
 const D1_HOURLY_READ_CAP=24_000_000;
 const D1_HOURLY_WRITE_CAP=45_000;
+// Short-window cron bursts can exceed the operational hourly average while
+// remaining safe under fresh Paid monthly pacing headroom.
+const D1_PAID_BURST_WRITE_CAP=250_000;
+const D1_HEALTHY_PAID_REMAINING_ROWS=1_000_000;
 const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
@@ -283,7 +287,14 @@ async function checkLiveD1Budget(){
   receipt.operational_daily_ceiling_read===580_000_000&&
   receipt.operational_hourly_ceiling_written===D1_HOURLY_WRITE_CAP&&
   Number.isSafeInteger(receipt.observed_rows_read)&&
-  Number.isSafeInteger(receipt.observed_rows_written),
+  Number.isSafeInteger(receipt.observed_rows_written)&&
+  Number.isSafeInteger(receipt.remaining_rows_written)&&
+  Number.isSafeInteger(receipt.monthly_paced_ceiling_written),
+  'CANARY_PAID_MONTHLY_D1_PROVIDER_UNVERIFIED');
+ const pacedRemainingRowsWritten=
+  receipt.monthly_paced_ceiling_written-receipt.observed_rows_written;
+ need(Number.isSafeInteger(pacedRemainingRowsWritten)&&
+  pacedRemainingRowsWritten>=0,
   'CANARY_PAID_MONTHLY_D1_PROVIDER_UNVERIFIED');
  const cycle=paidD1BillingCycle(now);
  need(receipt.cycle_start_utc===cycle.start_utc&&
@@ -298,13 +309,14 @@ async function checkLiveD1Budget(){
   elapsed_cycle_ms:cycle.elapsed_ms,cycle_duration_ms:cycle.duration_ms,
   observed_at_ms:Date.now(),provider_metrics_delayed:true,
   remaining_rows_read:receipt.remaining_rows_read,
-  remaining_rows_written:receipt.remaining_rows_written};
+  remaining_rows_written:receipt.remaining_rows_written,
+  paced_remaining_rows_written:pacedRemainingRowsWritten};
 }
 /** Physical provider-observed monthly-paced growth, with independent
  * read and write rates. A rollover invalidates the sample (HOLD);
  * no daily 5,800 rows/hour gate or synthetic spike PASS.
  */
-function assertD1ObservedHourlyPace(start:any,latest:any){
+export function assertD1ObservedHourlyPace(start:any,latest:any){
  need(start?.cycle_start_utc===latest?.cycle_start_utc&&
   start?.cycle_end_exclusive_utc===latest?.cycle_end_exclusive_utc&&
   Number.isSafeInteger(start?.observed_at_ms)&&
@@ -317,7 +329,14 @@ function assertD1ObservedHourlyPace(start:any,latest:any){
  need(read>=0&&written>=0,'CANARY_D1_PROVIDER_COUNTER_REWIND');
  const readRate=read*3600000/ms,writeRate=written*3600000/ms;
  const readRateMax=D1_HOURLY_READ_CAP;
- const writeRateMax=D1_HOURLY_WRITE_CAP;
+ need(Number.isSafeInteger(latest?.paced_remaining_rows_written)&&
+  latest.paced_remaining_rows_written>0&&
+  Number.isSafeInteger(latest?.remaining_rows_written),
+  'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
+ const healthyPaidHeadroom=
+  latest.remaining_rows_written>D1_HEALTHY_PAID_REMAINING_ROWS;
+ const writeRateMax=healthyPaidHeadroom?
+  D1_PAID_BURST_WRITE_CAP:D1_HOURLY_WRITE_CAP;
  need(readRate<=readRateMax&&writeRate<=writeRateMax,
   'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
  return {status:'PASS_OBSERVED_PAID_MONTHLY_PACE',
