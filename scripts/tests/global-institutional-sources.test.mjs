@@ -25,10 +25,10 @@ const healthy=(source_id)=>({source_id,health_status:"WORKING",http_status:200,
 
 test("protected source registry apply consumes only the live rights-filtered manifest",()=>{
  const workflow=readFileSync(".github/workflows/apply-risk-stream-source-registry.yml","utf8");
- assert.match(workflow,/discover-global-institutional-sources\\.mjs --probe/u);
- assert.match(workflow,/--eligible-manifest artifacts\\/global-institutional-sources\\/eligible-rights-manifest\\.json/u);
- assert.match(workflow,/register-risk-stream-source\\.mjs --apply --manifest artifacts\\/global-institutional-sources\\/eligible-rights-manifest\\.json/u);
- assert.match(workflow,/APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION/u);
+ assert.ok(workflow.includes("discover-global-institutional-sources.mjs --probe"));
+ assert.ok(workflow.includes("--eligible-manifest artifacts/global-institutional-sources/eligible-rights-manifest.json"));
+ assert.ok(workflow.includes("register-risk-stream-source.mjs --apply --manifest artifacts/global-institutional-sources/eligible-rights-manifest.json"));
+ assert.ok(workflow.includes("APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION"));
 });
 
 test("HTTP 200 on an unreviewed source remains private and redacted",()=>{
