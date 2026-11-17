@@ -10,13 +10,23 @@ const CATEGORY_ALIASES=Object.freeze({geopolitics:"GEOPOLITICS",macro:"MACRO_FX"
  rare_earth:"CRITICAL_MINERALS",critical_minerals:"CRITICAL_MINERALS"});
 const fail=code=>{throw Error("COUNTRY_SOURCE_GAP_"+code)};
 const iso3=x=>typeof x==="string"&&/^[A-Z]{3}$/u.test(x);
-const approvedEvidence=e=>e?.status==="APPROVED"&&
- typeof e?.publisher_root_domain==="string"&&e.publisher_root_domain.length>=3&&
- typeof e?.parent_media_entity==="string"&&e.parent_media_entity.length>0&&
- typeof e?.rights_evidence?.licence_url==="string"&&
- typeof e?.rights_evidence?.terms_url==="string"&&
- Number.isFinite(Date.parse(e?.rights_evidence?.reviewed_at??""))&&
- Number.isFinite(Date.parse(e?.rights_expire_at??""));
+const safeHttps=value=>{
+ if(typeof value!=="string"||value.length>2048)return false;
+ try{const u=new URL(value);return u.protocol==="https:"&&!u.username&&!u.password}
+ catch{return false}
+};
+const approvedEvidence=(entry,now)=>entry?.status==="APPROVED"&&
+ typeof entry?.publisher_root_domain==="string"&&entry.publisher_root_domain.length>=3&&
+ typeof entry?.parent_media_entity==="string"&&entry.parent_media_entity.length>0&&
+ safeHttps(entry?.rights_evidence?.licence_url)&&safeHttps(entry?.rights_evidence?.terms_url)&&
+ typeof entry?.rights_evidence?.reviewer==="string"&&entry.rights_evidence.reviewer.trim().length>=2&&
+ typeof entry?.rights_evidence?.notes==="string"&&entry.rights_evidence.notes.trim().length>=12&&
+ Number.isFinite(Date.parse(entry?.rights_evidence?.reviewed_at??""))&&
+ Date.parse(entry.rights_evidence.reviewed_at)<=now&&
+ typeof entry?.rights_expire_at==="string"&&
+ /^\d{4}-\d{2}-\d{2}$/u.test(entry.rights_expire_at)&&
+ Number.isFinite(Date.parse(entry.rights_expire_at+"T23:59:59.999Z"))&&
+ Date.parse(entry.rights_expire_at+"T23:59:59.999Z")>=now;
 
 export function rolesForCategory(category){
  const normalized=CATEGORY_ALIASES[String(category??"").toLowerCase()]??String(category??"").toUpperCase();
@@ -30,9 +40,9 @@ export function classifyCandidateRights(candidate,rightsEntries=[],now=Date.now(
   String(candidate?.category??candidate?.categories?.[0]??"").toUpperCase();
  const required=REQUIRED_SOURCE_ROLES[category];
  const entry=rightsEntries.find(x=>x?.source_id===candidate?.source_id);
- const valid=Boolean(required&&entry&&approvedEvidence(entry)&&
-  Date.parse(entry.rights_expire_at+"T23:59:59.999Z")>=now&&required.includes(entry.source_role)&&
-  (!Array.isArray(entry.categories)||entry.categories.includes(category)));
+ const valid=Boolean(required&&entry&&approvedEvidence(entry,now)&&
+  required.includes(entry.source_role)&&Array.isArray(entry.categories)&&
+  entry.categories.includes(category));
  return {commercial_rights_approved:valid?1:0,
   lane:valid?"PRIMARY_COMMERCIAL_EVIDENCE":"PRIVATE_OSINT_REDACTED_CORROBORATION",
   raw_source_redacted:true,licensed_source_text_included:false,
