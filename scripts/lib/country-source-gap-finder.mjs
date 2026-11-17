@@ -44,12 +44,16 @@ function freshHealthyProbe(probe,now,ttlMs){
  const checked=Date.parse(probe.last_successful_http_fetch_at??probe.attempted_at??"");
  return Number.isFinite(checked)&&checked<=now&&now-checked<=ttlMs;
 }
-function mapCandidate(c,category,rightsEntries,now){
+function mapCandidate(c,category,rightsEntries,now,live){
  const classified=classifyCandidateRights({...c,category},rightsEntries,now);
+ const entry=rightsEntries.find(x=>x.source_id===c.source_id);
+ const identityMatches=Boolean(entry&&live&&live.publisher_root_domain===entry.publisher_root_domain&&
+  live.parent_media_entity===entry.parent_media_entity&&live.source_role===entry.source_role&&
+  live.reviewed_at===entry.rights_evidence.reviewed_at&&live.rights_expire_at===entry.rights_expire_at);
  return {source_id:c.source_id,format:c.format??null,url:c.url??null,
   country_specific:true,commercial_rights_approved:classified.commercial_rights_approved,
   lane:classified.lane,rights_status:classified.rights_status,
-  source_role:rightsEntries.find(x=>x.source_id===c.source_id)?.source_role??null};
+  source_role:entry?.source_role??null,registry_identity_matches_reviewed_entry:identityMatches};
 }
 
 export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[],riskStreamSources=[],
@@ -71,13 +75,18 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
     Array.isArray(s.categories)&&s.categories.some(c=>normalizedCategory(c)===category));
    const activeHealthy=mappings.filter(s=>{
     const live=registryById.get(s.source_id), rights=classifyCandidateRights({...s,category},rightsEntries,now);
+    const entry=rightsEntries.find(x=>x.source_id===s.source_id);
     return live?.enabled===1&&live?.commercial_rights_approved===1&&
-     rights.commercial_rights_approved===1&&freshHealthyProbe(probeById.get(s.source_id),now,healthTtlMs);
+     rights.commercial_rights_approved===1&&entry&&
+     live.publisher_root_domain===entry.publisher_root_domain&&
+     live.parent_media_entity===entry.parent_media_entity&&live.source_role===entry.source_role&&
+     live.reviewed_at===entry.rights_evidence.reviewed_at&&live.rights_expire_at===entry.rights_expire_at&&
+     freshHealthyProbe(probeById.get(s.source_id),now,healthTtlMs);
    });
    if(activeHealthy.length)continue;
    const candidateSources=mappings.map(s=>{
     const live=registryById.get(s.source_id),probe=probeById.get(s.source_id);
-    return {...mapCandidate(s,category,rightsEntries,now),
+    return {...mapCandidate(s,category,rightsEntries,now,live),
      active_in_risk_stream:live?.enabled===1&&live?.commercial_rights_approved===1,
      health_status:freshHealthyProbe(probe,now,healthTtlMs)?"HEALTHY":
       probe?.status??"NOT_PROBED_OR_STALE"};
@@ -89,6 +98,12 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
    if(mappings.some(s=>registryById.get(s.source_id)?.enabled===1&&
       registryById.get(s.source_id)?.commercial_rights_approved!==1))
     reasons.push("RIGHTS_NOT_APPROVED_IN_RISK_STREAM");
+   if(mappings.some(s=>{
+    const row=registryById.get(s.source_id),entry=rightsEntries.find(x=>x.source_id===s.source_id);
+    return row?.enabled===1&&entry&&(row.publisher_root_domain!==entry.publisher_root_domain||
+     row.parent_media_entity!==entry.parent_media_entity||row.source_role!==entry.source_role||
+     row.reviewed_at!==entry.rights_evidence.reviewed_at||row.rights_expire_at!==entry.rights_expire_at);
+   }))reasons.push("RIGHTS_REGISTRY_IDENTITY_MISMATCH");
    if(mappings.some(s=>registryById.get(s.source_id)?.enabled===1&&
       !freshHealthyProbe(probeById.get(s.source_id),now,healthTtlMs)))
     reasons.push("LIVE_HEALTH_UNVERIFIED_OR_STALE");
