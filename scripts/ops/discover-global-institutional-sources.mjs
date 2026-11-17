@@ -11,7 +11,7 @@ const sourceManifestPath="config/risk-stream-source-rights-reviewed.v1.json";
 const candidatesPath="config/global-institutional-source-candidates.v1.json";
 const nowIso=now=>now.toISOString();
 const nativeTimestamp=value=>typeof value==="string"&&
- /(?:Z|[+-]\\d{2}:?\\d{2})$/iu.test(value)&&Number.isFinite(Date.parse(value));
+ /(?:Z|[+-]\d{2}:?\d{2})$/iu.test(value)&&Number.isFinite(Date.parse(value));
 function parseArgs(argv){
  const out={probe:false,probeLimit:24,now:new Date(),output:null,eligibleManifest:null};
  for(let i=0;i<argv.length;i++){
@@ -34,8 +34,8 @@ function explicitRights(candidate,entries,now){
   entry.source_role===candidate.source_role&&entry.categories.includes(candidate.category)&&
   roles.includes(entry.source_role)&&entry.rights_expire_at&&
   Date.parse(entry.rights_expire_at+"T23:59:59.999Z")>=now.getTime()&&
-  /^https:\\/\\//u.test(entry.rights_evidence?.licence_url??"")&&
-  /^https:\\/\\//u.test(entry.rights_evidence?.terms_url??""));
+  /^https:\/\//u.test(entry.rights_evidence?.licence_url??"")&&
+  /^https:\/\//u.test(entry.rights_evidence?.terms_url??""));
  return {commercial_rights_approved:exact?1:0,
   lane:exact?"PRIMARY_COMMERCIAL_EVIDENCE":"PRIVATE_OSINT_REDACTED_CORROBORATION",
   raw_source_redacted:true,licensed_source_text_included:false,
@@ -79,7 +79,7 @@ async function probeJson(candidate,{fetchImpl=fetch,now=new Date()}={}){
  }
 }
 export async function probeInstitutionalCandidate(candidate,{fetchImpl=fetch,now=new Date()}={}){
- if(!candidate||typeof candidate.source_id!=="string"||!/^https:\\/\\//u.test(candidate.url??""))
+ if(!candidate||typeof candidate.source_id!=="string"||!/^https:\/\//u.test(candidate.url??""))
   fail("CANDIDATE_INVALID");
  const result=candidate.format==="json_reliefweb"?
   await probeJson(candidate,{fetchImpl,now}):
