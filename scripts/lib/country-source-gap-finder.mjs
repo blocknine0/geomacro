@@ -73,17 +73,23 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
   for(const category of COUNTRY_CATEGORIES){
    const mappings=sourceCatalog.filter(s=>s.publisher_country_iso3===country.iso3&&
     Array.isArray(s.categories)&&s.categories.some(c=>normalizedCategory(c)===category));
-   const activeHealthy=mappings.filter(s=>{
+   const activeHealthy=mappings.flatMap(s=>{
     const live=registryById.get(s.source_id), rights=classifyCandidateRights({...s,category},rightsEntries,now);
     const entry=rightsEntries.find(x=>x.source_id===s.source_id);
-    return live?.enabled===1&&live?.commercial_rights_approved===1&&
+    const healthy=live?.enabled===1&&live?.commercial_rights_approved===1&&
      rights.commercial_rights_approved===1&&entry&&
      live.publisher_root_domain===entry.publisher_root_domain&&
      live.parent_media_entity===entry.parent_media_entity&&live.source_role===entry.source_role&&
      live.reviewed_at===entry.rights_evidence.reviewed_at&&live.rights_expire_at===entry.rights_expire_at&&
      freshHealthyProbe(probeById.get(s.source_id),now,healthTtlMs);
+    return healthy?[{source:s,entry}]:[];
    });
-   if(activeHealthy.length)continue;
+   const requiredRoles=REQUIRED_SOURCE_ROLES[category];
+   const completeRolePair=requiredRoles.some(roleA=>requiredRoles.some(roleB=>roleA!==roleB&&
+    activeHealthy.some(a=>a.entry.source_role===roleA)&&activeHealthy.some(b=>
+     b.entry.source_role===roleB&&a.entry.publisher_root_domain!==b.entry.publisher_root_domain&&
+     a.entry.parent_media_entity!==b.entry.parent_media_entity)));
+   if(completeRolePair)continue;
    const candidateSources=mappings.map(s=>{
     const live=registryById.get(s.source_id),probe=probeById.get(s.source_id);
     return {...mapCandidate(s,category,rightsEntries,now,live),
@@ -92,7 +98,7 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
       probe?.status??"NOT_PROBED_OR_STALE"};
    });
    const reasons=[];
-   if(mappings.length===0)reasons.push("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE");
+   if(activeHealthy.length>0)reasons.push("NO_COMPLETE_INDEPENDENT_ACTIVE_ROLE_PAIR");\n   if(mappings.length===0)reasons.push("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE");
    if(mappings.length>0&&!mappings.some(s=>registryById.get(s.source_id)?.enabled===1))
     reasons.push("NO_ENABLED_RISK_STREAM_SOURCE");
    if(mappings.some(s=>registryById.get(s.source_id)?.enabled===1&&
