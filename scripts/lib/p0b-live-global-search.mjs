@@ -156,15 +156,15 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
  if(!country||!CATEGORIES.has(category)||!limitText(question,180)||
    question.length<3||!Number.isFinite(now))
   throw Error("P0B_QUERY_INVALID");
- const category=category==="macro"?"MACRO_FX":category==="rare_earth"?
+ const taxonomyCategory=category==="macro"?"MACRO_FX":category==="rare_earth"?
   "CRITICAL_MINERALS":"GEOPOLITICS";
  const topical=terms(question,country.name);
  const rotationIndex=[...countryIso3].reduce((n,c)=>(n*26+c.charCodeAt(0)-65)%100_000,0);
- const topicBucket=selectGlobalRiskQueryBucket(category,now,rotationIndex);
+ const topicBucket=selectGlobalRiskQueryBucket(taxonomyCategory,now,rotationIndex);
  // One fixed category bucket rotates every 20 minutes; it shares the existing
  // GOV.UK search call and does not fan out into additional provider requests.
  const topicQuery="("+topicBucket.terms.slice(0,6).map(term=>'"'+term+'"').join(" OR ")+")";
- const govQ=(country.name+" "+topicQuery).slice(0,180);
+ const govQ=(country.name+" "+topicQuery+" "+topical.slice(0,1).join(" ")).slice(0,180);
  // Keep the user's freeform terms local; provider search receives only
  // canonical country identity plus the bounded public taxonomy bucket.
  const govUrl=new URL("https://www.gov.uk/api/search.json");
