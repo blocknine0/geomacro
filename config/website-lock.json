@@ -1339,7 +1339,7 @@
     "pending_exact_sha_live_deployment_acceptance": true
   },
   "approved_intelligence_risk_gate_conversion_20261116": {
-    "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk \u2192 Effect \u2192 Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
+    "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk → Effect → Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
     "purpose": "Improve only the Intelligence route and desk presentation. Preserve unscored public evidence semantics, source attribution, no copyrighted-source republishing, disabled paid execution, and the independent Global Risk presentation lock.",
     "approved_source_commit": "21f7253d9b46ec51f4ec5521d6db8ca9bb3738c9",
     "approved_paths": [
@@ -1473,5 +1473,26 @@
     "global_risk_final_lock_unmodified": true,
     "funds_authorized": false,
     "published_deployment_claimed": false
+  },
+  "approved_ask_conversational_ux_20261117": {
+    "approval": "Founder explicitly authorized a narrow exact-blob Website Lock approval for PR #4072 on 2026-11-17.",
+    "purpose": "Authorize only the two Ask conversational UX blobs changed by PR #4072. Preserve GeoMacro's three-category scope, source privacy, canonical retrieval and evidence gates; this is not a general website unlock.",
+    "approved_source_commit": "fb2af2fe0fe4923aeeff8e5d3039124690a4353a",
+    "approved_paths": [
+      "src/components/ask/ask-workspace.tsx",
+      "src/components/ask/ask-answer-view.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "locked_intelligence_and_risk_indices_unmodified": true,
+    "paid_flags_enabled": false,
+    "payment_authorized": false,
+    "durable_objects_added": false,
+    "extra_public_route_d1_reads_added": false,
+    "canary_hold_unchanged": true,
+    "source_raw_content_exposed": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
