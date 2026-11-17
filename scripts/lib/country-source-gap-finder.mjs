@@ -99,7 +99,8 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
       probe?.status??"NOT_PROBED_OR_STALE"};
    });
    const reasons=[];
-   if(activeHealthy.length>0)reasons.push("NO_COMPLETE_INDEPENDENT_ACTIVE_ROLE_PAIR");\n   if(mappings.length===0)reasons.push("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE");
+   if(activeHealthy.length>0)reasons.push("NO_COMPLETE_INDEPENDENT_ACTIVE_ROLE_PAIR");
+   if(mappings.length===0)reasons.push("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE");
    if(mappings.length>0&&!mappings.some(s=>registryById.get(s.source_id)?.enabled===1))
     reasons.push("NO_ENABLED_RISK_STREAM_SOURCE");
    if(mappings.some(s=>registryById.get(s.source_id)?.enabled===1&&
