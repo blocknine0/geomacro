@@ -32,6 +32,8 @@ test("HTTP probe or D1 approval cannot grant commercial rights without exact rev
   rights_status:"RIGHTS_NOT_EXACTLY_APPROVED"});
  assert.equal(classifyCandidateRights(candidate,[{...approved,status:"PENDING"}],now)
   .commercial_rights_approved,0);
+ assert.equal(classifyCandidateRights(candidate,[{...approved,rights_evidence:{...approved.rights_evidence,
+  licence_url:"http://example.gov/license"}}],now).commercial_rights_approved,0);
  assert.equal(classifyCandidateRights(candidate,[approved],now).commercial_rights_approved,1);
 });
 
