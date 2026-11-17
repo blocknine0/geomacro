@@ -75,7 +75,9 @@ export function createB2D1AccountGovernor({
         kind, workflow_id: workflow,
       }, { now: now() });
       if (!receipt.ok || !receipt.reserved) throw new Error("B2_GLOBAL_DAILY_QUOTA_EXHAUSTED");
-      return {day_utc:receipt.day_utc,kind:receipt.kind,used:receipt.used,limits:receipt.limits};
+      return {day_utc:receipt.day_utc,kind:receipt.kind,used:receipt.used,
+        limits:receipt.limits,admission_limits:receipt.admission_limits,
+        release_reserve_protected:receipt.release_reserve_protected};
     },
   };
 }
