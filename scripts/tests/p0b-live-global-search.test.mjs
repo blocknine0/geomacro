@@ -20,6 +20,21 @@ test("all three category originals allow bounded event-specific fact and implica
  }
  assert.equal(p0bHeadlineEvent("A story about lithium","rare_earth"),null);
 });
+test("event-grounded projection recognizes high-signal actions across the full topic set",()=>{
+ for(const [category,title] of [
+  ["geopolitics","United Nations announces secondary sanctions on dual-use semiconductor exports"],
+  ["geopolitics","Government announces naval blockade and airspace closure in the Red Sea"],
+  ["macro","Central Bank announces emergency rate hike and quantitative tightening"],
+  ["macro","Finance Ministry announces sovereign debt restructuring after a credit downgrade"],
+  ["rare_earth","Chile imposes antimony export quota after a mine strike"],
+  ["rare_earth","Mining company reports smelter outage affecting dysprosium and graphite output"],
+ ]){
+  const event=p0bHeadlineEvent(title,category);
+  assert.ok(event,category+" "+title);
+  assert.notEqual(event.what,event.why);
+ }
+});
+
 test("canonical original SHA remains immutable through read-time projection",()=>{
  const item=buildPhase2hPrivateRawRecords([{
   category:"rare_earth",title:"India announces lithium recycling programme",
