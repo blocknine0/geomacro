@@ -52,6 +52,21 @@ test("gap finder marks missing health and non-approved sources as gaps across al
  assert.ok(other.gap_reasons.includes("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE"));
 });
 
+test("each country gap carries deterministic category-specific institution search templates",()=>{
+ const report=buildCountrySourceGapReport({countries,hot50:["AAA"],sourceCatalog:[],
+  riskStreamSources:[],probes:[],rightsEntries:[],now});
+ const macro=report.cells.find(x=>x.country_iso3==="AAA"&&x.category==="MACRO_FX");
+ assert.equal(macro.topic_taxonomy_version,"global-risk-query-taxonomy.v1");
+ assert.deepEqual(macro.search_query_templates.map(x=>x.lane),
+  ["central_bank","national_exchange","banking_regulator","market_news"]);
+ assert.ok(macro.search_query_templates[0].query.includes('"country-0"'));
+ assert.ok(macro.search_query_templates.every(x=>x.query.length<=240));
+ assert.equal(macro.search_query_templates[2].affected_assets.includes("bank_liquidity"),true);
+ const geo=report.cells.find(x=>x.country_iso3==="AAA"&&x.category==="GEOPOLITICS");
+ assert.deepEqual(geo.search_query_templates.map(x=>x.lane),[
+  "official_state_actions","banking_and_capital_controls","corridor_and_infrastructure","market_impact_news"]);
+});
+
 test("only exact active rights-manifest role pairs satisfy healthy country coverage",()=>{
  const marketSource={...source,source_id:"aaa_market_source"};
  const marketApproved={...approved,source_id:marketSource.source_id,
