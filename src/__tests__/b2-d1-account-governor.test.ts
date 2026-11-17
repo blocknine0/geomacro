@@ -52,7 +52,9 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     });
     const proof=await governor.reserve("GET");
     expect(proof).toMatchObject({kind:"GET",day_utc:"2026-10-09",
-      used:{total:1,GET:1}});
+      used:{total:1,GET:1},
+      admission_limits:{total:3920,GET:1900,PUT:2000,HEAD:40,NATIVE_AUTH:40},
+      release_reserve_protected:false});
     expect(calls).toHaveLength(2);
     expect(calls.every(x=>x.method==="POST" && x.url.includes("/d1/database/"))).toBe(true);
     expect(calls[0].body.sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
