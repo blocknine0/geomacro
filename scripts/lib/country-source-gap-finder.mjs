@@ -181,7 +181,9 @@ export function buildHealthyApprovedSourceManifest(manifest,report,now=Date.now(
    if(roles?.includes(candidate.source_role))candidates.set(candidate.source_id,{candidate,category});
   }
  }
- const probes=new Map((report.probes_this_run??report.probes??[]).map(p=>[p.source_id,p]));
+ const probes=new Map();
+ for(const p of report.probes??[])probes.set(p.source_id,p);
+ for(const p of report.probes_this_run??[])probes.set(p.source_id,p);
  const entries=approvedEntries.filter(entry=>{
   const match=candidates.get(entry.source_id),probe=probes.get(entry.source_id);
   if(!match||!entry.categories.includes(match.category)||entry.source_role!==match.candidate.source_role)return false;
