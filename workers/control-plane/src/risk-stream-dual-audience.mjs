@@ -33,7 +33,16 @@ const EVENT_ASSETS=Object.freeze({
  LNG_SUPPLY_DISRUPTION:["lng_spot","oil_supply"],
  CENTRAL_BANK_RATE_DECISION:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
  FX_RESERVE_CHANGE:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
- MARITIME_CHOKEPOINT_DISRUPTION:["freight_rates","brent_crude","lng_spot","shipping_routes"]
+ MARITIME_CHOKEPOINT_DISRUPTION:["freight_rates","brent_crude","lng_spot","shipping_routes"],
+ CHOKEPOINT_DISRUPTION:["freight_rates","brent_crude","lng_spot","shipping_routes"],
+ EXPORT_CONTROL:["export_controls","lithium","copper","rare_earths"],
+ EXPORT_BAN:["export_controls","lithium","copper","rare_earths"],
+ MINERAL_SUPPLY_CHANGE:["lithium","copper","rare_earths"],
+ MINERAL_SUPPLY_SHOCK:["lithium","copper","rare_earths"],
+ MINERAL_TRADE:["lithium","copper","rare_earths"],
+ MONETARY_POLICY:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
+ MACRO_POLICY_RELEASE:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
+ FX_STRESS:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"]
 });
 const MECHANISMS=Object.freeze({
  GEOPOLITICS:"Changes in access, counterparties, sanctions exposure, or route availability propagate through trade and shipping links.",
