@@ -150,7 +150,8 @@ async function verifyInternalGro(db,groId,env,now){
     new Set(rows.map(e=>e.publisher_root_domain)).size!==rows.length||
     new Set(rows.map(e=>e.parent_media_entity)).size!==rows.length)
   deny("INDEPENDENT_ORIGINAL_RIGHTS_NOT_CURRENT");
- const independentPair=rows.length>=2;
+ const independentPair=rows.length>=2&&
+  new Set(rows.map(e=>e.source_role)).size>=2;
  const internal= p.evidence_and_confidence?.internal_corroboration;
  const hasInternal=internal?.raw_source_redacted===true&&
     Number.isInteger(internal.signal_count)&&internal.signal_count>0&&
@@ -262,11 +263,13 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
  return {status:"SIGNED_LICENSED_JOBS_DURABLE",source_gro_id:sourceGroId,
   authorized_gro_id:authorizedGroId,licensed_clients:staged,paid:false};
 }
-export async function runCommercialIssuerTick(env,{now=Date.now(),max=5,
+export async function runCommercialIssuerTick(env,{now=Date.now(),max=25,
  requestReview}={}){
  if(!commercialIssuerEnabled(env))
   return {status:"HOLD_COMMERCIAL_ISSUER_NOT_ENABLED",issued:0};
- if(!Number.isInteger(max)||max<1||max>10)deny("INVALID_BATCH_LIMIT");
+ // A fixed upper bound keeps each sequential reviewer/rights/readback pass
+ // within a small Paid-D1 work unit; callers may request fewer jobs.
+ if(!Number.isInteger(max)||max<1||max>25)deny("INVALID_BATCH_LIMIT");
  const nowIso=iso(now);
  const due=await env.DB.prepare(
   "SELECT source_gro_id,attempts FROM risk_stream_commercial_issuer_jobs "+

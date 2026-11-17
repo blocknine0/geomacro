@@ -113,7 +113,8 @@ async function review(body,env,now){
  // approved. A second independent verified observation is enough evidence;
  // a category's preferred role pair remains a sourcing target, not a
  // customer-delivery blocker.
- const independentPair=evidenceRows.length>=2;
+ const independentPair=evidenceRows.length>=2&&
+   new Set(evidenceRows.map(row=>row.source_role)).size>=2;
  const corroboration=gro.evidence_and_confidence?.internal_corroboration;
  const internalSupport=corroboration?.raw_source_redacted===true&&
    Number.isInteger(corroboration.signal_count)&&corroboration.signal_count>0&&

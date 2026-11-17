@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {webcrypto,createPublicKey,verify as verifySignature} from "node:crypto";
 import {canonicalLicensedJson} from "../../workers/control-plane/src/risk-stream-commercial-license.mjs";
-import {buildRiskStreamDualAudience}
+import {buildRiskStreamDualAudience,validRiskStreamDualAudience}
  from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
 import {fetch as reviewerFetch} from "../../workers/geomacro-release-reviewer/src/index.mjs";
 
@@ -19,16 +19,24 @@ const roles={GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]};
 
-async function fixture(category="GEOPOLITICS",sourceCount=2){
+async function fixture(category="GEOPOLITICS",sourceCount=2,{
+ internalCorroboration=null,duplicateSourceRole=false
+}={}){
  const now=Date.parse("2026-11-15T10:00:00.000Z");
  const groKeys=await webcrypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
  const reviewKeys=await webcrypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
- const audience=buildRiskStreamDualAudience({category,score:37,confidence:0.7});
- const eligibleTiers=sourceCount>1?["basic_focused","standard","complex_full"]:["basic_focused"];
+ const independentRoles=sourceCount>1&&!duplicateSourceRole;
+ const standardReady=independentRoles||internalCorroboration!==null;
+ const eligibleTiers=["basic_focused",...(standardReady?["standard"]:[]),
+  ...(independentRoles?["complex_full"]:[])];
+ const audience=buildRiskStreamDualAudience({category,eventClass:"POLICY_CHANGE",
+  score:37,confidence:0.7,tier:standardReady?"STANDARD":"BASIC",
+  corroborationReady:standardReady});
  const score={country_iso3:"USA",category,value_0_100:37,
   provenance:"SIGNED_DERIVED_RISK_SCORE",derived_only:true,
   licensed_source_text_included:false,independent_accuracy_certified:false,
-  raw_source_redacted:true,eligible_tiers:eligibleTiers,...audience};
+  raw_source_redacted:true,eligible_tiers:eligibleTiers,
+  ...(internalCorroboration?{internal_corroboration:internalCorroboration}:{}),...audience};
  const gro={schema:"geomacro.event-stream-gro.v1",subject:{type:"COUNTRY",id:"USA"},category,
   event_fingerprint:"a".repeat(64),source_originals:["b".repeat(64),"c".repeat(64)].slice(0,sourceCount),
   what_happened:"Two independent original sources report a test event.",
@@ -36,7 +44,8 @@ async function fixture(category="GEOPOLITICS",sourceCount=2){
   market_relevance:"No actual market exposure is asserted by this synthetic fixture.",
   what_to_watch:"Wait for independently verifiable real-world confirmation.",
   evidence_and_confidence:{source_rights_and_origins:"DUAL_MACHINE_ATTESTED",
-   raw_sources_not_republished:true,raw_source_redacted:true},
+   raw_sources_not_republished:true,raw_source_redacted:true,
+   ...(internalCorroboration?{internal_corroboration:internalCorroboration}:{})},
   eligible_derived_score:score,
   generated_at:new Date(now-1000).toISOString(),expires_at:new Date(now+3600000).toISOString(),
   execution_authorized:false,charged:false,certified_risk_index:false,customer_delivery_authorized:false};
@@ -52,7 +61,8 @@ async function fixture(category="GEOPOLITICS",sourceCount=2){
  const evidenceRows=roles[category].slice(0,sourceCount).map((source_role,index)=>({
   observation_id:gro.source_originals[index],original_verified:1,
   publisher_root_domain:index?"publisher-b.example":"publisher-a.example",
-  parent_media_entity:index?"publisher_b":"publisher_a",source_role,
+  parent_media_entity:index?"publisher_b":"publisher_a",
+  source_role:duplicateSourceRole&&index>0?roles[category][0]:source_role,
   enabled:1,commercial_rights_approved:1,rights_expire_at:"2027-11-14"}));
  const db={prepare(sql){return {bind(){return {first:async()=>({client_id:"predge-paid-risk-gate-addendum-v2",
    enabled:1,entitlement_expires_at:new Date(now+1800000).toISOString(),release_receipt_sha256:receipt}),
@@ -73,6 +83,76 @@ async function fixture(category="GEOPOLITICS",sourceCount=2){
 }
 const request=body=>new Request("https://reviewer.internal/v1/commercial/review",{
  method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+
+
+test("dual-audience mold emits deterministic institutional signals for all risk categories",()=>{
+ const cases=[
+  ["GEOPOLITICS","SANCTIONS_POLICY",["maritime_chokepoints","shipping_routes"]],
+  ["MACRO_FX","FX_STRESS",["fx_pairs","energy_commodities"]],
+  ["CRITICAL_MINERALS","MINERAL_SUPPLY_SHOCK",["critical_minerals","industrial_inputs"]]
+ ];
+ for(const [category,eventClass,expectedAssets] of cases){
+  const product=buildRiskStreamDualAudience({category,eventClass,score:68.25,
+   confidence:.82,deltaVs7d:-4.5,horizonHours:48,tier:"BASIC",corroborationReady:true,
+   contagionCorridors:["USA>IND"]});
+  assert.equal(validRiskStreamDualAudience(product),true);
+  assert.equal(product.agent_decision.gate_state,product.agent_decision.action_posture);
+  assert.equal(product.agent_decision.value_0_100,68.25);
+  assert.equal(product.agent_decision.delta_vs_7d,-4.5);
+  assert.equal(product.agent_decision.confidence,.82);
+  assert.equal(product.agent_decision.horizon,"72h");
+  assert.equal(product.agent_decision.tier,"BASIC");
+  assert.equal(product.agent_decision.upgrade_available,true);
+  assert(expectedAssets.every(asset=>product.agent_decision.affected_assets.includes(asset)));
+  assert.equal(product.raw_source_redacted,true);
+  assert.equal(product.licensed_source_text_included,false);
+  assert.equal(product.analyst_brief.raw_source_redacted,true);
+  assert.equal(product.analyst_brief.licensed_source_text_included,false);
+  assert.match(product.analyst_brief.causal_summary,
+   /^Trigger: .*\. Transmission Mechanism: .* Direct Price\/Supply Impact: /u);
+  assert.doesNotMatch(JSON.stringify(product),/publisher|telegram|https?:|headline/iu);
+  // Prior signed audience payloads remain accepted by the validator.
+  const legacy={raw_source_redacted:true,
+   agent_decision:Object.fromEntries(["action_posture","risk_score_0_100","confidence_0_1",
+    "horizon_hours","affected_assets","price_direction_bias","contagion_corridors","ttl_seconds"]
+     .map(key=>[key,product.agent_decision[key]])),
+   analyst_brief:Object.fromEntries(["risk_mechanism","downstream_effects",
+    "price_impact_summary","cross_category_outlook"]
+     .map(key=>[key,product.analyst_brief[key]]))};
+  assert.equal(validRiskStreamDualAudience(legacy),true);
+ }
+});
+
+test("redacted internal corroboration upgrades a one-anchor Basic grant to Standard",async()=>{
+ const internal={raw_source_redacted:true,signal_count:1,
+  families:["PRIVATE_OSINT"],max_severity_weight_0_100:61,
+  max_corroboration_weight_0_1:.72,categories:["GEOPOLITICS"],corridors:[]};
+ const f=await fixture("GEOPOLITICS",1,{internalCorroboration:internal});
+ const response=await reviewerFetch(request(f.body),f.env,f.now);
+ const result=await response.json();
+ assert.equal(response.status,200);
+ assert.equal(result.status,"REVIEW_APPROVED");
+ assert.deepEqual(result.grants[0].approval.eligible_tiers,["basic_focused","standard"]);
+ assert.deepEqual(result.grants[0].eligible_derived_score.eligible_tiers,
+  ["basic_focused","standard"]);
+ assert.equal(result.grants[0].eligible_derived_score.agent_decision.tier,"STANDARD");
+ assert.equal(result.grants[0].eligible_derived_score.licensed_source_text_included,false);
+ assert.doesNotMatch(JSON.stringify(result),/source title|watch confirms policy|https?:|www[.]|@/iu);
+});
+
+test("a second distinct approved source_role upgrades while a duplicate role does not",async()=>{
+ const distinct=await fixture("MACRO_FX",2);
+ const accepted=await reviewerFetch(request(distinct.body),distinct.env,distinct.now);
+ assert.deepEqual((await accepted.json()).grants[0].approval.eligible_tiers,
+  ["basic_focused","standard","complex_full"]);
+ const duplicate=await fixture("MACRO_FX",2,{duplicateSourceRole:true});
+ const stillBasic=await reviewerFetch(request(duplicate.body),duplicate.env,duplicate.now);
+ const result=await stillBasic.json();
+ assert.equal(result.status,"REVIEW_APPROVED");
+ assert.deepEqual(result.grants[0].approval.eligible_tiers,["basic_focused"]);
+ assert.equal(result.grants[0].eligible_derived_score.agent_decision.tier,"BASIC");
+ assert.equal(result.grants[0].eligible_derived_score.agent_decision.upgrade_available,false);
+});
 
 test("reviewer signs only current, D1-backed release grants across all three categories",async()=>{
  for(const category of Object.keys(roles)){

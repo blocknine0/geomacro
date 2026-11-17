@@ -62,6 +62,8 @@ test("dual-attested originals produce signed eligible_derived_score objects in a
    ["basic_focused","standard","complex_full"]);
   assert.equal(payload.eligible_derived_score.raw_source_redacted,true);
   assert.equal(payload.eligible_derived_score.agent_decision.risk_score_0_100,item.value);
+  assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX");
+  assert.equal(payload.eligible_derived_score.licensed_source_text_included,false);
   assert.equal(payload.eligible_derived_score.analyst_brief.risk_mechanism.length>20,true);
   assert.doesNotMatch(JSON.stringify(payload.eligible_derived_score),/https?:\/\/|headline|publisher|channel/iu);
   const key=await crypto.subtle.importKey("spki",
@@ -399,6 +401,11 @@ test("unverified GDELT indexed hints cannot elevate single originals beyond Basi
  const result=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
  assert.equal(result.index_only,1);
  assert.equal(result.corroborated_and_signed,1);
+ const signedRow=[...c.db.gros.values()][0],signedPayload=JSON.parse(signedRow.payload_json);
+ assert.deepEqual(signedPayload.eligible_derived_score.eligible_tiers,
+  ["basic_focused"]);
+ assert.equal(signedPayload.eligible_derived_score.agent_decision.tier,"BASIC");
+ assert.equal(signedPayload.eligible_derived_score.licensed_source_text_included,false);
  const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
  assert.deepEqual(payload.source_originals,[payload.source_originals[0]]);
  assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
