@@ -8,7 +8,10 @@ test("Google News global search rotates Reuters/ANI/other publishers without pai
  const query=new URL(first.url).searchParams.get("q");
  assert.match(query,/site:reuters\.com/);
  assert.match(query,/site:aninews\.in/);
- assert.match(query,/"central bank"/);
+ assert.equal(first.topic_bucket_id,"monetary_policy");
+ assert.match(query,/emergency rate hike/);
+ assert.ok(first.topic_tags.includes("central_bank_policy"));
+ assert.ok(first.affected_assets.includes("fx_pairs"));
  assert.equal(first.discovery_only,true);
  assert.equal(first.commercial_reuse_authorized,false);
  assert.equal(first.independent_corroboration,false);
@@ -19,11 +22,24 @@ test("Google News global search rotates Reuters/ANI/other publishers without pai
  }
  assert.equal(families.size,RISK_DISCOVERY_PUBLISHER_GROUPS.length);
 });
+test("topic vocabulary rotates every twenty minutes without adding search calls",()=>{
+ const now=Date.parse("2026-11-06T00:00:00Z");
+ const indexes=new Set(Array.from({length:8},(_,i)=>
+  riskPublisherSearchPlan({...t,category:"CRITICAL_MINERALS"},now+i*20*60000,23).topic_bucket_index));
+ assert.equal(indexes.size,8);
+ const plan=riskPublisherSearchPlan({...t,category:"CRITICAL_MINERALS"},now,23);
+ assert.equal(new URL(plan.url).hostname,"news.google.com");
+ assert.ok(plan.url.length<1200);
+});
+
 test("all three categories use market-specific terms and restrict full-text wire fetch",()=>{
  for(const category of ["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]){
   const plan=riskPublisherSearchPlan({...t,category});
   assert.equal(new URL(plan.url).hostname,"news.google.com");
   assert.match(new URL(plan.url).searchParams.get("q"),/when:24h/);
+  assert.ok(plan.topic_bucket_id);
+  assert.ok(plan.topic_tags.length>0);
+  assert.equal(plan.discovery_only,true);
  }
  for(const h of ["reuters.com","www.reuters.com","aninews.in","apnews.com","ft.com"])
   assert.equal(isPublisherFullTextRestricted(h),true);
