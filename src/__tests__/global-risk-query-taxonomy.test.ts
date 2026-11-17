@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   GLOBAL_RISK_QUERY_BUCKETS,
+  GLOBAL_RISK_QUERY_CATEGORIES,
   GLOBAL_RISK_QUERY_ROTATION_MS,
+  buildCountrySourceDiscoveryQueries,
   selectGlobalRiskQueryBucket,
 } from "../../scripts/lib/global-risk-query-taxonomy.mjs";
 import { buildRealtimeSearchPlan } from "@/lib/ask-realtime-query-plan";
@@ -36,6 +38,13 @@ describe("rotating global risk search taxonomy", () => {
         "pmi contraction", "gdp shock", "tariff increase", "customs retaliation",
         "bank liquidity stress", "swift restriction", "payment rail disruption",
         "oil supply price shock", "lng supply disruption", "grain price shock",
+        "open market operation repo liquidity", "reverse repo standing facility",
+        "CET1 tier 1 capital ratio", "LCR NSFR bank liquidity stress",
+        "SOFR EURIBOR TONAR interbank rates", "cross currency basis swap stress",
+        "2Y 10Y 30Y sovereign yield curve", "2s10s curve term premium shift",
+        "sovereign bond auction bid to cover tail", "PPI PCE inflation breakeven surprise",
+        "VIX MOVE FX implied volatility risk reversal", "FPI FII cross border capital outflow",
+        "stablecoin liquidity redemption flow",
       ],
       CRITICAL_MINERALS: [
         "lithium", "cobalt", "nickel", "copper", "rare earths", "ndpr",
@@ -44,12 +53,37 @@ describe("rotating global risk search taxonomy", () => {
         "potash", "phosphate", "mineral export ban", "mining royalty hike",
         "mine nationalization", "mine strike", "smelter outage",
         "strategic mineral stockpiling", "battery mineral processing",
-        "semiconductor mineral processing",
+        "semiconductor mineral processing", "LME COMEX CME SHFE INE exchange warehouse inventory",
+        "cancelled warrants exchange warehouse draw", "copper backwardation contango curve spread",
+        "treatment charge refining charge TC RC", "polysilicon gold silver PGM benchmark prices",
+        "critical mineral offtake deal supply finance",
       ],
     };
     for (const [category, expected] of Object.entries(coverage)) {
       for (const phrase of expected) expect(corpus[category]).toContain(phrase);
     }
+  });
+
+  it("keeps exactly three categories and builds bounded country institution search templates", () => {
+    expect(GLOBAL_RISK_QUERY_CATEGORIES).toEqual([
+      "GEOPOLITICS", "MACRO_FX", "CRITICAL_MINERALS",
+    ]);
+    const pack = buildCountrySourceDiscoveryQueries("United States", "MACRO_FX");
+    expect(pack.category).toBe("MACRO_FX");
+    expect(pack.queries.map(query => query.lane)).toEqual([
+      "central_bank", "national_exchange", "banking_regulator", "market_news",
+    ]);
+    expect(pack.queries.map(query => query.query)).toEqual(
+      buildCountrySourceDiscoveryQueries("United States", "MACRO_FX").queries.map(query => query.query),
+    );
+    expect(pack.queries.every(query => query.query.length <= 240)).toBe(true);
+    expect(pack.queries[0].query).toContain("central bank");
+    expect(pack.queries[1].query).toContain("national stock exchange");
+    expect(pack.queries[2].query).toContain("banking regulator");
+    expect(pack.queries[3].affected_assets).toContain("capital_flows");
+    expect(() => buildCountrySourceDiscoveryQueries("Country", "CRYPTO")).toThrow(
+      "GLOBAL_RISK_QUERY_COUNTRY_INPUT_INVALID",
+    );
   });
 
   it("rotates every topic bucket on fixed 20-minute slots with bounded metadata", () => {
@@ -103,6 +137,26 @@ describe("rotating global risk search taxonomy", () => {
     expect(writer).toContain("affected_assets_json");
     expect(writer).toContain("commercial_rights_verified:false");
     expect(writer).toContain("originals_verified:0,independent_same_event_verified:false");
+  });
+
+  it("maps bank, equity, and exchange market signals into their existing categories", () => {
+    const bank = deriveRiskStreamEligibleScore("MACRO_FX", "IND",
+      "CET1 LCR NSFR bank deposit flight and stress test");
+    expect(bank?.event_class).toBe("BANK_CAPITAL_LIQUIDITY_STRESS");
+    expect(bank?.agent_decision.affected_assets).toContain("bank_capital");
+    expect(bank?.agent_decision.affected_assets).toContain("bank_liquidity");
+
+    const equity = deriveRiskStreamEligibleScore("MACRO_FX", "IND",
+      "NIFTY benchmark stock exchange circuit breaker VIX volatility");
+    expect(equity?.event_class).toBe("EQUITY_MARKET_MICROSTRUCTURE");
+    expect(equity?.agent_decision.affected_assets).toContain("equity_indices");
+    expect(equity?.agent_decision.affected_assets).toContain("equity_volatility");
+
+    const inventory = deriveRiskStreamEligibleScore("CRITICAL_MINERALS", "CHL",
+      "LME exchange warehouse inventory and cancelled warrants copper");
+    expect(inventory?.event_class).toBe("EXCHANGE_INVENTORY_SHOCK");
+    expect(inventory?.agent_decision.affected_assets).toContain("exchange_inventories");
+    expect(inventory?.agent_decision.affected_assets).toContain("warehouse_stocks");
   });
 
   it("maps new event vocabulary into bounded derived affected assets", () => {
