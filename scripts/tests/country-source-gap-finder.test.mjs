@@ -66,7 +66,9 @@ test("only exact active rights-manifest role pairs satisfy healthy country cover
 });
 
 test("registry SQL contains only approved, current rights entries",()=>{
- const pending={...approved,status:"PENDING",source_id:"pending_source",rights_expire_at:null,\n  rights_evidence:{licence_url:null,terms_url:null,reviewed_at:null,reviewer:null,\n   notes:"Awaiting explicit rights review."}};
+ const pending={...approved,status:"PENDING",source_id:"pending_source",rights_expire_at:null,
+  rights_evidence:{licence_url:null,terms_url:null,reviewed_at:null,reviewer:null,
+   notes:"Awaiting explicit rights review."}};
  const manifest={schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[approved,pending]};
  const sql=buildApprovedRegistryUpserts(manifest,now);
  assert.equal(sql.length,1);
