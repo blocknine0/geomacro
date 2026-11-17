@@ -420,13 +420,17 @@ function readCandidates(path,now){
 export async function publishPermanentDerivedNewsArchive({
   archiveDir,assetsDir,candidatePath,
   fetchImpl=fetch,now=Date.now(),canonicalCatchup=false,
-  canonicalOriginToken=null,allowD1Reads=true,
+  canonicalOriginToken=null,allowD1Reads=true,onStage=null,
 }={}){
   if(typeof canonicalCatchup!=="boolean"||typeof allowD1Reads!=="boolean"||
      (!allowD1Reads&&canonicalCatchup))
     throw Error("PERMANENT_ARCHIVE_CATCHUP_CONFIG_INVALID");
   if(!archiveDir||!assetsDir||!candidatePath||!Number.isFinite(now))
     throw Error("PERMANENT_ARCHIVE_CONFIGURATION_INVALID");
+  const stage=name=>{
+    if(typeof onStage==="function")try{onStage(name)}catch{/* diagnostics cannot interrupt publication */}
+  };
+  stage("archive_state_load");
   const dataDir=join(resolve(archiveDir),"data");
   mkdirSync(dataDir,{recursive:true});
   const originalIndex=readIndex(dataDir);
@@ -435,6 +439,7 @@ export async function publishPermanentDerivedNewsArchive({
   const existingById=new Map();
   let totalExisting=0;
 
+  stage("existing_shard_validation");
   // Every existing shard is mandatory and immutable. Missing/corrupt historical
   // content aborts the update instead of silently rebuilding a shortened archive.
   for(const month of index.months){
@@ -517,6 +522,7 @@ export async function publishPermanentDerivedNewsArchive({
       }
     }
   }
+  stage("candidate_document_validation");
   const existingBeforeCatchup=new Set(existingById.keys());
   const candidates=readCandidates(candidatePath,now);
   const allIncoming=[...seedRows,...candidates];
@@ -535,6 +541,7 @@ export async function publishPermanentDerivedNewsArchive({
     added++;
   }
 
+  stage("append_immutable_shards");
   // Preserve all old shards. Update only months receiving new immutable IDs.
   for(const month of touchedMonths){
     mkdirSync(join(dataDir,"archive",month),{recursive:true});
@@ -549,6 +556,7 @@ export async function publishPermanentDerivedNewsArchive({
     }
   }
 
+  stage("refresh_public_snapshots");
   const allSignals=sortSignals([...existingById.values()]);
   const months=[...new Set(allSignals.map(monthFor).filter(Boolean))].sort().reverse();
   const totalSignals=allSignals.length;
@@ -617,6 +625,7 @@ export async function publishPermanentDerivedNewsArchive({
       {encoding:"utf8",mode:0o644});
   }
 
+  stage("compare_public_index");
   let publishedIndexMatches=false;
   if(totalSignals>0||index.seed_complete){
     try{
@@ -639,6 +648,7 @@ export async function publishPermanentDerivedNewsArchive({
   }
   const deployNeeded=Boolean((totalSignals>0||index.seed_complete)&&!publishedIndexMatches&&
     (added>0||seedCompleteThisRun||indexChanged||!publishedIndexMatches));
+  stage("synchronize_worker_assets");
   mkdirSync(resolve(assetsDir),{recursive:true});
   if(deployNeeded)cpSync(dataDir,resolve(assetsDir),{recursive:true,force:true});
   const result={
@@ -664,6 +674,7 @@ export async function publishPermanentDerivedNewsArchive({
     source_urls_logged:false,
     payments:0,
   };
+  stage("write_publish_receipt");
   const resultPath=join(resolve(process.env.RUNNER_TEMP||dirname(resolve(candidatePath))),
     "permanent-derived-news-archive-result.json");
   mkdirSync(dirname(resultPath),{recursive:true});
@@ -704,12 +715,15 @@ if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])
   // Derive only within this production process; never persist or log keys.
   const canonicalOriginToken=canonicalCatchup?
     deriveControlPlaneRootToken(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN):null;
+  let failedStage="configuration";
   publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath,
-    canonicalCatchup,canonicalOriginToken,allowD1Reads
+    canonicalCatchup,canonicalOriginToken,allowD1Reads,
+    onStage:stage=>{failedStage=stage}
   }).catch(error=>{
     console.error(JSON.stringify({
       schema:"geomacro.permanent-derived-news-archive-error.v1",
       operation:"archive_update",
+      stage:failedStage,
       diagnostic_code:safePermanentArchiveDiagnostic(error),
     }));
     process.exitCode=2;
