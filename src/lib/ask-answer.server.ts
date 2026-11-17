@@ -234,7 +234,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     const [officialResult,indexedResult]=await Promise.allSettled([
       boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500),
       boundedAskAdapter("indexed_discovery",()=>realtimeSearchAnswer(question,unavailable,
-        {deterministicOnly:true,allowBrowserFallback:false}),7_500),
+        {deterministicOnly:true,allowBrowserFallback:false}),6_000),
     ]);
     if(officialResult.status==="fulfilled"&&officialResult.value)return officialResult.value;
     if(indexedResult.status==="fulfilled"&&indexedResult.value)return indexedResult.value;
@@ -247,7 +247,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     boundedAskAdapter("current_originals",()=>answerFromCurrentOriginals(question),5_500),
     boundedAskAdapter("derived_intelligence",()=>answerHybridQuestion(question),6_500),
     boundedAskAdapter("indexed_discovery",()=>realtimeSearchAnswer(question,
-      noCurrentPublisherNewsAnswer(),{deterministicOnly:true,allowBrowserFallback:false}),7_500),
+      noCurrentPublisherNewsAnswer(),{deterministicOnly:true,allowBrowserFallback:false}),6_000),
   ]);
   const original=originalResult.status==="fulfilled"?originalResult.value:null;
   const derived=derivedResult.status==="fulfilled"?derivedResult.value:null;
