@@ -1,22 +1,35 @@
 const ACTIONS=new Set(["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"]);
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const ASSETS=Object.freeze({
- GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes"],
- MACRO_FX:["foreign_exchange","interest_rates","sovereign_funding"],
- CRITICAL_MINERALS:["mineral_supply","industrial_inputs","shipping_routes"]
+ GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes","maritime_chokepoints"],
+ MACRO_FX:["foreign_exchange","fx_pairs","interest_rates","sovereign_funding","energy_commodities"],
+ CRITICAL_MINERALS:["mineral_supply","critical_minerals","industrial_inputs","shipping_routes","maritime_chokepoints"]
 });
 const MECHANISMS=Object.freeze({
- GEOPOLITICS:"Verified geopolitical constraints can change access, counterparties, and cross-border operating conditions.",
- MACRO_FX:"Verified macroeconomic observations can change currency, funding, and policy expectations.",
- CRITICAL_MINERALS:"Verified minerals observations can change input availability and supply-chain exposure."
+ GEOPOLITICS:"Changes in access, counterparties, sanctions exposure, or route availability propagate through trade and shipping links.",
+ MACRO_FX:"Policy, inflation, foreign-exchange, and funding changes transmit through currency pairs, rates, and sovereign financing.",
+ CRITICAL_MINERALS:"Production, export-control, and logistics changes transmit through commodity availability and industrial supply chains."
 });
+const DIRECT_IMPACTS=Object.freeze({
+ GEOPOLITICS:"Freight, insurance, energy, and corridor risk premiums may adjust; the direction and size are not confirmed.",
+ MACRO_FX:"FX pairs, sovereign yields, funding spreads, and import costs may reprice; the direction and size are not confirmed.",
+ CRITICAL_MINERALS:"Commodity premiums, delivery lead times, and substitution costs may change; physical impact requires verification."
+});
+const horizonName=hours=>hours<=24?"24h":hours<=72?"72h":"7d";
+const safeTrigger=value=>typeof value==="string"&&
+ /^[A-Z][A-Z0-9_]{0,47}$/u.test(value)&&
+ !/(?:PRIVATE|TELEGRAM|PUBLISHER|CHANNEL|HTTP)/u.test(value)?
+ value.toLowerCase().replaceAll("_"," "):"classified risk event";
 
 /** Build a source-free, deterministic audience view from already-scored facts. */
 export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
  score=0,confidence=0,horizonHours=24,ttlSeconds=10800,actionPosture,
- contagionCorridors=[]}={}){
+ deltaVs7d=0,tier="BASIC",corroborationReady=false,contagionCorridors=[]}={}){
  if(!CATEGORIES.has(category)||!Number.isFinite(score)||score<0||score>100||
     !Number.isFinite(confidence)||confidence<0||confidence>1||
+    !Number.isFinite(deltaVs7d)||deltaVs7d< -100||deltaVs7d>100||
+    !["BASIC","STANDARD","COMPLEX"].includes(tier)||
+    typeof corroborationReady!=="boolean"||
     !Number.isInteger(horizonHours)||horizonHours<1||horizonHours>168||
     !Number.isInteger(ttlSeconds)||ttlSeconds<60||ttlSeconds>604800||
     !Array.isArray(contagionCorridors)||contagionCorridors.length>12||
@@ -28,12 +41,18 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
  const bias=category==="MACRO_FX"?"VOLATILITY_UP":
   category==="CRITICAL_MINERALS"?"SUPPLY_DISRUPTION_RISK":
   "RISK_PREMIUM_UP";
+ const trigger=safeTrigger(eventClass);
+ const mechanism=MECHANISMS[category],directImpact=DIRECT_IMPACTS[category];
  return {
-  agent_decision:{action_posture:posture,risk_score_0_100:Number(score.toFixed(2)),
-   confidence_0_1:Number(confidence.toFixed(3)),horizon_hours:horizonHours,
+  agent_decision:{action_posture:posture,gate_state:posture,
+   risk_score_0_100:Number(score.toFixed(2)),value_0_100:Number(score.toFixed(2)),
+   delta_vs_7d:Number(deltaVs7d.toFixed(2)),
+   confidence_0_1:Number(confidence.toFixed(3)),confidence:Number(confidence.toFixed(3)),
+   horizon_hours:horizonHours,horizon:horizonName(horizonHours),
    affected_assets:[...ASSETS[category]],price_direction_bias:bias,
-   contagion_corridors:[...new Set(contagionCorridors)].sort(),ttl_seconds:ttlSeconds},
-  analyst_brief:{risk_mechanism:MECHANISMS[category],
+   contagion_corridors:[...new Set(contagionCorridors)].sort(),tier,
+   upgrade_available:tier==="BASIC"&&corroborationReady,ttl_seconds:ttlSeconds},
+  analyst_brief:{risk_mechanism:mechanism,
    downstream_effects:category==="MACRO_FX"?
     "Funding costs, currency conversion, and risk limits may adjust if the observation persists.":
     category==="CRITICAL_MINERALS"?
@@ -44,35 +63,62 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
     category==="CRITICAL_MINERALS"?
      "Monitor supply premiums and substitution risk; this output does not forecast a guaranteed price move.":
      "Monitor risk premia and route sensitivity; this output does not forecast a guaranteed price move.",
+   trigger,transmission_mechanism:mechanism,direct_price_supply_impact:directImpact,
+   causal_summary:"Trigger: "+trigger+". Transmission Mechanism: "+mechanism+
+    " Direct Price/Supply Impact: "+directImpact,
+   raw_source_redacted:true,licensed_source_text_included:false,
    cross_category_outlook:"Assess linked geopolitical, macroeconomic, and critical-minerals conditions using separately verified evidence."},
-  raw_source_redacted:true
+  raw_source_redacted:true,licensed_source_text_included:false
  };
 }
 
 export function validRiskStreamDualAudience(value){
  const agent=value?.agent_decision,brief=value?.analyst_brief;
- const agentKeys=["action_posture","risk_score_0_100","confidence_0_1",
+ const legacyAgentKeys=["action_posture","risk_score_0_100","confidence_0_1",
   "horizon_hours","affected_assets","price_direction_bias","contagion_corridors","ttl_seconds"];
- const briefKeys=["risk_mechanism","downstream_effects","price_impact_summary","cross_category_outlook"];
- return value?.raw_source_redacted===true&&agent&&typeof agent==="object"&&
-  Object.keys(agent).sort().join("|")===agentKeys.sort().join("|")&&
+ const enhancedAgentKeys=[...legacyAgentKeys,"gate_state","value_0_100","delta_vs_7d",
+  "confidence","horizon","tier","upgrade_available"];
+ const legacyBriefKeys=["risk_mechanism","downstream_effects","price_impact_summary","cross_category_outlook"];
+ const enhancedBriefKeys=[...legacyBriefKeys,"trigger","transmission_mechanism",
+  "direct_price_supply_impact","causal_summary","raw_source_redacted","licensed_source_text_included"];
+ const agentKeys=Object.keys(agent??{}).sort().join("|");
+ const briefKeys=Object.keys(brief??{}).sort().join("|");
+ const legacy=agentKeys===legacyAgentKeys.slice().sort().join("|")&&
+  briefKeys===legacyBriefKeys.slice().sort().join("|");
+ const enhanced=agentKeys===enhancedAgentKeys.slice().sort().join("|")&&
+  briefKeys===enhancedBriefKeys.slice().sort().join("|");
+ const common=value?.raw_source_redacted===true&&agent&&typeof agent==="object"&&
   ACTIONS.has(agent.action_posture)&&Number.isFinite(agent.risk_score_0_100)&&
   agent.risk_score_0_100>=0&&agent.risk_score_0_100<=100&&
   Number.isFinite(agent.confidence_0_1)&&agent.confidence_0_1>=0&&agent.confidence_0_1<=1&&
-  Number.isInteger(agent.horizon_hours)&&agent.horizon_hours>=1&&
-  Array.isArray(agent.affected_assets)&&agent.affected_assets.every(x=>
+  Number.isInteger(agent.horizon_hours)&&agent.horizon_hours>=1&&agent.horizon_hours<=168&&
+  Array.isArray(agent.affected_assets)&&agent.affected_assets.length<=24&&agent.affected_assets.every(x=>
    typeof x==="string"&&/^[a-z0-9_]{2,48}$/u.test(x))&&
   typeof agent.price_direction_bias==="string"&&agent.price_direction_bias.length<=80&&
-  Array.isArray(agent.contagion_corridors)&&agent.contagion_corridors.every(x=>
+  Array.isArray(agent.contagion_corridors)&&agent.contagion_corridors.length<=12&&agent.contagion_corridors.every(x=>
    typeof x==="string"&&/^[A-Z]{3}>[A-Z]{3}$/u.test(x))&&
-  Number.isInteger(agent.ttl_seconds)&&agent.ttl_seconds>=60&&
-  brief&&typeof brief==="object"&&
-  Object.keys(brief).sort().join("|")===briefKeys.sort().join("|")&&
-  ["risk_mechanism","downstream_effects","price_impact_summary","cross_category_outlook"]
-   .every(key=>typeof brief[key]==="string"&&brief[key].length>=12&&brief[key].length<=360)&&
-  // Only inspect the two audience products here. The signed score may also
-  // contain the closed enum PRIVATE_OSINT / TELEGRAM_WATCH corroboration
-  // family; that label is metadata, not a channel name or raw source text.
-  !JSON.stringify({agent_decision:agent,analyst_brief:brief}).match(
-   /https?:\/\/|www\.|@|telegram|headline|publisher|channel_name/iu);
+  Number.isInteger(agent.ttl_seconds)&&agent.ttl_seconds>=60&&agent.ttl_seconds<=604800&&
+  brief&&typeof brief==="object";
+ const validBrief=[...legacyBriefKeys].every(key=>
+  typeof brief?.[key]==="string"&&brief[key].length>=12&&brief[key].length<=360);
+ const validEnhanced=enhanced&&value.licensed_source_text_included===false&&
+  agent.gate_state===agent.action_posture&&
+  Number.isFinite(agent.value_0_100)&&agent.value_0_100===agent.risk_score_0_100&&
+  Number.isFinite(agent.delta_vs_7d)&&agent.delta_vs_7d>=-100&&agent.delta_vs_7d<=100&&
+  Number.isFinite(agent.confidence)&&agent.confidence===agent.confidence_0_1&&
+  ["24h","72h","7d"].includes(agent.horizon)&&
+  ["BASIC","STANDARD","COMPLEX"].includes(agent.tier)&&
+  typeof agent.upgrade_available==="boolean"&&
+  (agent.tier==="BASIC"||agent.upgrade_available===false)&&
+  brief.raw_source_redacted===true&&brief.licensed_source_text_included===false&&
+  typeof brief.trigger==="string"&&brief.trigger.length>=6&&brief.trigger.length<=80&&
+  typeof brief.transmission_mechanism==="string"&&brief.transmission_mechanism.length>=12&&
+  typeof brief.direct_price_supply_impact==="string"&&brief.direct_price_supply_impact.length>=12&&
+  typeof brief.causal_summary==="string"&&brief.causal_summary.length>=60&&
+  brief.causal_summary.startsWith("Trigger: "+brief.trigger+". Transmission Mechanism: ")&&
+  brief.causal_summary.includes(" Direct Price/Supply Impact: "+brief.direct_price_supply_impact);
+ const clearText=!/(?:https?:[/][/]|www[.]|@|telegram|headline|publisher|channel_name)/iu.test(
+  JSON.stringify({agent_decision:agent,analyst_brief:brief}));
+ return Boolean(common&&(legacy||enhanced)&&validBrief&&clearText&&
+  (!enhanced||validEnhanced));
 }
