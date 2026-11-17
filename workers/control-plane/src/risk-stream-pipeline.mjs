@@ -464,8 +464,8 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
  ];
  const strategicCorridors=corridorRules.filter(([pattern])=>pattern.test(eventText)).map(([,id])=>id);
  const assetRules=[
-  [/\bBRENT|CRUDE OIL|OIL SUPPLY\b/u,"brent_crude"],
-  [/\bLNG|LIQUEFIED NATURAL GAS\b/u,"lng_spot"],
+  [/\b(?:BRENT|CRUDE OIL|OIL SUPPLY)\b/u,"brent_crude"],
+  [/\b(?:LNG|LIQUEFIED NATURAL GAS)\b/u,"lng_spot"],
   [/\bLITHIUM\b/u,"lithium"],[/\bCOPPER\b/u,"copper"],
   [/\bRARE EARTHS?\b/u,"rare_earths"],
   [/\b(?:USD|EUR|JPY|CNY|INR|KRW|BRL|TRY|ZAR|MXN)\s*[/_-]\s*(?:USD|EUR|JPY|CNY|INR|KRW|BRL|TRY|ZAR|MXN)\b/u,"fx_pairs"]
