@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildCountrySourceGapReport,buildApprovedRegistryUpserts,classifyCandidateRights,
- rolesForCategory} from "../lib/country-source-gap-finder.mjs";\nimport {parseJsonFeed} from "../ops/discover-missing-country-sources.mjs";
+ rolesForCategory} from "../lib/country-source-gap-finder.mjs";
+import {parseJsonFeed} from "../ops/discover-missing-country-sources.mjs";
 
 const countries=Array.from({length:195},(_,i)=>({iso3:i===0?"AAA":
  "A"+String.fromCharCode(65+Math.floor(i/26),65+i%26),name:"country-"+i}));
