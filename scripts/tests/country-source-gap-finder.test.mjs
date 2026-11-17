@@ -29,6 +29,7 @@ test("HTTP probe or D1 approval cannot grant commercial rights without exact rev
  const candidate={...source,category:"MACRO_FX"};
  assert.deepEqual(classifyCandidateRights(candidate,[],now),{
   commercial_rights_approved:0,lane:"PRIVATE_OSINT_REDACTED_CORROBORATION",
+  raw_source_redacted:true,licensed_source_text_included:false,
   rights_status:"RIGHTS_NOT_EXACTLY_APPROVED"});
  assert.equal(classifyCandidateRights(candidate,[{...approved,status:"PENDING"}],now)
   .commercial_rights_approved,0);
