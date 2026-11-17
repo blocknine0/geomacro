@@ -12,6 +12,28 @@ export const B2_DAILY_LIMITS = Object.freeze({
   // GET+HEAD/Class B 2,040; native authorization/Class C 40; no list tickets.
   total: 4_080, GET: 2_000, PUT: 2_000, HEAD: 40, NATIVE_AUTH: 40,
 });
+// Reserve a small daily slice for release-critical workflows. HEAD's hard
+// ceiling is 40, so its protected slice is bounded to 10 tickets.
+export const B2_RELEASE_RESERVED = Object.freeze({
+  GET: 100, PUT: 50, HEAD: 10, NATIVE_AUTH: 0,
+});
+export const B2_RELEASE_WORKFLOWS = Object.freeze([
+  "step3_shadow_rehearsal", "step3_production_verify",
+  "hot50_release_parity", "step3_hot50_parity", "deploy_quota_smoke",
+]);
+const RELEASE_WORKFLOWS = new Set(B2_RELEASE_WORKFLOWS);
+const RELEASE_TOTAL_RESERVE = Object.values(B2_RELEASE_RESERVED)
+  .reduce((total, count) => total + count, 0);
+function admissionLimits(workflowId) {
+  if (RELEASE_WORKFLOWS.has(workflowId)) return B2_DAILY_LIMITS;
+  return Object.freeze({
+    total: B2_DAILY_LIMITS.total - RELEASE_TOTAL_RESERVE,
+    GET: B2_DAILY_LIMITS.GET - B2_RELEASE_RESERVED.GET,
+    PUT: B2_DAILY_LIMITS.PUT - B2_RELEASE_RESERVED.PUT,
+    HEAD: B2_DAILY_LIMITS.HEAD - B2_RELEASE_RESERVED.HEAD,
+    NATIVE_AUTH: B2_DAILY_LIMITS.NATIVE_AUTH - B2_RELEASE_RESERVED.NATIVE_AUTH,
+  });
+}
 // Preserve the existing TEN shared public cold-read tickets per UTC day.
 // The expanded private producer/restore capacity cannot be drained by public
 // visitors or public Workers, so no unbounded customer-induced B2 egress.
@@ -92,19 +114,25 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
   // This is evaluated within the SAME atomic quota UPSERT, not as a racy
   // SELECT or user-provided priority. Recovery workers never inherit this
   // low-priority app ceiling; the expanded GET hard cap remains atomic.
-  const getCeiling = kind !== "GET" ? null
+  const limits = admissionLimits(workflowId);
+  const appGetCeiling = kind !== "GET" ? null
     : workflowId === "app_private_structural_serving"
       ? B2_APP_STRUCTURAL_SHARED_GET_CEILING
       : APP_PRIVATE_METADATA_WORKFLOWS.has(workflowId)
         ? B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING
         : PUBLIC_B2_READ_WORKFLOWS.has(workflowId)
           ? B2_PUBLIC_EDGE_GLOBAL_GET_CEILING : null;
+  const getCeiling = appGetCeiling === null ? limits.GET
+    : Math.min(appGetCeiling, limits.GET);
   const row = await db.prepare(ATOMIC_B2_QUOTA_SQL).bind(
     day, ...increments, iso,
-    B2_DAILY_LIMITS.total,B2_DAILY_LIMITS.GET,B2_DAILY_LIMITS.PUT,
-    B2_DAILY_LIMITS.HEAD,B2_DAILY_LIMITS.NATIVE_AUTH,
-    getCeiling === null ? 0 : 1,
-    getCeiling ?? B2_DAILY_LIMITS.GET,
+    limits.total,
+    kind === "GET" ? limits.GET : B2_DAILY_LIMITS.GET,
+    kind === "PUT" ? limits.PUT : B2_DAILY_LIMITS.PUT,
+    kind === "HEAD" ? limits.HEAD : B2_DAILY_LIMITS.HEAD,
+    kind === "NATIVE_AUTH" ? limits.NATIVE_AUTH : B2_DAILY_LIMITS.NATIVE_AUTH,
+    kind === "GET" ? 1 : 0,
+    getCeiling,
   ).first();
   // If the UPSERT's WHERE failed, *no B2 operation* is authorized.
   if (!row) return {
@@ -129,6 +157,8 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
     ok: true, schema: "geomacro.b2-account-request-reservation.v1",
     reserved: true, day_utc: day, kind,
     used, limits: B2_DAILY_LIMITS,
+    admission_limits: limits,
+    release_reserve_protected: RELEASE_WORKFLOWS.has(workflowId),
     // No caller is permitted to infer B2 source freshness or rights.
     b2_operation_performed: false, public_published: false, chargeable: false,
   };

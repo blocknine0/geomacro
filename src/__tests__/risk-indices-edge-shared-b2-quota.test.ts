@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
+import {B2_DAILY_LIMITS,B2_RELEASE_RESERVED} from "../../workers/control-plane/src/b2-account-quota.mjs";
 import { makeQuotaProtectedRiskIndicesConfig } from "../../scripts/ops/configure-risk-indices-edge-d1-quota.mjs";
 import worker from "../../workers/risk-indices-edge/src/index.mjs";
 
@@ -26,7 +26,7 @@ function fakeD1({ exhausted = false } = {}) {
           return {
             async first() {
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(args).toContain(B2_DAILY_LIMITS.GET);
+              expect(args).toContain(B2_DAILY_LIMITS.GET-B2_RELEASE_RESERVED.GET);
               if (exhausted) return null;
               return { total_requests: 1, get_requests: 1,
                 put_requests: 0, head_requests: 0,

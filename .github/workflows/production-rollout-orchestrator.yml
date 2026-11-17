@@ -8,6 +8,8 @@ on:
       - ".github/workflows/production-rollout-orchestrator.yml"
       - "scripts/lib/d1-step3-receipt-admission.mjs"
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
+      - "scripts/lib/d1-step3-concurrent-drift-retry.mjs"
+      - "scripts/tests/d1-step3-concurrent-drift-retry.test.mjs"
       - "scripts/ops/run-step3-local-workerd-rehearsal.mjs"
       - "scripts/tests/d1-step3-receipt-admission.test.mjs"
       - "scripts/lib/d1-step3-real-shadow-proofs.mjs"
@@ -78,6 +80,7 @@ jobs:
       - run: npm install --prefix scripts/ops --no-save --ignore-scripts --package-lock=false miniflare@3
       - run: >-
           node --test
+          scripts/tests/d1-step3-concurrent-drift-retry.test.mjs
           scripts/tests/d1-step3-receipt-admission.test.mjs
           scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
           scripts/tests/d1-step3-real-shadow-proofs.test.mjs

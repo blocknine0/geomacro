@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createB2D1AccountGovernor } from "../../scripts/ops/b2-d1-account-governor.mjs";
 import { createB2Client,assertGitHubActionsB2AccountGovernor,assertCanonicalB2AccountGovernor } from "../../scripts/ops/b2-s3-client.mjs";
-import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
+import {B2_DAILY_LIMITS,B2_RELEASE_RESERVED} from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const env = {
   CLOUDFLARE_ACCOUNT_ID: "1234567890abcdef1234567890abcdef",
@@ -52,11 +52,13 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     });
     const proof=await governor.reserve("GET");
     expect(proof).toMatchObject({kind:"GET",day_utc:"2026-10-09",
-      used:{total:1,GET:1}});
+      used:{total:1,GET:1},
+      admission_limits:{total:3920,GET:1900,PUT:1950,HEAD:30,NATIVE_AUTH:40},
+      release_reserve_protected:false});
     expect(calls).toHaveLength(2);
     expect(calls.every(x=>x.method==="POST" && x.url.includes("/d1/database/"))).toBe(true);
     expect(calls[0].body.sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-    expect(calls[0].body.params).toContain(B2_DAILY_LIMITS.GET);
+    expect(calls[0].body.params).toContain(B2_DAILY_LIMITS.GET-B2_RELEASE_RESERVED.GET);
     expect(calls[1].body.sql).toContain("b2_request_quota_workflow_receipt");
     expect(JSON.stringify(calls)).not.toContain("write-secret");
   });
