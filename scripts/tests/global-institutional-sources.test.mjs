@@ -31,6 +31,19 @@ test("protected source registry apply consumes only the live rights-filtered man
  assert.ok(workflow.includes("APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION"));
 });
 
+test("institutional source audits use only the shared three-category taxonomy",()=>{
+ const report=buildInstitutionalSourceReport({candidates:[official],rightsEntries:[],
+  probes:[healthy(official.source_id)],now});
+ const candidate=report.candidates[0];
+ assert.equal(candidate.topic_taxonomy_version,"global-risk-query-taxonomy.v1");
+ assert.equal(typeof candidate.discovery_topic_bucket_id,"string");
+ assert.ok(candidate.discovery_topic_tags.includes("sanctions") ||
+  candidate.discovery_topic_tags.includes("armed_conflict"));
+ assert.equal(candidate.commercial_rights_approved,0);
+ assert.deepEqual(Object.keys(report.role_pairs).sort(),
+  ["CRITICAL_MINERALS","GEOPOLITICS","MACRO_FX"]);
+});
+
 test("HTTP 200 on an unreviewed source remains private and redacted",()=>{
  const candidate={...official,source_id:"unreviewed_wire"};
  const report=buildInstitutionalSourceReport({candidates:[candidate],rightsEntries:[],
