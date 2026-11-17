@@ -403,8 +403,8 @@ test("unverified GDELT indexed hints cannot elevate single originals beyond Basi
  assert.equal(result.corroborated_and_signed,1);
  const signedRow=[...c.db.gros.values()][0],signedPayload=JSON.parse(signedRow.payload_json);
  assert.deepEqual(signedPayload.eligible_derived_score.eligible_tiers,
-  ["basic_focused","standard"]);
- assert.equal(signedPayload.eligible_derived_score.agent_decision.tier,"STANDARD");
+  ["basic_focused"]);
+ assert.equal(signedPayload.eligible_derived_score.agent_decision.tier,"BASIC");
  assert.equal(signedPayload.eligible_derived_score.licensed_source_text_included,false);
  const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
  assert.deepEqual(payload.source_originals,[payload.source_originals[0]]);
