@@ -95,6 +95,13 @@ export async function probeInstitutionalCandidate(candidate,{fetchImpl=fetch,now
 export function buildInstitutionalSourceReport({candidates,rightsEntries,probes,now=new Date()}={}){
  if(!Array.isArray(candidates)||!Array.isArray(rightsEntries)||!Array.isArray(probes))
   fail("INPUT_INVALID");
+ for(const candidate of candidates){
+  const roles=RISK_STREAM_CATEGORY_ROLES[candidate?.category];
+  if(!candidate||typeof candidate.source_id!=="string"||!roles?.includes(candidate.source_role)||
+     typeof candidate.publisher_root_domain!=="string"||typeof candidate.parent_media_entity!=="string"||
+     !["rss","atom","rdf","xml","json_reliefweb"].includes(candidate.format))
+   fail("CANDIDATE_ROLE_OR_IDENTITY_INVALID");
+ }
  const rights=validateSourceRightsManifest({schema:"geomacro.risk-stream-source-rights-reviewed.v1",
   entries:rightsEntries},now);
  const probeMap=new Map(probes.map(x=>[x.source_id,x]));
