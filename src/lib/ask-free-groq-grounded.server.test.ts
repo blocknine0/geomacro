@@ -68,7 +68,7 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(mock.mock.calls[0][1].cache).toBeUndefined();
    expect(mock.mock.calls[0][1].headers["Cache-Control"]).toBe("no-store");
    expect(sent.max_completion_tokens).toBe(1100);
-   expect(sent.messages[0].content).toContain("REPHRASE the summary");
+   expect(sent.messages[0].content).toContain("Speak like a clear, thoughtful analyst");
    expect(sent.model).toBe("openai/gpt-oss-20b");
    expect(sent.response_format).toMatchObject({type:"json_schema",json_schema:{
      name:"geomacro_ask_formatter",strict:true,
