@@ -31,6 +31,14 @@ test("alternate 60s stage shortcut is retired in favor of canonical SLO, rollbac
   assert.match(canonical,/CANARY_P95_BASELINE_LATENCY_REGRESSION/);
   assert.match(canonical,/CANARY_SLO_BREACH/);
   assert.match(canonical,/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/);
+  assert.match(canonical,/const D1_MIN_RATE_SAMPLE_MS=10\*60\*1000/);
+  assert.match(canonical,/const D1_HOURLY_WRITE_CAP=45_000/);
+  assert.match(canonical,/const D1_HOURLY_READ_CAP=24_000_000/);
+  assert.match(canonical,/const D1_PAID_BURST_WRITE_CAP=500_000/);
+  assert.match(canonical,/console\.error\(JSON\.stringify\(diagnostic\)\)/);
+  for(const field of ["ms","written","writeRate","read","readRate",
+   "paced_remaining_rows_written","remaining_rows_written"])
+   assert.match(canonical,new RegExp("\\b"+field+"\\b"));
   assert.match(canonical,/await deployBaseline\(base\)/);
   assert.match(workflow,/timeout-minutes: 115/);
 });
