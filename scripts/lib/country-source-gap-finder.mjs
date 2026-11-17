@@ -163,3 +163,36 @@ export function buildApprovedRegistryUpserts(manifest,now=Date.now()){
   return "INSERT INTO risk_stream_sources (source_id,publisher_root_domain,parent_media_entity,source_role,commercial_rights_approved,enabled,reviewed_at,rights_expire_at) VALUES ("+values+") ON CONFLICT(source_id) DO UPDATE SET publisher_root_domain=excluded.publisher_root_domain,parent_media_entity=excluded.parent_media_entity,source_role=excluded.source_role,commercial_rights_approved=1,enabled=1,reviewed_at=excluded.reviewed_at,rights_expire_at=excluded.rights_expire_at;";
  });
 }
+
+export function buildHealthyApprovedSourceManifest(manifest,report,now=Date.now()){
+ const current=now instanceof Date?now.getTime():now;
+ const {approvedEntries}=validateSourceRightsManifest(manifest,current);
+ if(report?.schema!=="geomacro.country-source-gap-report.v1"||report.cell_count!==585||
+  !Array.isArray(report.cells))fail("LIVE_HEALTH_REPORT_INVALID");
+ const generated=Date.parse(report.generated_at??"");
+ if(!Number.isFinite(generated)||generated>current||current-generated>30*60_000)
+  fail("LIVE_HEALTH_REPORT_STALE");
+ const candidates=new Map();
+ for(const cell of report.cells)for(const candidate of cell.candidate_sources??[]){
+  if(candidate?.source_id&&candidate.country_specific===true&&
+   candidate.commercial_rights_approved===1&&candidate.lane==="PRIMARY_COMMERCIAL_EVIDENCE"&&
+   candidate.health_status==="HEALTHY"){
+   const category=cell.category,roles=REQUIRED_SOURCE_ROLES[category];
+   if(roles?.includes(candidate.source_role))candidates.set(candidate.source_id,{candidate,category});
+  }
+ }
+ const probes=new Map((report.probes_this_run??report.probes??[]).map(p=>[p.source_id,p]));
+ const entries=approvedEntries.filter(entry=>{
+  const match=candidates.get(entry.source_id),probe=probes.get(entry.source_id);
+  if(!match||!entry.categories.includes(match.category)||entry.source_role!==match.candidate.source_role)return false;
+  if(!probe||!["WORKING","NO_NEW_EVENT"].includes(probe.status)||probe.http_status!==200)return false;
+  const fetched=Date.parse(probe.last_successful_http_fetch_at??"");
+  const published=Date.parse(probe.last_source_native_publication_at??"");
+  return Number.isFinite(fetched)&&fetched<=current&&current-fetched<=24*60*60_000&&
+   Number.isFinite(published)&&published<=current+60_000&&
+   published>=Date.parse("1990-01-01T00:00:00Z");
+ });
+ return {schema:manifest.schema,entries,approved_entries_selected:entries.length,
+  approved_entries_omitted:approvedEntries.length-entries.length,
+  health_proof_required:true,rights_status_changed:false};
+}
