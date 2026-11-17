@@ -69,10 +69,19 @@ jobs:
           console.log(JSON.stringify({status:proof.status,source_rows:rows.length,d1_writes:0}));
           NODE
       - name: Probe bounded source rotation and build country gap report
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           PREVIOUS=''
-          if [ -f config/country-source-gap-discovery.latest.json ]; then PREVIOUS='--previous config/country-source-gap-discovery.latest.json'; fi
+          branch=automation/country-source-gap-discovery
+          gh auth setup-git
+          if git fetch --quiet origin "refs/heads/$branch:refs/remotes/origin/$branch"; then
+            if git show "origin/$branch:config/country-source-gap-discovery.latest.json" > artifacts/country-source/previous.json 2>/dev/null; then
+              PREVIOUS='--previous artifacts/country-source/previous.json'
+            fi
+          fi
+          if [ -z "$PREVIOUS" ] && [ -f config/country-source-gap-discovery.latest.json ]; then PREVIOUS='--previous config/country-source-gap-discovery.latest.json'; fi
           node scripts/ops/discover-missing-country-sources.mjs \
             --risk-stream-sources artifacts/country-source/risk-stream-sources.json \
             --probe --probe-limit 18 ${PREVIOUS} \
