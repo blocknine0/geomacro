@@ -479,6 +479,10 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
  ];
  const strategicCorridors=corridorRules.filter(([pattern])=>pattern.test(eventText)).map(([,id])=>id);
  const assetRules=[
+  [/\b(?:SUBSEA|UNDERSEA) CABLE(?:S)?(?: SABOTAGE| DISRUPTION)?\b/u,"subsea_cables"],
+  [/\b(?:PIPELINE|GRID) (?:SABOTAGE|DISRUPTION|OUTAGE)\b/u,"pipeline_networks"],
+  [/\b(?:SANCTIONS|ASSET FREEZE)\b/u,"sanctions_exposure"],
+  [/\b(?:DUAL-USE|SEMICONDUCTOR|ARMS) EXPORT (?:CONTROL|BAN)S?\b/u,"export_controls"],
   [/\b(?:BRENT|CRUDE OIL|OIL SUPPLY)\b/u,"brent_crude"],
   [/\b(?:LNG|LIQUEFIED NATURAL GAS)\b/u,"lng_spot"],
   [/\bLITHIUM\b/u,"lithium"],[/\bCOBALT\b/u,"cobalt"],
