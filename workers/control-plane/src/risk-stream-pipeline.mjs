@@ -453,8 +453,27 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
   eligibleTiers.includes("complex_full");
  const tier=eligibleTiers.includes("complex_full")?"COMPLEX":
   standardReady?"STANDARD":"BASIC";
+ const corridorRules=[
+  [/\\b(?:RED SEA|BAB EL MANDEB|BAB-EL-MANDEB)\\b/u,"RED_SEA"],
+  [/\\bMALACCA\\b/u,"MALACCA"],[/\\bHORMUZ\\b/u,"HORMUZ"],
+  [/\\bPANAMA(?: CANAL)?\\b/u,"PANAMA"],[/\\bSUEZ(?: CANAL)?\\b/u,"SUEZ"],
+  [/\\bTAIWAN STRAIT\\b/u,"TAIWAN_STRAIT"],[/\\bSOUTH CHINA SEA\\b/u,"SOUTH_CHINA_SEA"],
+  [/\\bBLACK SEA\\b/u,"BLACK_SEA"],[/\\bBOSPORUS\\b/u,"BOSPORUS"],
+  [/\\bMOZAMBIQUE CHANNEL\\b/u,"MOZAMBIQUE_CHANNEL"],
+  [/\\bCAPE OF GOOD HOPE\\b/u,"CAPE_OF_GOOD_HOPE"],[/\\bGIUK GAP\\b/u,"GIUK_GAP"]
+ ];
+ const strategicCorridors=corridorRules.filter(([pattern])=>pattern.test(eventText)).map(([,id])=>id);
+ const assetRules=[
+  [/\\bBRENT|CRUDE OIL|OIL SUPPLY\\b/u,"brent_crude"],
+  [/\\bLNG|LIQUEFIED NATURAL GAS\\b/u,"lng_spot"],
+  [/\\bLITHIUM\\b/u,"lithium"],[/\\bCOPPER\\b/u,"copper"],
+  [/\\bRARE EARTHS?\\b/u,"rare_earths"],
+  [/\\b(?:USD|EUR|JPY|CNY|INR|KRW|BRL|TRY|ZAR|MXN)\\s*[/_-]\\s*(?:USD|EUR|JPY|CNY|INR|KRW|BRL|TRY|ZAR|MXN)\\b/u,"fx_pairs"]
+ ];
+ const affectedAssets=assetRules.filter(([pattern])=>pattern.test(eventText)).map(([,asset])=>asset);
  const audience=buildRiskStreamDualAudience({category,eventClass:eventRule[1],
-  score:eventRule[2],confidence,tier,corroborationReady:standardReady});
+  score:eventRule[2],confidence,tier,corroborationReady:standardReady,
+  strategicCorridors,affectedAssets});
  return {country_iso3:countryIso3,category,
   value_0_100:eventRule[2],event_class:eventRule[1],
   provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
