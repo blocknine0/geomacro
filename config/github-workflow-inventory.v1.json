@@ -99,6 +99,7 @@
     "country-195-rolling-original-proof-audit.yml",
     "country-flash-validation.yml",
     "country-flash-worker-image.yml",
+    "country-source-gap-audit.yml",
     "credentialed-source-runtime.yml",
     "current-original-private-signing-intake.yml",
     "customer-canonical-d1-schema-acceptance.yml",
@@ -472,6 +473,7 @@
     "cloudflare-five-usd-spend-blocks.yml",
     "codeql-security.yml",
     "commercial-api-production-acceptance.yml",
+    "country-source-gap-audit.yml",
     "current-original-private-signing-intake.yml",
     "d1-analytics-credential-proof.yml",
     "database-schema-safety.yml",
@@ -561,7 +563,8 @@
     "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory — Read Only No Funds",
     "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)",
     "phase2h-private-r2-b2-quota-backup.yml": "Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)",
-    "apply-predge-addendum-v2-migration-0131.yml": "Apply Predge Addendum v2 D1 migration 0131 (single file)"
+    "apply-predge-addendum-v2-migration-0131.yml": "Apply Predge Addendum v2 D1 migration 0131 (single file)",
+    "country-source-gap-audit.yml": "Country Source Gap Audit"
   },
   "lockedTriggerStrings": {
     "owner-issue-dispatch-gateway.yml": [
@@ -735,6 +738,10 @@
       "d1 execute",
       "test -f config/d1-hotspot-v2-canary.hold",
       "/time_travel/bookmark"
+    ],
+    "country-source-gap-audit.yml": [
+      "cron: \"15 6 * * 1\"",
+      "workflow_dispatch:"
     ]
   },
   "predgeBlobSha1": {
