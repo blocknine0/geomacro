@@ -81,7 +81,7 @@ jobs:
           node scripts/ops/register-risk-stream-source.mjs --dry-run
           node scripts/ops/register-risk-stream-source.mjs --preflight
       - name: Verify paid D1 headroom before source registration
-        if: inputs.mode == 'apply' || github.event_name == 'schedule'
+        if: inputs.mode == 'apply' || github.event_name == 'schedule' || github.event_name == 'schedule'
         shell: bash
         run: |
           set -euo pipefail
@@ -99,7 +99,7 @@ jobs:
             remaining_rows_written:proof.remaining_rows_written,provider_write_performed:false}));
           NODE
       - name: Apply owner-approved source entries only
-        if: inputs.mode == 'apply'
+        if: inputs.mode == 'apply' || github.event_name == 'schedule'
         shell: bash
         env:
           CONFIRM: ${{ inputs.approval }}
