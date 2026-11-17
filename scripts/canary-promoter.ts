@@ -25,7 +25,7 @@ const D1_HOURLY_WRITE_CAP=45_000;
 // remaining safe under fresh Paid monthly pacing headroom.
 const D1_PAID_BURST_WRITE_CAP=500_000;
 const D1_HEALTHY_PAID_REMAINING_ROWS=1_000_000;
-const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
+const D1_MIN_RATE_SAMPLE_MS=10*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
 const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
@@ -316,6 +316,22 @@ async function checkLiveD1Budget(){
  * read and write rates. A rollover invalidates the sample (HOLD);
  * no daily 5,800 rows/hour gate or synthetic spike PASS.
  */
+function throwPaidMonthlyPacedBurnSpike(metrics:any):never{
+ const diagnostic={
+  code:'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE',
+  ms:Number.isFinite(metrics?.ms)?metrics.ms:null,
+  written:Number.isFinite(metrics?.written)?metrics.written:null,
+  writeRate:Number.isFinite(metrics?.writeRate)?metrics.writeRate:null,
+  read:Number.isFinite(metrics?.read)?metrics.read:null,
+  readRate:Number.isFinite(metrics?.readRate)?metrics.readRate:null,
+  paced_remaining_rows_written:Number.isSafeInteger(metrics?.paced_remaining_rows_written)?
+   metrics.paced_remaining_rows_written:null,
+  remaining_rows_written:Number.isSafeInteger(metrics?.remaining_rows_written)?
+   metrics.remaining_rows_written:null
+ };
+ console.error(JSON.stringify(diagnostic));
+ throw new Error('CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
+}
 export function assertD1ObservedHourlyPace(start:any,latest:any){
  need(start?.cycle_start_utc===latest?.cycle_start_utc&&
   start?.cycle_end_exclusive_utc===latest?.cycle_end_exclusive_utc&&
@@ -329,16 +345,20 @@ export function assertD1ObservedHourlyPace(start:any,latest:any){
  need(read>=0&&written>=0,'CANARY_D1_PROVIDER_COUNTER_REWIND');
  const readRate=read*3600000/ms,writeRate=written*3600000/ms;
  const readRateMax=D1_HOURLY_READ_CAP;
- need(Number.isSafeInteger(latest?.paced_remaining_rows_written)&&
+ if(!(Number.isSafeInteger(latest?.paced_remaining_rows_written)&&
   latest.paced_remaining_rows_written>0&&
-  Number.isSafeInteger(latest?.remaining_rows_written),
-  'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
+  Number.isSafeInteger(latest?.remaining_rows_written)))
+  throwPaidMonthlyPacedBurnSpike({ms,written,writeRate,read,readRate,
+   paced_remaining_rows_written:latest?.paced_remaining_rows_written,
+   remaining_rows_written:latest?.remaining_rows_written});
  const healthyPaidHeadroom=
   latest.remaining_rows_written>D1_HEALTHY_PAID_REMAINING_ROWS;
  const writeRateMax=healthyPaidHeadroom?
   D1_PAID_BURST_WRITE_CAP:D1_HOURLY_WRITE_CAP;
- need(readRate<=readRateMax&&writeRate<=writeRateMax,
-  'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
+ if(!(readRate<=readRateMax&&writeRate<=writeRateMax))
+  throwPaidMonthlyPacedBurnSpike({ms,written,writeRate,read,readRate,
+   paced_remaining_rows_written:latest?.paced_remaining_rows_written,
+   remaining_rows_written:latest?.remaining_rows_written});
  return {status:'PASS_OBSERVED_PAID_MONTHLY_PACE',
   reads_per_hour:readRate,writes_per_hour:writeRate,
   max_reads_per_hour:readRateMax,max_writes_per_hour:writeRateMax,
