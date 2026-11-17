@@ -116,6 +116,34 @@ test("risk pipeline derives named corridor and price assets from structural even
  assert.equal(result.agent_decision.upgrade_available,false);
 });
 
+test("three-category event classifiers enrich country bank and trader market signals",()=>{
+ const bank=deriveRiskStreamEligibleScore("MACRO_FX","IND",
+  "CET1 LCR NSFR bank deposit flight and stress test");
+ assert.equal(bank.event_class,"BANK_CAPITAL_LIQUIDITY_STRESS");
+ assert.ok(bank.agent_decision.affected_assets.includes("bank_capital"));
+ assert.ok(bank.agent_decision.affected_assets.includes("bank_liquidity"));
+ assert.match(bank.analyst_brief.transmission_mechanism,/interbank funding/i);
+
+ const equity=deriveRiskStreamEligibleScore("MACRO_FX","IND",
+  "NIFTY benchmark stock exchange circuit breaker VIX volatility");
+ assert.equal(equity.event_class,"EQUITY_MARKET_MICROSTRUCTURE");
+ assert.ok(equity.agent_decision.affected_assets.includes("equity_indices"));
+ assert.ok(equity.agent_decision.affected_assets.includes("equity_volatility"));
+
+ const inventory=deriveRiskStreamEligibleScore("CRITICAL_MINERALS","CHL",
+  "LME exchange warehouse inventory and cancelled warrants copper");
+ assert.equal(inventory.event_class,"EXCHANGE_INVENTORY_SHOCK");
+ assert.ok(inventory.agent_decision.affected_assets.includes("exchange_inventories"));
+ assert.ok(inventory.agent_decision.affected_assets.includes("warehouse_stocks"));
+
+ const geopolitics=deriveRiskStreamEligibleScore("GEOPOLITICS","EST",
+  "Exchange cyberattack disrupts clearinghouse settlement in Baltic Sea");
+ assert.equal(geopolitics.event_class,"MARKET_INFRASTRUCTURE_CYBERATTACK");
+ assert.ok(geopolitics.agent_decision.strategic_corridors.includes("BALTIC_SEA"));
+ assert.ok(geopolitics.agent_decision.affected_assets.includes("clearinghouses"));
+ assert.match(geopolitics.analyst_brief.transmission_mechanism,/settlement continuity/i);
+});
+
 test("dual audience enriches assets for corridor and explicit market signals without exposing input text",()=>{
  const value=buildRiskStreamDualAudience({category:"GEOPOLITICS",eventClass:"MARITIME_CHOKEPOINT_DISRUPTION",
   score:72,confidence:.86,horizonHours:72,tier:"STANDARD",corroborationReady:false,
