@@ -25,6 +25,8 @@ function parseArgs(argv){
 export function parseJsonFeed(body,now){
  let data;try{data=JSON.parse(body)}catch{return {ok:false,reason:"JSON_INVALID"}}
  const items=data?.items;
+ if(!["https://jsonfeed.org/version/1","https://jsonfeed.org/version/1.1"].includes(data?.version))
+  return {ok:false,reason:"JSON_FEED_VERSION_INVALID"};
  if(!Array.isArray(items)||items.length>1000)return {ok:false,reason:"JSON_FEED_ITEMS_INVALID"};
  let native=0,recent=0,last=null;
  for(const item of items.slice(0,100)){
