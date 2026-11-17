@@ -13,7 +13,10 @@ describe("canonical hybrid intelligence routing", () => {
     expect(ask).toContain("answerAskQuestion(data.question)");
     expect(orchestrator).toContain('from "./hybrid-ask-intelligence.server"');
     expect(orchestrator).toContain("answerHybridQuestion(question)");
-    expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
+    expect(orchestrator).toContain("Promise.allSettled([");
+    expect(orchestrator).toContain('boundedAskAdapter("derived_intelligence"');
+    expect(orchestrator).toContain('boundedAskAdapter("indexed_discovery"');
+    expect(orchestrator).toContain("realtimeSearchAnswer(question,");
     expect(ask).not.toContain('answerQuestion, type AskAnswer } from "./ask-intelligence.server"');
   });
 
