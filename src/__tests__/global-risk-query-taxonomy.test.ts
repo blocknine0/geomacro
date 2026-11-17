@@ -11,6 +11,7 @@ import { buildRealtimeSearchPlan } from "@/lib/ask-realtime-query-plan";
 import { planSafeRealtimeIndexQueries } from "@/lib/ask-realtime-search.server";
 import { riskPublisherSearchPlan } from "../../workers/control-plane/src/risk-gate-global-news-search.mjs";
 import { deriveRiskStreamEligibleScore } from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
+import { p0bHeadlineEvent } from "../../scripts/lib/p0b-event-grounded-projection.mjs";
 
 const START = Date.parse("2026-11-18T00:00:00.000Z");
 
@@ -137,6 +138,28 @@ describe("rotating global risk search taxonomy", () => {
     expect(writer).toContain("affected_assets_json");
     expect(writer).toContain("commercial_rights_verified:false");
     expect(writer).toContain("originals_verified:0,independent_same_event_verified:false");
+  });
+
+  it("projects bank, financial-warfare, and physical-market titles without inventing prices", () => {
+    const bank = p0bHeadlineEvent(
+      "Central bank reports repo liquidity operation and reserve update", "macro",
+    );
+    expect(bank?.what).toContain("reported");
+    expect(bank?.why).toContain("financing and currency expectations");
+
+    const geopolitics = p0bHeadlineEvent(
+      "Treasury announces correspondent banking restrictions for selected entities",
+      "geopolitics",
+    );
+    expect(geopolitics?.why).toContain("settlement access");
+    expect(geopolitics?.why).toContain("remain separate questions");
+
+    const minerals = p0bHeadlineEvent(
+      "LME reports cancelled warrants and copper warehouse inventory draw",
+      "rare_earth",
+    );
+    expect(minerals?.why).toContain("mineral-supply");
+    expect(minerals?.why).not.toContain("price move occurred");
   });
 
   it("maps bank, equity, and exchange market signals into their existing categories", () => {
