@@ -1,0 +1,103 @@
+name: Country Source Gap Audit
+on:
+  schedule:
+    - cron: "15 6 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: geomacro-country-source-gap-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491
+        with:
+          node-version: "24"
+      - name: Verify exact main and live D1 identity
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SHA}" = "$(git rev-parse HEAD)"
+          test "${GITHUB_SHA}" = "$(curl --fail --silent --show-error -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          node --input-type=module <<'NODE'
+          const id=process.env.D1_DATABASE_ID;
+          if(!/^[a-f0-9-]{36}$/iu.test(id??'')) throw Error('COUNTRY_SOURCE_D1_ID_INVALID');
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${id}`,
+            {headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok) throw Error('COUNTRY_SOURCE_D1_IDENTITY_HTTP_'+r.status);
+          const b=await r.json();
+          if(b?.success!==true||(b?.result?.uuid??b?.result?.id)!==id||b?.result?.name!=='geomacro-control-plane')
+            throw Error('COUNTRY_SOURCE_D1_TARGET_UNVERIFIED');
+          console.log(JSON.stringify({provider_database_identity_verified:true,read_only:true}));
+          NODE
+      - name: Check D1 paid headroom and take one bounded source snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/country-source
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const proof=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
+            estimatedMigrationRowsRead:5000,estimatedMigrationRowsWritten:0});
+          if(proof.status!=='PASS') throw Error(proof.code??'COUNTRY_SOURCE_D1_HEADROOM_UNVERIFIED');
+          const id=process.env.D1_DATABASE_ID;
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${id}/query`,
+            {method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},
+             body:JSON.stringify({sql:'SELECT source_id,publisher_root_domain,parent_media_entity,source_role,commercial_rights_approved,enabled,reviewed_at,rights_expire_at FROM risk_stream_sources ORDER BY source_id LIMIT 5000'}),
+             redirect:'error',signal:AbortSignal.timeout(20000)});
+          if(!r.ok) throw Error('COUNTRY_SOURCE_D1_READ_HTTP_'+r.status);
+          const b=await r.json();
+          const rows=b?.result?.[0]?.results??b?.result?.results;
+          if(b?.success!==true||!Array.isArray(rows)||rows.length>5000)
+            throw Error('COUNTRY_SOURCE_D1_READBACK_INVALID');
+          writeFileSync('artifacts/country-source/risk-stream-sources.json',JSON.stringify(rows)+'\n',{mode:0o600});
+          console.log(JSON.stringify({status:proof.status,source_rows:rows.length,d1_writes:0}));
+          NODE
+      - name: Probe bounded source rotation and build country gap report
+        run: |
+          set -euo pipefail
+          PREVIOUS=''
+          if [ -f config/country-source-gap-discovery.latest.json ]; then PREVIOUS='--previous config/country-source-gap-discovery.latest.json'; fi
+          node scripts/ops/discover-missing-country-sources.mjs \
+            --risk-stream-sources artifacts/country-source/risk-stream-sources.json \
+            --probe --probe-limit 18 ${PREVIOUS} \
+            --out config/country-source-gap-discovery.latest.json
+      - name: Open or update source gap review PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch=automation/country-source-gap-discovery
+          git config user.name "geomacro-source-audit[bot]"
+          git config user.email "geomacro-source-audit[bot]@users.noreply.github.com"
+          git checkout -B "$branch" origin/main
+          git add config/country-source-gap-discovery.latest.json
+          if git diff --cached --quiet; then
+            echo "Country source audit report is unchanged."
+            exit 0
+          fi
+          git commit -m "Refresh country source gap discovery report"
+          git push --force-with-lease origin "$branch"
+          if gh pr view "$branch" --json number >/dev/null 2>&1; then
+            gh pr edit "$branch" --title "Country source gap discovery report" \
+              --body "Automated, read-only country/category source audit. Live HTTP/parser health is recorded separately from rights status. No candidate is commercially approved by transport success; only exact current entries in the reviewed rights manifest can be proposed for production registration. This PR contains a report only and performs no D1 writes."
+          else
+            gh pr create --base main --head "$branch" \
+              --title "Country source gap discovery report" \
+              --body "Automated, read-only country/category source audit. Live HTTP/parser health is recorded separately from rights status. No candidate is commercially approved by transport success; only exact current entries in the reviewed rights manifest can be proposed for production registration. This PR contains a report only and performs no D1 writes."
+          fi
