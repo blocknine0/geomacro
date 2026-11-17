@@ -2,7 +2,6 @@
 import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {CONTINENT_COUNTRIES_195} from "../lib/continent-country-195-rotation.mjs";
 import {buildCountrySourceGapReport} from "../lib/country-source-gap-finder.mjs";
 import {parseCountries,gatherSources,loadCatalogues,probeRotation} from "./phase2i-coverage-inventory.mjs";
 import {HOT50_COUNTRY_ISO3} from "../lib/hot-50-country-watch.mjs";
@@ -30,7 +29,7 @@ export function parseJsonFeed(body,now){
  let native=0,recent=0,last=null;
  for(const item of items.slice(0,100)){
   const raw=item?.date_published??item?.published??item?.date_modified;
-  if(typeof raw!=="string"||raw.length>64||!/(?:Z|[+-]\\d{2}:?\\d{2})$/iu.test(raw))continue;
+  if(typeof raw!=="string"||raw.length>64||!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
   const ms=Date.parse(raw);
   if(!Number.isFinite(ms)||ms>now.getTime()+60000||ms<Date.parse("1990-01-01T00:00:00Z"))continue;
   native++;if(now.getTime()-ms<=25*3600000)recent++;
@@ -90,7 +89,8 @@ async function probeCandidateRotation(sources,now,fetchImpl,max){
  }));
  return output.slice(0,max);
 }
-\nexport async function discoverMissingCountrySources({riskStreamSources,previousProbes=[],probe=false,
+
+export async function discoverMissingCountrySources({riskStreamSources,previousProbes=[],probe=false,
  probeLimit=18,now=new Date(),catalogues=loadCatalogues(),countries=parseCountries(
   readFileSync("src/lib/canonical-country-registry-195.ts","utf8")),
  hot50=HOT50_COUNTRY_ISO3,rightsEntries=readJson("config/risk-stream-source-rights-reviewed.v1.json").entries,
