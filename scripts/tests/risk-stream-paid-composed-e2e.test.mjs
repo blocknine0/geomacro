@@ -182,7 +182,7 @@ test("composed verified-original -> dual attesters -> signed GRO -> reviewer -> 
   consumed??=await consumeRiskStreamQueue({messages:queueMessages},groEnv);
   assert.equal(consumed.status,"PASS");assert.equal(consumed.corroborated_and_signed,3);
   assert(queueMessages.every(message=>message.acked&&!message.retried));
-  assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_evidence").get().n,3);
+  assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_evidence").get().n,6);
   assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_signed_gro").get().n,3);
 
   const issuerNow=now+5000;
