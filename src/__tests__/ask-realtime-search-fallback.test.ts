@@ -74,11 +74,15 @@ describe("Ask Geomacro realtime search fallback", () => {
 
   it("uses a bounded current-web path with broad three-domain coverage", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
+    const plan = read("src/lib/ask-realtime-query-plan.ts");
+    const taxonomy = read("scripts/lib/global-risk-query-taxonomy.mjs");
     expect(fallback).toContain("api.gdeltproject.org/api/v2/doc/doc");
     expect(fallback).toContain("timespan,");
-    expect(fallback).toContain('category: "GEOPOLITICS"');
-    expect(fallback).toContain('category: "MACRO"');
-    expect(fallback).toContain('category: "CRITICAL_MINERALS"');
+    expect(fallback).toContain("plan.topicBuckets.map");
+    expect(plan).toContain("selectGlobalRiskQueryBucket");
+    expect(taxonomy).toContain('"GEOPOLITICS"');
+    expect(taxonomy).toContain('"MACRO_FX"');
+    expect(taxonomy).toContain('"CRITICAL_MINERALS"');
     expect(fallback).toContain("Promise.allSettled");
     expect(fallback).toContain("SEARCH_TIMEOUT_MS = 7_000");
   });

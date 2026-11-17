@@ -1,5 +1,10 @@
 import { freshnessMaxAgeHours } from "./ask-freshness";
 import { askDomains, type AskDomain } from "./ask-domain-guide";
+import {
+  GLOBAL_RISK_QUERY_BUCKETS,
+  GLOBAL_RISK_QUERY_ROTATION_MS,
+  selectGlobalRiskQueryBucket,
+} from "../../scripts/lib/global-risk-query-taxonomy.mjs";
 
 export type RealtimeAskCategory = "GEOPOLITICS" | "MACRO" | "CRITICAL_MINERALS";
 
@@ -21,17 +26,50 @@ const BROAD_CURRENT_RE =
  * rejected by the original publication clock before answer generation.
  * A broad category question never becomes an unqualified all-sector answer.
  */
-export function buildRealtimeSearchPlan(question: string) {
+export function buildRealtimeSearchPlan(question: string, now = Date.now(), rotationIndex = 0) {
   const clean = String(question).replace(/[^\p{L}\p{N}\s-]/gu, " ")
     .replace(/\s+/gu, " ").trim();
   const age = freshnessMaxAgeHours(question);
   const broad = BROAD_CURRENT_RE.test(question) || age !== null ||
     clean.split(/\s+/u).length <= 3;
   const targeted = askDomains(question).map(domain => CATEGORY_FOR_DOMAIN[domain]);
+  const broadCategories = (targeted.length ? targeted : [...ALL_CATEGORIES]) as RealtimeAskCategory[];
+  const slot = Math.floor(now / GLOBAL_RISK_QUERY_ROTATION_MS);
+  const topicBuckets = broadCategories.map((category, index) => {
+    const safeQuestion = ` ${clean.toLowerCase()} `;
+    const taxonomyCategory = category === "MACRO" ? "MACRO_FX" : category;
+    const buckets = GLOBAL_RISK_QUERY_BUCKETS[taxonomyCategory];
+    // Match only fixed taxonomy terms. The user's wording is never added to
+    // the upstream query; it only selects the closest allowlisted bucket.
+    const scored = buckets.map(bucket => {
+      const words = new Set(bucket.terms.flatMap(term =>
+        term.toLowerCase().split(/\s+/u).filter(word => word.length >= 5),
+      ));
+      const score = [...words].filter(word => safeQuestion.includes(` ${word} `)).length;
+      return { bucket, score };
+    });
+    const bestScore = Math.max(0, ...scored.map(item => item.score));
+    if (!bestScore) {
+      return selectGlobalRiskQueryBucket(taxonomyCategory, now, (rotationIndex + index) % 100_000);
+    }
+    const relevant = scored.filter(item => item.score === bestScore).map(item => item.bucket);
+    const match = relevant[(slot + rotationIndex + index) % relevant.length];
+    return Object.freeze({
+      category: taxonomyCategory,
+      slot,
+      bucket_index: buckets.indexOf(match),
+      bucket_id: match.id,
+      topic_tags: match.topic_tags,
+      terms: match.terms,
+      affected_assets: match.affected_assets,
+    });
+  });
   return {
     broad,
     maxAgeHours: age ?? (broad ? 48 : 7 * 24),
     timespan: broad ? "2d" : "7d",
-    broadCategories: (targeted.length ? targeted : [...ALL_CATEGORIES]) as RealtimeAskCategory[],
+    broadCategories,
+    topicBuckets,
+    rotation_interval_ms: 20 * 60 * 1000,
   };
 }

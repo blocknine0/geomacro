@@ -63,6 +63,35 @@ describe("governed hot-topic taxonomy", () => {
     expect(inferHotTopicFamiliesFromQuestion(question)).toContain(expected);
   });
 
+  it.each([
+    ["naval blockade after border mobilization", "military_conflict"],
+    ["secondary sanctions and semiconductor export controls", "sanctions_export_controls"],
+    ["customs retaliation after tariff increase", "tariffs_trade_restrictions"],
+    ["regime instability and martial law", "coup_civil_unrest"],
+    ["emergency rate hike and quantitative tightening", "monetary_policy_rates"],
+    ["PMI contraction and CPI surprise", "inflation_growth_employment"],
+    ["currency peg pressure and repatriation freeze", "fx_external_stress"],
+    ["credit downgrade and IMF bailout after sovereign debt restructuring", "sovereign_debt_fiscal"],
+    ["LNG supply shock", "energy_oil_gas"],
+    ["Taiwan Strait shipping closure", "shipping_chokepoints"],
+    ["port strike disrupts rail freight", "supply_chain_logistics"],
+    ["bank liquidity stress", "banking_financial_system"],
+    ["SWIFT payment rail restriction", "payments_settlement_disruption"],
+    ["subsea cable sabotage", "submarine_cable_gnss_navigation_disruption"],
+    ["NdPr dysprosium terbium and antimony export ban", "critical_minerals"],
+    ["potash phosphate uranium and titanium export quota", "critical_minerals"],
+    ["mine strike and smelter outage", "critical_minerals"],
+    ["central bank repo and reverse repo liquidity operation", "monetary_policy_rates"],
+    ["CET1 LCR NSFR deposit flight stress test", "banking_financial_system"],
+    ["SOFR EURIBOR and cross-currency basis stress", "fx_external_stress"],
+    ["10Y yield curve 2s10s auction tail and sovereign CDS", "sovereign_debt_fiscal"],
+    ["NFP payroll PCE and retail sales surprise", "inflation_growth_employment"],
+    ["LME warehouse stock draw and cancelled warrants backwardation", "critical_minerals"],
+    ["exchange cyberattack disrupts clearinghouse settlement", "cyber_systemic_attack"],
+  ] as const)("recognizes expanded event vocabulary: %s", (question, expected) => {
+    expect(inferHotTopicFamiliesFromQuestion(question)).toContain(expected);
+  });
+
   it("can classify one event into multiple relevant families without inventing exclusivity", () => {
     const families = classifyHotTopicEvent({
       event_type: "export control",

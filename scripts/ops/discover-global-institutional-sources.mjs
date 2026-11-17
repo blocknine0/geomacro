@@ -4,6 +4,10 @@ import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {probeSource} from "./phase2i-coverage-inventory.mjs";
 import {validateSourceRightsManifest,RISK_STREAM_CATEGORY_ROLES} from "../lib/risk-stream-source-rights-manifest.mjs";
+import {
+ GLOBAL_RISK_QUERY_TAXONOMY_VERSION,
+ selectGlobalRiskQueryBucket
+} from "../lib/global-risk-query-taxonomy.mjs";
 
 const fail=code=>{throw Error("GLOBAL_INSTITUTIONAL_SOURCE_"+code)};
 const readJson=path=>JSON.parse(readFileSync(path,"utf8"));
@@ -107,6 +111,7 @@ export function buildInstitutionalSourceReport({candidates,rightsEntries,probes,
  const probeMap=new Map(probes.map(x=>[x.source_id,x]));
  const rawRows=candidates.map(candidate=>{
   const probe=probeMap.get(candidate.source_id)??null;
+  const topicBucket=selectGlobalRiskQueryBucket(candidate.category,now.getTime());
   const classification=explicitRights(candidate,rights.approvedEntries,now);
   const fresh=probe&&probe.http_status===200&&["WORKING","NO_NEW_EVENT"].includes(probe.health_status)&&
    probe.last_successful_http_fetch_at&&Date.parse(probe.last_successful_http_fetch_at)<=now.getTime()&&
@@ -114,7 +119,10 @@ export function buildInstitutionalSourceReport({candidates,rightsEntries,probes,
    probe.last_source_native_publication_at&&nativeTimestamp(probe.last_source_native_publication_at)&&
    Date.parse(probe.last_source_native_publication_at)<=now.getTime()+60000;
   const rightsApproved=classification.commercial_rights_approved===1;
-  return {...candidate,...classification,health_status:probe?.health_status??"NOT_PROBED",
+  return {...candidate,...classification,
+   topic_taxonomy_version:GLOBAL_RISK_QUERY_TAXONOMY_VERSION,
+   discovery_topic_bucket_id:topicBucket.bucket_id,discovery_topic_tags:topicBucket.topic_tags,
+   health_status:probe?.health_status??"NOT_PROBED",
    http_status:probe?.http_status??null,
    last_successful_http_fetch_at:probe?.last_successful_http_fetch_at??null,
    last_source_native_publication_at:probe?.last_source_native_publication_at??null,

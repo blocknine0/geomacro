@@ -107,6 +107,15 @@ test("Google global search saves only hashes, publisher domains and clocks; neve
  assert.equal(r.status,"SEARCH_INDEX_LEADS_FOUND");
  assert.equal(r.leads.length,1);
  assert.equal(r.leads[0].publisher_root_domain,"example.org");
+ const next=await probeHot50GlobalSearch(target,{now:now+20*60000,fetcher:async()=>new Response(xml,{
+  status:200,headers:{"content-type":"application/rss+xml"}
+ })});
+ assert.notEqual(r.topic_bucket_id,next.topic_bucket_id);
+ assert.equal(r.leads[0].lead_id,next.leads[0].lead_id);
+ assert.ok(r.leads[0].topic_tags.length>0);
+ assert.equal(r.leads[0].topic_tags.length<=8,true);
+ assert.ok(Array.isArray(r.leads[0].affected_assets));
+ assert.equal(r.leads[0].affected_assets.length<=8,true);
  const serialized=JSON.stringify(r);
  assert.equal(serialized.includes("Sample fictional"),false);
  assert.equal(serialized.includes("original_publisher_text"),false);

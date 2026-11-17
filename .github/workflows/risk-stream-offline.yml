@@ -3,6 +3,18 @@ on:
   pull_request:
     paths:
       - 'workers/control-plane/src/risk-stream-*.mjs'
+      - 'workers/control-plane/src/risk-gate-global-news-search.mjs'
+      - 'workers/control-plane/migrations/0224_risk_stream_search_topic_tags.sql'
+      - 'scripts/lib/global-risk-query-taxonomy.mjs'
+      - 'scripts/lib/global-risk-query-taxonomy.d.mts'
+      - 'scripts/lib/p0b-live-global-search.mjs'
+      - 'scripts/lib/p0b-event-grounded-projection.mjs'
+      - 'scripts/tests/p0b-live-global-search.test.mjs'
+      - 'scripts/tests/risk-gate-global-news-search.test.mjs'
+      - 'src/lib/hot-topic-taxonomy.ts'
+      - 'src/lib/ask-realtime-query-plan.ts'
+      - 'src/lib/ask-realtime-search.server.ts'
+      - 'src/__tests__/global-risk-query-taxonomy.test.ts'
       - 'workers/control-plane/src/risk-gap-enrichment.mjs'
       - 'scripts/lib/phase2h-country-originals-195.mjs'
       - 'workers/risk-stream-shadow/**'
@@ -60,6 +72,10 @@ jobs:
         run: python -m pip install "fastapi==0.116.1" "pydantic==2.11.7"
       - name: Parse Worker modules, migration and offline test harness
         run: |
+          node --check scripts/lib/global-risk-query-taxonomy.mjs
+          node --check scripts/lib/p0b-live-global-search.mjs
+          node --check scripts/lib/p0b-event-grounded-projection.mjs
+          node --check workers/control-plane/src/risk-gate-global-news-search.mjs
           node --check workers/control-plane/src/risk-stream-autonomous-hot50.mjs
           node --check workers/control-plane/src/risk-stream-pipeline.mjs
           node --check workers/control-plane/src/risk-stream-attester-bridge.mjs
@@ -122,6 +138,10 @@ jobs:
           node --check scripts/tests/geomacro-release-reviewer.test.mjs
           node --check scripts/ops/ingest-direct-global-corridors.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
+          grep -Fq "topic_tags_json TEXT NOT NULL DEFAULT '[]'" workers/control-plane/migrations/0224_risk_stream_search_topic_tags.sql
+          grep -Fq "affected_assets_json TEXT NOT NULL DEFAULT '[]'" workers/control-plane/migrations/0224_risk_stream_search_topic_tags.sql
+      - name: Verify rotating global topic queries and P0-B coverage
+        run: node --test scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/p0b-live-global-search.test.mjs
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
         run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs scripts/tests/risk-stream-source-rights-manifest.test.mjs scripts/tests/risk-stream-event-fingerprint.test.mjs scripts/tests/risk-stream-candidate-builder.test.mjs scripts/tests/risk-stream-pairing.test.mjs scripts/tests/risk-stream-emitter.test.mjs scripts/tests/risk-stream-feed-export.test.mjs scripts/tests/risk-stream-attesters.test.mjs scripts/tests/risk-stream-attester-bridge.test.mjs scripts/tests/geomacro-release-reviewer.test.mjs scripts/tests/risk-stream-paid-composed-e2e.test.mjs scripts/tests/risk-stream-collector-handoff.test.mjs scripts/tests/country-source-gap-finder.test.mjs scripts/tests/global-institutional-sources.test.mjs
       - name: Verify Render original-candidate handoff accepts no metadata-only items

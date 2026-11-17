@@ -9,6 +9,7 @@ import {p0bProjectEvidenceBounded} from "./p0b-event-grounded-projection.mjs";
 import {p0bFirstPartyFeedNews} from "./p0b-first-party-rss.mjs";
 import {p0bReliefWebCountry} from "./p0b-reliefweb-ukraine.mjs";
 import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
+import {selectGlobalRiskQueryBucket} from "./global-risk-query-taxonomy.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const SKIP=new Set(["what","why","when","which","does","did","will","latest",
  "update","news","happened","matter","matters","important","market","markets",
@@ -155,10 +156,18 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
  if(!country||!CATEGORIES.has(category)||!limitText(question,180)||
    question.length<3||!Number.isFinite(now))
   throw Error("P0B_QUERY_INVALID");
+ const taxonomyCategory=category==="macro"?"MACRO_FX":category==="rare_earth"?
+  "CRITICAL_MINERALS":"GEOPOLITICS";
  const topical=terms(question,country.name);
- // A generic latest-news question still merits a country + category search.
- // No invented topic is inserted as a substitute for user intent.
- const govQ=country.name+" "+topical.slice(0,3).join(" ");
+ const rotationIndex=[...countryIso3].reduce((n,c)=>(n*26+c.charCodeAt(0)-65)%100_000,0);
+ const topicBucket=selectGlobalRiskQueryBucket(taxonomyCategory,now,rotationIndex);
+ // One fixed category bucket rotates every 20 minutes; it shares the existing
+ // GOV.UK search call and does not fan out into additional provider requests.
+ const topicQuery="("+topicBucket.terms.slice(0,6).map(term=>'"'+term+'"').join(" OR ")+")";
+ const govQ=country.name+" "+topicQuery+" "+topical.slice(0,1).join(" ");
+ if(govQ.length>320)throw Error("P0B_QUERY_TOO_LONG");
+ // Only one filtered user-topic token may accompany the canonical country
+ // and bounded public taxonomy bucket; never forward the raw question.
  const govUrl=new URL("https://www.gov.uk/api/search.json");
  for(const [k,v] of Object.entries({q:govQ,count:"8",
   order:"-public_timestamp",filter_format:"news_article"}))govUrl.searchParams.set(k,v);
@@ -208,5 +217,6 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   attempted:true,first_party_matches:official,gdelt_discovery_count:discovery,
   provider_errors:providerErrors,provider_diagnostics:providerDiagnostics,
   first_party_rss_verified_count:official.filter(x=>x.first_party_feed_metadata_verified===true).length,
-  exhaustive_global_search:false});
+  exhaustive_global_search:false,topic_bucket_id:topicBucket.bucket_id,
+  topic_tags:topicBucket.topic_tags,affected_asset_hints:topicBucket.affected_assets});
 }
