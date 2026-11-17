@@ -107,6 +107,7 @@ export async function executeAskGeomacro(
       "ASK_RESEARCH_DEADLINE",
     );
   } catch (error) {
+    if (error instanceof AskGeomacroRateLimitError) throw error;
     if (error instanceof Error && error.message === "ASK_RESEARCH_DEADLINE")
       return timedOutAskAnswer(data.question);
     // Retrieval and optional presentation are best-effort behind the stable
