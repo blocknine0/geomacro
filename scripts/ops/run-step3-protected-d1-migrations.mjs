@@ -426,9 +426,9 @@ function checkIndexAndSchema(config,step,report){
    const r=q(config,sql,{maxRows});
    report.counter_0211_rows_read??=0;
    report.counter_0211_rows_read+=r.readRows;
-   // Full-volume SQLite-side set parity may touch every source row
-   // for each of 7 indexes, but the backend's actual billed reads are
-   // metered and capped. An unexpectedly costly query fails Stage 2.
+   // The reviewed 0211 source-row ceiling is an admission bound, not a
+   // provider-read allowance. Keep metering the actual rows_read for every
+   // query against the approved migration cap; unexpectedly costly work fails Stage 2.
    if(report.counter_0211_rows_read>STEP3_MAX_MIGRATION_READ_ROWS)
     fail("SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
