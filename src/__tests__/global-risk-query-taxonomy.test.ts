@@ -46,6 +46,9 @@ describe("rotating global risk search taxonomy", () => {
         "sovereign bond auction bid to cover tail", "PPI PCE inflation breakeven surprise",
         "VIX MOVE FX implied volatility risk reversal", "FPI FII cross border capital outflow",
         "stablecoin liquidity redemption flow",
+        "US S&P 500 Nasdaq STOXX 600 DAX FTSE equity index",
+        "Japan Nikkei TOPIX China CSI 300 HSI India Nifty Sensex",
+        "Brazil Ibovespa BIST Tadawul JSE ASX TSX KOSPI TAIEX",
       ],
       CRITICAL_MINERALS: [
         "lithium", "cobalt", "nickel", "copper", "rare earths", "ndpr",
@@ -78,10 +81,26 @@ describe("rotating global risk search taxonomy", () => {
       buildCountrySourceDiscoveryQueries("United States", "MACRO_FX").queries.map(query => query.query),
     );
     expect(pack.queries.every(query => query.query.length <= 240)).toBe(true);
+    for (const category of GLOBAL_RISK_QUERY_CATEGORIES) {
+      const countryPack = buildCountrySourceDiscoveryQueries("Japan", category);
+      expect(countryPack.category).toBe(category);
+      expect(countryPack.queries).toHaveLength(4);
+      expect(countryPack.queries.every(query => query.query.length <= 240)).toBe(true);
+    }
     expect(pack.queries[0].query).toContain("central bank");
     expect(pack.queries[1].query).toContain("national stock exchange");
     expect(pack.queries[2].query).toContain("banking regulator");
     expect(pack.queries[3].affected_assets).toContain("capital_flows");
+    expect(buildRealtimeSearchPlan("Latest CET1 LCR banking data in India", START)
+      .broadCategories).toEqual(["MACRO"]);
+    const equityAsk = planSafeRealtimeIndexQueries("Latest Nifty benchmark volatility in India", START);
+    expect(equityAsk.queries[0].category).toBe("MACRO");
+    expect(equityAsk.queries[0].query.toLowerCase()).toContain("nifty");
+    const mineralsAsk = planSafeRealtimeIndexQueries(
+      "Latest LME cancelled warrants and copper stocks in Chile", START,
+    );
+    expect(mineralsAsk.queries[0].category).toBe("CRITICAL_MINERALS");
+    expect(mineralsAsk.queries[0].query.toLowerCase()).toContain("warrants");
     expect(() => buildCountrySourceDiscoveryQueries("Country", "CRYPTO")).toThrow(
       "GLOBAL_RISK_QUERY_COUNTRY_INPUT_INVALID",
     );
