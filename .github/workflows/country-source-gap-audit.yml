@@ -120,6 +120,7 @@ jobs:
           branch=automation/country-source-gap-discovery
           git config user.name "geomacro-source-audit[bot]"
           git config user.email "geomacro-source-audit[bot]@users.noreply.github.com"
+          gh auth setup-git
           git checkout -B "$branch" origin/main
           cp artifacts/country-source/country-source-gap-discovery.latest.json config/country-source-gap-discovery.latest.json
           git add config/country-source-gap-discovery.latest.json
