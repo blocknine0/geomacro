@@ -82,6 +82,10 @@ describe("rotating global risk search taxonomy", () => {
       "GEOPOLITICS", "MACRO", "CRITICAL_MINERALS",
     ]);
     expect(ask.queries.every(query => query.query.length <= 900)).toBe(true);
+    const askNext = planSafeRealtimeIndexQueries("What changed today in India?",
+      START + GLOBAL_RISK_QUERY_ROTATION_MS);
+    expect(askNext.queries.map(query => query.topic_bucket_id))
+      .not.toEqual(ask.queries.map(query => query.topic_bucket_id));
   });
 
   it("persists topic tags only as bounded search metadata while lead rights stay disabled", () => {
@@ -93,6 +97,7 @@ describe("rotating global risk search taxonomy", () => {
     expect(migration).toContain("topic_tags_json TEXT NOT NULL DEFAULT '[]'");
     expect(migration).toContain("affected_assets_json TEXT NOT NULL DEFAULT '[]'");
     expect(writer).toContain("if(leads.length===7)break");
+    expect(writer).toContain("if(bindings.length>90)fail(\"D1_PARAMETER_CAP\")");
     expect(writer).toContain("x.topic_bucket_id,JSON.stringify(x.topic_tags)");
     expect(writer).toContain("JSON.stringify(x.affected_assets)");
     expect(writer).toContain("affected_assets_json");
