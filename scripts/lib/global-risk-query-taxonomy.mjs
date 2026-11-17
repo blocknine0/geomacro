@@ -123,7 +123,7 @@ export const GLOBAL_RISK_QUERY_BUCKETS = Object.freeze({
     freezeBucket("supply_chain_chokepoint", ["mineral_processing_chokepoint","ev_supply_chain","battery_supply_chain"],
       ["mineral processing chokepoint","EV battery supply chain","semiconductor mineral bottleneck","refining capacity disruption"],
       ["battery_materials","semiconductor_inputs","industrial_inputs","shipping_routes"]),
-    freezeBucket("exchange_inventories_and_warrants", ["lme","comex","shfe","ine","ice","dce","sgx","mcx","lbma"],
+    freezeBucket("exchange_inventories_and_warrants", ["lme","comex","shfe","ine","ice","dce","sgx","mcx"],
       ["LME COMEX CME SHFE INE exchange warehouse inventory","ICE DCE SGX MCX LBMA benchmark market stocks","cancelled warrants exchange warehouse draw","metal exchange inventory warrant financing"],
       ["exchange_inventories","warehouse_stocks","cancelled_warrants"]),
     freezeBucket("physical_curves_and_refining_charges", ["backwardation","contango","curve_spread","tc_rc","smelter_utilization"],
@@ -137,6 +137,51 @@ export const GLOBAL_RISK_QUERY_BUCKETS = Object.freeze({
       ["project_finance","mineral_supply","sovereign_funding"]),
   ]),
 });
+
+export const COUNTRY_SOURCE_QUERY_TEMPLATE_VERSION = "country-source-query-templates.v1";
+
+const COUNTRY_QUERY_LANES = Object.freeze({
+  GEOPOLITICS: Object.freeze([
+    ["official_state_actions", "government sanctions export controls election nationalization", ["state_action","sanctions","export_controls"], ["sovereign_risk","export_controls"]],
+    ["banking_and_capital_controls", "correspondent banking SWIFT capital controls sovereign asset freeze", ["financial_warfare","banking_sanctions"], ["payment_rails","sanctions_exposure","fx_pairs"]],
+    ["corridor_and_infrastructure", "maritime corridor port rail subsea cable pipeline grid disruption", ["corridor_disruption","infrastructure_security"], ["shipping_routes","subsea_cables","pipeline_networks"]],
+    ["market_impact_news", "geopolitical risk freight insurance sovereign debt trade market", ["market_impact","freight_risk"], ["freight_rates","war_risk_insurance","sovereign_funding"]],
+  ]),
+  MACRO_FX: Object.freeze([
+    ["central_bank", "central bank policy rate minutes repo reverse repo FX intervention reserves", ["central_bank_policy","liquidity_operations"], ["interest_rates","fx_pairs","bank_liquidity"]],
+    ["national_exchange", "national stock exchange benchmark index equities turnover volatility", ["equity_markets","market_microstructure"], ["equity_indices","equity_volatility","market_microstructure"]],
+    ["banking_regulator", "banking regulator CET1 Tier 1 LCR NSFR deposits stress test", ["bank_capital","bank_liquidity"], ["bank_capital","bank_liquidity","interbank_funding"]],
+    ["market_news", "sovereign yields bond auction FX credit capital flows macro markets", ["rates","fx","credit","capital_flows"], ["sovereign_yields","yield_curves","capital_flows","credit_spreads"]],
+  ]),
+  CRITICAL_MINERALS: Object.freeze([
+    ["customs_and_resource_authority", "mining ministry customs mineral export quota royalty mine policy", ["trade_customs","resource_policy"], ["mineral_supply","export_controls","industrial_inputs"]],
+    ["exchange_and_inventory", "commodity exchange mineral benchmark warehouse stocks warrants", ["exchange_inventory","physical_market"], ["exchange_inventories","warehouse_stocks","cancelled_warrants"]],
+    ["resource_finance_and_processing", "mine smelter refining treatment charge offtake project finance", ["processing","resource_finance"], ["mineral_processing","treatment_charges","project_finance"]],
+    ["mineral_market_news", "critical minerals price supply export ban stockpile physical premium", ["mineral_market","supply_risk"], ["critical_minerals","curve_spreads","mineral_supply"]],
+  ]),
+});
+
+export function buildCountrySourceDiscoveryQueries(countryName, category) {
+  const normalized = categoryName(category);
+  const lanes = COUNTRY_QUERY_LANES[normalized];
+  const cleanName = String(countryName ?? "").replace(/[^\\p{L}\\p{N} .'-]/gu, " ")
+    .replace(/\\s+/gu, " ").trim().slice(0, 80);
+  if (!lanes || cleanName.length < 2 || cleanName.length > 80) {
+    throw new Error("GLOBAL_RISK_QUERY_COUNTRY_INPUT_INVALID");
+  }
+  return Object.freeze({
+    schema: COUNTRY_SOURCE_QUERY_TEMPLATE_VERSION,
+    category: normalized,
+    queries: Object.freeze(lanes.map(([lane, terms, topicTags, affectedAssets]) =>
+      Object.freeze({
+        lane,
+        query: `"${cleanName}" (${terms})`,
+        topic_tags: Object.freeze(topicTags),
+        affected_assets: Object.freeze(affectedAssets),
+      }),
+    )),
+  });
+}
 
 const categoryName = value => value === "MACRO" ? "MACRO_FX" :
   value === "RARE_EARTH" ? "CRITICAL_MINERALS" : value;
