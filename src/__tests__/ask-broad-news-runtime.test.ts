@@ -18,17 +18,17 @@ describe('free broad news request avoids unavailable scored storage and model ca
    expect(deps.hybrid).not.toHaveBeenCalled();
    expect(deps.search).toHaveBeenCalledWith(question,expect.objectContaining({
     insufficient_evidence:true,signed_gro_generated:false,gri:null,
-   }),{deterministicOnly:true});
+   }),{deterministicOnly:true,allowBrowserFallback:false});
    expect(result).toMatchObject({insufficient_evidence:true,signed_gro_generated:false,
     independent_same_event_verification:false,durable_live_storage_write:false,gri:null});
-   expect(result.why_it_matters).toContain('does not mean no developments occurred globally');
+   expect(result.why_it_matters).toContain("doesn't mean nothing happened");
   });
  it('uses a verified original release ahead of generic storage and discovery',async()=>{
   const observed={summary:'An originating release was observed',insufficient_evidence:false};
   deps.original.mockResolvedValueOnce(observed);
   expect(await answerAskQuestion('Latest lithium news in China')).toBe(observed);
-  expect(deps.hybrid).not.toHaveBeenCalled();
-  expect(deps.search).not.toHaveBeenCalled();
+  expect(deps.hybrid).toHaveBeenCalledWith('Latest lithium news in China');
+  expect(deps.search).toHaveBeenCalledWith('Latest lithium news in China',expect.any(Object),expect.any(Object));
  });
  it('retains the original insufficient answer when index transport fails',async()=>{
   deps.search.mockRejectedValueOnce(new Error('UPSTREAM_TIMEOUT'));
@@ -44,7 +44,8 @@ describe('free broad news request avoids unavailable scored storage and model ca
   }]});
   const result=await answerAskQuestion('Latest macro news');
   expect(result).toMatchObject({intelligence_tier:'official_observation_unscored',signed_gro_generated:false});
-  expect(deps.search).not.toHaveBeenCalled();expect(deps.hybrid).not.toHaveBeenCalled();
+  expect(deps.search).toHaveBeenCalledWith('Latest macro news',expect.any(Object),expect.any(Object));
+  expect(deps.hybrid).not.toHaveBeenCalled();
   expect(deps.original).not.toHaveBeenCalled();
   expect(deps.shared).toHaveBeenCalledWith(['macro']);
  });
@@ -53,6 +54,8 @@ describe('free broad news request avoids unavailable scored storage and model ca
    const prior={summary:'Governed assessment',insufficient_evidence:false};
    deps.hybrid.mockResolvedValueOnce(prior);
    expect(await answerAskQuestion(question)).toBe(prior);
-   expect(deps.hybrid).toHaveBeenCalledWith(question);expect(deps.search).not.toHaveBeenCalled();
+   expect(deps.hybrid).toHaveBeenCalledWith(question);
+   expect(deps.original).toHaveBeenCalledWith(question);
+   expect(deps.search).toHaveBeenCalledWith(question,expect.any(Object),expect.any(Object));
   });
 });
