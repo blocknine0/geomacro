@@ -59,10 +59,10 @@ async function fixture(category="GEOPOLITICS",sourceCount=2,{
  const candidateJson=JSON.stringify(candidate),candidateHash=await sha(candidateJson);
  const authorizedGroId=await sha("geomacro.authorized-gro.v1\n"+sourceGroId);
  const evidenceRows=roles[category].slice(0,sourceCount).map((source_role,index)=>({
-  ...(duplicateSourceRole&&index>0?{source_role:roles[category][0]}:{}),
   observation_id:gro.source_originals[index],original_verified:1,
   publisher_root_domain:index?"publisher-b.example":"publisher-a.example",
-  parent_media_entity:index?"publisher_b":"publisher_a",source_role,
+  parent_media_entity:index?"publisher_b":"publisher_a",
+  source_role:duplicateSourceRole&&index>0?roles[category][0]:source_role,
   enabled:1,commercial_rights_approved:1,rights_expire_at:"2027-11-14"}));
  const db={prepare(sql){return {bind(){return {first:async()=>({client_id:"predge-paid-risk-gate-addendum-v2",
    enabled:1,entitlement_expires_at:new Date(now+1800000).toISOString(),release_receipt_sha256:receipt}),
