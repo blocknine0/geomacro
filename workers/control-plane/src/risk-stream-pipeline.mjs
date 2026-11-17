@@ -449,8 +449,12 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
  ];
  const eventRule=scoreRules.find(([pattern])=>pattern.test(eventText));
  if(!eventRule)return null;
+ const standardReady=eligibleTiers.includes("standard")||
+  eligibleTiers.includes("complex_full");
+ const tier=eligibleTiers.includes("complex_full")?"COMPLEX":
+  standardReady?"STANDARD":"BASIC";
  const audience=buildRiskStreamDualAudience({category,eventClass:eventRule[1],
-  score:eventRule[2],confidence});
+  score:eventRule[2],confidence,tier,corroborationReady:standardReady});
  return {country_iso3:countryIso3,category,
   value_0_100:eventRule[2],event_class:eventRule[1],
   provenance:"GEOMACRO_EVENT_CLASS_HEURISTIC_V1",
