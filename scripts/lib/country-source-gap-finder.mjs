@@ -176,7 +176,8 @@ export function buildHealthyApprovedSourceManifest(manifest,report,now=Date.now(
  for(const cell of report.cells)for(const candidate of cell.candidate_sources??[]){
   if(candidate?.source_id&&candidate.country_specific===true&&
    candidate.commercial_rights_approved===1&&candidate.lane==="PRIMARY_COMMERCIAL_EVIDENCE"&&
-   candidate.health_status==="HEALTHY"){
+   candidate.health_status==="HEALTHY"&&
+   !(candidate.active_in_risk_stream===true&&candidate.registry_identity_matches_reviewed_entry===true)){
    const category=cell.category,roles=REQUIRED_SOURCE_ROLES[category];
    if(roles?.includes(candidate.source_role))candidates.set(candidate.source_id,{candidate,category});
   }
