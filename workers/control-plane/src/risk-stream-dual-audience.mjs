@@ -5,7 +5,7 @@ const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA","SUEZ","BAB_EL_MA
 const ASSETS=Object.freeze({
  GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes","maritime_chokepoints","payment_rails","clearinghouses","war_risk_insurance","freight_indices"],
  MACRO_FX:["foreign_exchange","fx_pairs","interest_rates","sovereign_funding","energy_commodities","bank_capital","bank_liquidity","interbank_funding","equity_indices","capital_flows"],
- CRITICAL_MINERALS:["mineral_supply","critical_minerals","industrial_inputs","mineral_processing","battery_materials","semiconductor_inputs","shipping_routes","maritime_chokepoints","exchange_inventories","warehouse_stocks","curve_spreads","project_finance"]
+ CRITICAL_MINERALS:["mineral_supply","critical_minerals","industrial_inputs","mineral_processing","battery_materials","semiconductor_inputs","shipping_routes","maritime_chokepoints"]
 });
 const ALLOWED_ASSETS=new Set([
  ...Object.values(ASSETS).flat(),"usd_eur","eur_usd","usd_jpy","usd_cny","usd_inr","usd_krw",
