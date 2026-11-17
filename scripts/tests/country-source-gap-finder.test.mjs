@@ -65,3 +65,19 @@ test("registry SQL contains only approved, current rights entries",()=>{
  assert.match(sql[0],/VALUES \('aaa_macro_source'.*,1,1,/);
  assert.doesNotMatch(sql[0],/pending_source/);
 });
+
+test("JSON Feed candidates require a native timestamp with an explicit timezone",()=>{
+ const parsed=parseJsonFeed(JSON.stringify({version:"https://jsonfeed.org/version/1.1",items:[
+  {id:"x",date_published:"2026-11-17T11:00:00Z"}]}),new Date(now));
+ assert.equal(parsed.ok,true);
+ assert.equal(parsed.native_dated_items,1);
+ assert.equal(parsed.recent_native_dated_items,1);
+ const undated=parseJsonFeed(JSON.stringify({items:[{id:"x",date_published:"2026-11-17T11:00:00"}]}),new Date(now));
+ assert.equal(undated.native_dated_items,0);
+});
+
+test("wrong source_role never passes category rights classification",()=>{
+ const candidate={...source,category:"MACRO_FX"};
+ const wrong={...approved,source_role:"GOVERNMENT_WIRE"};
+ assert.equal(classifyCandidateRights(candidate,[wrong],now).commercial_rights_approved,0);
+});
