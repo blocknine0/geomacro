@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildCountrySourceGapReport,buildApprovedRegistryUpserts,classifyCandidateRights,
+import {buildCountrySourceGapReport,buildApprovedRegistryUpserts,buildHealthyApprovedSourceManifest,classifyCandidateRights,
  rolesForCategory} from "../lib/country-source-gap-finder.mjs";
 import {parseJsonFeed} from "../ops/discover-missing-country-sources.mjs";
 
@@ -121,4 +121,22 @@ test("HTTP 200 without a native publisher timestamp stays a redacted gap",()=>{
  assert.ok(cell.gap_reasons.includes("LIVE_HEALTH_UNVERIFIED_OR_STALE"));
  assert.equal(cell.candidate_sources[0].raw_source_redacted,true);
  assert.equal(cell.candidate_sources[0].licensed_source_text_included,false);
+});
+
+test("scheduled sync accepts only approved country candidates with a fresh live native-clock proof",()=>{
+ const report={schema:"geomacro.country-source-gap-report.v1",
+  generated_at:new Date(now-1000).toISOString(),cell_count:585,
+  cells:[{country_iso3:"AAA",category:"MACRO_FX",candidate_sources:[{
+   source_id:source.source_id,country_specific:true,commercial_rights_approved:1,
+   lane:"PRIMARY_COMMERCIAL_EVIDENCE",health_status:"HEALTHY",source_role:"OFFICIAL_STATISTICS"}]}],
+  probes_this_run:[probe]};
+ const selected=buildHealthyApprovedSourceManifest(
+  {schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[approved]},report,now);
+ assert.equal(selected.entries.length,1);
+ assert.equal(selected.entries[0].source_id,approved.source_id);
+ assert.equal(selected.rights_status_changed,false);
+ const stale={...report,generated_at:new Date(now-31*60_000).toISOString()};
+ assert.throws(()=>buildHealthyApprovedSourceManifest(
+  {schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[approved]},stale,now),
+  /COUNTRY_SOURCE_GAP_LIVE_HEALTH_REPORT_STALE/u);
 });
