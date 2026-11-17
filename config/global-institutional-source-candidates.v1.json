@@ -199,6 +199,28 @@
       "parent_media_entity": "gdacs_global_alerts",
       "country_iso3": null,
       "pillar": "conflict_disaster_disruption"
+    },
+    {
+      "source_id": "ecb_fx_reference_rates",
+      "url": "https://www.ecb.europa.eu/rss/fxref-usd.html",
+      "format": "rss",
+      "category": "MACRO_FX",
+      "source_role": "MARKET_PRICE",
+      "publisher_root_domain": "ecb.europa.eu",
+      "parent_media_entity": "european_central_bank",
+      "country_iso3": null,
+      "pillar": "official_fx_reference"
+    },
+    {
+      "source_id": "us_fed_h10_public_domain",
+      "url": "https://www.federalreserve.gov/feeds/data/H10_H10_RXI$US_N.B.EU.xml",
+      "format": "rss",
+      "category": "MACRO_FX",
+      "source_role": "MARKET_PRICE",
+      "publisher_root_domain": "federalreserve.gov",
+      "parent_media_entity": "us_federal_reserve",
+      "country_iso3": "USA",
+      "pillar": "official_fx_reference"
     }
   ]
 }
