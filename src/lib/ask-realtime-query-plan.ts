@@ -42,7 +42,7 @@ export function buildRealtimeSearchPlan(question: string, now = Date.now(), rota
     // Match only fixed taxonomy terms. The user's wording is never added to
     // the upstream query; it only selects the closest allowlisted bucket.
     const relevant = buckets.filter(bucket => bucket.terms.some(term =>
-      term.toLowerCase().split(/\\s+/u).some(word =>
+      term.toLowerCase().split(/\s+/u).some(word =>
         word.length >= 5 && safeQuestion.includes(` ${word} `),
       ),
     ));
