@@ -4,12 +4,17 @@ const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA","SUEZ","BAB_EL_MA
 const ASSETS=Object.freeze({
  GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes","maritime_chokepoints"],
  MACRO_FX:["foreign_exchange","fx_pairs","interest_rates","sovereign_funding","energy_commodities"],
- CRITICAL_MINERALS:["mineral_supply","critical_minerals","industrial_inputs","shipping_routes","maritime_chokepoints"]
+ CRITICAL_MINERALS:["mineral_supply","critical_minerals","industrial_inputs","mineral_processing","battery_materials","semiconductor_inputs","shipping_routes","maritime_chokepoints"]
 });
 const ALLOWED_ASSETS=new Set([
  ...Object.values(ASSETS).flat(),"usd_eur","eur_usd","usd_jpy","usd_cny","usd_inr","usd_krw",
  "usd_brl","usd_try","usd_zar","usd_mxn","brent_crude","lng_spot","freight_rates",
- "lithium","copper","rare_earths","oil_supply","export_controls","sanctions_exposure","wheat"
+ "lithium","cobalt","nickel","copper","rare_earths","ndpr","dysprosium","terbium",
+ "graphite","gallium","germanium","antimony","tungsten","manganese","vanadium",
+ "titanium","uranium","potash","phosphate","battery_materials","semiconductor_inputs",
+ "payment_rails","subsea_cables","pipeline_networks","grid_infrastructure",
+ "usd_gbp","usd_chf","usd_cad","usd_aud","usd_sgd","usd_pln",
+ "oil_supply","export_controls","sanctions_exposure","wheat"
 ]);
 const CORRIDOR_ASSETS=Object.freeze({
  RED_SEA:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"],
@@ -27,8 +32,16 @@ const CORRIDOR_ASSETS=Object.freeze({
 });
 const EVENT_ASSETS=Object.freeze({
  SANCTIONS_LIST_UPDATE:["sanctions_exposure","export_controls"],
- EXPORT_CONTROL_CHANGE:["export_controls","lithium","copper","rare_earths"],
- MINERAL_EXPORT_RESTRICTION:["export_controls","lithium","copper","rare_earths"],
+ EXPORT_CONTROL_CHANGE:["export_controls","lithium","copper","rare_earths","gallium","germanium","semiconductor_inputs"],
+ MINERAL_EXPORT_RESTRICTION:["export_controls","mineral_supply","critical_minerals"],
+ MINERAL_PROCESSING_DISRUPTION:["mineral_processing","battery_materials","semiconductor_inputs","industrial_inputs"],
+ MINERAL_STOCKPILING:["critical_minerals","mineral_supply"],
+ SUBSEA_CABLE_DISRUPTION:["subsea_cables","cross_border_trade"],
+ INFRASTRUCTURE_SABOTAGE:["pipeline_networks","grid_infrastructure","energy_commodities"],
+ PORT_RAIL_STRIKE:["shipping_routes","freight_rates","cross_border_trade"],
+ AIRSPACE_SHIPPING_CLOSURE:["shipping_routes","maritime_chokepoints","freight_rates"],
+ BANKING_PAYMENT_RESTRICTION:["payment_rails","fx_pairs","sovereign_funding"],
+ SOVEREIGN_STRESS:["sovereign_funding","interest_rates","fx_pairs"],
  OIL_SUPPLY_DISRUPTION:["brent_crude","lng_spot","oil_supply"],
  LNG_SUPPLY_DISRUPTION:["lng_spot","oil_supply"],
  CENTRAL_BANK_RATE_DECISION:["fx_pairs","usd_eur","usd_jpy","usd_cny","usd_inr"],
