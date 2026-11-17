@@ -135,6 +135,11 @@ test("scheduled sync accepts only approved country candidates with a fresh live 
  assert.equal(selected.entries.length,1);
  assert.equal(selected.entries[0].source_id,approved.source_id);
  assert.equal(selected.rights_status_changed,false);
+ const unhealthy={...report,cells:[{...report.cells[0],candidate_sources:[
+  {...report.cells[0].candidate_sources[0],health_status:"SOURCE_UNAVAILABLE"}]}]};
+ assert.equal(buildHealthyApprovedSourceManifest(
+  {schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[approved]},unhealthy,now)
+  .entries.length,0);
  const stale={...report,generated_at:new Date(now-31*60_000).toISOString()};
  assert.throws(()=>buildHealthyApprovedSourceManifest(
   {schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[approved]},stale,now),
