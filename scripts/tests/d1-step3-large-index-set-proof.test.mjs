@@ -177,7 +177,7 @@ test("0211 spool join admits only the reviewed 250k cap",()=>{
  }],{sourceRows:currentProductionRows}).verified_rows,currentProductionRows);
  const atBound=[{index_rows:250000,distinct_rowids:250000,mismatched_rows:0}];
  assert.equal(verifyStep3IndexJoinResult(atBound,{sourceRows:250000}).verified_rows,250000);
- const overBound=[{index_rows:150001,distinct_rowids:150001,mismatched_rows:0}];
- assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:150001}),
+ const overBound=[{index_rows:250001,distinct_rowids:250001,mismatched_rows:0}];
+ assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:250001}),
   /COMPLETE_ROWID_AND_KEY_PARITY_UNVERIFIED/u);
 });
