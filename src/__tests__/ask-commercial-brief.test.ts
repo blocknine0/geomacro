@@ -46,7 +46,7 @@ describe("Ask Geomacro commercial brief", () => {
 
     expect(output.geomacro_view).not.toContain("deterministic summary");
     expect(output.geomacro_view).toContain("dominant thread is macro risk");
-    expect(output.why_it_matters).toContain("supporting context, not a separate index");
+    expect(output.why_it_matters).toContain("These records add context; they are not another index reading");
   });
 
   it("bounds public prose without fabricating replacement content", () => {
