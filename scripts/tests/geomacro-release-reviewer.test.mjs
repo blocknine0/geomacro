@@ -137,7 +137,7 @@ test("redacted internal corroboration upgrades a one-anchor Basic grant to Stand
   ["basic_focused","standard"]);
  assert.equal(result.grants[0].eligible_derived_score.agent_decision.tier,"STANDARD");
  assert.equal(result.grants[0].eligible_derived_score.licensed_source_text_included,false);
- assert.doesNotMatch(JSON.stringify(result),/PRIVATE_OSINT|telegram|source title|https?:/iu);
+ assert.doesNotMatch(JSON.stringify(result),/source title|watch confirms policy|https?:|www\\.|@/iu);
 });
 
 test("a second distinct approved source_role upgrades while a duplicate role does not",async()=>{
