@@ -119,18 +119,18 @@ function paidPacePair({writes=0,reads=0,pacedRemaining=10_000_000,
 }
 
 test("healthy Paid monthly headroom admits normal short-window background cron bursts",()=>{
- for(const writesPerHour of [60_000,150_000]){
+ for(const writesPerHour of [60_000,150_000,324_000]){
   const {start,latest}=paidPacePair({writes:writesPerHour/12});
   const result=assertD1ObservedHourlyPace(start,latest);
   assert.equal(result.status,"PASS_OBSERVED_PAID_MONTHLY_PACE");
   assert.equal(result.writes_per_hour,writesPerHour);
-  assert.equal(result.max_writes_per_hour,250_000);
+  assert.equal(result.max_writes_per_hour,500_000);
  }
 });
 
 test("canary pace still holds on burst, read-cap, low-monthly-headroom, or exhausted paced headroom",()=>{
  const cases=[
-  [paidPacePair({writes:20_834}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:41_667}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
   [paidPacePair({writes:1,reads:2_000_001}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
   [paidPacePair({writes:5_000,remaining:1_000_000}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
   [paidPacePair({writes:5_000,pacedRemaining:0}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/]

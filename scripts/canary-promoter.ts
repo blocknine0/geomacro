@@ -23,7 +23,7 @@ const D1_HOURLY_READ_CAP=24_000_000;
 const D1_HOURLY_WRITE_CAP=45_000;
 // Short-window cron bursts can exceed the operational hourly average while
 // remaining safe under fresh Paid monthly pacing headroom.
-const D1_PAID_BURST_WRITE_CAP=250_000;
+const D1_PAID_BURST_WRITE_CAP=500_000;
 const D1_HEALTHY_PAID_REMAINING_ROWS=1_000_000;
 const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
