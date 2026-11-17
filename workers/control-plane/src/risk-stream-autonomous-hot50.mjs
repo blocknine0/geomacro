@@ -276,7 +276,7 @@ export async function probeHot50GlobalSearch(target,{now=Date.now(),fetcher=fetc
      !/^[0-9a-f]{64}$/u.test(r.title_hash??"")||seen.has(domain))continue;
   seen.add(domain);
   leads.push({lead_id:await hash("hot50-search\n"+target.country_iso3+"\n"+
-    target.category+"\n"+plan.topic_bucket_id+"\n"+r.id),country_iso3:target.country_iso3,
+    target.category+"\n"+r.id),country_iso3:target.country_iso3,
    category:target.category,publisher_root_domain:domain,
    index_record_sha256:r.id,index_link_sha256:await hash(r.url),
    title_sha256:r.title_hash,published_at:r.published_at,
