@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-17T15:36:38.745Z",
+  "checked_at": "2026-11-17T17:44:08.625Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -9894,6 +9894,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-5d0b9c27",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested in critical mineral mining in the Yukon · Canada",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Canada invested in critical mineral mining in the Yukon. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-11-16",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-fb3cf44c",
       "category": "macro",
       "title": "GeoMacro Macro/FX Brief · Inflation And Prices — Germany (DEU)",
@@ -9949,27 +9968,6 @@
       "event_action": "Reported Exposure to Supply Constraints",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-15T22:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3a32c36c",
-      "category": "macro",
-      "title": "GeoMacro Macro/FX Brief · Inflation And Prices — Kenya (KEN)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported increase by national statistical and fiscal authorities, affecting inflation and prices in Kenya; direction is easing (easing or restoration pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: easing inflation and prices pressure in Kenya → Downstream effect: local funding, settlement and import costs may shift → Price impact channel: the local currency versus USD and sovereign spreads. Action Posture: CONTINUE.",
-      "topic": "inflation and prices",
-      "geography": "Kenya",
-      "country_iso3": "KEN",
-      "corridor": null,
-      "event_direction": "easing",
-      "event_action": "Reported Increase",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-15T22:02:31.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],

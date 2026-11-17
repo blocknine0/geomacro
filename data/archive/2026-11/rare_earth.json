@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-17T15:36:38.745Z",
+  "updated_at": "2026-11-17T17:44:08.625Z",
   "signals": [
     {
       "id": "rare_earth-6d169da6",
@@ -589,6 +589,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5d0b9c27",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested in critical mineral mining in the Yukon · Canada",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Canada invested in critical mineral mining in the Yukon. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-11-16",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
