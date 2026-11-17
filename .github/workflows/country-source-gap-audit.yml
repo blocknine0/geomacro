@@ -77,6 +77,41 @@ jobs:
             --risk-stream-sources artifacts/country-source/risk-stream-sources.json \
             --probe --probe-limit 18 ${PREVIOUS} \
             --out artifacts/country-source/country-source-gap-discovery.latest.json
+      - name: Prepare health-verified rights sync within Paid D1 headroom
+        id: healthy-sync
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync,appendFileSync} from 'node:fs';
+          import {buildHealthyApprovedSourceManifest} from './scripts/lib/country-source-gap-finder.mjs';
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const manifest=JSON.parse(readFileSync('config/risk-stream-source-rights-reviewed.v1.json','utf8'));
+          const report=JSON.parse(readFileSync('artifacts/country-source/country-source-gap-discovery.latest.json','utf8'));
+          const plan=buildHealthyApprovedSourceManifest(manifest,report,Date.now());
+          if(plan.entries.length===0){
+            appendFileSync(process.env.GITHUB_OUTPUT,'count=0\\n');
+            console.log(JSON.stringify({approved_sources_ready:0,d1_writes:0}));
+            process.exit(0);
+          }
+          const proof=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
+            estimatedMigrationRowsRead:plan.entries.length*10+100,
+            estimatedMigrationRowsWritten:plan.entries.length*2+100});
+          if(proof.status!=='PASS')throw Error(proof.code??'COUNTRY_SOURCE_REGISTRY_HEADROOM_UNVERIFIED');
+          writeFileSync('artifacts/country-source/eligible-approved-source-rights.json',
+            JSON.stringify({schema:manifest.schema,entries:plan.entries},null,2)+'\\n',{mode:0o600});
+          appendFileSync(process.env.GITHUB_OUTPUT,'count='+plan.entries.length+'\\n');
+          console.log(JSON.stringify({approved_sources_ready:plan.entries.length,
+            status:proof.status,remaining_rows_read:proof.remaining_rows_read,
+            remaining_rows_written:proof.remaining_rows_written}));
+          NODE
+      - name: Verify provider schema for live eligible source sync
+        if: steps.healthy-sync.outputs.count != '0'
+        run: node scripts/ops/register-risk-stream-source.mjs --preflight --manifest artifacts/country-source/eligible-approved-source-rights.json
+      - name: Apply live, rights-approved and feed-healthy sources
+        if: steps.healthy-sync.outputs.count != '0'
+        env:
+          CONFIRM: APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION
+        run: node scripts/ops/register-risk-stream-source.mjs --apply --manifest artifacts/country-source/eligible-approved-source-rights.json
       - name: Open or update source gap review PR
         env:
           GH_TOKEN: ${{ github.token }}
