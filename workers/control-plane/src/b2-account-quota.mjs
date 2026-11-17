@@ -126,7 +126,11 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
     : Math.min(appGetCeiling, limits.GET);
   const row = await db.prepare(ATOMIC_B2_QUOTA_SQL).bind(
     day, ...increments, iso,
-    limits.total,limits.GET,limits.PUT,limits.HEAD,limits.NATIVE_AUTH,
+    limits.total,
+    kind === "GET" ? limits.GET : B2_DAILY_LIMITS.GET,
+    kind === "PUT" ? limits.PUT : B2_DAILY_LIMITS.PUT,
+    kind === "HEAD" ? limits.HEAD : B2_DAILY_LIMITS.HEAD,
+    kind === "NATIVE_AUTH" ? limits.NATIVE_AUTH : B2_DAILY_LIMITS.NATIVE_AUTH,
     kind === "GET" ? 1 : 0,
     getCeiling,
   ).first();
