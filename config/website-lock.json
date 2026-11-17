@@ -1477,7 +1477,7 @@
   "approved_ask_conversational_ux_20261117": {
     "approval": "Founder explicitly authorized a narrow exact-blob Website Lock approval for PR #4072 on 2026-11-17.",
     "purpose": "Authorize only the two Ask conversational UX blobs changed by PR #4072. Preserve GeoMacro's three-category scope, source privacy, canonical retrieval and evidence gates; this is not a general website unlock.",
-    "approved_source_commit": "36c968e5867c7c8462b2013397314cb9dd72be3e",
+    "approved_source_commit": "fb2af2fe0fe4923aeeff8e5d3039124690a4353a",
     "approved_paths": [
       "src/components/ask/ask-workspace.tsx",
       "src/components/ask/ask-answer-view.tsx"
