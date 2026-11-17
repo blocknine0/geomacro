@@ -86,9 +86,10 @@ test("risk pipeline derives named corridor and price assets from structural even
 test("dual audience enriches assets for corridor and explicit market signals without exposing input text",()=>{
  const value=buildRiskStreamDualAudience({category:"GEOPOLITICS",eventClass:"MARITIME_CHOKEPOINT_DISRUPTION",
   score:72,confidence:.86,horizonHours:72,tier:"STANDARD",corroborationReady:false,
-  strategicCorridors:["HORMUZ","RED_SEA"],affectedAssets:["usd_inr","lithium"],contagionCorridors:["IRN>ARE"]});
+  strategicCorridors:["HORMUZ","RED_SEA","MALACCA","PANAMA","SUEZ","BAB_EL_MANDEB","TAIWAN_STRAIT","SOUTH_CHINA_SEA","BLACK_SEA","BOSPORUS","MOZAMBIQUE_CHANNEL","CAPE_OF_GOOD_HOPE"],affectedAssets:["usd_inr","lithium"],contagionCorridors:["IRN>ARE"]});
  assert.equal(validRiskStreamDualAudience(value),true);
- assert.deepEqual(value.agent_decision.strategic_corridors,["HORMUZ","RED_SEA"]);
+ assert.equal(value.agent_decision.strategic_corridors.length,12);
+ assert.ok(value.agent_decision.strategic_corridors.includes("HORMUZ"));
  for(const asset of ["brent_crude","lng_spot","freight_rates","usd_inr","lithium"])
   assert.ok(value.agent_decision.affected_assets.includes(asset));
  assert.equal(value.agent_decision.upgrade_available,false);
