@@ -27,6 +27,8 @@ const conditional=s=>/\b(?:if|could|might|may|rumou?r|alleged|unconfirmed|claims
 const tidy=s=>String(s).replace(/\s+/gu," ").replace(/[.?!]+$/gu,"").trim();
 const mechanism=(category,object)=>{
  if(category==="geopolitics"){
+  if(/\b(?:correspondent banking|swift|sovereign asset freeze|fx repatriation|capital controls?|exchange cyberattack|clearinghouse|payment rail cyberattack|election|central bank independence|windfall tax|nationali[sz]ation|fdi block|cfius|war.risk insurance|vlcc|freight index|baltic dry)\b/iu.test(object))
+   return "can affect settlement access, market infrastructure, policy continuity or delivered trade costs; verified implementation and market response remain separate questions";
   if(/\b(?:sanctions?|secondary sanctions?|exports?|tariffs?|bans?|embargoes?|export controls?|dual.use|arms exports?|trade restrictions?|borders?|customs)\b/iu.test(object))
    return "could change compliance and cross-border trade conditions if implemented; actual enforcement and shipment outcomes require separate evidence";
   if(/\b(?:ceasefire|peace|security|conflict|attack|military|naval blockade|border mobilization|coup|martial law|regime instability|sabotage|subsea cable|pipeline|grid|strike|airspace|shipping closure|evacuat|humanitarian|refugee)\b/iu.test(object))
@@ -34,9 +36,9 @@ const mechanism=(category,object)=>{
   if(/\b(?:treaty|foreign|diplomac|agreement|visa|negotiat|minister|international)\b/iu.test(object))
    return "creates a diplomatic or policy development to track; implementation and cross-border consequences are not demonstrated by the announcement";
  }else if(category==="macro"){
-  if(/\b(?:rate|monetary|inflation|cpi|consumer price|central bank|interest|quantitative easing|quantitative tightening|\bqe\b|\bqt\b)\b/iu.test(object))
+  if(/\b(?:rate|monetary|inflation|cpi|consumer price|central bank|interest|quantitative easing|quantitative tightening|\bqe\b|\bqt\b|omo|repo|reverse.repo|standing facilit|fx reserves?|sovereign wealth fund|cet1|tier.1|lcr|nsfr|nii|nim|npl|deposit flight|deposit outflow|stress test|basel iii|basel iv|sofr|euribor|tonar|shibor|mibor|hibor|basis swap|bank cds|interbank|yield curve|2s10s|term premium|sovereign cds|bond auction|bid.to.cover|auction tail|ppi|pce|nfp|payroll|retail sales|breakeven)\b/iu.test(object))
    return "makes the stated policy or price development relevant to financing and currency expectations; no traded-market direction is independently confirmed";
-  if(/\b(?:gdp|pmi|employment|retail|wages|unemployment|industrial|production|trade|exports?|imports?|currency|fx|debt|yield|banking|financial|capital controls?|repatriation freeze|sovereign default|restructuring|imf bailout|credit downgrade|tariffs?|customs retaliation|swift|payment rail|oil|lng|grain|liquidity)\b/iu.test(object))
+  if(/\b(?:gdp|pmi|employment|retail|wages|unemployment|industrial|production|trade|exports?|imports?|currency|fx|debt|yield|banking|financial|capital controls?|repatriation freeze|sovereign default|restructuring|imf bailout|credit downgrade|tariffs?|customs retaliation|swift|payment rail|oil|lng|grain|liquidity|stock exchange|equity index|vix|move index|implied vol|risk reversal|circuit breaker|short.selling ban|ndf|fpi|fii|etf flow|capital outflow|margin call|liquidation cascade|stablecoin|crypto liquidity)\b/iu.test(object))
    return "provides a specific economic or financing development to assess against verified data; a release alone does not establish any asset-price reaction";
  }else if(category==="rare_earth"){
   if(/\b(?:lithium|cobalt|nickel|graphite|gallium|germanium|antimony|tungsten|manganese|vanadium|titanium|uranium|potash|phosphate|ndpr|dysprosium|terbium|rare.earth|critical mineral|minerals?|copper|export ban|export quota|royalty hike|nationali[sz]ation|mine strike|smelter outage|stockpil|refin|recycl|mining|processing|battery|ev|semiconductor|magnet|supply)\b/iu.test(object))
