@@ -172,6 +172,12 @@ export function projectHot50StreamCell(target,{
  }))].sort().slice(0,24);
  const searchTopicBuckets=[...new Set(s.map(row=>row.topic_bucket_id)
   .filter(x=>typeof x==="string"&&/^[a-z0-9_]{2,48}$/u.test(x)))].sort().slice(0,8);
+ const searchAffectedAssets=[...new Set(s.flatMap(row=>{
+  try{
+   const assets=JSON.parse(row.affected_assets_json??"[]");
+   return Array.isArray(assets)?assets.filter(x=>typeof x==="string"&&/^[a-z0-9_]{2,48}$/u.test(x)).slice(0,8):[];
+  }catch{return []}
+ }))].sort().slice(0,24);
  // Telegram is a watch-only trigger. These rows only prioritize an
  // independent search; they never enter the evidence/GRO signal pool.
  const telegram=telegramTriggers.filter(r=>match(r)&&recent(r.published_at,now));
@@ -198,6 +204,7 @@ export function projectHot50StreamCell(target,{
   signal_count:pool.size,original_domains:domains,original_same_event_pair:!!pair,
   source_lanes:lanes,global_search_topic_tags:searchTopicTags,
   global_search_topic_buckets:searchTopicBuckets,
+  global_search_affected_assets:searchAffectedAssets,
   basic_status:pool.size?"BASIC_RESEARCH_AUTOPUBLISHED":"NO_SIGNALS",
   standard_status:gro?"SIGNED_INTERNAL_GRO_AVAILABLE":"HOLD_SAME_EVENT_ATTESTED_ORIGINALS",
   complex_status:"HOLD_SEVEN_DAY_PROVIDER_PROOF",
@@ -280,8 +287,9 @@ export async function probeHot50GlobalSearch(target,{now=Date.now(),fetcher=fetc
    category:target.category,publisher_root_domain:domain,
    index_record_sha256:r.id,index_link_sha256:await hash(r.url),
    title_sha256:r.title_hash,published_at:r.published_at,
-   topic_bucket_id:plan.topic_bucket_id,topic_tags:plan.topic_tags});
-  if(leads.length===8)break;
+   topic_bucket_id:plan.topic_bucket_id,topic_tags:plan.topic_tags,
+   affected_assets:plan.affected_assets});
+  if(leads.length===7)break;
  }
  return {status:leads.length?"SEARCH_INDEX_LEADS_FOUND":"SEARCH_NO_INDEX_LEADS",
   leads,topic_bucket_id:plan.topic_bucket_id,topic_tags:plan.topic_tags,
@@ -295,17 +303,19 @@ async function persistCell(db,target,projection,probe,now){
  const statements=[];
  if(probe.leads.length){
   const placeholders=probe.leads.map(()=>
-   "(?,?,?,?,?,?,?,?,?,?,?,0,0)").join(",");
+   "(?,?,?,?,?,?,?,?,?,?,?,?,0,0)").join(",");
   const bindings=probe.leads.flatMap(x=>[
    x.lead_id,x.country_iso3,x.category,x.publisher_root_domain,
    x.index_record_sha256,x.index_link_sha256,x.title_sha256,x.published_at,stamp,
-   x.topic_bucket_id,JSON.stringify(x.topic_tags)
+   x.topic_bucket_id,JSON.stringify(x.topic_tags),
+   JSON.stringify(x.affected_assets)
   ]);
   if(bindings.length>90)fail("D1_PARAMETER_CAP");
   statements.push(db.prepare("INSERT OR IGNORE INTO risk_stream_global_search_leads "+
    "(lead_id,country_iso3,category,publisher_root_domain,index_record_sha256,"+
    "index_link_sha256,title_sha256,published_at,first_seen_at,topic_bucket_id,"+
-   "topic_tags_json,original_verified,commercial_rights_approved) VALUES "+placeholders).bind(...bindings));
+   "topic_tags_json,affected_assets_json,original_verified,commercial_rights_approved) "+
+   "VALUES "+placeholders).bind(...bindings));
  }
  // Basic is an unverified research projection, not a customer licence.
  // Search leads become Basic only AFTER the atomic D1 commit/readback.
