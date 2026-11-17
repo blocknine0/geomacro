@@ -1,6 +1,7 @@
 const ACTIONS=new Set(["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"]);
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
-const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA","SUEZ","BAB_EL_MANDEB","TAIWAN_STRAIT","SOUTH_CHINA_SEA","BLACK_SEA","BOSPORUS","MOZAMBIQUE_CHANNEL","CAPE_OF_GOOD_HOPE"]);
+const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA","SUEZ","BAB_EL_MANDEB","TAIWAN_STRAIT","SOUTH_CHINA_SEA","BLACK_SEA","BOSPORUS","MOZAMBIQUE_CHANNEL","CAPE_OF_GOOD_HOPE",
+ "BALTIC_SEA","ARCTIC_NORTHERN_SEA_ROUTE"]);
 const ASSETS=Object.freeze({
  GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes","maritime_chokepoints","payment_rails","clearinghouses","war_risk_insurance","freight_indices"],
  MACRO_FX:["foreign_exchange","fx_pairs","interest_rates","sovereign_funding","energy_commodities","bank_capital","bank_liquidity","interbank_funding","equity_indices","capital_flows"],
@@ -37,7 +38,9 @@ const CORRIDOR_ASSETS=Object.freeze({
  BLACK_SEA:["brent_crude","wheat","freight_rates","shipping_routes","maritime_chokepoints"],
  BOSPORUS:["brent_crude","wheat","freight_rates","shipping_routes","maritime_chokepoints"],
  MOZAMBIQUE_CHANNEL:["lng_spot","copper","freight_rates","shipping_routes","maritime_chokepoints"],
- CAPE_OF_GOOD_HOPE:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"]
+ CAPE_OF_GOOD_HOPE:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"],
+ BALTIC_SEA:["brent_crude","freight_rates","shipping_routes","maritime_chokepoints","war_risk_insurance"],
+ ARCTIC_NORTHERN_SEA_ROUTE:["lng_spot","freight_rates","shipping_routes","maritime_chokepoints","war_risk_insurance"]
 });
 const EVENT_ASSETS=Object.freeze({
  SANCTIONS_LIST_UPDATE:["sanctions_exposure","export_controls"],
