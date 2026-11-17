@@ -3,7 +3,7 @@ import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {buildCountrySourceGapReport} from "../lib/country-source-gap-finder.mjs";
-import {parseCountries,gatherSources,loadCatalogues,probeRotation} from "./phase2i-coverage-inventory.mjs";
+import {parseCountries,gatherSources,loadCatalogues,probeSource} from "./phase2i-coverage-inventory.mjs";
 import {HOT50_COUNTRY_ISO3} from "../lib/hot-50-country-watch.mjs";
 const fail=code=>{throw Error("COUNTRY_SOURCE_DISCOVERY_"+code)};
 const readJson=path=>JSON.parse(readFileSync(path,"utf8"));
@@ -75,21 +75,30 @@ async function probeJsonSource(source,{fetchImpl=fetch,now=new Date()}={}){
  }catch(error){return {...base,status:"SOURCE_UNAVAILABLE",
   failure_reason:String(error?.message)==="SIZE_LIMIT"?"BODY_OVER_192KB":"NETWORK_TLS_TIMEOUT_OR_REDIRECT"};}
 }
-async function probeCandidateRotation(sources,now,fetchImpl,max){
+async function probeCandidateRotation(sources,now,fetchImpl,max,previousProbes=[],hot50=[]){
  if(!Number.isInteger(max)||max<1||max>24)fail("PROBE_LIMIT_INVALID");
- const json=sources.filter(s=>s.format==="json");
- const xml=sources.filter(s=>["rss","atom","rdf","xml"].includes(s.format));
- const jsonBudget=Math.min(json.length,Math.floor(max/3));
- const xmlBudget=Math.min(xml.length,max-jsonBudget);
- const xmlProbes=await probeRotation(xml,now,fetchImpl,Math.max(1,xmlBudget));
- const slot=Math.floor(now.getTime()/7200000),chosen=[];
- if(jsonBudget&&json.length){const start=(slot*jsonBudget)%json.length;
-  for(let i=0;i<jsonBudget;i++)chosen.push(json[(start+i)%json.length]);}
- const output=[...xmlProbes];let index=0;
- await Promise.all(Array.from({length:Math.min(3,chosen.length)},async()=>{
-  while(index<chosen.length){const n=index++;output.push(await probeJsonSource(chosen[n],{fetchImpl,now}));}
+ const supported=sources.filter(s=>s.format==="json"||["rss","atom","rdf","xml"].includes(s.format));
+ const prior=new Map(previousProbes.filter(p=>p&&typeof p.source_id==="string").map(p=>[p.source_id,p]));
+ const hot=new Set(hot50);
+ supported.sort((a,b)=>{
+  const aHot=hot.has(a.publisher_country_iso3)?0:1,bHot=hot.has(b.publisher_country_iso3)?0:1;
+  if(aHot!==bHot)return aHot-bHot;
+  const at=Date.parse(prior.get(a.source_id)?.attempted_at??"");
+  const bt=Date.parse(prior.get(b.source_id)?.attempted_at??"");
+  const ageA=Number.isFinite(at)?at:Number.NEGATIVE_INFINITY;
+  const ageB=Number.isFinite(bt)?bt:Number.NEGATIVE_INFINITY;
+  return ageA-ageB||a.source_id.localeCompare(b.source_id);
+ });
+ const selected=supported.slice(0,max),results=new Array(selected.length);let index=0;
+ await Promise.all(Array.from({length:Math.min(3,selected.length)},async()=>{
+  while(index<selected.length){
+   const i=index++,source=selected[i];
+   results[i]=source.format==="json"?
+    await probeJsonSource(source,{fetchImpl,now}):
+    await probeSource(source,{fetchImpl,now});
+  }
  }));
- return output.slice(0,max);
+ return results;
 }
 
 export async function discoverMissingCountrySources({riskStreamSources,previousProbes=[],probe=false,
@@ -99,13 +108,15 @@ export async function discoverMissingCountrySources({riskStreamSources,previousP
  fetchImpl=fetch}={}){
  if(!Array.isArray(riskStreamSources))fail("RISK_ROWS_INVALID");
  const sources=gatherSources(countries,catalogues);
- const probes=probe?await probeCandidateRotation(sources,now,fetchImpl,probeLimit):[];
  const allProbes=new Map((previousProbes??[]).filter(p=>p&&typeof p.source_id==="string")
   .map(p=>[p.source_id,p]));
+ const probes=probe?await probeCandidateRotation(sources,now,fetchImpl,probeLimit,
+  [...allProbes.values()],hot50):[];
  for(const p of probes)allProbes.set(p.source_id,p);
  return {report:buildCountrySourceGapReport({countries,hot50,sourceCatalog:sources,
   riskStreamSources,probes:[...allProbes.values()],rightsEntries,now:now.getTime()}),
-  probes,source_catalog_count:sources.length,private_osint_probe_count:probes.length};
+  probes,all_probes:[...allProbes.values()],source_catalog_count:sources.length,
+  private_osint_probe_count:probes.length};
 }
 async function main(){
  const args=parseArgs(process.argv.slice(2));
@@ -119,7 +130,7 @@ async function main(){
  mkdirSync(resolve(args.output,".."),{recursive:true,mode:0o700});
  writeFileSync(args.output,JSON.stringify({...result.report,
   source_catalog_count:result.source_catalog_count,
-  probes_this_run:result.probes,
+  probes:result.all_probes,probes_this_run:result.probes,
   private_osint_probe_count:result.private_osint_probe_count},null,2)+"\n",{mode:0o600});
  process.stdout.write(JSON.stringify({schema:result.report.schema,
   cells:result.report.cell_count,gaps:result.report.gap_count,
