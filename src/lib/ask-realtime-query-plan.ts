@@ -31,7 +31,7 @@ export function buildRealtimeSearchPlan(question: string, now = Date.now(), rota
   const targeted = askDomains(question).map(domain => CATEGORY_FOR_DOMAIN[domain]);
   const broadCategories = (targeted.length ? targeted : [...ALL_CATEGORIES]) as RealtimeAskCategory[];
   const topicBuckets = broadCategories.map((category, index) =>
-    selectGlobalRiskQueryBucket(category, now, rotationIndex + index),
+    selectGlobalRiskQueryBucket(category, now, (rotationIndex + index) % 100_000),
   );
   return {
     broad,
