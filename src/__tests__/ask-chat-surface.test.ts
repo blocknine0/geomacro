@@ -40,6 +40,6 @@ describe("Ask Geomacro direct chat surface", () => {
     expect(answers).toContain('!eventId.startsWith("live:")');
     expect(answers).toContain('!eventId.startsWith("web:")');
     expect(workspace).toContain("Follow-ups use bounded context, not previous answers as evidence.");
-    expect(answers).toContain("Geomacro will not fill an evidence gap with a synthetic claim.");
+    expect(answers).toContain("I won't fill an evidence gap with a guess.");
   });
 });
