@@ -114,6 +114,8 @@ test("Google global search saves only hashes, publisher domains and clocks; neve
  assert.equal(r.leads[0].lead_id,next.leads[0].lead_id);
  assert.ok(r.leads[0].topic_tags.length>0);
  assert.equal(r.leads[0].topic_tags.length<=8,true);
+ assert.ok(Array.isArray(r.leads[0].affected_assets));
+ assert.equal(r.leads[0].affected_assets.length<=8,true);
  const serialized=JSON.stringify(r);
  assert.equal(serialized.includes("Sample fictional"),false);
  assert.equal(serialized.includes("original_publisher_text"),false);
