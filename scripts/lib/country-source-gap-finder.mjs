@@ -16,13 +16,15 @@ const safeHttps=value=>{
  catch{return false}
 };
 const approvedEvidence=(entry,now)=>entry?.status==="APPROVED"&&
- typeof entry?.publisher_root_domain==="string"&&entry.publisher_root_domain.length>=3&&
- typeof entry?.parent_media_entity==="string"&&entry.parent_media_entity.length>0&&
+ typeof entry?.source_id==="string"&&/^[a-z0-9][a-z0-9_.:-]{2,119}$/u.test(entry.source_id)&&
+ typeof entry?.publisher_root_domain==="string"&&/^[a-z0-9.-]{3,253}$/u.test(entry.publisher_root_domain)&&
+ typeof entry?.parent_media_entity==="string"&&/^[a-z0-9_.:-]{1,100}$/u.test(entry.parent_media_entity)&&
  safeHttps(entry?.rights_evidence?.licence_url)&&safeHttps(entry?.rights_evidence?.terms_url)&&
  typeof entry?.rights_evidence?.reviewer==="string"&&entry.rights_evidence.reviewer.trim().length>=2&&
  typeof entry?.rights_evidence?.notes==="string"&&entry.rights_evidence.notes.trim().length>=12&&
- Number.isFinite(Date.parse(entry?.rights_evidence?.reviewed_at??""))&&
- Date.parse(entry.rights_evidence.reviewed_at)<=now&&
+ typeof entry?.rights_evidence?.reviewed_at==="string"&&
+ /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/u.test(entry.rights_evidence.reviewed_at)&&
+ Number.isFinite(Date.parse(entry.rights_evidence.reviewed_at))&&Date.parse(entry.rights_evidence.reviewed_at)<=now&&
  typeof entry?.rights_expire_at==="string"&&
  /^\d{4}-\d{2}-\d{2}$/u.test(entry.rights_expire_at)&&
  Number.isFinite(Date.parse(entry.rights_expire_at+"T23:59:59.999Z"))&&
