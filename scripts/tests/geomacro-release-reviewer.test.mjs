@@ -146,8 +146,10 @@ test("a second distinct approved source_role upgrades while a duplicate role doe
  assert.deepEqual((await accepted.json()).grants[0].approval.eligible_tiers,
   ["basic_focused","standard","complex_full"]);
  const duplicate=await fixture("MACRO_FX",2,{duplicateSourceRole:true});
- const held=await reviewerFetch(request(duplicate.body),duplicate.env,duplicate.now);
- assert.equal((await held.json()).status,"HOLD_TIER_EVIDENCE_MISMATCH");
+ const stillBasic=await reviewerFetch(request(duplicate.body),duplicate.env,duplicate.now);
+ const result=await stillBasic.json();
+ assert.equal(result.status,"REVIEW_APPROVED");
+ assert.deepEqual(result.grants[0].approval.eligible_tiers,["basic_focused"]);
 });
 
 test("reviewer signs only current, D1-backed release grants across all three categories",async()=>{
