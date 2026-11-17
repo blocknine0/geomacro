@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
+import {B2_DAILY_LIMITS,B2_RELEASE_RESERVED} from "../../workers/control-plane/src/b2-account-quota.mjs";
 import worker from "../../workers/intelligence-edge/src/index.mjs";
 import { makeQuotaProtectedIntelligenceConfig } from "../../scripts/ops/configure-intelligence-edge-d1-quota.mjs";
 
@@ -30,7 +30,7 @@ function d1({exhausted=false,failReceipt=false}={}){
             async first() {
               operations.push({sql,args});
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(args).toContain(B2_DAILY_LIMITS.GET);
+              expect(args).toContain(B2_DAILY_LIMITS.GET-B2_RELEASE_RESERVED.GET);
               return exhausted?null:{
                 total_requests:1,get_requests:1,put_requests:0,
                 head_requests:0,native_auth_requests:0,
