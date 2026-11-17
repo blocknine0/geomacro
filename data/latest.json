@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-17T08:58:54.042Z",
+  "checked_at": "2026-11-17T15:36:38.745Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -9875,6 +9875,25 @@
       "severity": null
     },
     {
+      "id": "macro-838717e2",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published consumer-price figures for October 2026 · Canada",
+      "why_it_matters": "Price developments can affect purchasing power, central-bank decisions and currency-risk context; verify the actual published figures before quantifying impact.",
+      "what_changed": "Statistics Canada published consumer-price figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "price data",
+      "topic": "inflation and prices",
+      "published_at": "2026-11-16",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-fb3cf44c",
       "category": "macro",
       "title": "GeoMacro Macro/FX Brief · Inflation And Prices — Germany (DEU)",
@@ -9951,27 +9970,6 @@
       "event_action": "Reported Increase",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-15T22:02:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-682950cb",
-      "category": "macro",
-      "title": "GeoMacro Macro/FX Brief · Inflation And Prices — Israel (ISR)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported update by national statistical and fiscal authorities, affecting inflation and prices in Israel; direction is easing (easing or restoration pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: easing inflation and prices pressure in Israel → Downstream effect: local funding, settlement and import costs may shift → Price impact channel: the local currency versus USD and sovereign spreads. Action Posture: CONTINUE.",
-      "topic": "inflation and prices",
-      "geography": "Israel",
-      "country_iso3": "ISR",
-      "corridor": null,
-      "event_direction": "easing",
-      "event_action": "Reported Update",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-15T19:44:50.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],

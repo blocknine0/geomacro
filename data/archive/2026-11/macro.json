@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-17T08:58:54.042Z",
+  "updated_at": "2026-11-17T15:36:38.745Z",
   "signals": [
     {
       "id": "macro-1cab9ee1",
@@ -4936,6 +4936,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-838717e2",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published consumer-price figures for October 2026 · Canada",
+      "why_it_matters": "Price developments can affect purchasing power, central-bank decisions and currency-risk context; verify the actual published figures before quantifying impact.",
+      "what_changed": "Statistics Canada published consumer-price figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "price data",
+      "topic": "inflation and prices",
+      "published_at": "2026-11-16",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
