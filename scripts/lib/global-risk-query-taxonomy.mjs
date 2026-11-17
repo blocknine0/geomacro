@@ -79,7 +79,7 @@ export const GLOBAL_RISK_QUERY_BUCKETS = Object.freeze({
       ["uranium supply","potash export","phosphate fertilizer","fertilizer export restriction"],
       ["uranium","potash","phosphate"]),
     freezeBucket("state_actions", ["mineral_export_ban","royalty_hike","nationalization","stockpiling"],
-      ["mineral export ban","mining royalty hike","mine nationalization","strategic mineral stockpiling"],
+      ["mineral export ban","mineral export quota","mining royalty hike","mine nationalization","strategic mineral stockpiling"],
       ["critical_minerals","export_controls","mineral_supply"]),
     freezeBucket("operations_disruption", ["mine_strike","smelter_outage","mine_closure"],
       ["mine strike","smelter outage","mine closure","concentrator shutdown"],
