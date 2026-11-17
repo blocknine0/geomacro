@@ -23,7 +23,7 @@ const approvedEvidence=(entry,now)=>entry?.status==="APPROVED"&&
  typeof entry?.rights_evidence?.reviewer==="string"&&entry.rights_evidence.reviewer.trim().length>=2&&
  typeof entry?.rights_evidence?.notes==="string"&&entry.rights_evidence.notes.trim().length>=12&&
  typeof entry?.rights_evidence?.reviewed_at==="string"&&
- /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/u.test(entry.rights_evidence.reviewed_at)&&
+ /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/u.test(entry.rights_evidence.reviewed_at)&&
  Number.isFinite(Date.parse(entry.rights_evidence.reviewed_at))&&Date.parse(entry.rights_evidence.reviewed_at)<=now&&
  typeof entry?.rights_expire_at==="string"&&
  /^\d{4}-\d{2}-\d{2}$/u.test(entry.rights_expire_at)&&
