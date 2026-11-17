@@ -420,13 +420,17 @@ function readCandidates(path,now){
 export async function publishPermanentDerivedNewsArchive({
   archiveDir,assetsDir,candidatePath,
   fetchImpl=fetch,now=Date.now(),canonicalCatchup=false,
-  canonicalOriginToken=null,allowD1Reads=true,
+  canonicalOriginToken=null,allowD1Reads=true,onStage=null,
 }={}){
   if(typeof canonicalCatchup!=="boolean"||typeof allowD1Reads!=="boolean"||
      (!allowD1Reads&&canonicalCatchup))
     throw Error("PERMANENT_ARCHIVE_CATCHUP_CONFIG_INVALID");
   if(!archiveDir||!assetsDir||!candidatePath||!Number.isFinite(now))
     throw Error("PERMANENT_ARCHIVE_CONFIGURATION_INVALID");
+  const stage=name=>{
+    if(typeof onStage==="function")try{onStage(name)}catch{/* diagnostics cannot interrupt publication */}
+  };
+  stage("archive_state_load");
   const dataDir=join(resolve(archiveDir),"data");
   mkdirSync(dataDir,{recursive:true});
   const originalIndex=readIndex(dataDir);
@@ -435,6 +439,7 @@ export async function publishPermanentDerivedNewsArchive({
   const existingById=new Map();
   let totalExisting=0;
 
+  stage("existing_shard_validation");
   // Every existing shard is mandatory and immutable. Missing/corrupt historical
   // content aborts the update instead of silently rebuilding a shortened archive.
   for(const month of index.months){
@@ -517,6 +522,7 @@ export async function publishPermanentDerivedNewsArchive({
       }
     }
   }
+  stage("candidate_document_validation");
   const existingBeforeCatchup=new Set(existingById.keys());
   const candidates=readCandidates(candidatePath,now);
   const allIncoming=[...seedRows,...candidates];
@@ -535,6 +541,7 @@ export async function publishPermanentDerivedNewsArchive({
     added++;
   }
 
+  stage("append_immutable_shards");
   // Preserve all old shards. Update only months receiving new immutable IDs.
   for(const month of touchedMonths){
     mkdirSync(join(dataDir,"archive",month),{recursive:true});
@@ -549,6 +556,7 @@ export async function publishPermanentDerivedNewsArchive({
     }
   }
 
+  stage("refresh_public_snapshots");
   const allSignals=sortSignals([...existingById.values()]);
   const months=[...new Set(allSignals.map(monthFor).filter(Boolean))].sort().reverse();
   const totalSignals=allSignals.length;
@@ -617,6 +625,7 @@ export async function publishPermanentDerivedNewsArchive({
       {encoding:"utf8",mode:0o644});
   }
 
+  stage("compare_public_index");
   let publishedIndexMatches=false;
   if(totalSignals>0||index.seed_complete){
     try{
@@ -639,6 +648,7 @@ export async function publishPermanentDerivedNewsArchive({
   }
   const deployNeeded=Boolean((totalSignals>0||index.seed_complete)&&!publishedIndexMatches&&
     (added>0||seedCompleteThisRun||indexChanged||!publishedIndexMatches));
+  stage("synchronize_worker_assets");
   mkdirSync(resolve(assetsDir),{recursive:true});
   if(deployNeeded)cpSync(dataDir,resolve(assetsDir),{recursive:true,force:true});
   const result={
@@ -664,12 +674,38 @@ export async function publishPermanentDerivedNewsArchive({
     source_urls_logged:false,
     payments:0,
   };
+  stage("write_publish_receipt");
   const resultPath=join(resolve(process.env.RUNNER_TEMP||dirname(resolve(candidatePath))),
     "permanent-derived-news-archive-result.json");
   mkdirSync(dirname(resultPath),{recursive:true});
   writeFileSync(resultPath,JSON.stringify(result,null,2)+"\n",{encoding:"utf8",mode:0o600});
   console.log(JSON.stringify(result));
   return result;
+}
+
+export function safePermanentArchiveDiagnostic(error){
+  const message=error&&typeof error==="object"&&typeof error.message==="string"
+    ?error.message:"";
+  if(/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/u.test(message))
+    return message;
+  const nativeCode=error&&typeof error==="object"&&typeof error.code==="string"
+    ?error.code:"";
+  const safeNativeCodes={
+    EACCES:"PERMANENT_ARCHIVE_FILESYSTEM_PERMISSION_DENIED",
+    EPERM:"PERMANENT_ARCHIVE_FILESYSTEM_PERMISSION_DENIED",
+    ENOENT:"PERMANENT_ARCHIVE_FILESYSTEM_ENTRY_MISSING",
+    ENOTDIR:"PERMANENT_ARCHIVE_FILESYSTEM_PATH_INVALID",
+    EEXIST:"PERMANENT_ARCHIVE_FILESYSTEM_PATH_COLLISION",
+    ENOSPC:"PERMANENT_ARCHIVE_FILESYSTEM_CAPACITY_EXHAUSTED",
+    EMFILE:"PERMANENT_ARCHIVE_FILESYSTEM_HANDLE_LIMIT",
+    EBUSY:"PERMANENT_ARCHIVE_FILESYSTEM_ENTRY_BUSY",
+    EINVAL:"PERMANENT_ARCHIVE_FILESYSTEM_ARGUMENT_INVALID",
+    EROFS:"PERMANENT_ARCHIVE_FILESYSTEM_READ_ONLY",
+  };
+  if(safeNativeCodes[nativeCode])return safeNativeCodes[nativeCode];
+  if(error instanceof TypeError)return "PERMANENT_ARCHIVE_UNEXPECTED_TYPE_ERROR";
+  if(error instanceof RangeError)return "PERMANENT_ARCHIVE_UNEXPECTED_RANGE_ERROR";
+  return "PERMANENT_ARCHIVE_UNEXPECTED_ERROR";
 }
 
 if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])).href){
@@ -679,12 +715,17 @@ if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])
   // Derive only within this production process; never persist or log keys.
   const canonicalOriginToken=canonicalCatchup?
     deriveControlPlaneRootToken(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN):null;
+  let failedStage="configuration";
   publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath,
-    canonicalCatchup,canonicalOriginToken,allowD1Reads
+    canonicalCatchup,canonicalOriginToken,allowD1Reads,
+    onStage:stage=>{failedStage=stage}
   }).catch(error=>{
-    const code=error instanceof Error&&/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/.test(error.message)
-      ?error.message:"PERMANENT_ARCHIVE_UPDATE_FAILED";
-    console.error(code);
+    console.error(JSON.stringify({
+      schema:"geomacro.permanent-derived-news-archive-error.v1",
+      operation:"archive_update",
+      stage:failedStage,
+      diagnostic_code:safePermanentArchiveDiagnostic(error),
+    }));
     process.exitCode=2;
   });
 }

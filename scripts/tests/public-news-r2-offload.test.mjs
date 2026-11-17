@@ -99,12 +99,18 @@ test("R2 unavailable/stale/invalid never returns fake success, always yields D1 
     PUBLIC_NEWS_R2:{async get(){return {size:123,async text(){
       return JSON.stringify(bundle());
     }}}}};
-  const old=await readPublicNewsR2Snapshot(req,env,now+9*60_000);
-  assert.equal(old.status,200);
-  assert.equal(old.headers.get("X-GeoMacro-Canonical-Status"),"last-known-snapshot");
-  assert.equal(old.headers.get("X-GeoMacro-Public-Offload"),"r2");
-  assert.ok(old.headers.get("Warning").includes("canonical D1 freshness not verified"));
+  // Stale R2 data must not mask a fresh canonical D1 projection on the
+  // immediate Website Intelligence endpoint; null means the route continues
+  // to its existing single D1 read path.
+  assert.equal(await readPublicNewsR2Snapshot(req,env,now+9*60_000),null);
   assert.equal(await readPublicNewsR2Snapshot(req,env,now+25*60*60_000),null);
+  // The generic latest-feed alias retains bounded last-known availability.
+  const lastKnown=await readPublicNewsR2Snapshot(
+    new Request(base+"/v1/public/latest-feed.json"),env,now+9*60_000);
+  assert.equal(lastKnown.status,200);
+  assert.equal(lastKnown.headers.get("X-GeoMacro-Canonical-Status"),"last-known-snapshot");
+  assert.equal(lastKnown.headers.get("X-GeoMacro-Public-Offload"),"r2");
+  assert.ok(lastKnown.headers.get("Warning").includes("canonical D1 freshness not verified"));
   env.PUBLIC_NEWS_R2.get=async()=>{throw Error("R2 billing or outage")};
   assert.equal(await readPublicNewsR2Snapshot(req,env,now),null);
   env.PUBLIC_NEWS_R2.get=async()=>({size:5,async text(){return "{"}});
