@@ -492,10 +492,13 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
   [/\bPANAMA(?: CANAL)?\b/u,"PANAMA"],[/\bSUEZ(?: CANAL)?\b/u,"SUEZ"],
   [/\bTAIWAN STRAIT\b/u,"TAIWAN_STRAIT"],[/\bSOUTH CHINA SEA\b/u,"SOUTH_CHINA_SEA"],
   [/\bBLACK SEA\b/u,"BLACK_SEA"],[/\bBOSPORUS\b/u,"BOSPORUS"],
+  [/\bBALTIC SEA\b/u,"BALTIC_SEA"],
+  [/\b(?:ARCTIC|NORTHERN SEA ROUTE)\b/u,"ARCTIC_NORTHERN_SEA_ROUTE"],
   [/\bMOZAMBIQUE CHANNEL\b/u,"MOZAMBIQUE_CHANNEL"],
   [/\bCAPE OF GOOD HOPE\b/u,"CAPE_OF_GOOD_HOPE"],[/\bGIUK GAP\b/u,"GIUK_GAP"]
  ];
- const strategicCorridors=corridorRules.filter(([pattern])=>pattern.test(eventText)).map(([,id])=>id);
+ const strategicCorridors=corridorRules.filter(([pattern])=>pattern.test(eventText))
+  .map(([,id])=>id).slice(0,12);
  const assetRules=[
   [/\b(?:CET1|TIER 1 CAPITAL|CAPITAL RATIO|BASEL III|BASEL IV)\b/u,"bank_capital"],
   [/\b(?:LCR|NSFR|DEPOSIT FLIGHT|DEPOSIT OUTFLOW|BANK LIQUIDITY|OMO|REPO|REVERSE REPO)\b/u,"bank_liquidity"],
