@@ -4,16 +4,15 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Ask Geomacro realtime search fallback", () => {
-  it("runs current public search only after the primary intelligence answer is insufficient", () => {
+  it("runs independent public retrieval paths concurrently with bounded fallbacks", () => {
     const orchestrator = read("src/lib/ask-answer.server.ts");
-    expect(orchestrator).toContain("answerHybridQuestion(question)");
-    expect(orchestrator).toContain("if (!primary.insufficient_evidence) return primary");
-    expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
-    expect(orchestrator).toContain("const official = await officialUnscoredReleaseAnswer(question)");
-    expect(orchestrator.indexOf("const official = await officialUnscoredReleaseAnswer(question)"))
-      .toBeLessThan(orchestrator.indexOf("const primary = await answerHybridQuestion(question)"));
-    expect(orchestrator).toContain("if (official) return official");
-    expect(orchestrator).toContain("return realtime ?? primary");
+    expect(orchestrator).toContain("Promise.allSettled([");
+    expect(orchestrator).toContain('boundedAskAdapter("current_originals"');
+    expect(orchestrator).toContain('boundedAskAdapter("derived_intelligence"');
+    expect(orchestrator).toContain('boundedAskAdapter("indexed_discovery"');
+    expect(orchestrator).toContain("realtimeSearchAnswer(question,");
+    expect(orchestrator).toContain("allowBrowserFallback:false");
+    expect(orchestrator).toContain("return candidates[0]??noCurrentPublisherNewsAnswer()");
   });
 
   it("offers publisher-observation-only responses without inventing signed or scored risk", () => {
@@ -54,7 +53,7 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain("live:official:");
     // Published Ask UI remains locked; the typed JSON response states the
     // observation is unscored and the rendered summary says so explicitly.
-    expect(orchestrator).toContain("not independently corroborated risk assessments");
+    expect(orchestrator).toContain("not a corroborated risk assessment");
   });
 
   it("keeps broad current-news fallback bounded and model-free when no official release qualifies", () => {
@@ -62,11 +61,12 @@ describe("Ask Geomacro realtime search fallback", () => {
     const search = read("src/lib/ask-realtime-search.server.ts");
     expect(orchestrator).toContain("if (selectOfficialNewsCategories(question).length > 0)");
     expect(orchestrator).toContain("noCurrentPublisherNewsAnswer()");
-    expect(orchestrator).toContain("realtimeSearchAnswer(question, unavailable, { deterministicOnly: true })");
-    expect(orchestrator).toContain("?? unavailable");
+    expect(orchestrator).toContain("realtimeSearchAnswer(question,unavailable,");
+    expect(orchestrator).toContain("allowBrowserFallback:false");
+    expect(orchestrator).toContain("return unavailable;");
     expect(orchestrator).toContain("insufficient_evidence: true");
     expect(orchestrator).toContain("signed_gro_generated: false");
-    expect(search).toContain("options: { deterministicOnly?: boolean } = {}");
+    expect(search).toContain("options: { deterministicOnly?: boolean; allowBrowserFallback?: boolean } = {}");
     expect(search).toContain("options.deterministicOnly");
     expect(search).toContain("? deterministicStructuredAnswer(hits)");
     expect(search).toContain(": await structureWithGroundedModel(question, hits)");
