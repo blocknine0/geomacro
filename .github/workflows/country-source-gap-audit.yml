@@ -89,7 +89,7 @@ jobs:
           const report=JSON.parse(readFileSync('artifacts/country-source/country-source-gap-discovery.latest.json','utf8'));
           const plan=buildHealthyApprovedSourceManifest(manifest,report,Date.now());
           if(plan.entries.length===0){
-            appendFileSync(process.env.GITHUB_OUTPUT,'count=0\\n');
+            appendFileSync(process.env.GITHUB_OUTPUT,'count=0\n');
             console.log(JSON.stringify({approved_sources_ready:0,d1_writes:0}));
             process.exit(0);
           }
@@ -98,8 +98,8 @@ jobs:
             estimatedMigrationRowsWritten:plan.entries.length*2+100});
           if(proof.status!=='PASS')throw Error(proof.code??'COUNTRY_SOURCE_REGISTRY_HEADROOM_UNVERIFIED');
           writeFileSync('artifacts/country-source/eligible-approved-source-rights.json',
-            JSON.stringify({schema:manifest.schema,entries:plan.entries},null,2)+'\\n',{mode:0o600});
-          appendFileSync(process.env.GITHUB_OUTPUT,'count='+plan.entries.length+'\\n');
+            JSON.stringify({schema:manifest.schema,entries:plan.entries},null,2)+'\n',{mode:0o600});
+          appendFileSync(process.env.GITHUB_OUTPUT,'count='+plan.entries.length+'\n');
           console.log(JSON.stringify({approved_sources_ready:plan.entries.length,
             status:proof.status,remaining_rows_read:proof.remaining_rows_read,
             remaining_rows_written:proof.remaining_rows_written}));
