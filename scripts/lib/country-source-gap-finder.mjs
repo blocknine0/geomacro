@@ -68,9 +68,10 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
   if(typeof row?.source_id==="string")registryById.set(row.source_id,row);
  }
  const probeById=new Map(probes.filter(p=>typeof p?.source_id==="string").map(p=>[p.source_id,p]));
- const cells=[];
+ const cells=[],visited=new Set();
  for(const country of countries){
   for(const category of COUNTRY_CATEGORIES){
+   visited.add(country.iso3+":"+category);
    const mappings=sourceCatalog.filter(s=>s.publisher_country_iso3===country.iso3&&
     Array.isArray(s.categories)&&s.categories.some(c=>normalizedCategory(c)===category));
    const activeHealthy=mappings.flatMap(s=>{
@@ -123,7 +124,9 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
  }
  cells.sort((a,b)=>(a.priority==="HOT50"?0:1)-(b.priority==="HOT50"?0:1)||
   a.country_iso3.localeCompare(b.country_iso3)||a.category.localeCompare(b.category));
- if(cells.length!==585)fail("CELL_COUNT_INVALID");
+ if(visited.size!==585||cells.length>585||
+  new Set(cells.map(x=>x.country_iso3+":"+x.category)).size!==cells.length)
+  fail("CELL_COUNT_INVALID");
  return {schema:"geomacro.country-source-gap-report.v1",generated_at:new Date(now).toISOString(),
   country_count:195,category_count:3,cell_count:585,gap_count:cells.length,
   hot50_gap_count:cells.filter(c=>c.priority==="HOT50").length,
