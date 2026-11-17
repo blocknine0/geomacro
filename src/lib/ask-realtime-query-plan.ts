@@ -41,14 +41,18 @@ export function buildRealtimeSearchPlan(question: string, now = Date.now(), rota
     const buckets = GLOBAL_RISK_QUERY_BUCKETS[taxonomyCategory];
     // Match only fixed taxonomy terms. The user's wording is never added to
     // the upstream query; it only selects the closest allowlisted bucket.
-    const relevant = buckets.filter(bucket => bucket.terms.some(term =>
-      term.toLowerCase().split(/\s+/u).some(word =>
-        word.length >= 5 && safeQuestion.includes(` ${word} `),
-      ),
-    ));
-    if (!relevant.length) {
+    const scored = buckets.map(bucket => {
+      const words = new Set(bucket.terms.flatMap(term =>
+        term.toLowerCase().split(/\s+/u).filter(word => word.length >= 5),
+      ));
+      const score = [...words].filter(word => safeQuestion.includes(` ${word} `)).length;
+      return { bucket, score };
+    });
+    const bestScore = Math.max(0, ...scored.map(item => item.score));
+    if (!bestScore) {
       return selectGlobalRiskQueryBucket(taxonomyCategory, now, (rotationIndex + index) % 100_000);
     }
+    const relevant = scored.filter(item => item.score === bestScore).map(item => item.bucket);
     const match = relevant[(slot + rotationIndex + index) % relevant.length];
     return Object.freeze({
       category: taxonomyCategory,
