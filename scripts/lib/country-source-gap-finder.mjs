@@ -86,9 +86,10 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
    });
    const requiredRoles=REQUIRED_SOURCE_ROLES[category];
    const completeRolePair=requiredRoles.some(roleA=>requiredRoles.some(roleB=>roleA!==roleB&&
-    activeHealthy.some(a=>a.entry.source_role===roleA)&&activeHealthy.some(b=>
-     b.entry.source_role===roleB&&a.entry.publisher_root_domain!==b.entry.publisher_root_domain&&
-     a.entry.parent_media_entity!==b.entry.parent_media_entity)));
+    activeHealthy.some(a=>activeHealthy.some(b=>
+     a.entry.source_role===roleA&&b.entry.source_role===roleB&&
+     a.entry.publisher_root_domain!==b.entry.publisher_root_domain&&
+     a.entry.parent_media_entity!==b.entry.parent_media_entity))));
    if(completeRolePair)continue;
    const candidateSources=mappings.map(s=>{
     const live=registryById.get(s.source_id),probe=probeById.get(s.source_id);
