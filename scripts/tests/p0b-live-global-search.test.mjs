@@ -180,3 +180,30 @@ test("permanent GDELT timeout retries at most twice and fails closed",async()=>{
  assert.equal(result.gdelt_discovery_count,0);
  assert.equal(result.exhaustive_global_search,false);
 });
+
+
+test("P0-B reuses one existing official search per tick while rotating fixed topic buckets",async()=>{
+ const queries=[];
+ const start=Date.parse("2026-11-06T00:00:00Z");
+ const fetchImpl=async url=>{
+  const u=new URL(url);
+  if(u.hostname==="www.gov.uk"&&u.pathname==="/api/search.json"){
+   queries.push(u.searchParams.get("q"));
+   return {status:200,redirected:false,headers:{get:()=>"application/json"},
+    text:async()=>JSON.stringify({results:[]})};
+  }
+  if(u.hostname==="data.gdeltproject.org")return {status:200,redirected:false,
+   headers:{get:()=>"text/plain"},text:async()=>gdeltManifest()};
+  return {status:404,redirected:false,headers:{get:()=>"text/plain"},text:async()=>""};
+ };
+ const first=await p0bGlobalNewsFallback({question:"Current central bank liquidity",
+  countryIso3:"IND",category:"macro",fetchImpl,now:start});
+ const next=await p0bGlobalNewsFallback({question:"Current central bank liquidity",
+  countryIso3:"IND",category:"macro",fetchImpl,now:start+20*60000});
+ assert.equal(queries.length,2);
+ assert.notEqual(queries[0],queries[1]);
+ assert.notEqual(first.topic_bucket_id,next.topic_bucket_id);
+ assert.equal(first.topic_tags.length>0,true);
+ assert.equal(first.affected_asset_hints.length<=8,true);
+ assert.equal(first.first_party_matches.length,0);
+});
