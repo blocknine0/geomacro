@@ -94,7 +94,10 @@ jobs:
           node --check scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs
           node --check scripts/lib/risk-stream-source-rights-manifest.mjs
           node --check scripts/ops/register-risk-stream-source.mjs
-          node --check scripts/ops/hot50-standard-feasibility.mjs\n          node --check scripts/lib/country-source-gap-finder.mjs\n          node --check scripts/ops/discover-missing-country-sources.mjs\n          node --check scripts/tests/country-source-gap-finder.test.mjs
+          node --check scripts/ops/hot50-standard-feasibility.mjs
+          node --check scripts/lib/country-source-gap-finder.mjs
+          node --check scripts/ops/discover-missing-country-sources.mjs
+          node --check scripts/tests/country-source-gap-finder.test.mjs
           node --check scripts/tests/risk-stream-source-rights-manifest.test.mjs
           node --check scripts/tests/risk-stream-item-license-guard.test.mjs
           node --check scripts/lib/risk-stream-event-fingerprint.mjs
