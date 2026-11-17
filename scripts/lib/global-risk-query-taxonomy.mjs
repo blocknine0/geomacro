@@ -164,8 +164,8 @@ const COUNTRY_QUERY_LANES = Object.freeze({
 export function buildCountrySourceDiscoveryQueries(countryName, category) {
   const normalized = categoryName(category);
   const lanes = COUNTRY_QUERY_LANES[normalized];
-  const cleanName = String(countryName ?? "").replace(/[^\\p{L}\\p{N} .'-]/gu, " ")
-    .replace(/\\s+/gu, " ").trim().slice(0, 80);
+  const cleanName = String(countryName ?? "").replace(/[^\p{L}\p{N} .'-]/gu, " ")
+    .replace(/\s+/gu, " ").trim().slice(0, 80);
   if (!lanes || cleanName.length < 2 || cleanName.length > 80) {
     throw new Error("GLOBAL_RISK_QUERY_COUNTRY_INPUT_INVALID");
   }
