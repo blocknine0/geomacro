@@ -316,7 +316,7 @@ async function checkLiveD1Budget(){
  * read and write rates. A rollover invalidates the sample (HOLD);
  * no daily 5,800 rows/hour gate or synthetic spike PASS.
  */
-function assertD1ObservedHourlyPace(start:any,latest:any){
+export function assertD1ObservedHourlyPace(start:any,latest:any){
  need(start?.cycle_start_utc===latest?.cycle_start_utc&&
   start?.cycle_end_exclusive_utc===latest?.cycle_end_exclusive_utc&&
   Number.isSafeInteger(start?.observed_at_ms)&&
