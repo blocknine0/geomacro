@@ -109,6 +109,7 @@ export async function streamPublicAsk(
   void reader.cancel().catch(()=>{});
   reader.releaseLock();
  }
+ if(signal?.aborted)throw signal.reason ?? new DOMException("Stopped","AbortError");
  if(!completed)throw new LegacyAskTransportOnlyError();
  // Never cache a response resolved to a different underlying question.
  if(completed.resolvedQuestion.trim()===question.trim())
