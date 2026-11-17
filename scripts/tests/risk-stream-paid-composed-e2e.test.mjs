@@ -182,11 +182,14 @@ test("composed verified-original -> dual attesters -> signed GRO -> reviewer -> 
   consumed??=await consumeRiskStreamQueue({messages:queueMessages},groEnv);
   assert.equal(consumed.status,"PASS");assert.equal(consumed.corroborated_and_signed,3);
   assert(queueMessages.every(message=>message.acked&&!message.retried));
+  assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_evidence").get().n,3);
   assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_signed_gro").get().n,3);
 
   const issuerNow=now+5000;
   const issued=await runCommercialIssuerTick(groEnv,{now:issuerNow});
   assert.equal(issued.issued,3,JSON.stringify({issued,jobs:db.native.prepare("SELECT * FROM risk_stream_commercial_issuer_jobs").all()}));
+  assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_commercial_issuer_jobs WHERE state='ISSUED'").get().n,3);
+  assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_signed_gro WHERE json_extract(payload_json,'$.customer_delivery_authorized')=1").get().n,3);
   assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_predge_pull_licenses").get().n,3);
   const savedGros=db.native.prepare("SELECT payload_json,signature_b64 FROM risk_stream_signed_gro WHERE json_extract(payload_json,'$.customer_delivery_authorized')=0").all();
   assert.equal(savedGros.length,3);
