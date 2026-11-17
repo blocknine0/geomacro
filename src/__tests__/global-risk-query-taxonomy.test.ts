@@ -64,7 +64,7 @@ describe("rotating global risk search taxonomy", () => {
       ],
     };
     for (const [category, expected] of Object.entries(coverage)) {
-      for (const phrase of expected) expect(corpus[category]).toContain(phrase);
+      for (const phrase of expected) expect(corpus[category]).toContain(phrase.toLowerCase());
     }
   });
 
