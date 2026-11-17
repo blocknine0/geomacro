@@ -1,0 +1,151 @@
+name: Country Source Gap Audit
+on:
+  schedule:
+    - cron: "15 6 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: geomacro-country-source-gap-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491
+        with:
+          node-version: "24"
+      - name: Verify exact main and live D1 identity
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SHA}" = "$(git rev-parse HEAD)"
+          test "${GITHUB_SHA}" = "$(curl --fail --silent --show-error -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          node --input-type=module <<'NODE'
+          const id=process.env.D1_DATABASE_ID;
+          if(!/^[a-f0-9-]{36}$/iu.test(id??'')) throw Error('COUNTRY_SOURCE_D1_ID_INVALID');
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${id}`,
+            {headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok) throw Error('COUNTRY_SOURCE_D1_IDENTITY_HTTP_'+r.status);
+          const b=await r.json();
+          if(b?.success!==true||(b?.result?.uuid??b?.result?.id)!==id||b?.result?.name!=='geomacro-control-plane')
+            throw Error('COUNTRY_SOURCE_D1_TARGET_UNVERIFIED');
+          console.log(JSON.stringify({provider_database_identity_verified:true,read_only:true}));
+          NODE
+      - name: Check D1 paid headroom and take one bounded source snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/country-source
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const proof=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
+            estimatedMigrationRowsRead:5000,estimatedMigrationRowsWritten:0});
+          if(proof.status!=='PASS') throw Error(proof.code??'COUNTRY_SOURCE_D1_HEADROOM_UNVERIFIED');
+          const id=process.env.D1_DATABASE_ID;
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${id}/query`,
+            {method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},
+             body:JSON.stringify({sql:'SELECT source_id,publisher_root_domain,parent_media_entity,source_role,commercial_rights_approved,enabled,reviewed_at,rights_expire_at FROM risk_stream_sources ORDER BY source_id LIMIT 5000'}),
+             redirect:'error',signal:AbortSignal.timeout(20000)});
+          if(!r.ok) throw Error('COUNTRY_SOURCE_D1_READ_HTTP_'+r.status);
+          const b=await r.json();
+          const rows=b?.result?.[0]?.results??b?.result?.results;
+          if(b?.success!==true||!Array.isArray(rows)||rows.length>5000)
+            throw Error('COUNTRY_SOURCE_D1_READBACK_INVALID');
+          writeFileSync('artifacts/country-source/risk-stream-sources.json',JSON.stringify(rows)+'\n',{mode:0o600});
+          console.log(JSON.stringify({status:proof.status,source_rows:rows.length,d1_writes:0}));
+          NODE
+      - name: Probe bounded source rotation and build country gap report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PREVIOUS=''
+          branch=automation/country-source-gap-discovery
+          gh auth setup-git
+          if git fetch --quiet origin "refs/heads/$branch:refs/remotes/origin/$branch"; then
+            if git show "origin/$branch:config/country-source-gap-discovery.latest.json" > artifacts/country-source/previous.json 2>/dev/null; then
+              PREVIOUS='--previous artifacts/country-source/previous.json'
+            fi
+          fi
+          if [ -z "$PREVIOUS" ] && [ -f config/country-source-gap-discovery.latest.json ]; then PREVIOUS='--previous config/country-source-gap-discovery.latest.json'; fi
+          node scripts/ops/discover-missing-country-sources.mjs \
+            --risk-stream-sources artifacts/country-source/risk-stream-sources.json \
+            --probe --probe-limit 18 ${PREVIOUS} \
+            --out artifacts/country-source/country-source-gap-discovery.latest.json
+      - name: Prepare health-verified rights sync within Paid D1 headroom
+        id: healthy-sync
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync,appendFileSync} from 'node:fs';
+          import {buildHealthyApprovedSourceManifest} from './scripts/lib/country-source-gap-finder.mjs';
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const manifest=JSON.parse(readFileSync('config/risk-stream-source-rights-reviewed.v1.json','utf8'));
+          const report=JSON.parse(readFileSync('artifacts/country-source/country-source-gap-discovery.latest.json','utf8'));
+          const plan=buildHealthyApprovedSourceManifest(manifest,report,Date.now());
+          if(plan.entries.length===0){
+            appendFileSync(process.env.GITHUB_OUTPUT,'count=0\n');
+            console.log(JSON.stringify({approved_sources_ready:0,d1_writes:0}));
+            process.exit(0);
+          }
+          const proof=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
+            estimatedMigrationRowsRead:plan.entries.length*10+100,
+            estimatedMigrationRowsWritten:plan.entries.length*2+100});
+          if(proof.status!=='PASS')throw Error(proof.code??'COUNTRY_SOURCE_REGISTRY_HEADROOM_UNVERIFIED');
+          writeFileSync('artifacts/country-source/eligible-approved-source-rights.json',
+            JSON.stringify({schema:manifest.schema,entries:plan.entries},null,2)+'\n',{mode:0o600});
+          appendFileSync(process.env.GITHUB_OUTPUT,'count='+plan.entries.length+'\n');
+          console.log(JSON.stringify({approved_sources_ready:plan.entries.length,
+            status:proof.status,remaining_rows_read:proof.remaining_rows_read,
+            remaining_rows_written:proof.remaining_rows_written}));
+          NODE
+      - name: Verify provider schema for live eligible source sync
+        if: steps.healthy-sync.outputs.count != '0'
+        run: node scripts/ops/register-risk-stream-source.mjs --preflight --manifest artifacts/country-source/eligible-approved-source-rights.json
+      - name: Apply live, rights-approved and feed-healthy sources
+        if: steps.healthy-sync.outputs.count != '0'
+        env:
+          CONFIRM: APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION
+        run: node scripts/ops/register-risk-stream-source.mjs --apply --manifest artifacts/country-source/eligible-approved-source-rights.json
+      - name: Open or update source gap review PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch=automation/country-source-gap-discovery
+          git config user.name "geomacro-source-audit[bot]"
+          git config user.email "geomacro-source-audit[bot]@users.noreply.github.com"
+          gh auth setup-git
+          git checkout -B "$branch" origin/main
+          cp artifacts/country-source/country-source-gap-discovery.latest.json config/country-source-gap-discovery.latest.json
+          git add config/country-source-gap-discovery.latest.json
+          if git diff --cached --quiet; then
+            echo "Country source audit report is unchanged."
+            exit 0
+          fi
+          git commit -m "Refresh country source gap discovery report"
+          remote_sha="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          git push --force-with-lease="refs/heads/$branch:$remote_sha" origin "$branch"
+          pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$pr_number" ]; then
+            gh pr edit "$pr_number" --title "Country source gap discovery report" \
+              --body "Automated, read-only country/category source audit. Live HTTP/parser health is recorded separately from rights status. Transport success never grants commercial rights; only exact current entries in the reviewed rights manifest can be proposed for production registration. This PR contains a report only and performs no D1 writes."
+          else
+            gh pr create --base main --head "$branch" \
+              --title "Country source gap discovery report" \
+              --body "Automated, read-only country/category source audit. Live HTTP/parser health is recorded separately from rights status. Transport success never grants commercial rights; only exact current entries in the reviewed rights manifest can be proposed for production registration. This PR contains a report only and performs no D1 writes."
+          fi

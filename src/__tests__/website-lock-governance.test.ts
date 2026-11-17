@@ -542,7 +542,7 @@ describe("website lock governance", () => {
   it("approves only PR #4072's exact Ask conversational UI blobs",()=>{
     const config=JSON.parse(read("config/website-lock.json"));
     const approval=config.approved_ask_conversational_ux_20261117;
-    expect(approval.approved_source_commit).toBe("fb2af2fe0fe4923aeeff8e5d3039124690a4353a");
+    expect(approval.approved_source_commit).toBe("36c968e5867c7c8462b2013397314cb9dd72be3e");
     expect(approval.approved_paths).toEqual([
       "src/components/ask/ask-workspace.tsx",
       "src/components/ask/ask-answer-view.tsx",

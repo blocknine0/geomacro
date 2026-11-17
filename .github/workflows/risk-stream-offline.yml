@@ -10,6 +10,9 @@ on:
       - 'scripts/ops/verify-risk-stream-b2-live-governor.mjs'
       - 'scripts/ops/run-risk-stream-shadow-provider-audit.mjs'
       - 'scripts/lib/risk-stream-source-rights-manifest.mjs'
+      - 'scripts/lib/country-source-gap-finder.mjs'
+      - 'scripts/ops/discover-missing-country-sources.mjs'
+      - 'scripts/tests/country-source-gap-finder.test.mjs'
       - 'scripts/lib/risk-stream-event-fingerprint.mjs'
       - 'scripts/lib/risk-stream-candidate-builder.mjs'
       - 'scripts/lib/risk-stream-pairing.mjs'
@@ -92,6 +95,9 @@ jobs:
           node --check scripts/lib/risk-stream-source-rights-manifest.mjs
           node --check scripts/ops/register-risk-stream-source.mjs
           node --check scripts/ops/hot50-standard-feasibility.mjs
+          node --check scripts/lib/country-source-gap-finder.mjs
+          node --check scripts/ops/discover-missing-country-sources.mjs
+          node --check scripts/tests/country-source-gap-finder.test.mjs
           node --check scripts/tests/risk-stream-source-rights-manifest.test.mjs
           node --check scripts/tests/risk-stream-item-license-guard.test.mjs
           node --check scripts/lib/risk-stream-event-fingerprint.mjs
@@ -111,6 +117,6 @@ jobs:
           node --check scripts/ops/ingest-direct-global-corridors.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
-        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs scripts/tests/risk-stream-source-rights-manifest.test.mjs scripts/tests/risk-stream-event-fingerprint.test.mjs scripts/tests/risk-stream-candidate-builder.test.mjs scripts/tests/risk-stream-pairing.test.mjs scripts/tests/risk-stream-emitter.test.mjs scripts/tests/risk-stream-feed-export.test.mjs scripts/tests/risk-stream-attesters.test.mjs scripts/tests/risk-stream-attester-bridge.test.mjs scripts/tests/geomacro-release-reviewer.test.mjs scripts/tests/risk-stream-paid-composed-e2e.test.mjs scripts/tests/risk-stream-collector-handoff.test.mjs
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs scripts/tests/risk-stream-source-rights-manifest.test.mjs scripts/tests/risk-stream-event-fingerprint.test.mjs scripts/tests/risk-stream-candidate-builder.test.mjs scripts/tests/risk-stream-pairing.test.mjs scripts/tests/risk-stream-emitter.test.mjs scripts/tests/risk-stream-feed-export.test.mjs scripts/tests/risk-stream-attesters.test.mjs scripts/tests/risk-stream-attester-bridge.test.mjs scripts/tests/geomacro-release-reviewer.test.mjs scripts/tests/risk-stream-paid-composed-e2e.test.mjs scripts/tests/risk-stream-collector-handoff.test.mjs scripts/tests/country-source-gap-finder.test.mjs
       - name: Verify Render original-candidate handoff accepts no metadata-only items
         run: python workers/unified-ingestor/test_risk_stream_candidate_handoff.py
