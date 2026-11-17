@@ -2,15 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {RISK_DISCOVERY_PUBLISHER_GROUPS,riskPublisherSearchPlan,isPublisherFullTextRestricted}
  from "../../workers/control-plane/src/risk-gate-global-news-search.mjs";
+import {GLOBAL_RISK_QUERY_BUCKETS,selectGlobalRiskQueryBucket}
+ from "../../scripts/lib/global-risk-query-taxonomy.mjs";
 const t={type:"COUNTRY",id:"IND",name:"India",category:"MACRO_FX"};
 test("Google News global search rotates Reuters/ANI/other publishers without paid content ingestion",()=>{
- const first=riskPublisherSearchPlan(t,Date.parse("2026-11-06T00:00:00Z"));
+ const now=Date.parse("2026-11-06T00:00:00Z");
+ const first=riskPublisherSearchPlan(t,now);
+ const expected=selectGlobalRiskQueryBucket("MACRO_FX",now);
  const query=new URL(first.url).searchParams.get("q");
  assert.match(query,/site:reuters\.com/);
  assert.match(query,/site:aninews\.in/);
- assert.equal(first.topic_bucket_id,"monetary_policy");
+ assert.equal(first.topic_bucket_id,expected.bucket_id);
+ assert.match(query,new RegExp(expected.terms[0].replace(/[.*+?^$\{\}()|[\]\\]/g,"\\ assert.equal(first.topic_bucket_id,"monetary_policy");
  assert.match(query,/emergency rate hike/);
- assert.ok(first.topic_tags.includes("central_bank_policy"));
+ assert.ok(first.topic_tags.includes("central_bank_policy"));"),"iu"));
+ assert.deepEqual(first.topic_tags,expected.topic_tags);
  assert.ok(first.affected_assets.includes("fx_pairs"));
  assert.equal(first.discovery_only,true);
  assert.equal(first.commercial_reuse_authorized,false);
@@ -24,9 +30,10 @@ test("Google News global search rotates Reuters/ANI/other publishers without pai
 });
 test("topic vocabulary rotates every twenty minutes without adding search calls",()=>{
  const now=Date.parse("2026-11-06T00:00:00Z");
- const indexes=new Set(Array.from({length:8},(_,i)=>
+ const bucketCount=GLOBAL_RISK_QUERY_BUCKETS.CRITICAL_MINERALS.length;
+ const indexes=new Set(Array.from({length:bucketCount},(_,i)=>
   riskPublisherSearchPlan({...t,category:"CRITICAL_MINERALS"},now+i*20*60000,23).topic_bucket_index));
- assert.equal(indexes.size,8);
+ assert.equal(indexes.size,bucketCount);
  const plan=riskPublisherSearchPlan({...t,category:"CRITICAL_MINERALS"},now,23);
  assert.equal(new URL(plan.url).hostname,"news.google.com");
  assert.ok(plan.url.length<1200);
