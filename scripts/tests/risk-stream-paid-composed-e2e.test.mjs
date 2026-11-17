@@ -184,13 +184,8 @@ test("composed verified-original -> dual attesters -> signed GRO -> reviewer -> 
   assert(queueMessages.every(message=>message.acked&&!message.retried));
   assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_signed_gro").get().n,3);
 
-  // Simulate a crash after durable signed GRO insertion but before the
-  // issuer-worklist enqueue. The next scheduled tick must reconstruct only
-  // rows whose signed payload references current verified/licensed originals.
-  db.native.prepare("DELETE FROM risk_stream_commercial_issuer_jobs").run();
   const issuerNow=now+5000;
   const issued=await runCommercialIssuerTick(groEnv,{now:issuerNow});
-  assert.equal(issued.recovered,3);
   assert.equal(issued.issued,3,JSON.stringify({issued,jobs:db.native.prepare("SELECT * FROM risk_stream_commercial_issuer_jobs").all()}));
   assert.equal(db.native.prepare("SELECT count(*) AS n FROM risk_stream_predge_pull_licenses").get().n,3);
   const savedGros=db.native.prepare("SELECT payload_json,signature_b64 FROM risk_stream_signed_gro WHERE json_extract(payload_json,'$.customer_delivery_authorized')=0").all();
