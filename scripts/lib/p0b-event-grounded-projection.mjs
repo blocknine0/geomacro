@@ -27,19 +27,19 @@ const conditional=s=>/\b(?:if|could|might|may|rumou?r|alleged|unconfirmed|claims
 const tidy=s=>String(s).replace(/\s+/gu," ").replace(/[.?!]+$/gu,"").trim();
 const mechanism=(category,object)=>{
  if(category==="geopolitics"){
-  if(/\b(?:sanctions?|exports?|tariffs?|bans?|embargoes?|trade restrictions?|borders?)\b/iu.test(object))
+  if(/\b(?:sanctions?|secondary sanctions?|exports?|tariffs?|bans?|embargoes?|export controls?|dual.use|arms exports?|trade restrictions?|borders?|customs)\b/iu.test(object))
    return "could change compliance and cross-border trade conditions if implemented; actual enforcement and shipment outcomes require separate evidence";
-  if(/\b(?:ceasefire|peace|security|conflict|attack|military|evacuat|humanitarian|refugee)\b/iu.test(object))
+  if(/\b(?:ceasefire|peace|security|conflict|attack|military|naval blockade|border mobilization|coup|martial law|regime instability|sabotage|subsea cable|pipeline|grid|strike|airspace|shipping closure|evacuat|humanitarian|refugee)\b/iu.test(object))
    return "makes subsequent on-the-ground compliance, access or security updates relevant; a stated action does not independently confirm the eventual outcome";
   if(/\b(?:treaty|foreign|diplomac|agreement|visa|negotiat|minister|international)\b/iu.test(object))
    return "creates a diplomatic or policy development to track; implementation and cross-border consequences are not demonstrated by the announcement";
  }else if(category==="macro"){
-  if(/\b(?:rate|monetary|inflation|cpi|consumer price|central bank|interest)\b/iu.test(object))
+  if(/\b(?:rate|monetary|inflation|cpi|consumer price|central bank|interest|quantitative easing|quantitative tightening|\bqe\b|\bqt\b)\b/iu.test(object))
    return "makes the stated policy or price development relevant to financing and currency expectations; no traded-market direction is independently confirmed";
-  if(/\b(?:gdp|employment|retail|wages|unemployment|industrial|production|trade|exports?|imports?|currency|fx|debt|yield|banking|financial)\b/iu.test(object))
+  if(/\b(?:gdp|pmi|employment|retail|wages|unemployment|industrial|production|trade|exports?|imports?|currency|fx|debt|yield|banking|financial|capital controls?|repatriation freeze|sovereign default|restructuring|imf bailout|credit downgrade|tariffs?|customs retaliation|swift|payment rail|oil|lng|grain|liquidity)\b/iu.test(object))
    return "provides a specific economic or financing development to assess against verified data; a release alone does not establish any asset-price reaction";
  }else if(category==="rare_earth"){
-  if(/\b(?:lithium|cobalt|nickel|graphite|gallium|germanium|rare.earth|critical mineral|minerals?|copper|tungsten|refin|recycl|mining|processing|battery|magnet|supply)\b/iu.test(object))
+  if(/\b(?:lithium|cobalt|nickel|graphite|gallium|germanium|antimony|tungsten|manganese|vanadium|titanium|uranium|potash|phosphate|ndpr|dysprosium|terbium|rare.earth|critical mineral|minerals?|copper|export ban|export quota|royalty hike|nationali[sz]ation|mine strike|smelter outage|stockpil|refin|recycl|mining|processing|battery|ev|semiconductor|magnet|supply)\b/iu.test(object))
    return "creates a mineral-supply or industrial-input milestone to monitor; an announcement is not proof of delivered output, operating capacity or a price move";
  }
  return null;
