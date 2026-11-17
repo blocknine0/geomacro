@@ -263,6 +263,40 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
  return {status:"SIGNED_LICENSED_JOBS_DURABLE",source_gro_id:sourceGroId,
   authorized_gro_id:authorizedGroId,licensed_clients:staged,paid:false};
 }
+async function recoverEligibleOrphanedIssuerJobs(env,nowIso,now,max){
+ // Recover only immutable, already-signed internal GROs whose referenced
+ // originals are still dual-verified and rights-approved. Unverified search
+ // leads and unsigned research GROs never enter this commercial worklist.
+ const rows=await env.DB.prepare(
+  "SELECT g.gro_id FROM risk_stream_signed_gro g "+
+  "WHERE g.expires_at>? AND json_valid(g.payload_json) "+
+  "AND json_extract(g.payload_json,'$.customer_delivery_authorized')=0 "+
+  "AND json_extract(g.payload_json,'$.charged')=0 "+
+  "AND json_extract(g.payload_json,'$.execution_authorized')=0 "+
+  "AND json_extract(g.payload_json,'$.certified_risk_index')=0 "+
+  "AND (SELECT COUNT(*) FROM json_each(g.payload_json,'$.source_originals')) BETWEEN 1 AND 3 "+
+  "AND (SELECT COUNT(*) FROM json_each(g.payload_json,'$.source_originals') o "+
+  "JOIN risk_stream_evidence e ON e.observation_id=o.value "+
+  "JOIN risk_stream_sources s ON s.source_id=e.source_id "+
+  "WHERE e.event_fingerprint=g.event_fingerprint AND e.category=g.category "+
+  "AND e.country_iso3=g.country_iso3 AND e.original_verified=1 "+
+  "AND s.enabled=1 AND s.commercial_rights_approved=1 AND s.rights_expire_at>?) = "+
+  "(SELECT COUNT(*) FROM json_each(g.payload_json,'$.source_originals')) "+
+  "AND NOT EXISTS (SELECT 1 FROM risk_stream_commercial_issuer_jobs j "+
+  "WHERE j.source_gro_id=g.gro_id) "+
+  "ORDER BY g.created_at,g.gro_id LIMIT ?")
+  .bind(nowIso,nowIso,max).all();
+ if(!Array.isArray(rows?.results)||rows.results.length>max)
+  deny("ORPHAN_CENSUS_INVALID");
+ let recovered=0;
+ for(const row of rows.results){
+  const result=await enqueueCommercialIssuerCandidate(env,row.gro_id,{now});
+  if(result.status!=="REVIEW_WORKLIST_DURABLE")
+   deny("ORPHAN_WORKLIST_RECOVERY_FAILED");
+  recovered++;
+ }
+ return recovered;
+}
 export async function runCommercialIssuerTick(env,{now=Date.now(),max=25,
  requestReview}={}){
  if(!commercialIssuerEnabled(env))
@@ -271,6 +305,7 @@ export async function runCommercialIssuerTick(env,{now=Date.now(),max=25,
  // within a small Paid-D1 work unit; callers may request fewer jobs.
  if(!Number.isInteger(max)||max<1||max>25)deny("INVALID_BATCH_LIMIT");
  const nowIso=iso(now);
+ const recovered=await recoverEligibleOrphanedIssuerJobs(env,nowIso,now,max);
  const due=await env.DB.prepare(
   "SELECT source_gro_id,attempts FROM risk_stream_commercial_issuer_jobs "+
   "WHERE ((state='PENDING' AND next_attempt_at<=?) OR "+
@@ -315,5 +350,5 @@ export async function runCommercialIssuerTick(env,{now=Date.now(),max=25,
   }
  }
  return {status:held?"REVIEW_RETRY_OR_HOLD":"ISSUER_TICK_OK",
-  attempted:due.results.length,issued,held,paid:false};
+  attempted:due.results.length,recovered,issued,held,paid:false};
 }
