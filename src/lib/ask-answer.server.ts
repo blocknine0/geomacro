@@ -245,7 +245,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   // a stalled original feed or adapter cannot consume the 14-second request cap.
   const [originalResult,derivedResult,indexedResult]=await Promise.allSettled([
     boundedAskAdapter("current_originals",()=>answerFromCurrentOriginals(question),5_500),
-    boundedAskAdapter("derived_intelligence",()=>answerHybridQuestion(question),6_500),
+    boundedAskAdapter("derived_intelligence",()=>answerHybridQuestion(question),6_000),
     boundedAskAdapter("indexed_discovery",()=>realtimeSearchAnswer(question,
       noCurrentPublisherNewsAnswer(),{deterministicOnly:true,allowBrowserFallback:false}),6_000),
   ]);
