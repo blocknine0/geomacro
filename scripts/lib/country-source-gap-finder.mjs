@@ -35,14 +35,17 @@ export function classifyCandidateRights(candidate,rightsEntries=[],now=Date.now(
   (!Array.isArray(entry.categories)||entry.categories.includes(category)));
  return {commercial_rights_approved:valid?1:0,
   lane:valid?"PRIMARY_COMMERCIAL_EVIDENCE":"PRIVATE_OSINT_REDACTED_CORROBORATION",
+  raw_source_redacted:true,licensed_source_text_included:false,
   rights_status:valid?"EXACT_REVIEWED_ENTRY_CURRENT":"RIGHTS_NOT_EXACTLY_APPROVED"};
 }
 
 function normalizedCategory(value){return CATEGORY_ALIASES[String(value??"").toLowerCase()]??null;}
 function freshHealthyProbe(probe,now,ttlMs){
  if(!probe||!["WORKING","NO_NEW_EVENT"].includes(probe.status)||probe.http_status!==200)return false;
- const checked=Date.parse(probe.last_successful_http_fetch_at??probe.attempted_at??"");
- return Number.isFinite(checked)&&checked<=now&&now-checked<=ttlMs;
+ const checked=Date.parse(probe.last_successful_http_fetch_at??"");
+ const published=Date.parse(probe.last_source_native_publication_at??"");
+ return Number.isFinite(checked)&&checked<=now&&now-checked<=ttlMs&&
+  Number.isFinite(published)&&published<=now+60000&&published>=Date.parse("1990-01-01T00:00:00Z");
 }
 function mapCandidate(c,category,rightsEntries,now,live){
  const classified=classifyCandidateRights({...c,category},rightsEntries,now);
@@ -52,7 +55,9 @@ function mapCandidate(c,category,rightsEntries,now,live){
   live.reviewed_at===entry.rights_evidence.reviewed_at&&live.rights_expire_at===entry.rights_expire_at);
  return {source_id:c.source_id,format:c.format??null,url:c.url??null,
   country_specific:true,commercial_rights_approved:classified.commercial_rights_approved,
-  lane:classified.lane,rights_status:classified.rights_status,
+  lane:classified.lane,raw_source_redacted:classified.raw_source_redacted,
+  licensed_source_text_included:classified.licensed_source_text_included,
+  rights_status:classified.rights_status,
   source_role:entry?.source_role??null,registry_identity_matches_reviewed_entry:identityMatches};
 }
 
