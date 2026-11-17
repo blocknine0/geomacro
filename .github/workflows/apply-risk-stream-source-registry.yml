@@ -1,5 +1,7 @@
 name: Protected Risk Stream Source Rights Registry
 on:
+  schedule:
+    - cron: "05 7 * * 1"
   workflow_dispatch:
     inputs:
       mode:
@@ -27,9 +29,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
-      MODE: ${{ inputs.mode }}
-      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
-      APPROVAL: ${{ inputs.approval }}
+      MODE: ${{ github.event_name == 'schedule' && 'apply' || inputs.mode }}
+      EXPECTED_MAIN_SHA: ${{ github.event_name == 'schedule' && github.sha || inputs.expected_main_sha }}
+      APPROVAL: ${{ github.event_name == 'schedule' && 'APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION' || inputs.approval }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
@@ -79,7 +81,7 @@ jobs:
           node scripts/ops/register-risk-stream-source.mjs --dry-run
           node scripts/ops/register-risk-stream-source.mjs --preflight
       - name: Verify paid D1 headroom before source registration
-        if: inputs.mode == 'apply'
+        if: inputs.mode == 'apply' || github.event_name == 'schedule'
         shell: bash
         run: |
           set -euo pipefail
