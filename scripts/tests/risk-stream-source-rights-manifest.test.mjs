@@ -49,6 +49,9 @@ test("production registry workflow accepts Cloudflare D1 uuid or id with strict 
  assert.match(workflow,/\(body\?.result\?.uuid\s*\?\?\s*body\?.result\?.id\)!==databaseId/u);
  assert.match(workflow,/body\?.success!==true/u);
  assert.match(workflow,/body\?.result\?.name!=='geomacro-control-plane'/u);
+ assert.match(workflow,/schedule:[\s\S]*cron: "05 7 \\* \\* 1"/u);
+ assert.match(workflow,/github\.event_name == 'schedule'[\s\S]*APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION/u);
+ assert.match(workflow,/if: inputs\.mode == 'apply' \|\| github\.event_name == 'schedule'/u);
 });
 
 test("shipped manifest approves documented OGL and item-guarded CC-BY sources, retaining pending examples",()=>{
