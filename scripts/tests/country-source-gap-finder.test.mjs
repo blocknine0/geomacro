@@ -49,10 +49,18 @@ test("gap finder marks missing health and non-approved sources as gaps across al
  assert.ok(other.gap_reasons.includes("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE"));
 });
 
-test("only exact active rights-manifest approvals satisfy healthy country coverage",()=>{
- const report=buildCountrySourceGapReport({countries,hot50:["AAA"],sourceCatalog:[source],
-  riskStreamSources:[{source_id:source.source_id,enabled:1,commercial_rights_approved:1}],
-  probes:[probe],rightsEntries:[approved],now});
+test("only exact active rights-manifest role pairs satisfy healthy country coverage",()=>{
+ const marketSource={...source,source_id:"aaa_market_source"};
+ const marketApproved={...approved,source_id:marketSource.source_id,
+  publisher_root_domain:"prices.example.gov",parent_media_entity:"aaa_market_office",
+  source_role:"MARKET_PRICE"};
+ const marketProbe={...probe,source_id:marketSource.source_id};
+ const rows=[approved,marketApproved].map(entry=>({source_id:entry.source_id,enabled:1,
+  commercial_rights_approved:1,publisher_root_domain:entry.publisher_root_domain,
+  parent_media_entity:entry.parent_media_entity,source_role:entry.source_role,
+  reviewed_at:entry.rights_evidence.reviewed_at,rights_expire_at:entry.rights_expire_at}));
+ const report=buildCountrySourceGapReport({countries,hot50:["AAA"],sourceCatalog:[source,marketSource],
+  riskStreamSources:rows,probes:[probe,marketProbe],rightsEntries:[approved,marketApproved],now});
  assert.equal(report.gap_count,584);
  assert.equal(report.cells.some(x=>x.country_iso3==="AAA"&&x.category==="MACRO_FX"),false);
 });
