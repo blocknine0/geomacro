@@ -63,6 +63,8 @@ import {auditStep30211WithoutRowidCounter}
  from "../lib/d1-step3-0211-counter-integrity.mjs";
 import {auditStep30211SpoolSource}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
+import {withStep3ConcurrentDriftRetry}
+ from "../lib/d1-step3-concurrent-drift-retry.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3NativeHistorySQL,
  classifyStep3NativeHistory,step30212PendingSourcePreflightSQL,
@@ -388,14 +390,14 @@ function checkIndexAndSchema(config,step,report){
   for(const table of step.integrityTables){
    mark("D1_SUPPORTED_QUICK_FK_ALL_INDEX_AND_UNIQUE_PROOF",table);
    if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-   const p=auditStep30204IndexLineage(table,(sql,maxRows)=>{
+   const p=withStep3ConcurrentDriftRetry(()=>auditStep30204IndexLineage(table,(sql,maxRows)=>{
     const r=q(config,sql,{maxRows});
     report.composite_integrity_rows_read??=0;
     report.composite_integrity_rows_read+=r.readRows;
     if(report.composite_integrity_rows_read>STEP3_MAX_MIGRATION_READ_ROWS)
      fail("SUPPORTED_0204_INDEX_AUDIT_READ_CAP_EXCEEDED");
     return r.rows;
-   });
+   }));
    integrity.push(p);
   }
   // On HOLD, preserve only non-sensitive provider index metadata in the
@@ -436,7 +438,8 @@ function checkIndexAndSchema(config,step,report){
   mark("SUPPORTED_0211_WITHOUT_ROWID_P0B_DAILY_COUNTER");
   const counter=auditStep30211WithoutRowidCounter(checked);
   mark("SUPPORTED_0211_REVIEWED_SPOOL_INDEX_LINEAGE");
-  const spool=auditStep30211SpoolSource(checked);
+  const spool=withStep3ConcurrentDriftRetry(()=>
+   auditStep30211SpoolSource(checked));
   if(spool.reviewed_exact_index_ddl_verified!==true||
      spool.candidate_unique_autoindex_verified!==true||
      ![
@@ -590,7 +593,8 @@ function checkIndexAndSchema(config,step,report){
    "website_derived_intelligence"
   ];
   const lineageInputs=lineageTables.map(table=>
-   auditStep30204IndexLineage(table,checked));
+   withStep3ConcurrentDriftRetry(()=>
+    auditStep30204IndexLineage(table,checked)));
   report.provider_0212_index_lineage_registry=lineageInputs.map(p=>({
    table:p.table,index_count:p.total_existing_indexes,
    index_names:p.index_proofs.map(x=>x.index).sort(),
