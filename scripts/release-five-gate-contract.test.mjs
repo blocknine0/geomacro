@@ -52,6 +52,14 @@ test('user-required controls and no-funds release architecture remain explicit',
  assert.match(source,/15\*60\*1000/);
  assert.match(source,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
  assert.match(source,/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/);
+ assert.match(source,/const D1_MIN_RATE_SAMPLE_MS=10\*60\*1000/);
+ assert.match(source,/const D1_HOURLY_WRITE_CAP=45_000/);
+ assert.match(source,/const D1_HOURLY_READ_CAP=24_000_000/);
+ assert.match(source,/const D1_PAID_BURST_WRITE_CAP=500_000/);
+ assert.match(source,/console\.error\(JSON\.stringify\(diagnostic\)\)/);
+ for(const field of ['ms','written','writeRate','read','readRate',
+  'paced_remaining_rows_written','remaining_rows_written'])
+  assert.match(source,new RegExp('\\b'+field+'\\b'),field+' missing from paced-spike diagnostics');
  assert.match(admission,/account_wide_provider_hard_cap:false/);
  assert.match(audit,/Promise\.all/);
 });

@@ -108,32 +108,62 @@ test("rollback refuses a provider response that is not a settled baseline-only d
 
 
 function paidPacePair({writes=0,reads=0,pacedRemaining=10_000_000,
- remaining=29_000_000}={}) {
+ remaining=29_000_000,sampleMs=15*60_000}={}) {
  const start={cycle_start_utc:"2026-11-05",cycle_end_exclusive_utc:"2026-12-05",
   observed_at_ms:1_000_000,rows_read:100,rows_written:200};
- const latest={...start,observed_at_ms:start.observed_at_ms+5*60_000,
+ const latest={...start,observed_at_ms:start.observed_at_ms+sampleMs,
   rows_read:start.rows_read+reads,rows_written:start.rows_written+writes,
   paced_remaining_rows_written:pacedRemaining,
-  remaining_rows_written:remaining};
+  remaining_rows_written:remaining,provider_metrics_delayed:true};
  return {start,latest};
 }
 
-test("healthy Paid monthly headroom admits normal short-window background cron bursts",()=>{
- for(const writesPerHour of [60_000,150_000,324_000]){
-  const {start,latest}=paidPacePair({writes:writesPerHour/12});
-  const result=assertD1ObservedHourlyPace(start,latest);
-  assert.equal(result.status,"PASS_OBSERVED_PAID_MONTHLY_PACE");
-  assert.equal(result.writes_per_hour,writesPerHour);
-  assert.equal(result.max_writes_per_hour,500_000);
+test("short delayed GraphQL intervals are not extrapolated into hourly rates",()=>{
+ const {start,latest}=paidPacePair({writes:20_000,sampleMs:2*60_000});
+ const diagnostics=[],original=console.error;
+ console.error=message=>diagnostics.push(String(message));
+ try{
+  assert.deepEqual(assertD1ObservedHourlyPace(start,latest),
+   {status:"INSUFFICIENT_INTERVAL"});
+  assert.equal(diagnostics.length,0);
+ }finally{console.error=original;}
+});
+
+test("healthy Paid monthly headroom admits smoothed 15- and 30-minute rates",()=>{
+ for(const sampleMs of [15*60_000,30*60_000]){
+  for(const writesPerHour of [60_000,150_000,320_000]){
+   const writes=writesPerHour*sampleMs/3600000;
+   const {start,latest}=paidPacePair({writes,sampleMs});
+   const result=assertD1ObservedHourlyPace(start,latest);
+   assert.equal(result.status,"PASS_OBSERVED_PAID_MONTHLY_PACE");
+   assert.equal(result.writes_per_hour,writesPerHour);
+   assert.equal(result.max_writes_per_hour,500_000);
+  }
  }
+});
+
+test("real paid-burst spike logs structured metrics immediately before rejection",()=>{
+ const {start,latest}=paidPacePair({writes:125_001});
+ const diagnostics=[],original=console.error;
+ console.error=message=>diagnostics.push(String(message));
+ try{
+  assert.throws(()=>assertD1ObservedHourlyPace(start,latest),
+   /CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/);
+ }finally{console.error=original;}
+ assert.equal(diagnostics.length,1);
+ assert.deepEqual(JSON.parse(diagnostics[0]),{
+  code:"CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE",ms:15*60_000,
+  written:125_001,writeRate:500_004,read:0,readRate:0,
+  paced_remaining_rows_written:10_000_000,remaining_rows_written:29_000_000
+ });
 });
 
 test("canary pace still holds on burst, read-cap, low-monthly-headroom, or exhausted paced headroom",()=>{
  const cases=[
-  [paidPacePair({writes:41_667}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
-  [paidPacePair({writes:1,reads:2_000_001}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
-  [paidPacePair({writes:5_000,remaining:1_000_000}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
-  [paidPacePair({writes:5_000,pacedRemaining:0}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/]
+  [paidPacePair({writes:125_001}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:1,reads:6_000_001}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:15_000,remaining:1_000_000}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/],
+  [paidPacePair({writes:15_000,pacedRemaining:0}),/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/]
  ];
  for(const [{start,latest},expected] of cases)
   assert.throws(()=>assertD1ObservedHourlyPace(start,latest),expected);
