@@ -137,15 +137,20 @@ export function runSourceRegistration({manifest,apply=false,preflight=false,env=
  }finally{config.cleanup()}
 }
 function parseArgs(args){
- if(args.length===0)return {apply:false};
- if(args.length===1&&args[0]==="--dry-run")return {apply:false};
- if(args.length===1&&args[0]==="--apply")return {apply:true};
- if(args.length===1&&args[0]==="--preflight")return {apply:false,preflight:true};
- fail("ARGUMENTS_INVALID");
+ const out={apply:false,preflight:false,manifestPath:MANIFEST_PATH};
+ for(let i=0;i<args.length;i++){
+  if(args[i]==="--dry-run")continue;
+  if(args[i]==="--apply"){out.apply=true;continue;}
+  if(args[i]==="--preflight"){out.preflight=true;continue;}
+  if(args[i]==="--manifest"){out.manifestPath=args[++i];if(!out.manifestPath)fail("MANIFEST_PATH_REQUIRED");continue;}
+  fail("ARGUMENTS_INVALID");
+ }
+ if(out.apply&&out.preflight)fail("MODE_CONFLICT");
+ return out;
 }
 function main(){
- const {apply,preflight}=parseArgs(process.argv.slice(2));
- const manifest=JSON.parse(readFileSync(MANIFEST_PATH,"utf8"));
+ const {apply,preflight,manifestPath}=parseArgs(process.argv.slice(2));
+ const manifest=JSON.parse(readFileSync(manifestPath,"utf8"));
  const result=runSourceRegistration({manifest,apply,preflight});
  if(result.mode==="dry-run"){
   if(result.statements.length===0){
