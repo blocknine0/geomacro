@@ -13,21 +13,6 @@ const GROQ_TIMEOUT_MS = 9_000;
 const MAX_RESULTS_PER_QUERY = 12;
 const MAX_PUBLIC_EVIDENCE = 5;
 
-const CATEGORY_QUERIES = [
-  {
-    category: "GEOPOLITICS",
-    query: "conflict OR sanctions OR military OR election OR diplomatic OR tariff OR shipping OR border",
-  },
-  {
-    category: "MACRO",
-    query: 'inflation OR "central bank" OR "interest rate" OR currency OR recession OR GDP OR trade',
-  },
-  {
-    category: "CRITICAL_MINERALS",
-    query: '"critical minerals" OR "rare earth" OR lithium OR cobalt OR nickel OR graphite OR copper',
-  },
-] as const;
-
 type SearchHit = {
   category: string;
   title: string;
@@ -155,9 +140,12 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
  * These GDELT observations remain UNVERIFIED index leads: no original page,
  * native publication clock, numeric observation or paid rights are inferred.
  */
-export function planSafeRealtimeIndexQueries(question: string) {
-  const plan = buildRealtimeSearchPlan(question);
+export function planSafeRealtimeIndexQueries(question: string, now = Date.now()) {
   const country = resolveAskCountry(question);
+  const rotationIndex = country
+    ? country.iso3.split("").reduce((value, char) => value * 26 + char.charCodeAt(0) - 65, 0) % 100_000
+    : 0;
+  const plan = buildRealtimeSearchPlan(question, now, rotationIndex);
   const countryPrefix = country
     ? '"' + country.name.replace(/"/g, "") + '" AND '
     : "";
@@ -165,12 +153,19 @@ export function planSafeRealtimeIndexQueries(question: string) {
     maxAgeHours: plan.maxAgeHours,
     timespan: plan.timespan,
     country_iso3: country?.iso3 ?? null,
-    queries: CATEGORY_QUERIES
-      .filter(spec => plan.broadCategories.includes(spec.category))
-      .map(spec => ({
-        category: spec.category,
-        query: countryPrefix + "(" + spec.query + ")",
-      })),
+    rotation_interval_ms: plan.rotation_interval_ms,
+    queries: plan.topicBuckets.map(bucket => {
+      const query = countryPrefix + "(" + bucket.terms
+        .map(term => '"' + term.replace(/"/g, "") + '"')
+        .join(" OR ") + ")";
+      if (query.length > 900) throw new Error("ASK_REALTIME_QUERY_TOO_LONG");
+      return {
+        category: bucket.category === "MACRO_FX" ? "MACRO" : bucket.category,
+        query, topic_bucket_id: bucket.bucket_id,
+        topic_tags: bucket.topic_tags,
+        affected_assets: bucket.affected_assets,
+      };
+    }),
   };
 }
 
