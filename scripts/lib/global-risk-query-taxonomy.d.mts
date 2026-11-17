@@ -2,7 +2,7 @@ export type GlobalRiskQueryCategory = "GEOPOLITICS" | "MACRO_FX" | "CRITICAL_MIN
 export const GLOBAL_RISK_QUERY_TAXONOMY_VERSION: string;
 export const GLOBAL_RISK_QUERY_ROTATION_MS: number;
 export const COUNTRY_SOURCE_QUERY_TEMPLATE_VERSION: string;
-export function buildCountrySourceDiscoveryQueries(countryName: string, category: GlobalRiskQueryCategory): Readonly<{
+export function buildCountrySourceDiscoveryQueries(countryName: string, category: string): Readonly<{
   schema: string;
   category: "GEOPOLITICS" | "MACRO_FX" | "CRITICAL_MINERALS";
   queries: readonly Readonly<{
