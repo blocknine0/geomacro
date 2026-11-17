@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
  ARCHIVE_INDEX_SCHEMA,ARCHIVE_MONTH_SCHEMA,isPermanentArchiveSignal,
  publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,buildCurrentArchiveEligibility,
+ safePermanentArchiveDiagnostic,
 } from "./publish-permanent-derived-news-archive.mjs";
 import {buildHeldPrivateOsintProjection} from "../lib/private-osint-held-public-projection.mjs";
 import {projectSourceNeutralOsintSignal} from "../lib/derived-news-readback-policy.mjs";
@@ -45,6 +46,18 @@ function writeCandidates(path,signals){
 }
 const failD1=async()=>new Response(JSON.stringify({ok:false,error:"quota"}),{status:503});
 afterEach(()=>{for(const dir of tempDirs.splice(0))rmSync(dir,{recursive:true,force:true});});
+
+describe("safe archive publisher diagnostics",()=>{
+ it("preserves application codes and maps native failures without exposing messages or paths",()=>{
+  assert.equal(safePermanentArchiveDiagnostic(new Error("PERMANENT_ARCHIVE_INDEX_INVALID")),
+   "PERMANENT_ARCHIVE_INDEX_INVALID");
+  const native=Object.assign(new Error("token=secret /runner/private/path"),{code:"EACCES"});
+  assert.equal(safePermanentArchiveDiagnostic(native),
+   "PERMANENT_ARCHIVE_FILESYSTEM_PERMISSION_DENIED");
+  assert.equal(safePermanentArchiveDiagnostic(new TypeError("private input")),
+   "PERMANENT_ARCHIVE_UNEXPECTED_TYPE_ERROR");
+ });
+});
 
 describe("permanent derived-only website archive",()=>{
  it("round-robins current category records before applying the 475-row feed cap",()=>{
