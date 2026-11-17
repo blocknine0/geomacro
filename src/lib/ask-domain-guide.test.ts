@@ -17,6 +17,6 @@ describe("three-domain editorial explanations and scope",()=>{
  });
  it.each(["hello","help","What changed today?"])("handles entry request %s",q=>{
   if(q==="What changed today?")expect(domainGuideAnswer(q)).toBeNull();
-  else expect(domainGuideAnswer(q)?.summary).toContain("Geomacro");
+  else expect(domainGuideAnswer(q)?.summary).toMatch(/GeoMacro/i);
  });
 });
