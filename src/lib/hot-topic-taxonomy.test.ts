@@ -81,6 +81,13 @@ describe("governed hot-topic taxonomy", () => {
     ["NdPr dysprosium terbium and antimony export ban", "critical_minerals"],
     ["potash phosphate uranium and titanium export quota", "critical_minerals"],
     ["mine strike and smelter outage", "critical_minerals"],
+    ["central bank repo and reverse repo liquidity operation", "monetary_policy_rates"],
+    ["CET1 LCR NSFR deposit flight stress test", "banking_financial_system"],
+    ["SOFR EURIBOR and cross-currency basis stress", "fx_external_stress"],
+    ["10Y yield curve 2s10s auction tail and sovereign CDS", "sovereign_debt_fiscal"],
+    ["NFP payroll PCE and retail sales surprise", "inflation_growth_employment"],
+    ["LME warehouse stock draw and cancelled warrants backwardation", "critical_minerals"],
+    ["exchange cyberattack disrupts clearinghouse settlement", "cyber_systemic_attack"],
   ] as const)("recognizes expanded event vocabulary: %s", (question, expected) => {
     expect(inferHotTopicFamiliesFromQuestion(question)).toContain(expected);
   });
