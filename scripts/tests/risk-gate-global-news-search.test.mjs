@@ -13,9 +13,7 @@ test("Google News global search rotates Reuters/ANI/other publishers without pai
  assert.match(query,/site:reuters\.com/);
  assert.match(query,/site:aninews\.in/);
  assert.equal(first.topic_bucket_id,expected.bucket_id);
- assert.match(query,new RegExp(expected.terms[0].replace(/[.*+?^$\{\}()|[\]\\]/g,"\\ assert.equal(first.topic_bucket_id,"monetary_policy");
- assert.match(query,/emergency rate hike/);
- assert.ok(first.topic_tags.includes("central_bank_policy"));"),"iu"));
+ assert.ok(query.includes('"'+expected.terms[0]+'"'));
  assert.deepEqual(first.topic_tags,expected.topic_tags);
  assert.ok(first.affected_assets.includes("fx_pairs"));
  assert.equal(first.discovery_only,true);
