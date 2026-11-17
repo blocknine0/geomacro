@@ -1,4 +1,5 @@
 import test from "node:test";
+import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {buildInstitutionalSourceReport,probeInstitutionalCandidate} from "../ops/discover-global-institutional-sources.mjs";
 import {buildRiskStreamDualAudience,validRiskStreamDualAudience} from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
@@ -21,6 +22,14 @@ const regional={source_id:"regional_wire",url:"https://regional.example/feed",fo
 const timestamp="2026-11-18T11:00:00.000Z";
 const healthy=(source_id)=>({source_id,health_status:"WORKING",http_status:200,
  last_successful_http_fetch_at:timestamp,last_source_native_publication_at:timestamp,failure_reason:null});
+
+test("protected source registry apply consumes only the live rights-filtered manifest",()=>{
+ const workflow=readFileSync(".github/workflows/apply-risk-stream-source-registry.yml","utf8");
+ assert.match(workflow,/discover-global-institutional-sources\\.mjs --probe/u);
+ assert.match(workflow,/--eligible-manifest artifacts\\/global-institutional-sources\\/eligible-rights-manifest\\.json/u);
+ assert.match(workflow,/register-risk-stream-source\\.mjs --apply --manifest artifacts\\/global-institutional-sources\\/eligible-rights-manifest\\.json/u);
+ assert.match(workflow,/APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION/u);
+});
 
 test("HTTP 200 on an unreviewed source remains private and redacted",()=>{
  const candidate={...official,source_id:"unreviewed_wire"};
