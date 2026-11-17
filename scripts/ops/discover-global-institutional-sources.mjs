@@ -157,18 +157,18 @@ async function main(){
  const result=await discoverGlobalInstitutionalSources({candidates:config.sources,
   rightsEntries:manifest.entries,probe:args.probe,probeLimit:args.probeLimit,now:args.now});
  mkdirSync(resolve(args.output,".."),{recursive:true,mode:0o700});
- writeFileSync(args.output,JSON.stringify(result.report,null,2)+"\\n",{mode:0o600});
+ writeFileSync(args.output,JSON.stringify(result.report,null,2)+"\n",{mode:0o600});
  if(args.eligibleManifest){
-  writeFileSync(args.eligibleManifest,JSON.stringify(result.report.eligible_manifest,null,2)+"\\n",{mode:0o600});
+  writeFileSync(args.eligibleManifest,JSON.stringify(result.report.eligible_manifest,null,2)+"\n",{mode:0o600});
  }
  process.stdout.write(JSON.stringify({schema:result.report.schema,
   candidates:result.report.source_count,probed:result.report.probed_count,
   approved_for_registry_sync:result.report.approved_registry_sync_count,
-  role_pairs:result.report.role_pairs})+"\\n");
+  role_pairs:result.report.role_pairs})+"\n");
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{await main()}catch(error){
-  process.stderr.write(String(error?.message??"GLOBAL_INSTITUTIONAL_SOURCE_FAILED").slice(0,220)+"\\n");
+  process.stderr.write(String(error?.message??"GLOBAL_INSTITUTIONAL_SOURCE_FAILED").slice(0,220)+"\n");
   process.exitCode=2;
  }
 }
