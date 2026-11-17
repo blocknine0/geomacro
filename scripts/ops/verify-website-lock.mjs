@@ -191,6 +191,8 @@ const approvedPricing = [
   config.approved_concrete_intelligence_findings_20261116,
   // Pin exact protected website blobs that were already on current main.
   config.approved_current_main_website_blob_carryforward_20261116,
+  // PR #4072: approve only the exact Ask chat UI blobs; all other locks remain active.
+  config.approved_ask_conversational_ux_20261117,
   // Exact 2026-11-16 owner-authorized transformative OSINT and Store/API copy;
   // only the explicitly listed presentation blobs are admitted.
   config.approved_transformative_osint_riskstream_conversion_20261116,
