@@ -11,6 +11,9 @@ on:
       - 'scripts/ops/run-risk-stream-shadow-provider-audit.mjs'
       - 'scripts/lib/risk-stream-source-rights-manifest.mjs'
       - 'scripts/lib/country-source-gap-finder.mjs'
+      - 'config/global-institutional-source-candidates.v1.json'
+      - 'scripts/ops/discover-global-institutional-sources.mjs'
+      - 'scripts/tests/global-institutional-sources.test.mjs'
       - 'scripts/ops/discover-missing-country-sources.mjs'
       - 'scripts/tests/country-source-gap-finder.test.mjs'
       - 'scripts/lib/risk-stream-event-fingerprint.mjs'
@@ -97,7 +100,11 @@ jobs:
           node --check scripts/ops/hot50-standard-feasibility.mjs
           node --check scripts/lib/country-source-gap-finder.mjs
           node --check scripts/ops/discover-missing-country-sources.mjs
+          node --check scripts/ops/discover-global-institutional-sources.mjs
+          node --check scripts/tests/global-institutional-sources.test.mjs
+          node --check workers/control-plane/src/risk-stream-dual-audience.mjs
           node --check scripts/tests/country-source-gap-finder.test.mjs
+          node --test scripts/tests/global-institutional-sources.test.mjs
           node --check scripts/tests/risk-stream-source-rights-manifest.test.mjs
           node --check scripts/tests/risk-stream-item-license-guard.test.mjs
           node --check scripts/lib/risk-stream-event-fingerprint.mjs
