@@ -80,6 +80,17 @@ test("RSS live probe records health metadata and not publisher text",async()=>{
  assert.equal(JSON.stringify(result).includes("Private raw title"),false);
 });
 
+test("ReliefWeb JSON API uses its native created timestamp",async()=>{
+ const candidate={source_id:"un_reliefweb_api_ccby",url:"https://api.reliefweb.int/v1/reports",
+  format:"json_reliefweb",category:"GEOPOLITICS",source_role:"INDEPENDENT_REGIONAL",
+  publisher_root_domain:"reliefweb.int",parent_media_entity:"un_ocha_reliefweb"};
+ const body={data:[{fields:{date:{created:timestamp}}}]};
+ const result=await probeInstitutionalCandidate(candidate,{now,fetchImpl:async()=>new Response(
+  JSON.stringify(body),{status:200,headers:{"content-type":"application/json"}})});
+ assert.equal(result.health_status,"WORKING");
+ assert.equal(result.last_source_native_publication_at,timestamp);
+});
+
 test("risk pipeline derives named corridor and price assets from structural event text",()=>{
  const result=deriveRiskStreamEligibleScore("GEOPOLITICS","USA",
   "CHOKEPOINT DISRUPTION AROUND HORMUZ PUTS BRENT CRUDE OIL AND LNG ROUTES AT RISK",
