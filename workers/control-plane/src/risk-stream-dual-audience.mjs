@@ -1,6 +1,6 @@
 const ACTIONS=new Set(["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"]);
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
-const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA"]);
+const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA","SUEZ","BAB_EL_MANDEB","TAIWAN_STRAIT","SOUTH_CHINA_SEA","BLACK_SEA","BOSPORUS","MOZAMBIQUE_CHANNEL","CAPE_OF_GOOD_HOPE"]);
 const ASSETS=Object.freeze({
  GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes","maritime_chokepoints"],
  MACRO_FX:["foreign_exchange","fx_pairs","interest_rates","sovereign_funding","energy_commodities"],
@@ -9,13 +9,21 @@ const ASSETS=Object.freeze({
 const ALLOWED_ASSETS=new Set([
  ...Object.values(ASSETS).flat(),"usd_eur","eur_usd","usd_jpy","usd_cny","usd_inr","usd_krw",
  "usd_brl","usd_try","usd_zar","usd_mxn","brent_crude","lng_spot","freight_rates",
- "lithium","copper","rare_earths","oil_supply","export_controls","sanctions_exposure"
+ "lithium","copper","rare_earths","oil_supply","export_controls","sanctions_exposure","wheat"
 ]);
 const CORRIDOR_ASSETS=Object.freeze({
  RED_SEA:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"],
+ BAB_EL_MANDEB:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"],
+ SUEZ:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"],
  MALACCA:["lng_spot","brent_crude","freight_rates","shipping_routes","copper"],
  HORMUZ:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"],
- PANAMA:["lng_spot","freight_rates","shipping_routes","copper"]
+ PANAMA:["lng_spot","freight_rates","shipping_routes","copper"],
+ TAIWAN_STRAIT:["lng_spot","copper","rare_earths","freight_rates","shipping_routes"],
+ SOUTH_CHINA_SEA:["lng_spot","copper","rare_earths","freight_rates","shipping_routes"],
+ BLACK_SEA:["brent_crude","wheat","freight_rates","shipping_routes","maritime_chokepoints"],
+ BOSPORUS:["brent_crude","wheat","freight_rates","shipping_routes","maritime_chokepoints"],
+ MOZAMBIQUE_CHANNEL:["lng_spot","copper","freight_rates","shipping_routes","maritime_chokepoints"],
+ CAPE_OF_GOOD_HOPE:["brent_crude","lng_spot","freight_rates","shipping_routes","maritime_chokepoints"]
 });
 const EVENT_ASSETS=Object.freeze({
  SANCTIONS_LIST_UPDATE:["sanctions_exposure","export_controls"],
@@ -57,7 +65,7 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
     !Number.isInteger(ttlSeconds)||ttlSeconds<60||ttlSeconds>604800||
     !Array.isArray(contagionCorridors)||contagionCorridors.length>12||
     contagionCorridors.some(x=>typeof x!=="string"||! /^[A-Z]{3}>[A-Z]{3}$/u.test(x))||
-    !Array.isArray(strategicCorridors)||strategicCorridors.length>4||
+    !Array.isArray(strategicCorridors)||strategicCorridors.length>12||
     strategicCorridors.some(x=>!CORRIDORS.has(x))||
     !Array.isArray(affectedAssets)||affectedAssets.length>16||
     affectedAssets.some(x=>typeof x!=="string"||!ALLOWED_ASSETS.has(x)))
@@ -135,7 +143,7 @@ export function validRiskStreamDualAudience(value){
   brief&&typeof brief==="object";
  const validBrief=[...legacyBriefKeys].every(key=>
   typeof brief?.[key]==="string"&&brief[key].length>=12&&brief[key].length<=360);
- const validEnhanced=(!current||Array.isArray(agent.strategic_corridors)&&agent.strategic_corridors.length<=4&&
+ const validEnhanced=(!current||Array.isArray(agent.strategic_corridors)&&agent.strategic_corridors.length<=12&&
    agent.strategic_corridors.every(x=>CORRIDORS.has(x)))&&
   (!enhancedLegacy&&!current||value.licensed_source_text_included===false&&
    agent.gate_state===agent.action_posture&&
