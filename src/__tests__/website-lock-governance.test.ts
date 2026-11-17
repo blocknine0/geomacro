@@ -539,6 +539,27 @@ describe("website lock governance", () => {
     expect(config.published_baseline).toContain("independent 60m Global Risk remains");
   });
 
+  it("approves only PR #4072's exact Ask conversational UI blobs",()=>{
+    const config=JSON.parse(read("config/website-lock.json"));
+    const approval=config.approved_ask_conversational_ux_20261117;
+    expect(approval.approved_source_commit).toBe("fb2af2fe0fe4923aeeff8e5d3039124690a4353a");
+    expect(approval.approved_paths).toEqual([
+      "src/components/ask/ask-workspace.tsx",
+      "src/components/ask/ask-answer-view.tsx",
+    ]);
+    expect(approval.exact_blob_lock).toBe(true);
+    expect(approval.website_lock_remains_active).toBe(true);
+    expect(approval.global_risk_final_lock_unmodified).toBe(true);
+    expect(approval.locked_intelligence_and_risk_indices_unmodified).toBe(true);
+    expect(approval.paid_flags_enabled).toBe(false);
+    expect(approval.payment_authorized).toBe(false);
+    expect(approval.durable_objects_added).toBe(false);
+    expect(approval.extra_public_route_d1_reads_added).toBe(false);
+    expect(approval.canary_hold_unchanged).toBe(true);
+    expect(read("scripts/ops/verify-website-lock.mjs"))
+      .toContain("config.approved_ask_conversational_ux_20261117");
+  });
+
   it("pins the source-neutral Private OSINT watch presentation to exact blobs without enabling paid execution",()=>{
     const config=JSON.parse(read("config/website-lock.json"));
     const approval=config.approved_private_osint_website_projection_20261116;
