@@ -42,11 +42,11 @@ test("eligible global role pair requires distinct domains and parent entities",(
  assert.equal(report.role_pairs.GEOPOLITICS.ready,true);
  assert.equal(report.approved_registry_sync_count,2);
  assert.equal(report.eligible_manifest.entries.length,2);
- const sameDomain=buildInstitutionalSourceReport({candidates:[official,{...regional,
+ assert.throws(()=>buildInstitutionalSourceReport({candidates:[official,{...regional,
   publisher_root_domain:official.publisher_root_domain}],rightsEntries:[
    rights[0],entry(regional.source_id,official.publisher_root_domain,regional.parent_media_entity,
-    regional.source_role,regional.category)],probes:[healthy(official.source_id),healthy(regional.source_id)],now});
- assert.equal(sameDomain.role_pairs.GEOPOLITICS.ready,false);
+    regional.source_role,regional.category)],probes:[healthy(official.source_id),healthy(regional.source_id)],now}),
+  /ROLE_PAIR_NOT_INDEPENDENT_GEOPOLITICS/u);
 });
 
 test("native timestamps and parser success are required for registry sync eligibility",()=>{
