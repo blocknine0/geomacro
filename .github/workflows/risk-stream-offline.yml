@@ -139,6 +139,7 @@ jobs:
           node --check scripts/ops/ingest-direct-global-corridors.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
           grep -q "topic_tags_json TEXT NOT NULL DEFAULT '[]'" workers/control-plane/migrations/0224_risk_stream_search_topic_tags.sql
+          grep -q "affected_assets_json TEXT NOT NULL DEFAULT '[]'" workers/control-plane/migrations/0224_risk_stream_search_topic_tags.sql
       - name: Verify rotating global topic queries and P0-B coverage
         run: node --test scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/p0b-live-global-search.test.mjs
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
