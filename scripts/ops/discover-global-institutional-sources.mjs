@@ -105,7 +105,7 @@ export function buildInstitutionalSourceReport({candidates,rightsEntries,probes,
  const rights=validateSourceRightsManifest({schema:"geomacro.risk-stream-source-rights-reviewed.v1",
   entries:rightsEntries},now);
  const probeMap=new Map(probes.map(x=>[x.source_id,x]));
- const rows=candidates.map(candidate=>{
+ const rawRows=candidates.map(candidate=>{
   const probe=probeMap.get(candidate.source_id)??null;
   const classification=explicitRights(candidate,rights.approvedEntries,now);
   const fresh=probe&&probe.http_status===200&&["WORKING","NO_NEW_EVENT"].includes(probe.health_status)&&
@@ -122,13 +122,14 @@ export function buildInstitutionalSourceReport({candidates,rightsEntries,probes,
    registry_sync_eligible:Boolean(fresh&&rightsApproved)};
  });
  const independentPairs=Object.fromEntries(Object.entries(RISK_STREAM_CATEGORY_ROLES).map(([category,[roleA,roleB]])=>{
-  const usable=rows.filter(x=>x.category===category&&x.registry_sync_eligible);
+  const usable=rawRows.filter(x=>x.category===category&&x.registry_sync_eligible);
   const pair=usable.some(a=>usable.some(b=>a.source_role===roleA&&b.source_role===roleB&&
    a.source_id!==b.source_id&&a.publisher_root_domain!==b.publisher_root_domain&&
    a.parent_media_entity!==b.parent_media_entity));
   return [category,{ready:pair,required_roles:[roleA,roleB],
    verified_source_ids:usable.map(x=>x.source_id).sort()}];
  }));
+ const rows=rawRows.map(row=>({...row,registry_sync_eligible:Boolean(row.registry_sync_eligible&&independentPairs[row.category]?.ready)}));
  const entries=rights.approvedEntries.filter(entry=>rows.some(x=>x.source_id===entry.source_id&&
   x.registry_sync_eligible&&x.publisher_root_domain===entry.publisher_root_domain&&
   x.parent_media_entity===entry.parent_media_entity&&x.source_role===entry.source_role));
