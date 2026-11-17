@@ -1,4 +1,8 @@
 import {validateSourceRightsManifest} from "./risk-stream-source-rights-manifest.mjs";
+import {
+ buildCountrySourceDiscoveryQueries,
+ GLOBAL_RISK_QUERY_TAXONOMY_VERSION
+} from "./global-risk-query-taxonomy.mjs";
 
 export const COUNTRY_CATEGORIES=Object.freeze(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 export const REQUIRED_SOURCE_ROLES=Object.freeze({
@@ -136,6 +140,8 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
    cells.push({country_iso3:country.iso3,country_name:country.name??null,category,
     priority:hot.has(country.iso3)?"HOT50":"COUNTRY_195",
     required_source_roles:rolesForCategory(category),gap_reasons:reasons,
+    topic_taxonomy_version:GLOBAL_RISK_QUERY_TAXONOMY_VERSION,
+    search_query_templates:buildCountrySourceDiscoveryQueries(country.name,category).queries,
     candidate_sources:candidateSources});
   }
  }
@@ -145,6 +151,7 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
   new Set(cells.map(x=>x.country_iso3+":"+x.category)).size!==cells.length)
   fail("CELL_COUNT_INVALID");
  return {schema:"geomacro.country-source-gap-report.v1",generated_at:new Date(now).toISOString(),
+  topic_taxonomy_version:GLOBAL_RISK_QUERY_TAXONOMY_VERSION,
   country_count:195,category_count:3,cell_count:585,gap_count:cells.length,
   hot50_gap_count:cells.filter(c=>c.priority==="HOT50").length,
   hot50_countries:hot50.length,rights_policy:"HTTP_SUCCESS_NEVER_GRANTS_COMMERCIAL_RIGHTS",
