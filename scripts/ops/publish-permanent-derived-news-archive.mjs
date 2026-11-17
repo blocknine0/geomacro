@@ -672,6 +672,31 @@ export async function publishPermanentDerivedNewsArchive({
   return result;
 }
 
+export function safePermanentArchiveDiagnostic(error){
+  const message=error&&typeof error==="object"&&typeof error.message==="string"
+    ?error.message:"";
+  if(/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/u.test(message))
+    return message;
+  const nativeCode=error&&typeof error==="object"&&typeof error.code==="string"
+    ?error.code:"";
+  const safeNativeCodes={
+    EACCES:"PERMANENT_ARCHIVE_FILESYSTEM_PERMISSION_DENIED",
+    EPERM:"PERMANENT_ARCHIVE_FILESYSTEM_PERMISSION_DENIED",
+    ENOENT:"PERMANENT_ARCHIVE_FILESYSTEM_ENTRY_MISSING",
+    ENOTDIR:"PERMANENT_ARCHIVE_FILESYSTEM_PATH_INVALID",
+    EEXIST:"PERMANENT_ARCHIVE_FILESYSTEM_PATH_COLLISION",
+    ENOSPC:"PERMANENT_ARCHIVE_FILESYSTEM_CAPACITY_EXHAUSTED",
+    EMFILE:"PERMANENT_ARCHIVE_FILESYSTEM_HANDLE_LIMIT",
+    EBUSY:"PERMANENT_ARCHIVE_FILESYSTEM_ENTRY_BUSY",
+    EINVAL:"PERMANENT_ARCHIVE_FILESYSTEM_ARGUMENT_INVALID",
+    EROFS:"PERMANENT_ARCHIVE_FILESYSTEM_READ_ONLY",
+  };
+  if(safeNativeCodes[nativeCode])return safeNativeCodes[nativeCode];
+  if(error instanceof TypeError)return "PERMANENT_ARCHIVE_UNEXPECTED_TYPE_ERROR";
+  if(error instanceof RangeError)return "PERMANENT_ARCHIVE_UNEXPECTED_RANGE_ERROR";
+  return "PERMANENT_ARCHIVE_UNEXPECTED_ERROR";
+}
+
 if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])).href){
   const [archiveDir,assetsDir,candidatePath]=process.argv.slice(2);
   const canonicalCatchup=process.env.GEOMACRO_CANONICAL_D1_CATCHUP==='true';
@@ -682,9 +707,11 @@ if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])
   publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath,
     canonicalCatchup,canonicalOriginToken,allowD1Reads
   }).catch(error=>{
-    const code=error instanceof Error&&/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/.test(error.message)
-      ?error.message:"PERMANENT_ARCHIVE_UPDATE_FAILED";
-    console.error(code);
+    console.error(JSON.stringify({
+      schema:"geomacro.permanent-derived-news-archive-error.v1",
+      operation:"archive_update",
+      diagnostic_code:safePermanentArchiveDiagnostic(error),
+    }));
     process.exitCode=2;
   });
 }
