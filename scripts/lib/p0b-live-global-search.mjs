@@ -164,9 +164,10 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
  // One fixed category bucket rotates every 20 minutes; it shares the existing
  // GOV.UK search call and does not fan out into additional provider requests.
  const topicQuery="("+topicBucket.terms.slice(0,6).map(term=>'"'+term+'"').join(" OR ")+")";
- const govQ=(country.name+" "+topicQuery+" "+topical.slice(0,1).join(" ")).slice(0,180);
- // Keep the user's freeform terms local; provider search receives only
- // canonical country identity plus the bounded public taxonomy bucket.
+ const govQ=country.name+" "+topicQuery+" "+topical.slice(0,1).join(" ");
+ if(govQ.length>320)throw Error("P0B_QUERY_TOO_LONG");
+ // Only one filtered user-topic token may accompany the canonical country
+ // and bounded public taxonomy bucket; never forward the raw question.
  const govUrl=new URL("https://www.gov.uk/api/search.json");
  for(const [k,v] of Object.entries({q:govQ,count:"8",
   order:"-public_timestamp",filter_format:"news_article"}))govUrl.searchParams.set(k,v);
