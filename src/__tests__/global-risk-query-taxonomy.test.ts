@@ -91,8 +91,11 @@ describe("rotating global risk search taxonomy", () => {
     const writer = readFileSync("workers/control-plane/src/risk-stream-autonomous-hot50.mjs", "utf8");
     expect(migration).toContain("topic_bucket_id TEXT NOT NULL DEFAULT 'legacy'");
     expect(migration).toContain("topic_tags_json TEXT NOT NULL DEFAULT '[]'");
-    expect(writer).toContain("if(leads.length===8)break");
+    expect(migration).toContain("affected_assets_json TEXT NOT NULL DEFAULT '[]'");
+    expect(writer).toContain("if(leads.length===7)break");
     expect(writer).toContain("x.topic_bucket_id,JSON.stringify(x.topic_tags)");
+    expect(writer).toContain("JSON.stringify(x.affected_assets)");
+    expect(writer).toContain("affected_assets_json");
     expect(writer).toContain("commercial_rights_verified:false");
     expect(writer).toContain("originals_verified:0,independent_same_event_verified:false");
   });
