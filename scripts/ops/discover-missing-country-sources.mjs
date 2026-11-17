@@ -108,6 +108,16 @@ export async function discoverMissingCountrySources({riskStreamSources,previousP
  fetchImpl=fetch}={}){
  if(!Array.isArray(riskStreamSources))fail("RISK_ROWS_INVALID");
  const sources=gatherSources(countries,catalogues);
+ const sourceIds=new Set(sources.map(s=>s.source_id));
+ const ogl=readJson("config/official-ogl-atom-sources.json").sources??[];
+ for(const entry of ogl){
+  if(sourceIds.has(entry.source_id))continue;
+  sources.push({source_id:entry.source_id,publisher_country_iso3:entry.owner_country_iso3??null,
+   country_event_attributed:false,url:entry.feed_url,format:"atom",categories:[entry.category],
+   origin_registry:"owner-reviewed-ogl",official_primary_candidate:true,
+   access:"PUBLIC_ENDPOINT_BOUNDED_FETCH_ONLY",retention:"DERIVED_ONLY_AFTER_RIGHTS_GUARD"});
+  sourceIds.add(entry.source_id);
+ }
  const allProbes=new Map((previousProbes??[]).filter(p=>p&&typeof p.source_id==="string")
   .map(p=>[p.source_id,p]));
  const probes=probe?await probeCandidateRotation(sources,now,fetchImpl,probeLimit,
