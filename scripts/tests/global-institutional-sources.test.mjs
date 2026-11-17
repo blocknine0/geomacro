@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {buildInstitutionalSourceReport,probeInstitutionalCandidate} from "../ops/discover-global-institutional-sources.mjs";
 import {buildRiskStreamDualAudience,validRiskStreamDualAudience} from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
+import {deriveRiskStreamEligibleScore} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 
 const now=new Date("2026-11-18T12:00:00.000Z");
 function entry(source_id,domain,parent,role,category){
@@ -68,6 +69,18 @@ test("RSS live probe records health metadata and not publisher text",async()=>{
  assert.equal(result.health_status,"WORKING");
  assert.equal(result.last_source_native_publication_at,timestamp);
  assert.equal(JSON.stringify(result).includes("Private raw title"),false);
+});
+
+test("risk pipeline derives named corridor and price assets from structural event text",()=>{
+ const result=deriveRiskStreamEligibleScore("GEOPOLITICS","USA",
+  "CHOKEPOINT DISRUPTION AROUND HORMUZ PUTS BRENT CRUDE OIL AND LNG ROUTES AT RISK",
+  {eligibleTiers:["standard"]});
+ assert.ok(result);
+ assert.deepEqual(result.agent_decision.strategic_corridors,["HORMUZ"]);
+ for(const asset of ["brent_crude","lng_spot","freight_rates","shipping_routes"])
+  assert.ok(result.agent_decision.affected_assets.includes(asset));
+ assert.equal(result.agent_decision.tier,"STANDARD");
+ assert.equal(result.agent_decision.upgrade_available,false);
 });
 
 test("dual audience enriches assets for corridor and explicit market signals without exposing input text",()=>{
