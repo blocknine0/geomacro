@@ -86,7 +86,7 @@ test("JSON Feed candidates require a native timestamp with an explicit timezone"
  assert.equal(parsed.ok,true);
  assert.equal(parsed.native_dated_items,1);
  assert.equal(parsed.recent_native_dated_items,1);
- const undated=parseJsonFeed(JSON.stringify({items:[{id:"x",date_published:"2026-11-17T11:00:00"}]}),new Date(now));
+ const undated=parseJsonFeed(JSON.stringify({version:"https://jsonfeed.org/version/1.1",items:[{id:"x",date_published:"2026-11-17T11:00:00"}]}),new Date(now));
  assert.equal(undated.native_dated_items,0);
  const arbitrary=parseJsonFeed(JSON.stringify({items:[{date_published:"2026-11-17T11:00:00Z"}]}),new Date(now));
  assert.equal(arbitrary.ok,false);
