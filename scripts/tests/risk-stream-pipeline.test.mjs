@@ -83,9 +83,15 @@ test("one independently dual-attested primary plus redacted Private OSINT featur
  item.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
  const out=await processRiskStreamBatch(c.env,[item],{now,sleeper:async()=>{},random:()=>0});
  assert.equal(out.corroborated_and_signed,1);
- const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ const stored=[...c.db.gros.values()][0];
+ const payload=JSON.parse(stored.payload_json);
  assert.equal(payload.source_originals.length,1);
  assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused","standard"]);
+ const verifyKey=await crypto.subtle.importKey("spki",
+  Buffer.from(c.env.RISK_STREAM_GRO_VERIFY_SPKI_B64,"base64"),
+  {name:"Ed25519"},false,["verify"]);
+ assert.equal(await crypto.subtle.verify("Ed25519",verifyKey,
+  Buffer.from(stored.signature_b64,"base64"),Buffer.from(stored.payload_json)),true);
  assert.equal(payload.evidence_and_confidence.internal_corroboration.raw_source_redacted,true);
  assert.deepEqual(payload.evidence_and_confidence.internal_corroboration.families,["PRIVATE_OSINT"]);
  assert.deepEqual(payload.eligible_derived_score.agent_decision.contagion_corridors,[]);
