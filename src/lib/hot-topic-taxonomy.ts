@@ -166,6 +166,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "STRUCTURAL_MODULE_WHEN_REQUESTED",
     notes: "Current-event interpretation should be paired with governed macro observations when a numeric rate claim is required.",
     patterns: [
+      /\b(?:OMO|open market operation|repo|reverse repo|standing facilit|FX intervention|FX reserves?|sovereign wealth fund|BIS liquidity|IMF Article IV)\b/i,
       /\bcentral bank\b/i,
       /\binterest rate/i,
       /\bpolicy rate/i,
@@ -183,6 +184,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "STRUCTURAL_MODULE_WHEN_REQUESTED",
     notes: "Headline event detection is not a substitute for official macro observations.",
     patterns: [
+      /\b(?:PPI|PCE|NFP|payroll surprise|retail sales surprise|wage growth shock|inflation breakeven)\b/i,
       /\binflation\b/i,
       /\bdeflation\b/i,
       /\bgdp\b/i,
@@ -202,6 +204,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "STRUCTURAL_MODULE_WHEN_REQUESTED",
     notes: "Numeric FX/external claims require the governed structural module in addition to current-event evidence.",
     patterns: [
+      /\b(?:SOFR|EURIBOR|TONAR|SHIBOR|MIBOR|HIBOR|cross.currency basis|NDF|risk reversal)\b/i,
       /\bcurrenc/i,
       /\bforeign exchange\b/i,
       /\bfx\b/i,
@@ -220,6 +223,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "STRUCTURAL_MODULE_WHEN_REQUESTED",
     notes: "Debt/fiscal current events are distinct from the structural sovereign-fiscal score and peer methodology.",
     patterns: [
+      /\b(?:2Y|10Y|30Y|2s10s|term premium|bond auction|bid.to.cover|auction tail|sovereign CDS|debt.to.GDP)\b/i,
       /\bsovereign debt\b/i,
       /\bsovereign default\b/i,
       /\bdebt crisis\b/i,
@@ -299,6 +303,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "STRUCTURAL_MODULE_WHEN_REQUESTED",
     notes: "Current restrictions are distinct from structural mineral-production/dependency observations.",
     patterns: [
+      /\b(?:LME|COMEX|CME|SHFE|INE|ICE|DCE|SGX|MCX|LBMA|warehouse stocks?|cancelled warrants?|backwardation|contango|curve spreads?|TC\/RC|treatment charges?|smelter utilization|polysilicon|iron ore|aluminum|tin|zinc|platinum|palladium|PGM|physical premiums?|offtake|project finance)\b/i,
       /\bcritical mineral/i,
       /\brare earth/i,
       /\blithium\b/i,
@@ -369,6 +374,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "STRUCTURAL_MODULE_WHEN_REQUESTED",
     notes: "Current bank-stress evidence is separate from structural banking-system observations.",
     patterns: [
+      /\b(?:CET1|Tier 1 capital|LCR|NSFR|NII|NIM|NPL ratio|deposit flight|deposit outflow|bank CDS|interbank funding|Basel III|Basel IV|stress test)\b/i,
       /\bbank(?:ing)?\b/i,
       /\bbank run\b/i,
       /\bliquidity crisis\b/i,
@@ -497,6 +503,7 @@ const FAMILY_POLICY: Record<HotTopicFamily, FamilyPolicy> = {
     authoritative_confirmation: "DIRECT_SOURCE_SUPPLEMENT_AVAILABLE",
     notes: "Cyber event evidence does not by itself establish systemic financial or infrastructure impact.",
     patterns: [
+      /\b(?:exchange cyberattack|clearinghouse cyberattack|payment rail cyberattack)\b/i,
       /\bcyberattack\b/i,
       /\bcyber attack\b/i,
       /\bransomware\b/i,
