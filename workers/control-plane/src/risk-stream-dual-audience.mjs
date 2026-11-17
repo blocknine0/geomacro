@@ -81,6 +81,7 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
  const eventAssets=EVENT_ASSETS[eventClass]??[];
  const corridorAssets=strategicCorridors.flatMap(x=>CORRIDOR_ASSETS[x]??[]);
  const enrichedAssets=[...new Set([...ASSETS[category],...eventAssets,...corridorAssets,...affectedAssets])].sort();
+ if(enrichedAssets.length>24)throw Error("RISK_STREAM_DUAL_AUDIENCE_INVALID");
  return {
   agent_decision:{action_posture:posture,gate_state:posture,
    risk_score_0_100:Number(score.toFixed(2)),value_0_100:Number(score.toFixed(2)),
