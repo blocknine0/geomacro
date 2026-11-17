@@ -99,7 +99,7 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
       probe?.status??"NOT_PROBED_OR_STALE"};
    });
    const reasons=[];
-   if(activeHealthy.length>0)reasons.push("NO_COMPLETE_INDEPENDENT_ACTIVE_ROLE_PAIR");
+   if(mappings.length>0)reasons.push("NO_COMPLETE_INDEPENDENT_ACTIVE_ROLE_PAIR");
    if(mappings.length===0)reasons.push("NO_COUNTRY_SPECIFIC_CATALOG_CANDIDATE");
    if(mappings.length>0&&!mappings.some(s=>registryById.get(s.source_id)?.enabled===1))
     reasons.push("NO_ENABLED_RISK_STREAM_SOURCE");
@@ -129,7 +129,9 @@ export function buildCountrySourceGapReport({countries,hot50=[],sourceCatalog=[]
   hot50_gap_count:cells.filter(c=>c.priority==="HOT50").length,
   hot50_countries:hot50.length,rights_policy:"HTTP_SUCCESS_NEVER_GRANTS_COMMERCIAL_RIGHTS",
   healthy_source_rule:"country-specific + enabled + exact current rights approval + fresh HTTP 200 parsed native-date probe",
-  risk_stream_source_rows_seen:riskStreamSources.length,cells};
+  risk_stream_source_rows_seen:riskStreamSources.length,
+  rights_manifest_approved_entries:rightsEntries.filter(x=>x.status==="APPROVED").length,
+  rights_manifest_pending_entries:rightsEntries.filter(x=>x.status==="PENDING").length,cells};
 }
 
 export function buildApprovedRegistryUpserts(manifest,now=Date.now()){
