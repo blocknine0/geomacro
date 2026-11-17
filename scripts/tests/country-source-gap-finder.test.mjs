@@ -135,6 +135,12 @@ test("scheduled sync accepts only approved country candidates with a fresh live 
  assert.equal(selected.entries.length,1);
  assert.equal(selected.entries[0].source_id,approved.source_id);
  assert.equal(selected.rights_status_changed,false);
+ const alreadyActive={...report,cells:[{...report.cells[0],candidate_sources:[{
+  ...report.cells[0].candidate_sources[0],active_in_risk_stream:true,
+  registry_identity_matches_reviewed_entry:true}]}]};
+ assert.equal(buildHealthyApprovedSourceManifest(
+  {schema:"geomacro.risk-stream-source-rights-reviewed.v1",entries:[approved]},alreadyActive,now)
+  .entries.length,0,"exact active registry entries are excluded from scheduled writes");
  const unhealthy={...report,cells:[{...report.cells[0],candidate_sources:[
   {...report.cells[0].candidate_sources[0],health_status:"SOURCE_UNAVAILABLE"}]}]};
  assert.equal(buildHealthyApprovedSourceManifest(
