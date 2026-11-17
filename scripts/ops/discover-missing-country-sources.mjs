@@ -23,7 +23,7 @@ function parseArgs(argv){
  return out;
 }
 
-function parseJsonFeed(body,now){
+export function parseJsonFeed(body,now){
  let data;try{data=JSON.parse(body)}catch{return {ok:false,reason:"JSON_INVALID"}}
  const items=data?.items;
  if(!Array.isArray(items)||items.length>1000)return {ok:false,reason:"JSON_FEED_ITEMS_INVALID"};
