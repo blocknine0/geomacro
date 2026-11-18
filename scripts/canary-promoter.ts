@@ -181,6 +181,15 @@ export function verifyDistribution(deployment:any,expected:any[]){
   'CANARY_REMOTE_SPLIT_MISMATCH');
  return true;
 }
+async function verifyDeploymentReadback(readCurrent:()=>Promise<any>,versions:any[],pause=wait){
+ const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,attempts:4,
+  allowPropagation:true,accept:(value:any)=>{
+   try{verifyDistribution(value,versions);return true}
+   catch(error){if(String((error as any)?.message??'')==='CANARY_REMOTE_SPLIT_MISMATCH')return false;throw error;}
+  }});
+ verifyDistribution(observed,versions);
+ return observed;
+}
 export async function deployVersions(base:string,candidate:string,percent:number,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=distribution(base,candidate,percent);
@@ -188,9 +197,8 @@ export async function deployVersions(base:string,candidate:string,percent:number
   providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})}),{pause});
  // An explicit malformed or mismatched deployment response is a parity HOLD.
  if(deploymentVersionsField(result).present)verifyDistribution(result,versions);
- const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,
-  allowPropagation:true,accept:(v:any)=>deploymentVersionsField(v).present});
- verifyDistribution(observed,versions);
+
+ await verifyDeploymentReadback(readCurrent,versions,pause);
 }
 export async function deployBaseline(base:string,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
@@ -198,9 +206,8 @@ export async function deployBaseline(base:string,
  const result=await retryTransientCanaryProbe(()=>
   providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})}),{pause});
  if(deploymentVersionsField(result).present)verifyDistribution(result,versions);
- const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,
-  allowPropagation:true,accept:(v:any)=>deploymentVersionsField(v).present});
- verifyDistribution(observed,versions);
+
+ await verifyDeploymentReadback(readCurrent,versions,pause);
 }
 export async function checkSource(candidate:string,expectedSha:string,fetchImpl=fetch,
  {pause=wait,log=(entry:string)=>console.error(entry)}:any={}){
