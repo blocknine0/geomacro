@@ -17,7 +17,7 @@ const EXT=/\.(?:mjs|cjs|js|ts|tsx)$/u;
 // This is not a production reference-only cutover or a true B2/R2 receipt.
 export const SHADOW_ONLY_REVIEWED_BLOBS=Object.freeze({
  "scripts/lib/d1-step3-real-shadow-proofs.mjs":Object.freeze({
-  blob:"f0d7d77e0c5a24898e5b2cc442812f7a0070231a",
+  blob:"a4ca5131458d95717e4531d527b33acba0f0550d",
   classification:"PROTECTED_REAL_SHADOW_ONLY_B2_ORIGINAL_BYTE_PARITY_REVIEWED"}),
  "scripts/lib/d1-step3-shadow-pointer-seed.mjs":Object.freeze({
   blob:"75defeb8e4093d939dba83dda7abbb4526addec8",
