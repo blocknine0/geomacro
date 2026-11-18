@@ -16,7 +16,8 @@ const raw=String(process.env.CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS||"");
 need(raw===raw.trim(),"CANARY_OWNER_REVIEWED_SECRET_FORMAT_INVALID");
 const reviewed=raw?raw.split(","):[];
 const runtime=reviewedHot50CandidateVars(sha,process.env);
-const reviewedRuntimeNames=[...Object.keys(runtime),"GEOMACRO_RELEASE_REVIEWER_SERVICE"];
+const reviewedRuntimeNames=[...Object.keys(runtime),"GEOMACRO_RELEASE_REVIEWER_SERVICE",
+ "GEOMACRO_RISK_STREAM_QUEUES_BIND"];
 const reviewedPredgeRuntimeVars=Object.fromEntries(reviewedRuntimeNames
  .filter(name=>runtime[name]!==undefined||process.env[name]!==undefined)
  .map(name=>[name,runtime[name]??process.env[name]]));

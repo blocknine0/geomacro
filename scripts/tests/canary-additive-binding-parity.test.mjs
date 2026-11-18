@@ -92,6 +92,56 @@ test("reviewed Hot50 flags and exact additive secrets pass without broadening re
  assert.deepEqual(delta.expected_additions_missing,[]);
 });
 
+test("reviewed queue bindings pass parity only when the explicit queue flag is enabled",()=>{
+ const queueRuntime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
+ const queues=[
+  {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+ ];
+ const base=version(streamBaseline);
+ const candidate=version([...streamCandidate,...queues]);
+ const result=assessReviewedHot50BindingParity(base,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,queueRuntime);
+ assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
+ assert.ok(result.additions.includes("RISK_STREAM_QUEUE"));
+ assert.ok(result.additions.includes("RISK_STREAM_DELIVERY_QUEUE"));
+ const delta=diagnoseReviewedHot50BindingDelta(base,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,queueRuntime);
+ assert.equal(delta.status,"NO_UNEXPECTED_BINDING_NAMES");
+ assert.deepEqual(delta.expected_additions_missing,[]);
+});
+
+test("queue additions without the reviewed flag and wrong queue types fail closed",()=>{
+ const queues=[
+  {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+ ];
+ const base=version(streamBaseline);
+ const unflagged=version([...streamCandidate,...queues]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,unflagged,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/RISK_STREAM_QUEUE_BINDING_UNREVIEWED/);
+ const wrongType=version([...streamCandidate,
+  {...queues[0],type:"service"},
+  queues[1]
+ ]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,wrongType,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,{...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"}),
+  /RISK_STREAM_QUEUE_TYPE_INVALID_RISK_STREAM_QUEUE/);
+ const missing=version([...streamCandidate,queues[0]]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,missing,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,{...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"}),
+  /UNREVIEWED_ADDITION/);
+});
+
+test("queue flag is carried from deploy environment through owner attestation and candidate parity",()=>{
+ const attest=readFileSync(new URL("../ops/attest-canary-additive-secrets.mjs",import.meta.url),"utf8");
+ const prepare=readFileSync(new URL("../ops/prepare-optimized-worker-candidate.mjs",import.meta.url),"utf8");
+ assert.match(attest,/GEOMACRO_RISK_STREAM_QUEUES_BIND/u);
+ assert.match(prepare,/predgeRuntimeVars\.GEOMACRO_RISK_STREAM_QUEUES_BIND==='1'/u);
+ assert.match(prepare,/diagnoseReviewedHot50BindingDelta\(baseline,candidate,\s*env\.GITHUB_SHA,reviewedSecrets,env\)/u);
+ assert.match(prepare,/assessReviewedHot50BindingParity\(baseline,candidate,sha,reviewedSecrets,predgeRuntimeVars\)/u);
+});
+
 test("missing STREAM_MODE is reported as a missing reviewed candidate binding",()=>{
  const missing=streamCandidate.filter(x=>x.name!=="STREAM_MODE");
  const delta=diagnoseReviewedHot50BindingDelta(version(streamBaseline),
