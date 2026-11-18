@@ -8,7 +8,7 @@ import {syncCorridorSevenDay,pruneCorridorSevenDay,corridorSevenDayStatus} from 
 import {corridorWatchTick,corridorWatchRead} from './corridor-pipeline-health.mjs';
 import {readNewsProductFactory} from './news-product-factory.mjs';
 import {serveSelfCertifiedNewsSeverityGri,serveSnapshotNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
-import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
+import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick,MACRO_FASTLANE_BODY_MAX_BYTES} from "./macro-fastlane.mjs";
 import {publicSignedNews} from './public-signed-news.mjs';
 import {authorizePrivateNewsProof} from './private-news-proof-auth.mjs';
 import {handlePrivateOsint15m} from './private-osint-15m.mjs';
@@ -2231,7 +2231,7 @@ export default {
       }
       if(url.pathname==="/v1/internal/macro-fastlane"&&!url.search){
         if(request.method==="GET")return json({ok:true,state:await loadMacroState(env)});
-        if(request.method==="PUT")return storeMacroState(env,await readJson(request,50000));
+        if(request.method==="PUT")return storeMacroState(env,await readJson(request,MACRO_FASTLANE_BODY_MAX_BYTES));
       }
       if(request.method==="PUT"&&url.pathname==="/v1/public-news-r2-snapshot"&&!url.search)
         return publishPublicNewsR2Snapshot(env,await readJson(request,PUBLIC_NEWS_R2_MAX_BYTES));

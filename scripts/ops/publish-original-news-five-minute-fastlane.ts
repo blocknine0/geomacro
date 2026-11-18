@@ -6,6 +6,7 @@ import {privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst} from
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {collectCriticalMineralsFastlane} from "../lib/critical-minerals-fastlane.mjs";
 import {collectMacroFastlane} from "../lib/macro-fastlane-collector.mjs";
+import {persistMacroFastlaneState} from "../lib/macro-fastlane-state-publisher.mjs";
 import {stagePhase2iFastlanePrivateOriginals} from "../lib/phase2ib-fastlane-private-staging.mjs";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model";
 /**
@@ -236,8 +237,18 @@ if(journalVerified){
   for(const cursor of Object.values(macro.state.mineral_cursors) as {etag:string|null}[])cursor.etag=null;
   console.log(JSON.stringify({schema:'geomacro.source-intake-deferred-records.v1',rows:pending.length-publishPending.length,feed_etags_advanced:false}));
  }
- const response=await fetch(macroStateUrl,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(macro.state),signal:AbortSignal.timeout(12000)});
- if(!response.ok){failure=true;console.error("::error::MACRO_BUNDLE_STATE_WRITE_FAILED");}
+ try{
+  const verified=await persistMacroFastlaneState({
+   fetchImpl:globalThis.fetch,url:macroStateUrl,token,state:macro.state,
+  });
+  console.log(JSON.stringify(verified));
+ }catch(error){
+  // Emit only the stable diagnostic code, never state, article text, URLs or
+  // bearer. A failed PUT/readback never advances the intake success clock.
+  failure=true;
+  const code=String((error as Error)?.message??'MACRO_STATE_UNKNOWN');
+  console.error('::error::MACRO_BUNDLE_STATE_WRITE_FAILED:'+ (/^[A-Z0-9_]{5,110}$/.test(code)?code:'MACRO_STATE_UNKNOWN'));
+ }
  // The existing Predge continuity monitor reads these authenticated source
  // checkpoints. Refresh only after actual publication and complete readback.
  try{
