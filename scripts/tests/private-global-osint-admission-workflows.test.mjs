@@ -53,7 +53,7 @@ test("CRITICAL_ONLY dispatch routes through the bounded admitted source and side
   assert.match(standalone, /outputs\.risk_stream_sidecar_admitted == 'true'/u);
   assert.match(standalone, /outputs\.source_intake != 'true'/u,
     "the standalone emitter yields to the inline bounded sidecar to avoid duplicate admission");
-  assert.match(standalone, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \\$\\{\\{ vars\\.GEOMACRO_STEP3_REVIEWED_SHA \\|\\| github\\.sha \\}\\}/u);
+  assert.match(standalone, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ vars\.GEOMACRO_STEP3_REVIEWED_SHA \|\| github\.sha \}\}/u);
 
   const held = section(osint, "  stage-private-sources-when-d1-held:", "\n  collect-unverified-private:");
   assert.match(held, /outputs\.source_intake != 'true'/u,
