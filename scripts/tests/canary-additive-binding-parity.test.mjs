@@ -519,3 +519,50 @@ test("--verify remains pinned to the reviewed 0204-0211 physical schema set",()=
  assert.match(plan,/\['0211_p0b_daily_committed_count\.sql'/u);
  assert.match(source,/found\.length===8&&REPAIR_PLANS\.every\(p=>found\.includes\(p\.file\)\)/u);
 });
+
+test("Risk Stream attester service bindings require the explicit queue review flag",()=>{
+ const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
+ const attesters=[
+  {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-facts-attester"},
+  {name:"RISK_STREAM_RIGHTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-rights-attester"}
+ ];
+ const base=version(streamBaseline);
+ const candidate=version([...streamCandidate,...attesters]);
+ const result=assessReviewedHot50BindingParity(base,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime);
+ assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
+ for(const row of attesters)assert.ok(result.additions.includes(row.name));
+ const delta=diagnoseReviewedHot50BindingDelta(base,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime);
+ assert.equal(delta.status,"NO_UNEXPECTED_BINDING_NAMES");
+ assert.deepEqual(delta.expected_additions_missing,[]);
+ for(const row of attesters)assert.ok(delta.expected_additions.includes(row.name));
+
+ const unflagged=version([...streamCandidate,...attesters]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,unflagged,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),
+  /RISK_STREAM_ATTESTER_BINDING_UNREVIEWED_RISK_STREAM_FACTS_ATTESTER/u);
+ assert.equal(diagnoseReviewedHot50BindingDelta(base,unflagged,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime).status,"UNREVIEWED_BINDING_DELTA_HOLD");
+
+ const wrongService=version([...streamCandidate,
+  {...attesters[0],service:"wrong-attester"},attesters[1]]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,wrongService,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime),
+  /RISK_STREAM_ATTESTER_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+ assert.equal(diagnoseReviewedHot50BindingDelta(base,wrongService,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime).status,"UNREVIEWED_BINDING_DELTA_HOLD");
+
+ const wrongType=version([...streamCandidate,
+  {...attesters[0],type:"queue"},attesters[1]]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,wrongType,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime),
+  /RISK_STREAM_ATTESTER_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+ const extraMetadata=version([...streamCandidate,
+  {...attesters[0],service_account_id:"unexpected"},attesters[1]]);
+ assert.throws(()=>assessReviewedHot50BindingParity(base,extraMetadata,sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime),
+  /RISK_STREAM_ATTESTER_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+});
