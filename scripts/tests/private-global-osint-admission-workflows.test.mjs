@@ -54,7 +54,7 @@ test("CRITICAL_ONLY dispatch routes through the bounded admitted source and side
   assert.match(standalone, /outputs\.source_intake != 'true'/u,
     "the standalone emitter yields to the inline bounded sidecar to avoid duplicate admission");
 
-  const held = section(osint, "  stage-private-sources-when-d1-held:", "\n  ");
+  const held = section(osint, "  stage-private-sources-when-d1-held:", "\n  collect-unverified-private:");
   assert.match(held, /outputs\.source_intake != 'true'/u,
     "held archival yields when bounded source intake has been admitted");
 });
