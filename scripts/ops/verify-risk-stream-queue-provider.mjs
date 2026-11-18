@@ -55,14 +55,15 @@ export async function verifyRiskStreamQueueProvider({
  const consumerBody=await get("/"+encodeURIComponent(queueId)+"/consumers");
  const consumers=consumerBody.result;
  const consumer=Array.isArray(consumers)&&consumers.length===1?consumers[0]:null;
- if(consumer?.type!=="worker"||consumer?.script_name!=="geomacro-control-plane"||
+ const consumerScript=consumer?.script??consumer?.script_name;
+ if(consumer?.type!=="worker"||consumerScript!=="geomacro-control-plane"||
     consumer?.dead_letter_queue!=="geomacro-risk-stream-dlq"||
     consumer?.settings?.batch_size!==10||consumer?.settings?.max_retries!==8)
   fail("CONSUMER_BINDING_UNVERIFIED");
  const snapshot={schema:"geomacro.risk-stream-queue-provider-receipt.v1",
   queue_name:queue.queue_name,queue_id:queue.queue_id,
   producer_script:"geomacro-control-plane",
-  consumer_id:consumer.consumer_id??null,consumer_script:consumer.script_name,
+  consumer_id:consumer.consumer_id??null,consumer_script:consumerScript,
   dead_letter_queue:consumer.dead_letter_queue,
   settings:{batch_size:consumer.settings.batch_size,max_retries:consumer.settings.max_retries},
   verified_at:new Date(now()).toISOString()};
