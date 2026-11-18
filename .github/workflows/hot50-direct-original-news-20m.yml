@@ -276,7 +276,7 @@ jobs:
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
-          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
+          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA || github.sha }}
           RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
           RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
@@ -371,7 +371,7 @@ jobs:
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
-          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
+          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA || github.sha }}
           RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
           RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
