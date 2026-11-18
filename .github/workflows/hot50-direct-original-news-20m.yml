@@ -318,6 +318,13 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Verify live Risk Stream Queue consumer binding before collector admission
+        id: risk-stream-queue
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/verify-risk-stream-queue-provider.mjs
       - name: Recover latest authenticated encrypted original queue from same protected source store
         env:
           GH_TOKEN: ${{ github.token }}
@@ -348,12 +355,12 @@ jobs:
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
       - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
-        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true'
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
         run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Send only separately item-license-verified direct originals through dual attestation
-        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true'
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
           GEOMACRO_RISK_STREAM_D1_CAP_REQUIRED: "true"
@@ -364,6 +371,9 @@ jobs:
           ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+          GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
+          RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
+          RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
