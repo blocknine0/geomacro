@@ -2,6 +2,7 @@ import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipe
 import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
 import {isRiskStreamInternalCorroboration}
  from "../../control-plane/src/risk-stream-internal-corroboration.mjs";
+import {APPROVED_ROLE_PAIRS} from "../../control-plane/src/risk-stream-approved-role-pairs.mjs";
 
 const MAX_BODY=32*1024;
 const text=new TextEncoder();
@@ -91,7 +92,8 @@ export async function attestRights(request,env,now=Date.now()){
   if(!event||event.schema!=="geomacro.risk-stream-candidate.v1"||
      event.kind!=="VERIFIED_ORIGINAL"||event.proof!==null||
      typeof event.source_id!=="string"||typeof event.publisher_root_domain!=="string"||
-     typeof event.parent_media_entity!=="string"||typeof event.source_role!=="string")
+     typeof event.parent_media_entity!=="string"||typeof event.source_role!=="string"||
+     !APPROVED_ROLE_PAIRS[event.category]?.includes(event.source_role))
    fail("CANDIDATE_INVALID");
   if(Object.hasOwn(event,"risk_context")&&
      (!isRiskStreamInternalCorroboration(event.risk_context)||

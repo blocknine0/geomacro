@@ -8,6 +8,7 @@ import {licensedSha,canonicalLicensedJson,issueGeoMacroCommercialLicense}
  from "./risk-stream-commercial-license.mjs";
 import {commercialDeliveryIsEnabled,stageLicensedCommercialDelivery}
  from "./risk-stream-commercial-outbox.mjs";
+import {approvedLegalAnchor,hasIndependentApprovedRolePair} from "./risk-stream-approved-role-pairs.mjs";
 
 const HEX=/^[a-f0-9]{64}$/u;
 const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
@@ -143,27 +144,20 @@ async function verifyInternalGro(db,groId,env,now){
   .bind(JSON.stringify(p.source_originals),p.event_fingerprint,
    p.category,p.subject.id).all();
  const rows=evidence?.results??[];
- if(rows.length!==p.source_originals.length||rows.some(e=>e.original_verified!==1||
-    e.enabled!==1||e.commercial_rights_approved!==1||
-    !Number.isFinite(Date.parse(e.rights_expire_at))||
-    Date.parse(e.rights_expire_at)<=now)||
+ if(rows.length!==p.source_originals.length||rows.some(e=>!approvedLegalAnchor(e,p.category,now))||
     new Set(rows.map(e=>e.publisher_root_domain)).size!==rows.length||
     new Set(rows.map(e=>e.parent_media_entity)).size!==rows.length)
   deny("INDEPENDENT_ORIGINAL_RIGHTS_NOT_CURRENT");
- const independentPair=rows.length>=2&&
-  new Set(rows.map(e=>e.source_role)).size>=2;
- const internal= p.evidence_and_confidence?.internal_corroboration;
- const hasInternal=internal?.raw_source_redacted===true&&
-    Number.isInteger(internal.signal_count)&&internal.signal_count>0&&
-    Array.isArray(internal.families)&&internal.families.some(x=>
-     ["PRIVATE_OSINT","TELEGRAM_WATCH","DERIVED_BASELINE"].includes(x));
+ const independentPair=hasIndependentApprovedRolePair(rows,p.category,now);
+ // Redacted radar observations must never supply the second independently
+ // verified licensed original or upgrade Basic to Standard by themselves.
  const cross= p.evidence_and_confidence?.cross_category_synthesis?.verified===true&&
     Array.isArray(p.evidence_and_confidence.cross_category_synthesis.categories)&&
     p.evidence_and_confidence.cross_category_synthesis.categories.length>=2||
     p.evidence_and_confidence?.strategic_corridor_synthesis?.verified===true&&
     Array.isArray(p.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids)&&
     p.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids.length>=2;
- const expectedTiers=["basic_focused",...(independentPair||hasInternal?["standard"]:[]),
+ const expectedTiers=["basic_focused",...(independentPair?["standard"]:[]),
    ...(independentPair||cross?["complex_full"]:[])];
  if(JSON.stringify(p.eligible_derived_score?.eligible_tiers)!==JSON.stringify(expectedTiers))
   deny("GRO_TIER_EVIDENCE_INVALID");

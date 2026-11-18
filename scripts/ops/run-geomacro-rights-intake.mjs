@@ -45,6 +45,8 @@ export function reviewedSourceCatalogReceipt(){
   reviewed_catalogue_with_attribution_obligations:list.filter(([,x])=>x.attribution_required===true).length,
   reviewed_catalogue_no_attribution_obligation:list.filter(([,x])=>x.attribution_required===false).length,
   article_level_permissions_created:0,
+  two_lane_policy:"LEGAL_ANCHOR_REVIEW_AND_REDACTED_SPEED_RADAR",
+  unverified_radar_cannot_qualify_standard:true,
   no_attribution_external_rights_automatically_granted:false,
   actual_195_country_directory_license_cleared:false,
   facts_role_signed:0,rights_role_signed:0,production_gro_signed:0,

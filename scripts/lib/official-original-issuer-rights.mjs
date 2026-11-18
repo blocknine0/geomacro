@@ -310,3 +310,25 @@ export function reviewDerivedRiskGateBatch(sources=[]){
     reviews,
   });
 }
+
+/** Lane A is a candidate only until a protected attester reads the item rights
+ * evidence and matches the current risk-stream registry. No raw source text. */
+export function officialIssuerLegalAnchorCandidate({sourceId,issuerReview,registryEntry,
+ originalObservationId,category,now=Date.now()}={}){
+ const validObservation=typeof originalObservationId==='string'&&FACTS_SHA.test(originalObservationId);
+ const review=issuerRightsDisposition({sourceId,...issuerReview});
+ const expiry=Date.parse(registryEntry?.rights_expire_at??'');
+ const validRegistry=registryEntry?.status==='APPROVED'&&
+  registryEntry?.source_id===sourceId&&
+  registryEntry.categories?.includes(category)===true&&
+  typeof registryEntry.publisher_root_domain==='string'&&
+  typeof registryEntry.parent_media_entity==='string'&&
+  Number.isFinite(expiry)&&expiry>now;
+ const candidate=validObservation&&validRegistry&&review.articleCommercialRightsVerified===true;
+ return Object.freeze({lane:'LEGAL_ANCHOR',source_id:sourceId??null,
+  original_observation_ids:candidate?[originalObservationId]:[],
+  commercial_rights_approved:candidate?1:0,
+  legal_anchor_review_candidate:!!candidate,
+  raw_source_redacted:true,licensed_source_text_included:false,
+  raw_sources_not_republished:true,paid_delivery_authorized:false});
+}

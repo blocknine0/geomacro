@@ -5,6 +5,7 @@
  * derived score means no grant. It never reads or returns publisher text.
  */
 import {validRiskStreamDualAudience} from "../../control-plane/src/risk-stream-dual-audience.mjs";
+import {approvedLegalAnchor,hasIndependentApprovedRolePair} from "../../control-plane/src/risk-stream-approved-role-pairs.mjs";
 const CLIENT="predge-paid-risk-gate-addendum-v2";
 const DOMAIN="geomacro.commercial-independent-release-review.v1\n";
 const HEX=/^[a-f0-9]{64}$/u;
@@ -103,23 +104,13 @@ async function review(body,env,now){
  const evidence=await env.DB.prepare("SELECT e.observation_id,e.original_verified,e.publisher_root_domain,e.parent_media_entity,e.source_role,s.enabled,s.commercial_rights_approved,s.rights_expire_at FROM risk_stream_evidence e JOIN risk_stream_sources s ON s.source_id=e.source_id WHERE e.observation_id IN (SELECT value FROM json_each(?)) AND e.event_fingerprint=? AND e.category=? AND e.country_iso3=? LIMIT 3")
   .bind(JSON.stringify(body.original_observation_ids),gro.event_fingerprint,gro.category,gro.subject.id).all();
  const evidenceRows=evidence?.results??[];
- if(evidenceRows.length!==body.original_observation_ids.length||evidenceRows.some(row=>row.original_verified!==1||
-   row.enabled!==1||row.commercial_rights_approved!==1||
-   !Number.isFinite(Date.parse(row.rights_expire_at))||Date.parse(row.rights_expire_at)<=now)||
+ if(evidenceRows.length!==body.original_observation_ids.length||evidenceRows.some(row=>!approvedLegalAnchor(row,gro.category,now))||
    new Set(evidenceRows.map(row=>row.publisher_root_domain)).size!==evidenceRows.length||
    new Set(evidenceRows.map(row=>row.parent_media_entity)).size!==evidenceRows.length)
   return {schema:"geomacro.commercial-review-result.v1",grants:[],status:"HOLD_CURRENT_INDEPENDENT_SOURCE_RIGHTS_UNVERIFIED"};
- // Every row above is independently rooted, current and commercially
- // approved. A second independent verified observation is enough evidence;
- // a category's preferred role pair remains a sourcing target, not a
- // customer-delivery blocker.
- const independentPair=evidenceRows.length>=2&&
-   new Set(evidenceRows.map(row=>row.source_role)).size>=2;
- const corroboration=gro.evidence_and_confidence?.internal_corroboration;
- const internalSupport=corroboration?.raw_source_redacted===true&&
-   Number.isInteger(corroboration.signal_count)&&corroboration.signal_count>0&&
-   Array.isArray(corroboration.families)&&corroboration.families.some(x=>
-    ["PRIVATE_OSINT","TELEGRAM_WATCH","DERIVED_BASELINE"].includes(x));
+ // Lane A alone authorizes Standard; Lane B is a redacted radar/polling
+ // trigger, never an independently licensed original or second role.
+ const independentPair=hasIndependentApprovedRolePair(evidenceRows,gro.category,now);
  const crossSynthesis=gro.evidence_and_confidence?.cross_category_synthesis?.verified===true&&
    Array.isArray(gro.evidence_and_confidence.cross_category_synthesis.categories)&&
    gro.evidence_and_confidence.cross_category_synthesis.categories.length>=2||
@@ -127,7 +118,7 @@ async function review(body,env,now){
    Array.isArray(gro.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids)&&
    gro.evidence_and_confidence.strategic_corridor_synthesis.source_observation_ids.length>=2;
  const eligibleTiers=["basic_focused",
-   ...(independentPair||internalSupport?["standard"]:[]),
+   ...(independentPair?["standard"]:[]),
    ...(independentPair||crossSynthesis?["complex_full"]:[])];
  const candidate={...gro,customer_delivery_authorized:true,commercial_origin_gro_id:body.source_gro_id};
  const candidateJson=JSON.stringify(candidate);
@@ -157,7 +148,10 @@ async function review(body,env,now){
   eligible_derived_score_sha256:await sha(canonical(score)),
   signed_release_receipt_sha256:receipt,reviewed_at:new Date(now).toISOString(),
   customer_entitlement_expires_at:entitlement.entitlement_expires_at,
-  eligible_tiers:eligibleTiers};
+  eligible_tiers:eligibleTiers,
+  commercial_rights_model:"TWO_LANE_DERIVED_ONLY_V1",
+  original_observation_ids:[...body.original_observation_ids],
+  raw_sources_not_republished:true};
  const approvalPayload=canonical(approval);
  approval.signature_b64=b64(await crypto.subtle.sign("Ed25519",signer,
   text.encode(DOMAIN+approvalPayload)));
