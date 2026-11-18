@@ -20,7 +20,7 @@ test("critical-pacing hold with source approval does not become a full publisher
   workflow.indexOf("  stage-private-sources-when-d1-held:"));
  const held=workflow.slice(workflow.indexOf("  stage-private-sources-when-d1-held:"),
   workflow.indexOf("  collect-unverified-private:"));
- assert.match(lane,/github\\.event_name == 'workflow_dispatch'[\\s\\S]*?needs\\.quota-admission\\.outputs\\.research != 'true'/u,
+ assert.match(lane,/github\.event_name == 'workflow_dispatch'[\s\S]*?needs\.quota-admission\.outputs\.research != 'true'/u,
   "a manual CRITICAL_ONLY dispatch is admitted only to this bounded source-only lane");
  assert.match(lane,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
  assert.match(lane,/needs\.quota-admission\.result == 'success'/u);
