@@ -51,17 +51,17 @@ export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=
    const old=cursors[spec.id];
    if(old?.retry_after>now){checks.push({id:spec.id,state:'COOLDOWN',candidates:0});return {healthy:false,recent:false};}
    try{
-    requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag,maxBytes:1024*1024});
+    requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag,lastModified:old?.last_modified,maxBytes:1024*1024});
     if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return {healthy:true,recent:false};}
     const rows=parseSectorFeed(data.text,spec,now);signals.push(...rows);
-    cursors[spec.id]={etag:data.etag,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
+    cursors[spec.id]={etag:data.etag,last_modified:data.lastModified??null,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
     return {healthy:true,recent:rows.some(s=>now-Date.parse(s.published_at)<=60*60000)};
    }catch(e){
     const message=String(e?.message??'');
     const denied=/ACCESS_DENIED|RATE_LIMITED/.test(message);
     const reason=denied?'ACCESS_DENIED':message==='OVERSIZE'?'OVERSIZE':
       message==='SECTOR_FEED_INVALID'?'FEED_SHAPE_INVALID':'UNAVAILABLE';
-    cursors[spec.id]={etag:null,retry_after:now+(denied?15:5)*60000,checked_at:now};
+    cursors[spec.id]={etag:null,retry_after:now+(reason==='ACCESS_DENIED'?60:message==='RATE_LIMITED'?15:5)*60000,checked_at:now};
     checks.push({id:spec.id,state:reason,candidates:0});
     return {healthy:false,recent:false};
    }

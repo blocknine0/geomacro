@@ -51,7 +51,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
   // windows can retry denied transport once per five minutes, never each second.
   if(old?.retry_after>now){checks.push({id:spec.id,state:'COOLDOWN',candidates:0});return;}
   try{
-   const data=await get(spec.url,{accept:spec.media==='html'?'text/html':'application/atom+xml,application/rss+xml,application/xml,text/xml',etag:old?.etag,maxBytes:spec.media==='html'?1024*1024:384*1024});
+   const data=await get(spec.url,{accept:spec.media==='html'?'text/html':'application/atom+xml,application/rss+xml,application/xml,text/xml',etag:old?.etag,lastModified:old?.last_modified,maxBytes:spec.media==='html'?1024*1024:384*1024});
    if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return;}
    let rows=[];
    if(spec.media==='html'){
@@ -66,7 +66,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
      }catch{/* a failed original never becomes a verified article */}
     }
    }else rows=parseMacroFeed(data.text,spec,now);
-   candidates.push(...rows);cursors[spec.id]={etag:data.etag,retry_after:0,checked_at:now};
+   candidates.push(...rows);cursors[spec.id]={etag:data.etag,last_modified:data.lastModified??null,retry_after:0,checked_at:now};
    checks.push({id:spec.id,state:'OK',candidates:rows.length});
   }catch(e){
    const reason=/^(?:ACCESS_DENIED|RATE_LIMITED|HTTP_\d+|OVERSIZE|REDIRECT|FEED_SHAPE_INVALID)$/.test(e?.message)?e.message:'UNAVAILABLE';

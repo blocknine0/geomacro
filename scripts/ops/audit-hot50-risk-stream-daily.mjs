@@ -39,6 +39,23 @@ export function summarizeHot50DailyRows(rows,{day,countries,manifestEntries=[]}=
   return [category,{countries_with_signed_gro:active.length,country_count:50,
     coverage:`${active.length}/50`,country_iso3:active}];
  }));
+ // A signed item count alone cannot certify a sellable country/category cell:
+ // item-level rights, freshness, independent-source roles and historical
+ // Complex rollups must be checked by the protected qualification engine.
+ // Nevertheless, enumerate ALL 50 x 3 cells every UTC day, including zeros;
+ // no country or category silently disappears from the operational audit.
+ const dailyCells=countries.flatMap(country_iso3=>CATEGORIES.map(category=>{
+  const count=counts.get("hot50_country_category\0"+category+"\0"+country_iso3)?.count??0;
+  return {country_iso3,category,signed_gros_today:count,
+   status:count>0?"SIGNED_OBSERVATION_NEEDS_ITEM_QUALIFICATION":"NO_SIGNED_OBSERVATION_TODAY",
+   commercial_rights_approved:false,independent_corroboration_verified:false,
+   billable_readiness_verified:false};
+ }));
+ const dailyMatrix={expected_cells:150,observed_cells:dailyCells.length,
+  signed_observation_cells:dailyCells.filter(c=>c.signed_gros_today>0).length,
+  no_signed_observation_cells:dailyCells.filter(c=>c.signed_gros_today===0).length,
+  commercial_ready_cells_unproven:dailyCells.length,
+  no_fabricated_news_or_automatic_rights_approval:true,cells:dailyCells};
  const registryRows=new Map(rows.filter(x=>x.kind==="registry_source").map(x=>[x.dimension,x]));
  const sourceRegistry=Object.fromEntries(CATEGORIES.map(category=>{
   const scoped=manifestEntries.filter(x=>x.status==="APPROVED"&&x.categories?.includes(category));
@@ -54,7 +71,7 @@ export function summarizeHot50DailyRows(rows,{day,countries,manifestEntries=[]}=
  return {schema:"geomacro.hot50-risk-stream-daily-audit.v1",day_utc:day,
   scope:"READ_ONLY_DAILY_COUNTS_NO_PUBLIC_ROUTE_CHANGES",category_counts:categoryCounts,
   paid_tier_deliveries:tierCounts,hot50_country_coverage:countryCoverage,
-  reviewed_source_registry:sourceRegistry,
+  hot50_daily_150_cell_matrix:dailyMatrix,reviewed_source_registry:sourceRegistry,
   billable_deliveries_are_recorded_by_tier_only:true,
   category_and_tier_cross_tab_available:false,
   payment_activation_authorized:false};

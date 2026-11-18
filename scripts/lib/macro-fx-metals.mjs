@@ -98,22 +98,28 @@ export function measuredPriceReaction(eventAt,before,after){
  if(!Number.isFinite(event)||!Number.isFinite(a)||!Number.isFinite(b)||before.instrument!==after.instrument||before.quote_kind!==after.quote_kind||before.currency!==after.currency||before.unit!==after.unit||a>event||b<event||b<=a||event-a>PRICE_MAX_AGE_MS||b-event>PRICE_MAX_AGE_MS||!Number.isFinite(before.value)||before.value<=0||!Number.isFinite(after.value)||after.value<=0)return null;
  return {instrument:after.instrument,before_at:before.observed_at,after_at:after.observed_at,change_pct:(after.value/before.value-1)*100,caused_by_event_verified:false};
 }
-export async function boundedMacroGet(url,{fetchImpl=fetch,accept='application/xml,text/xml,application/rss+xml',etag=null,maxBytes=384*1024}={}){
+export async function boundedMacroGet(url,{fetchImpl=fetch,accept='application/xml,text/xml,application/rss+xml',etag=null,lastModified=null,maxBytes=384*1024}={}){
  if(!Number.isSafeInteger(maxBytes)||maxBytes<1024||maxBytes>1024*1024)throw Error('MACRO_FETCH_LIMIT_INVALID');
  // Disclose our collector identity consistently with the already-observed
  // successful Hot-50 backup probe; never spoof browsers or circumvent 403.
  const headers={Accept:accept,'User-Agent':'GeomacroOSINT/1.0 (+https://geomacro.live)','Accept-Language':'en-US,en;q=0.8'};
- if(etag)headers['If-None-Match']=etag;
+ if(etag && typeof etag==='string' && etag.length<=200 && !/[\r\n]/.test(etag))headers['If-None-Match']=etag;
+ if(typeof lastModified==='string'&&lastModified.length<=80&&
+    /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(lastModified)&&
+    Number.isFinite(Date.parse(lastModified)))headers['If-Modified-Since']=lastModified;
  const res=await fetchImpl(url,{redirect:'error',headers,signal:AbortSignal.timeout(8000)});
  if(res.redirected)throw Error('REDIRECT');
- if(res.status===304)return {notModified:true,etag,text:null};
+ if(res.status===304)return {notModified:true,etag,lastModified,text:null};
  if(!res.ok){try{await res.body?.cancel()}catch{}throw Error(res.status===429?'RATE_LIMITED':res.status===403?'ACCESS_DENIED':'HTTP_'+res.status);}
  const limit=maxBytes;if(Number(res.headers.get('content-length')??0)>limit)throw Error('OVERSIZE');
  const reader=res.body?.getReader();if(!reader)throw Error('BODY_MISSING');
  let size=0;const parts=[];
  try{for(;;){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>limit)throw Error('OVERSIZE');parts.push(r.value);}}finally{try{await reader.cancel()}catch{}reader.releaseLock();}
  const bytes=new Uint8Array(size);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.length;}
- return {text:new TextDecoder('utf-8',{fatal:true}).decode(bytes),etag:res.headers.get('etag')?.slice(0,200)??null};
+ const updated=res.headers.get('last-modified');
+ return {text:new TextDecoder('utf-8',{fatal:true}).decode(bytes),
+  etag:res.headers.get('etag')?.slice(0,200)??null,
+  lastModified:updated&&updated.length<=80&&Number.isFinite(Date.parse(updated))?updated:null};
 }
 /** Fill each existing 64 KiB ingress request as far as row and UTF-8 limits allow. */
 export function packDerivedNewsBatches(signals,maxRows=50,maxBytes=60*1024){
