@@ -21,7 +21,7 @@ test("direct original sidecar verifies and passes the live Queue receipt", () =>
     "\n  encrypted-held-three-domain-20m:",
   );
   assert.match(job, /id: risk-stream-queue[\s\S]*?verify-risk-stream-queue-provider\.mjs/u);
-  assert.match(job, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ github\.sha \}\}/u);
+  assert.match(job, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ vars\.GEOMACRO_STEP3_REVIEWED_SHA \|\| github\.sha \}\}/u);
   assert.match(job, /RISK_STREAM_QUEUE_PROVIDER_ID: \$\{\{ steps\.risk-stream-queue\.outputs\.queue_id \}\}/u);
   assert.match(job, /RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: \$\{\{ steps\.risk-stream-queue\.outputs\.receipt_sha256 \}\}/u);
   const emitter = section(
@@ -46,13 +46,14 @@ test("CRITICAL_ONLY dispatch routes through the bounded admitted source and side
   assert.match(bounded, /id: risk-stream-queue[\s\S]*?verify-risk-stream-queue-provider\.mjs/u);
   assert.match(bounded, /RISK_STREAM_QUEUE_PROVIDER_ID: \$\{\{ steps\.risk-stream-queue\.outputs\.queue_id \}\}/u);
   assert.match(bounded, /RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: \$\{\{ steps\.risk-stream-queue\.outputs\.receipt_sha256 \}\}/u);
-  assert.match(bounded, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ github\.sha \}\}/u);
+  assert.match(bounded, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ vars\.GEOMACRO_STEP3_REVIEWED_SHA \|\| github\.sha \}\}/u);
   assert.doesNotMatch(bounded, /outputs\.state\s*==\s*'CRITICAL_ONLY'/u);
 
   const standalone = section(osint, "  risk-stream-sidecar:", "\n  live-source-probe:");
   assert.match(standalone, /outputs\.risk_stream_sidecar_admitted == 'true'/u);
   assert.match(standalone, /outputs\.source_intake != 'true'/u,
     "the standalone emitter yields to the inline bounded sidecar to avoid duplicate admission");
+  assert.match(standalone, /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ vars\.GEOMACRO_STEP3_REVIEWED_SHA \|\| github\.sha \}\}/u);
 
   const held = section(osint, "  stage-private-sources-when-d1-held:", "\n  collect-unverified-private:");
   assert.match(held, /outputs\.source_intake != 'true'/u,
