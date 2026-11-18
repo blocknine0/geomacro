@@ -133,8 +133,10 @@ const canonical=x=>JSON.stringify(x,(_,v)=>
 export function diagnoseReviewedHot50BindingDelta(base,candidate,sha,reviewedSecrets=[],runtimeVars={}){
  const a=bindingInventory(base),b=bindingInventory(candidate);
  const desired=reviewedHot50CandidateVars(sha,runtimeVars);
+ const riskQueues=runtimeVars.GEOMACRO_RISK_STREAM_QUEUES_BIND==="1"
+  ?["RISK_STREAM_QUEUE","RISK_STREAM_DELIVERY_QUEUE"].filter(name=>!a.has(name)):[];
  const desiredNew=[...Object.keys(desired).filter(name=>!a.has(name)),
-  ...reviewedSecrets.filter(name=>!a.has(name))];
+  ...reviewedSecrets.filter(name=>!a.has(name)),...riskQueues];
  const expected=new Set(desiredNew);
  const safe=name=>/^[A-Z_][A-Z0-9_]{0,100}$/u.test(name)?name:"REDACTED_INVALID_BINDING_NAME";
  const addition=[...b.keys()].filter(name=>!a.has(name)).sort();
