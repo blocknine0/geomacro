@@ -2,8 +2,29 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-18T16:39:19.516Z",
+  "updated_at": "2026-11-18T23:10:54.178Z",
   "signals": [
+    {
+      "id": "macro-31556a63",
+      "category": "macro",
+      "title": "GeoMacro Macro/FX Brief · Monetary Policy & FX Liquidity — Nigeria (NGA)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported reduction by central-bank, treasury or currency-policy actors, affecting Monetary Policy & FX Liquidity in Nigeria; direction is falling (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: falling Monetary Policy & FX Liquidity pressure in Nigeria → Downstream effect: local funding, settlement and import costs may shift → Price impact channel: the local currency versus USD and sovereign spreads. Action Posture: CONTINUE.",
+      "topic": "Monetary Policy & FX Liquidity",
+      "geography": "Nigeria",
+      "country_iso3": "NGA",
+      "corridor": null,
+      "event_direction": "falling",
+      "event_action": "Reported Reduction",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-18T16:14:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-0f2b595d",
       "category": "macro",
@@ -1030,6 +1051,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8f81a16d",
+      "category": "macro",
+      "title": "Geomacro finds Basel Committee on Banking Supervision: met in Basel on 18 November 2026 to discuss a range of analytical, supervisory and regulatory initiatives",
+      "why_it_matters": "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately.",
+      "what_changed": "Basel Committee on Banking Supervision met in Basel on 18 November 2026 to discuss a range of analytical, supervisory and regulatory initiatives.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "banking and capital regulation",
+      "published_at": "2026-11-18T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Bank for International Settlements"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
