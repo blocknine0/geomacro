@@ -63,3 +63,29 @@ test("Queue provider rejects malformed or missing provider IDs without producing
  await assert.rejects(()=>verifyRiskStreamQueueProvider({accountId:"d".repeat(32),
   token:"t".repeat(48),fetchImpl}),/RISK_STREAM_QUEUE_PROVIDER_ID_UNVERIFIED/u);
 });
+
+test("Queue provider verifies the live Cloudflare consumer script field and receipt",async()=>{
+ const fetchImpl=async url=>{
+  const parsed=new URL(url);
+  if(parsed.pathname.endsWith("/queues")&&parsed.searchParams.has("page"))
+   return page([{queue_name:"geomacro-risk-stream",queue_id:queueId}],1,1);
+  if(parsed.pathname.endsWith("/queues/"+queueId))return answer(200,{
+   queue_name:"geomacro-risk-stream",queue_id:queueId,
+   producers:[{type:"worker",script:"geomacro-control-plane"}]
+  });
+  if(parsed.pathname.endsWith("/queues/"+queueId+"/consumers"))return answer(200,[{
+   consumer_id:consumerId,type:"worker",script:"geomacro-control-plane",
+   queue_name:"geomacro-risk-stream",dead_letter_queue:"geomacro-risk-stream-dlq",
+   settings:{batch_size:10,max_retries:8}
+  }]);
+  throw Error("unexpected provider request "+url);
+ };
+ const receipt=await verifyRiskStreamQueueProvider({accountId:"d".repeat(32),
+  token:"t".repeat(48),fetchImpl,now:()=>Date.parse("2026-11-19T00:00:00.000Z")});
+ assert.equal(receipt.queue_id,queueId);
+ assert.equal(receipt.consumer_id,consumerId);
+ assert.equal(receipt.consumer_script,"geomacro-control-plane");
+ assert.equal(receipt.dead_letter_queue,"geomacro-risk-stream-dlq");
+ assert.deepEqual(receipt.settings,{batch_size:10,max_retries:8});
+ assert.match(receipt.receipt_sha256,/^[a-f0-9]{64}$/u);
+});
