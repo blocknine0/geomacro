@@ -118,10 +118,18 @@ export async function servePublicImmutableArchiveAsset(request,env){
 }
 export default {
  async fetch(request,env){
+  const path=new URL(request.url).pathname;
+  if(request.method==="OPTIONS"&&(GUARDED.has(path)||isPublicImmutableArchiveAsset(path)))
+   return new Response(null,{status:204,headers:{
+    "Access-Control-Allow-Origin":"*",
+    "Access-Control-Allow-Methods":"GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Headers":"Cache-Control, Pragma, Accept, Content-Type",
+    "Access-Control-Max-Age":"86400",
+    "Cache-Control":"no-store",
+    "X-Content-Type-Options":"nosniff"}});
   if(request.method!=="GET"&&request.method!=="HEAD")
    return Response.json({ok:false,error:"METHOD_NOT_ALLOWED"},{
     status:405,headers:{"Cache-Control":"no-store"}});
-  const path=new URL(request.url).pathname;
   if(GUARDED.has(path))
    return serveGuardedPublicStaticAsset(request,env);
   if(isPublicImmutableArchiveAsset(path))
