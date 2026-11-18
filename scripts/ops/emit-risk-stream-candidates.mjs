@@ -46,7 +46,7 @@ async function requestJson(fetchImpl,url,options,{sleepImpl=wait,retries=5}={}){
   try{
    const body=await response.json();
    if(typeof body?.error==="string"&&
-      /^(?:RISK_STREAM_[A-Z0-9_]+|UNAUTHORIZED|CONTROL_PLANE_AUTH_UNCONFIGURED)$/u.test(body.error))
+      /^(?:RISK_STREAM_[A-Z0-9_]+|ATTESTER_[A-Z0-9_]+|PRIVATE_CORROBORATION_[A-Z0-9_]+|D1_[A-Z0-9_]+|UNAUTHORIZED|CONTROL_PLANE_AUTH_UNCONFIGURED)$/u.test(body.error))
     responseCode=body.error;
   }catch{}
   // A configured fail-closed hold is not a transient edge failure. Surface

@@ -188,3 +188,17 @@ test("send mode fails before attestation when the live Queue consumer serves a s
   }}),/CONTROL_PLANE_DEPLOYMENT_STALE/u);
  assert.equal(calls,1);
 });
+
+test("503 surfaces attester, private corroboration, and D1 provider error codes",async()=>{
+ for(const code of ["ATTESTER_REFUSED","PRIVATE_CORROBORATION_UNAVAILABLE","D1_WRITE_BUDGET_EXHAUSTED"]){
+  const calls=[];
+  await assert.rejects(emitRiskStreamCandidates({originals:[originals[0]],sourceRegistry,
+   rightsManifest,now,dryRun:false,controlPlaneUrl:"https://control.invalid",
+   controlPlaneToken:"root-test-token",sleepImpl:async()=>{},
+   fetchImpl:async url=>{
+    calls.push(new URL(url).pathname);
+    return {ok:false,status:503,json:async()=>({error:code})};
+   }}),new RegExp("RISK_STREAM_EMITTER_HTTP_REJECTED_503_"+code,"u"));
+  assert.deepEqual(calls,Array(6).fill("/v1/internal/risk-stream/runtime"));
+ }
+});
