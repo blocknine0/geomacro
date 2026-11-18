@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-18T11:26:34.928Z",
+  "checked_at": "2026-11-18T11:28:51.150Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -2111,7 +2111,7 @@
       "severity": null
     },
     {
-      "id": "geopolitics-f0bce519",
+      "id": "geopolitics-dba41b8c",
       "category": "geopolitics",
       "title": "GeoMacro Geopolitics Brief · Geopolitical Security — Israel (ISR)",
       "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported update by public authorities and security actors, affecting geopolitical security in Israel; direction is uncertain (a watchpoint with direction not yet established).",
