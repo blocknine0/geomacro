@@ -426,11 +426,19 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Verify live Risk Stream Queue consumer binding before collector admission
+        id: risk-stream-queue
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/verify-risk-stream-queue-provider.mjs
       - name: Collect source-rights-verified candidate sidecar
+        if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
         run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Dual-attest and admit licensed candidates under daily D1 cap
+        if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
           GEOMACRO_RISK_STREAM_D1_CAP_REQUIRED: "true"
@@ -442,6 +450,8 @@ jobs:
           GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: ${{ github.sha }}
           RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
           RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+          RISK_STREAM_QUEUE_PROVIDER_ID: ${{ steps.risk-stream-queue.outputs.queue_id }}
+          RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256: ${{ steps.risk-stream-queue.outputs.receipt_sha256 }}
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
