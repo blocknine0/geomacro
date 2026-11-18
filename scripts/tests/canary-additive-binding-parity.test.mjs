@@ -138,7 +138,7 @@ test("queue flag is carried from deploy environment through owner attestation an
  const prepare=readFileSync(new URL("../ops/prepare-optimized-worker-candidate.mjs",import.meta.url),"utf8");
  assert.match(attest,/GEOMACRO_RISK_STREAM_QUEUES_BIND/u);
  assert.match(prepare,/predgeRuntimeVars\.GEOMACRO_RISK_STREAM_QUEUES_BIND==='1'/u);
- assert.match(prepare,/diagnoseReviewedHot50BindingDelta\(baseline,candidate,[\\s\\S]*?reviewedSecrets,env\)/u);
+ assert.match(prepare,/diagnoseReviewedHot50BindingDelta\(baseline,candidate,\s*env\.GITHUB_SHA,reviewedSecrets,env\)/u);
  assert.match(prepare,/assessReviewedHot50BindingParity\(baseline,candidate,sha,reviewedSecrets,predgeRuntimeVars\)/u);
 });
 
