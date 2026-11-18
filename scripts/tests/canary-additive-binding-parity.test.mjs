@@ -98,8 +98,14 @@ test("reviewed queue bindings pass parity only when the explicit queue flag is e
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
   {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
  ];
+ const attesters=[
+  {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-facts-attester"},
+  {name:"RISK_STREAM_RIGHTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-rights-attester"}
+ ];
  const base=version(streamBaseline);
- const candidate=version([...streamCandidate,...queues]);
+ const candidate=version([...streamCandidate,...queues,...attesters]);
  const result=assessReviewedHot50BindingParity(base,candidate,sha,
   REVIEWABLE_ADDITIVE_SECRETS,queueRuntime);
  assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
@@ -116,18 +122,24 @@ test("queue additions without the reviewed flag and wrong queue types fail close
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
   {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
  ];
+ const attesters=[
+  {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-facts-attester"},
+  {name:"RISK_STREAM_RIGHTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-rights-attester"}
+ ];
  const base=version(streamBaseline);
  const unflagged=version([...streamCandidate,...queues]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,unflagged,sha,
   REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),/RISK_STREAM_QUEUE_BINDING_UNREVIEWED/);
  const wrongType=version([...streamCandidate,
   {...queues[0],type:"service"},
-  queues[1]
+  queues[1],...attesters
  ]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,wrongType,sha,
   REVIEWABLE_ADDITIVE_SECRETS,{...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"}),
   /RISK_STREAM_QUEUE_TYPE_INVALID_RISK_STREAM_QUEUE/);
- const missing=version([...streamCandidate,queues[0]]);
+ const missing=version([...streamCandidate,queues[0],...attesters]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,missing,sha,
   REVIEWABLE_ADDITIVE_SECRETS,{...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"}),
   /UNREVIEWED_ADDITION/);
@@ -522,6 +534,10 @@ test("--verify remains pinned to the reviewed 0204-0211 physical schema set",()=
 
 test("Risk Stream attester service bindings require the explicit queue review flag",()=>{
  const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
+ const queues=[
+  {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+ ];
  const attesters=[
   {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
    service:"geomacro-risk-stream-facts-attester"},
@@ -529,7 +545,7 @@ test("Risk Stream attester service bindings require the explicit queue review fl
    service:"geomacro-risk-stream-rights-attester"}
  ];
  const base=version(streamBaseline);
- const candidate=version([...streamCandidate,...attesters]);
+ const candidate=version([...streamCandidate,...queues,...attesters]);
  const result=assessReviewedHot50BindingParity(base,candidate,sha,
   REVIEWABLE_ADDITIVE_SECRETS,runtime);
  assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
@@ -547,7 +563,7 @@ test("Risk Stream attester service bindings require the explicit queue review fl
  assert.equal(diagnoseReviewedHot50BindingDelta(base,unflagged,sha,
   REVIEWABLE_ADDITIVE_SECRETS,researchRuntime).status,"UNREVIEWED_BINDING_DELTA_HOLD");
 
- const wrongService=version([...streamCandidate,
+ const wrongService=version([...streamCandidate,...queues,
   {...attesters[0],service:"wrong-attester"},attesters[1]]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,wrongService,sha,
   REVIEWABLE_ADDITIVE_SECRETS,runtime),
@@ -555,12 +571,12 @@ test("Risk Stream attester service bindings require the explicit queue review fl
  assert.equal(diagnoseReviewedHot50BindingDelta(base,wrongService,sha,
   REVIEWABLE_ADDITIVE_SECRETS,runtime).status,"UNREVIEWED_BINDING_DELTA_HOLD");
 
- const wrongType=version([...streamCandidate,
+ const wrongType=version([...streamCandidate,...queues,
   {...attesters[0],type:"queue"},attesters[1]]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,wrongType,sha,
   REVIEWABLE_ADDITIVE_SECRETS,runtime),
   /RISK_STREAM_ATTESTER_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
- const extraMetadata=version([...streamCandidate,
+ const extraMetadata=version([...streamCandidate,...queues,
   {...attesters[0],service_account_id:"unexpected"},attesters[1]]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,extraMetadata,sha,
   REVIEWABLE_ADDITIVE_SECRETS,runtime),
