@@ -62,41 +62,63 @@ const WORKER_GRAPH=`query CanaryWorkerObservability($accountTag:string!,$script:
   }
  }}
 }`;
-/** Read-only network/edge retry; never retries an SLO, D1, permission,
- * signature or binding-parity rejection, and NEVER returns a synthetic PASS. */
+/** Retry only transport failures and explicitly recognized edge propagation lag.
+ * Policy, parity, SLO, signing, permission, and D1 admission errors are never retried. */
+function errorChain(error:any){
+ const rows=[];let current=error;const seen=new Set();
+ while(current&&typeof current==='object'&&!seen.has(current)){
+  seen.add(current);rows.push(current);
+  current=current.cause;
+ }
+ return rows;
+}
+function canaryTransient(error:any){
+ return errorChain(error).some((item:any)=>{
+  const message=String(item?.message??'');
+  const code=String(item?.code??'');
+  return item?.name==='AbortError'||item?.name==='TimeoutError'||
+   /^(?:ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH)$/u.test(code)||
+   /(?:fetch failed|network error|socket hang up|timed?\s*out|timeout|HTTP[_ ](?:429|502|503|504)|STATUS[_ ](?:429|502|503|504))/iu.test(message);
+ });
+}
+function logCanaryUnderlyingError(error:any,log=(entry:string)=>console.error(entry)){
+ const chain=errorChain(error);
+ log(JSON.stringify({event:'CANARY_PROVIDER_RETRY_OR_HOLD',
+  error_message:String(chain[0]?.message??error??'unknown'),
+  cause_message:chain[0]?.cause?String(chain[0].cause?.message??chain[0].cause):null}));
+}
+/** Four total attempts with bounded 2s/4s/8s backoff. */
 export async function retryTransientCanaryProbe<T>(
- operation:()=>Promise<T>,{pause=wait,attempts=3,accept,allowPropagation=false}:any={}
+ operation:()=>Promise<T>,{pause=wait,attempts=4,accept,allowPropagation=false,
+ log=(entry:string)=>console.error(entry)}:any={}
 ):Promise<T>{
- need(Number.isInteger(attempts)&&attempts>=1&&attempts<=3,'CANARY_RETRY_BOUNDS_INVALID');
+ need(Number.isInteger(attempts)&&attempts>=1&&attempts<=4,'CANARY_RETRY_BOUNDS_INVALID');
  let lastError:any;
+ const delays=[2000,4000,8000];
  for(let n=0;n<attempts;n++){
   try{
    const response=await operation();
    const status=Number((response as any)?.status);
-   // A 429 or transient Cloudflare 5xx is not a policy rejection. All
-   // other HTTP failures are returned immediately for the caller to HOLD.
-   const transportRetry=[429,500,502,503,504].includes(status);
+   const transportRetry=[429,502,503,504].includes(status);
    const propagated=allowPropagation&&typeof accept==='function'&&
     !accept(response)&&(!Number.isFinite(status)||status===200);
    if(!transportRetry&&!propagated)return response;
-   lastError=new Error(propagated?'CANARY_PROVIDER_PROPAGATION_NOT_READY':
-    'CANARY_TRANSIENT_HTTP_'+status);
+   lastError=new Error(propagated?'CANARY_PROVIDER_PROPAGATION_NOT_READY':'HTTP_'+status);
   }catch(error){
-   const code=String((error as any)?.message??'');
-   const transient=(error as any)?.name==='AbortError'||
-    (error as any)?.name==='TimeoutError'||error instanceof TypeError||
-    /(?:HTTP[_ ]|STATUS[_ ])(?:429|500|502|503|504)(?:\b|_)/u.test(code);
-   if(!transient)throw error;
+   if(!canaryTransient(error))throw error;
    lastError=error;
   }
-  if(n<attempts-1)await pause(500*(n+1));
+  logCanaryUnderlyingError(lastError,log);
+  if(n<attempts-1)await pause(delays[n]);
  }
- throw new Error(allowPropagation?'CANARY_DIRECTED_TRANSIENT_RETRY_EXHAUSTED':
+ const exhausted=new Error(allowPropagation?'CANARY_DIRECTED_TRANSIENT_RETRY_EXHAUSTED':
   'CANARY_TRANSIENT_NETWORK_RETRY_EXHAUSTED',{cause:lastError});
+ throw exhausted;
 }
 async function liveCurrent({providerApi=api,pause=wait}:any={}):Promise<any>{
  const r=await retryTransientCanaryProbe(()=>providerApi(route+'?per_page=1'),
-  {pause,allowPropagation:true,accept:(v:any)=>Array.isArray(v?.deployments)&&v.deployments.length===1});
+  {pause,allowPropagation:true,
+   accept:(v:any)=>Array.isArray(v?.deployments)&&v.deployments.length===1});
  need(Array.isArray(r.deployments)&&r.deployments.length===1,'CANARY_DEPLOYMENT_UNVERIFIED');
  return r.deployments[0];
 }
@@ -162,25 +184,26 @@ export function verifyDistribution(deployment:any,expected:any[]){
 export async function deployVersions(base:string,candidate:string,percent:number,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=distribution(base,candidate,percent);
- const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
+ const result=await retryTransientCanaryProbe(()=>
+  providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})}),{pause});
+ // An explicit malformed or mismatched deployment response is a parity HOLD.
  if(deploymentVersionsField(result).present)verifyDistribution(result,versions);
- for(let tries=0;tries<6;tries++){
-  try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
- }
- throw Error('CANARY_DEPLOYMENT_READBACK_TIMEOUT');
+ const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,
+  allowPropagation:true,accept:(v:any)=>deploymentVersionsField(v).present});
+ verifyDistribution(observed,versions);
 }
 export async function deployBaseline(base:string,
  {providerApi=api,readCurrent=liveCurrent,pause=wait}:any={}){
  const versions=[{version_id:base,percentage:100}];
- const result=await providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
+ const result=await retryTransientCanaryProbe(()=>
+  providerApi(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})}),{pause});
  if(deploymentVersionsField(result).present)verifyDistribution(result,versions);
- for(let tries=0;tries<6;tries++){
-  try{verifyDistribution(await readCurrent(),versions);return}catch{await pause(3000)}
- }
- throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
+ const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,
+  allowPropagation:true,accept:(v:any)=>deploymentVersionsField(v).present});
+ verifyDistribution(observed,versions);
 }
 export async function checkSource(candidate:string,expectedSha:string,fetchImpl=fetch,
- {pause=wait}:any={}){
+ {pause=wait,log=(entry:string)=>console.error(entry)}:any={}){
  const headers={'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`};
  const request=async(path:string)=>{
   const response=await fetchImpl(ORIGIN+path,{headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
@@ -189,12 +212,12 @@ export async function checkSource(candidate:string,expectedSha:string,fetchImpl=
  // A 200 with an old source SHA on a directed version override is a
  // propagation symptom ONLY for bounded retries; after 3 reads it HOLDs.
  const health=await retryTransientCanaryProbe(()=>request('/health'),{
-  pause,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true&&
+  pause,attempts:4,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true&&
    v.body?.deployed_source_sha===expectedSha});
  need(health.status===200&&health.body?.ok===true&&
   health.body?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
  const readiness=await retryTransientCanaryProbe(()=>request('/v1/public/risk-gate-d1-readiness'),{
-  pause,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.status==='ready'});
+  pause,attempts:4,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.status==='ready'});
  const checks=readiness.body?.checks;
  need(readiness.status===200&&readiness.body?.status==='ready'&&
   checks?.database===true&&checks?.audit_store===true&&
@@ -244,10 +267,11 @@ export async function verifiedLiveObservability(start:string,end:string,version:
  };
  let graph;
  try{
-  graph=zone?
-   await query(GRAPH,{accountTag:account,script:WORKER,zoneTag:zone,host:'api.geomacro.live',start,end}):
-   await query(WORKER_GRAPH,{accountTag:account,script:WORKER,start,end});
+  graph=await retryTransientCanaryProbe(()=>zone?
+   query(GRAPH,{accountTag:account,script:WORKER,zoneTag:zone,host:'api.geomacro.live',start,end}):
+   query(WORKER_GRAPH,{accountTag:account,script:WORKER,start,end}),{attempts:4,log});
  }catch(error){
+  logCanaryUnderlyingError(error,log);
   const code=holdError(error);
   // Analytics is an observational SLO signal, not an authorization gate. If
   // an unzoned Lovable domain cannot obtain Worker GraphQL telemetry, record
@@ -312,10 +336,9 @@ export async function verifiedLiveObservability(start:string,end:string,version:
 // All D1 databases and every day in the 5th-to-5th Paid billing cycle,
 // never only the current UTC day. GraphQL telemetry lags; a provider
 // response is a read-only observation, NOT an atomic payment/spend ceiling.
-async function checkLiveD1Budget(){
- const now=new Date();
- const receipt=await checkD1PaidMonthlyHeadroom({
-  env:process.env,now,lane:'canary'});
+async function checkLiveD1Budget({headroom=checkD1PaidMonthlyHeadroom,now=new Date(),pause=wait}:any={}){
+ const receipt=await retryTransientCanaryProbe(()=>headroom({
+  env:process.env,now,lane:'canary'}),{pause,attempts:4});
  need(receipt.status==='PASS'&&
   receipt.provider_subscription_verified===true&&
   receipt.old_daily_140k_policy_applied===false&&
@@ -403,43 +426,51 @@ export function assertD1ObservedHourlyPace(start:any,latest:any){
   max_reads_per_hour:readRateMax,max_writes_per_hour:writeRateMax,
   observed_window_ms:ms,metrics_are_delayed:true};
 }
-async function observeStage(base:string,candidate:string,pct:number,sha:string){
+export async function observeStage(base:string,candidate:string,pct:number,sha:string,
+ {budgetProbe=checkLiveD1Budget,sourceProbe=(id:string,hash:string)=>checkSource(id,hash,fetch,{pause}),
+  currentDeployment=()=>liveCurrent({pause}),observabilityProbe=verifiedLiveObservability,
+  pause=wait,now=Date.now,windowMs:windowOverride}:any={}){
+ const probeBudget=()=>retryTransientCanaryProbe(()=>budgetProbe(),{pause,attempts:4});
+ const probeCurrent=()=>retryTransientCanaryProbe(()=>currentDeployment(),{pause,attempts:4,
+  allowPropagation:true,accept:(v:any)=>deploymentVersionsField(v).present});
+ const probeObservability=(...args:any[])=>retryTransientCanaryProbe(()=>observabilityProbe(...args),
+  {pause,attempts:4});
  const began=Date.now();let intervals=0;
  const windowMs=stageWindowMs(pct);
  // Inspect provider D1 spend at the start and every two health ticks.
  // A missing delayed provider receipt is HOLD, never a synthetic PASS.
- let d1=await checkLiveD1Budget();
+ let d1=await probeBudget();
  const initialD1=d1;
  let rate={status:'INSUFFICIENT_INTERVAL'} as any;
  while(Date.now()-began<windowMs){
   if(pct===0){
    // Version override can target the candidate only when the 0%-candidate
    // participates in the Cloudflare split deployment; baseline keeps 100%.
-   await checkSource(candidate,sha);
+   await sourceProbe(candidate,sha);
    const baseline=await retryTransientCanaryProbe(async()=>{
     const health=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
     return {status:health.status,body:await health.json().catch(()=>null)};
-   },{allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true});
+   },{pause,attempts:4,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true});
    need(baseline.status===200&&baseline.body?.ok===true,'CANARY_BASELINE_HEALTH_UNAVAILABLE');
-  }else await checkSource(candidate,sha);
-  const x=await liveCurrent();verifyDistribution(x,distribution(base,candidate,pct));
+  }else await sourceProbe(candidate,sha);
+  const x=await probeCurrent();verifyDistribution(x,distribution(base,candidate,pct));
   intervals++;
   if(intervals%2===0){
-   d1=await checkLiveD1Budget();
+   d1=await probeBudget();
    rate=assertD1ObservedHourlyPace(initialD1,d1);
    // Early complete provider windows may be under the statistical floor; once
    // 1000 real observations exist, any 5xx/latency regression rolls back now.
-   if(Date.now()-began>=120000){
-    const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
+   if(now()-began>=120000){
+    const result=await probeObservability(new Date(began).toISOString(),new Date(now()).toISOString(),
      pct===0?base:candidate,false);
     if(result)need(result.worker_error_ratio_under_0_5pct&&
      (!result.zone_http_5xx_verified||result.http_5xx_under_0_5pct)&&
      result.version_errors_under_0_5pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
    }
   }
-  await wait(Math.min(INTERVAL_MS,Math.max(1,windowMs-(Date.now()-began))));
+  await pause(Math.min(INTERVAL_MS,Math.max(1,windowMs-(now()-began))));
  }
- d1=await checkLiveD1Budget();
+ d1=await probeBudget();
  rate=assertD1ObservedHourlyPace(initialD1,d1);
  need(rate.status==='PASS_OBSERVED_PAID_MONTHLY_PACE',
   'CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED');
@@ -449,7 +480,7 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
   (!result.zone_http_5xx_verified||result.http_5xx_under_0_5pct)&&
   result.version_errors_under_0_5pct&&result.p99_under_50ms,
   'CANARY_SLO_BREACH');
- return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,
+ return {stage_percent:pct,verified_minutes:(now()-began)/60000,intervals,
   ...(result??{worker_metrics_status:'DELAYED_OR_EMPTY',
    worker_metrics_unavailable_reason:'PROVIDER_WINDOW_NOT_YET_POPULATED',
    worker_script_version:pct===0?base:candidate,worker_requests:null,worker_errors:null,
