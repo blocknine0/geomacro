@@ -205,7 +205,7 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
  }
  if(queueBindingFlag==="1"){
   for(const name of queueNames)
-   if(current.get(name)?.type!=="queue")
+   if(current.has(name)&&current.get(name)?.type!=="queue")
     deny("RISK_STREAM_QUEUE_TYPE_INVALID_"+name);
  }else{
   for(const name of queueNames)
