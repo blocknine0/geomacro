@@ -5,6 +5,7 @@
  */
 import {createHash,createHmac} from "node:crypto";
 import {createB2Client} from "./b2-s3-client.mjs";
+import {requireGdeltV2B2PacedHeadroom} from "../lib/gdelt-v2-b2-quota-preflight.mjs";
 import {writeFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {readGdeltStaticArchive} from "../lib/gdelt-gkg-bulk-discovery.mjs";
@@ -252,6 +253,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     !process.env.CLOUDFLARE_API_TOKEN||
     !process.env.CLOUDFLARE_ACCOUNT_ID||!process.env.D1_DATABASE_ID)
    throw Error("RG_GDELT_B2_D1_GOVERNANCE_REQUIRED");
+  // Avoid fetching a new ZIP or spending B2 operations if the shared
+  // provider-backed quota cannot admit the immutable PUT + independent GET.
+  // A later scheduled run rechecks fresh counters after UTC quota renewal.
+  await requireGdeltV2B2PacedHeadroom({env:process.env});
   const b2=createB2Client({
    endpointUrl:"https://s3.us-east-005.backblazeb2.com",
    accessKey:process.env.B2_KEY_ID,
