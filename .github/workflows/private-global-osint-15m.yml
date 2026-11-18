@@ -406,6 +406,9 @@ jobs:
           echo "::notice::D1_BUDGET_ADMISSION_${D1_ADMISSION_STATE}; held source jobs are not completed ingestion. No records or coverage counts invented."
 
   risk-stream-sidecar:
+    # When source_intake is admitted, the bounded collect-source-intake-only
+    # job performs this same receipt-gated sidecar inline; do not run a second
+    # collector/emitter for one quota observation.
     name: Paid-cap-admitted licensed Risk Stream candidates
     needs: [verify, quota-admission]
     if: >-
@@ -538,8 +541,10 @@ jobs:
           retention-days: 7
 
   collect-private:
-    # Only a human dispatch may run the legacy full 768-item research
-    # pipeline; daily scheduled ingestion uses five-row micro-bundles.
+    # Only a human dispatch with the research lane admitted may run the legacy
+    # full 768-item research pipeline. A CRITICAL_ONLY dispatch must use the
+    # bounded collect-source-intake-only path below, which carries the provider
+    # max-row admission and can emit the admitted Risk Stream sidecar.
     # Serialize D1 source writes with the five-minute fastlane; never
     # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
     concurrency:
@@ -597,6 +602,8 @@ jobs:
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' &&
+        needs.quota-admission.outputs.research != 'true') ||
        (github.event_name == 'workflow_run' &&
         (github.event.workflow_run.name == 'Deploy D1 Control Plane' ||
          github.event.workflow_run.name == 'Website Derived News Continuity' ||
@@ -865,6 +872,8 @@ jobs:
 
 
   stage-private-sources-when-d1-held:
+    # A source_intake=true admission is handled by the bounded source-only job
+    # above; this D1-held fallback is only for cycles without that admission.
     name: Preserve actual native-dated source observations when canonical D1 is held
     concurrency:
       group: geomacro-permanent-news-publication
