@@ -464,12 +464,17 @@ test("no-zone GraphQL provider and access failures emit safe diagnostics and fal
     log:entry=>logs.push(entry)
    });
   assert.equal(fallback,null,code);
-  assert.equal(logs.length,1,code);
-  const diagnostic=JSON.parse(logs[0]);
+  // Preserve the underlying safe provider code before emitting the fixed
+  // fallback receipt; secret-bearing provider text is never accepted here.
+  assert.equal(logs.length,2,code);
+  const underlying=JSON.parse(logs[0]);
+  assert.equal(underlying.event,"CANARY_PROVIDER_RETRY_OR_HOLD");
+  assert.equal(underlying.error_message,code);
+  const diagnostic=JSON.parse(logs[1]);
   assert.deepEqual(diagnostic,{status:"DEGRADED",code:"CANARY_WORKER_TELEMETRY_UNAVAILABLE",
    diagnostic_code:code,version:"11111111-1111-4111-8111-111111111111",
    fallback:"DIRECTED_HEALTH_READINESS_D1_MONTHLY_HEADROOM_SIGNED_B2_D1_PROOFS"});
-  assert.doesNotMatch(logs[0],/DO_NOT_LOG_PROVIDER_MESSAGE/u);
+  assert.doesNotMatch(logs.join("\\n"),/DO_NOT_LOG_PROVIDER_MESSAGE/u);
  }
 });
 
