@@ -67,6 +67,10 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
  if(reviewerService&&!oldReviewer)
   inheritedBindings.push({name:'GEOMACRO_RELEASE_REVIEWER',type:'service',
    service:reviewerService});
+ if(STREAM_MODE==='PRODUCTION'&&!names.has('RISK_STREAM_QUEUE'))
+  inheritedBindings.push({name:'RISK_STREAM_QUEUE',type:'queue',queue_name:'geomacro-risk-stream'});
+ if(STREAM_MODE==='PRODUCTION'&&!names.has('RISK_STREAM_DELIVERY_QUEUE'))
+  inheritedBindings.push({name:'RISK_STREAM_DELIVERY_QUEUE',type:'queue',queue_name:'geomacro-risk-stream-delivery'});
  return {name:NAME,main:'src/index.mjs',
   compatibility_date:runtime.compatibility_date,
   compatibility_flags:runtime.compatibility_flags??[],
