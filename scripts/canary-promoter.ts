@@ -209,8 +209,8 @@ export async function checkSource(candidate:string,expectedSha:string,fetchImpl=
   const response=await fetchImpl(ORIGIN+path,{headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
   return {status:response.status,body:await response.json().catch(()=>null)};
  };
- // A 200 with an old source SHA on a directed version override is a
- // propagation symptom ONLY for bounded retries; after 3 reads it HOLDs.
+ // A 200 with an old source SHA is retried only within the fixed attempt bound;
+ // a persistent mismatch still HOLDs.
  const health=await retryTransientCanaryProbe(()=>request('/health'),{
   pause,attempts:4,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true&&
    v.body?.deployed_source_sha===expectedSha});
@@ -427,22 +427,20 @@ export function assertD1ObservedHourlyPace(start:any,latest:any){
   observed_window_ms:ms,metrics_are_delayed:true};
 }
 export async function observeStage(base:string,candidate:string,pct:number,sha:string,
- {budgetProbe=checkLiveD1Budget,sourceProbe=(id:string,hash:string)=>checkSource(id,hash,fetch,{pause}),
+ {budgetProbe=()=>checkLiveD1Budget({pause}),sourceProbe=(id:string,hash:string)=>checkSource(id,hash,fetch,{pause}),
   currentDeployment=()=>liveCurrent({pause}),observabilityProbe=verifiedLiveObservability,
   pause=wait,now=Date.now,windowMs:windowOverride}:any={}){
- const probeBudget=()=>retryTransientCanaryProbe(()=>budgetProbe(),{pause,attempts:4});
- const probeCurrent=()=>retryTransientCanaryProbe(()=>currentDeployment(),{pause,attempts:4,
-  allowPropagation:true,accept:(v:any)=>deploymentVersionsField(v).present});
- const probeObservability=(...args:any[])=>retryTransientCanaryProbe(()=>observabilityProbe(...args),
-  {pause,attempts:4});
- const began=Date.now();let intervals=0;
- const windowMs=stageWindowMs(pct);
+ const probeBudget=()=>budgetProbe();
+ const probeCurrent=()=>currentDeployment();
+ const probeObservability=(...args:any[])=>observabilityProbe(...args);
+ const began=now();let intervals=0;
+ const windowMs=windowOverride??stageWindowMs(pct);
  // Inspect provider D1 spend at the start and every two health ticks.
  // A missing delayed provider receipt is HOLD, never a synthetic PASS.
  let d1=await probeBudget();
  const initialD1=d1;
  let rate={status:'INSUFFICIENT_INTERVAL'} as any;
- while(Date.now()-began<windowMs){
+ while(now()-began<windowMs){
   if(pct===0){
    // Version override can target the candidate only when the 0%-candidate
    // participates in the Cloudflare split deployment; baseline keeps 100%.
@@ -474,7 +472,7 @@ export async function observeStage(base:string,candidate:string,pct:number,sha:s
  rate=assertD1ObservedHourlyPace(initialD1,d1);
  need(rate.status==='PASS_OBSERVED_PAID_MONTHLY_PACE',
   'CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED');
- const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
+ const result=await probeObservability(new Date(began).toISOString(),new Date(now()).toISOString(),
   pct===0?base:candidate,true);
  if(result)need(result.worker_error_ratio_under_0_5pct&&
   (!result.zone_http_5xx_verified||result.http_5xx_under_0_5pct)&&
@@ -794,5 +792,5 @@ async function main(){
  console.log(JSON.stringify({status:'PASS',stages:records.length,remote_hold_unchanged:true}));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- main().catch(e=>{console.error(JSON.stringify({status:'HOLD',code:holdError(e),payments:0}));process.exitCode=2});
+ main().catch(e=>{logCanaryUnderlyingError(e);console.error(JSON.stringify({status:'HOLD',code:holdError(e),payments:0}));process.exitCode=2});
 }
