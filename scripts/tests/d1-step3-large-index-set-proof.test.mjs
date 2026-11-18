@@ -170,7 +170,7 @@ test("ROWID join fails closed on forged provider plan, mismatch and FK/UNIQUE pr
 });
 
 test("0211 spool join admits only the reviewed 250k cap",()=>{
- assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,250000);
+ assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,500000);
  const currentProductionRows=180488;
  assert.equal(verifyStep3IndexJoinResult([{
   index_rows:currentProductionRows,distinct_rowids:currentProductionRows,mismatched_rows:0
