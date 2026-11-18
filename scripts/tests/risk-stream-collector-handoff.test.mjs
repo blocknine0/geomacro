@@ -15,6 +15,7 @@ test("scheduled direct and private collectors hand only complete licensed sideca
   assert.doesNotMatch(workflow,/vars\.RISK_STREAM_ACTIVE == '1'.{0,180}emit-risk-stream-collector-sidecar/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_FACTS_SPKI_B64/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_RIGHTS_SPKI_B64/u);
+  assert.match(workflow,/GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ vars\.GEOMACRO_STEP3_REVIEWED_SHA \|\| github\.sha \}\}/u);
  }
  const sidecar=read("scripts/ops/emit-risk-stream-collector-sidecar.mjs");
  assert.match(sidecar,/NO_ITEM_LICENSE_VERIFIED_CANDIDATES/u);
@@ -27,8 +28,6 @@ test("scheduled direct and private collectors hand only complete licensed sideca
  assert.match(emitter,/risk-stream\/events/u);
  assert.match(emitter,/risk-stream\/readback/u);
  assert.match(emitter,/d1_readback_verified:true/u);
- assert.match(read(".github/workflows/private-global-osint-15m.yml"),
-  /GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ github\.sha \}\}/u);
  const workflow=read(".github/workflows/private-global-osint-15m.yml");
  assert.match(workflow,/node scripts\/ops\/verify-risk-stream-queue-provider\.mjs/u);
  assert.match(workflow,/RISK_STREAM_QUEUE_PROVIDER_RECEIPT_SHA256/u);
