@@ -81,7 +81,7 @@ macroReport.signals=deriveStatelessSignals(macro.candidates,runAt,{maxSignals:40
 for(const shared of macroReport.primary_publisher_status??[]){
  if(["fed_press","ecb_press"].includes(shared.id))macro.state.source_checks=[...macro.state.source_checks.filter(c=>c.id!==shared.id),{id:shared.id,state:shared.reachable?"OK":"UNAVAILABLE",candidates:shared.native_candidate_count}];
 }
-console.log(JSON.stringify(macro.receipt));
+console.log("%s", JSON.stringify(macro.receipt));
 const mineral=await collectCriticalMineralsFastlane({now:runAt,state:previousMacroState,reusedCandidates:privateOriginals,
  macroNeedsFallback:macro.state.source_checks.some(c=>!["OK","NOT_MODIFIED"].includes(c.state))||!macro.candidates.some(c=>runAt-Date.parse(c.publishedAt)<=60*60000)});
 macro.state.mineral_cursors=mineral.cursors;
@@ -91,7 +91,7 @@ for(const category of ["macro","rare_earth"] as const){
  const report=reports.find(r=>r.category===category);
  if(report)report.signals=[...new Map([...report.signals,...mineral.signals.filter(s=>s.category===category)].map(s=>[s.id,s])).values()].sort((a,b)=>b.published_at.localeCompare(a.published_at)).slice(0,60);
 }
-console.log(JSON.stringify(mineral.receipt));
+console.log("%s", JSON.stringify(mineral.receipt));
 // Phase 2I-B: original source candidates were previously kept only in memory.
 // Reuse the existing protected Phase 2H endpoint, never B2 or a new pipeline.
 // Share precisely the current admission's bounded source-intake row budget.
