@@ -72,6 +72,17 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   inheritedBindings.push({name:'RISK_STREAM_QUEUE',type:'queue',queue_name:'geomacro-risk-stream'});
  if(attachRiskQueues&&!names.has('RISK_STREAM_DELIVERY_QUEUE'))
   inheritedBindings.push({name:'RISK_STREAM_DELIVERY_QUEUE',type:'queue',queue_name:'geomacro-risk-stream-delivery'});
+ const riskStreamAttesters=[
+  {name:'RISK_STREAM_FACTS_ATTESTER',service:'geomacro-risk-stream-facts-attester'},
+  {name:'RISK_STREAM_RIGHTS_ATTESTER',service:'geomacro-risk-stream-rights-attester'}
+ ];
+ if(attachRiskQueues)
+  for(const {name,service} of riskStreamAttesters){
+   const existing=bindings.find(binding=>binding.name===name);
+   if(existing&&(existing.type!=='service'||existing.service!==service))
+    throw Error('CANDIDATE_RISK_STREAM_ATTESTER_SERVICE_BINDING_MISMATCH_'+name);
+   if(!existing)inheritedBindings.push({name,type:'service',service});
+  }
  return {name:NAME,main:'src/index.mjs',
   compatibility_date:runtime.compatibility_date,
   compatibility_flags:runtime.compatibility_flags??[],
