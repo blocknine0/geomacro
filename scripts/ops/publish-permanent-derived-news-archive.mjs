@@ -727,6 +727,7 @@ if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])
       diagnostic_code:safePermanentArchiveDiagnostic(error),
       error_name:String(error?.name??"").slice(0,64),
       error_code:String(error?.code??"").slice(0,64),
+      error_token:String(error?.message??"").replace(/[^A-Za-z0-9_:-]/g,"_").slice(0,80),
     }));
     process.exitCode=2;
   });
