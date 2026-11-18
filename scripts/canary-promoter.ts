@@ -62,8 +62,41 @@ const WORKER_GRAPH=`query CanaryWorkerObservability($accountTag:string!,$script:
   }
  }}
 }`;
-async function liveCurrent():Promise<any>{
- const r=await api(route+'?per_page=1');
+/** Read-only network/edge retry; never retries an SLO, D1, permission,
+ * signature or binding-parity rejection, and NEVER returns a synthetic PASS. */
+export async function retryTransientCanaryProbe<T>(
+ operation:()=>Promise<T>,{pause=wait,attempts=3,accept,allowPropagation=false}:any={}
+):Promise<T>{
+ need(Number.isInteger(attempts)&&attempts>=1&&attempts<=3,'CANARY_RETRY_BOUNDS_INVALID');
+ let lastError:any;
+ for(let n=0;n<attempts;n++){
+  try{
+   const response=await operation();
+   const status=Number((response as any)?.status);
+   // A 429 or transient Cloudflare 5xx is not a policy rejection. All
+   // other HTTP failures are returned immediately for the caller to HOLD.
+   const transportRetry=[429,500,502,503,504].includes(status);
+   const propagated=allowPropagation&&typeof accept==='function'&&
+    !accept(response)&&(!Number.isFinite(status)||status===200);
+   if(!transportRetry&&!propagated)return response;
+   lastError=new Error(propagated?'CANARY_PROVIDER_PROPAGATION_NOT_READY':
+    'CANARY_TRANSIENT_HTTP_'+status);
+  }catch(error){
+   const code=String((error as any)?.message??'');
+   const transient=(error as any)?.name==='AbortError'||
+    (error as any)?.name==='TimeoutError'||error instanceof TypeError||
+    /(?:HTTP[_ ]|STATUS[_ ])(?:429|500|502|503|504)(?:\b|_)/u.test(code);
+   if(!transient)throw error;
+   lastError=error;
+  }
+  if(n<attempts-1)await pause(500*(n+1));
+ }
+ throw new Error(allowPropagation?'CANARY_DIRECTED_TRANSIENT_RETRY_EXHAUSTED':
+  'CANARY_TRANSIENT_NETWORK_RETRY_EXHAUSTED',{cause:lastError});
+}
+async function liveCurrent({providerApi=api,pause=wait}:any={}):Promise<any>{
+ const r=await retryTransientCanaryProbe(()=>providerApi(route+'?per_page=1'),
+  {pause,allowPropagation:true,accept:(v:any)=>Array.isArray(v?.deployments)&&v.deployments.length===1});
  need(Array.isArray(r.deployments)&&r.deployments.length===1,'CANARY_DEPLOYMENT_UNVERIFIED');
  return r.deployments[0];
 }
@@ -146,16 +179,22 @@ export async function deployBaseline(base:string,
  }
  throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
 }
-export async function checkSource(candidate:string,expectedSha:string,fetchImpl=fetch){
+export async function checkSource(candidate:string,expectedSha:string,fetchImpl=fetch,
+ {pause=wait}:any={}){
  const headers={'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`};
  const request=async(path:string)=>{
   const response=await fetchImpl(ORIGIN+path,{headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
   return {status:response.status,body:await response.json().catch(()=>null)};
  };
- const health=await request('/health');
+ // A 200 with an old source SHA on a directed version override is a
+ // propagation symptom ONLY for bounded retries; after 3 reads it HOLDs.
+ const health=await retryTransientCanaryProbe(()=>request('/health'),{
+  pause,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true&&
+   v.body?.deployed_source_sha===expectedSha});
  need(health.status===200&&health.body?.ok===true&&
   health.body?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
- const readiness=await request('/v1/public/risk-gate-d1-readiness');
+ const readiness=await retryTransientCanaryProbe(()=>request('/v1/public/risk-gate-d1-readiness'),{
+  pause,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.status==='ready'});
  const checks=readiness.body?.checks;
  need(readiness.status===200&&readiness.body?.status==='ready'&&
   checks?.database===true&&checks?.audit_store===true&&
@@ -377,9 +416,11 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
    // Version override can target the candidate only when the 0%-candidate
    // participates in the Cloudflare split deployment; baseline keeps 100%.
    await checkSource(candidate,sha);
-   const health=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
-   const status=await health.json().catch(()=>null);
-   need(health.status===200&&status?.ok===true,'CANARY_BASELINE_HEALTH_UNAVAILABLE');
+   const baseline=await retryTransientCanaryProbe(async()=>{
+    const health=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
+    return {status:health.status,body:await health.json().catch(()=>null)};
+   },{allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true});
+   need(baseline.status===200&&baseline.body?.ok===true,'CANARY_BASELINE_HEALTH_UNAVAILABLE');
   }else await checkSource(candidate,sha);
   const x=await liveCurrent();verifyDistribution(x,distribution(base,candidate,pct));
   intervals++;
