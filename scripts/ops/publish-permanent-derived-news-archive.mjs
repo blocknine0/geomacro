@@ -608,7 +608,7 @@ export async function publishPermanentDerivedNewsArchive({
     writeFileSync(dataCoverage,JSON.stringify(nextCoverage,null,2)+"\n",{encoding:"utf8",mode:0o644});
     writeFileSync(dataDaily,JSON.stringify(nextDaily,null,2)+"\n",{encoding:"utf8",mode:0o644});
     writeFileSync(join(dataDir,"website-intelligence-predge-72h.json"),
-      JSON.stringify(buildWebsitePilotSnapshot(recent,now),null,2)+"\n",
+      JSON.stringify(buildWebsitePilotSnapshot(recent.slice(0,600),now),null,2)+"\n",
       {encoding:"utf8",mode:0o644});
   }
 
