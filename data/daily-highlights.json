@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-18T14:27:19.750Z",
+  "generated_at": "2026-11-18T16:39:19.516Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-ddf0f99c",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The UK further welcomes the strengthened cooperation between the Office of the Prosecutor and the Libyan authorities · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The UK further welcomes the strengthened cooperation between the Office of the Prosecutor and the Libyan authorities. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-18T16:28:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-070063a3",
       "category": "geopolitics",
@@ -269,25 +288,6 @@
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-be331f64",
-      "category": "geopolitics",
-      "title": "Geomacro finds Security Council: adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "Security Council adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes.",
-      "geography": null,
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-05T17:10:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "United Nations"
-      ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
