@@ -6,6 +6,7 @@ import {privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst} from
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {collectCriticalMineralsFastlane} from "../lib/critical-minerals-fastlane.mjs";
 import {collectMacroFastlane} from "../lib/macro-fastlane-collector.mjs";
+import {persistMacroFastlaneState} from "../lib/macro-fastlane-state-publisher.mjs";
 import {stagePhase2iFastlanePrivateOriginals} from "../lib/phase2ib-fastlane-private-staging.mjs";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model";
 /**
@@ -80,7 +81,7 @@ macroReport.signals=deriveStatelessSignals(macro.candidates,runAt,{maxSignals:40
 for(const shared of macroReport.primary_publisher_status??[]){
  if(["fed_press","ecb_press"].includes(shared.id))macro.state.source_checks=[...macro.state.source_checks.filter(c=>c.id!==shared.id),{id:shared.id,state:shared.reachable?"OK":"UNAVAILABLE",candidates:shared.native_candidate_count}];
 }
-console.log(JSON.stringify(macro.receipt));
+console.log("%s", JSON.stringify(macro.receipt));
 const mineral=await collectCriticalMineralsFastlane({now:runAt,state:previousMacroState,reusedCandidates:privateOriginals,
  macroNeedsFallback:macro.state.source_checks.some(c=>!["OK","NOT_MODIFIED"].includes(c.state))||!macro.candidates.some(c=>runAt-Date.parse(c.publishedAt)<=60*60000)});
 macro.state.mineral_cursors=mineral.cursors;
@@ -90,7 +91,7 @@ for(const category of ["macro","rare_earth"] as const){
  const report=reports.find(r=>r.category===category);
  if(report)report.signals=[...new Map([...report.signals,...mineral.signals.filter(s=>s.category===category)].map(s=>[s.id,s])).values()].sort((a,b)=>b.published_at.localeCompare(a.published_at)).slice(0,60);
 }
-console.log(JSON.stringify(mineral.receipt));
+console.log("%s", JSON.stringify(mineral.receipt));
 // Phase 2I-B: original source candidates were previously kept only in memory.
 // Reuse the existing protected Phase 2H endpoint, never B2 or a new pipeline.
 // Share precisely the current admission's bounded source-intake row budget.
@@ -236,8 +237,18 @@ if(journalVerified){
   for(const cursor of Object.values(macro.state.mineral_cursors) as {etag:string|null}[])cursor.etag=null;
   console.log(JSON.stringify({schema:'geomacro.source-intake-deferred-records.v1',rows:pending.length-publishPending.length,feed_etags_advanced:false}));
  }
- const response=await fetch(macroStateUrl,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(macro.state),signal:AbortSignal.timeout(12000)});
- if(!response.ok){failure=true;console.error("::error::MACRO_BUNDLE_STATE_WRITE_FAILED");}
+ try{
+  const verified=await persistMacroFastlaneState({
+   fetchImpl:globalThis.fetch,url:macroStateUrl,token,state:macro.state,
+  });
+  console.log(JSON.stringify(verified));
+ }catch(error){
+  // Emit only the stable diagnostic code, never state, article text, URLs or
+  // bearer. A failed PUT/readback never advances the intake success clock.
+  failure=true;
+  const code=String((error as Error)?.message??'MACRO_STATE_UNKNOWN');
+  console.error('::error::MACRO_BUNDLE_STATE_WRITE_FAILED:'+ (/^[A-Z0-9_]{5,110}$/.test(code)?code:'MACRO_STATE_UNKNOWN'));
+ }
  // The existing Predge continuity monitor reads these authenticated source
  // checkpoints. Refresh only after actual publication and complete readback.
  try{

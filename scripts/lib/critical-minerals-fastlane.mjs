@@ -11,7 +11,10 @@ export {MINERALS_MESH,MINERALS_SOURCE_IDS} from "./critical-minerals-registry.mj
 // Cache-by-URL guarantees no additional GET in any successful Africa read.
 const globalAlternative=feed('miningweekly','https://www.miningweekly.com/page/latest-news/feed','global');
 const googleMinerals=feed('google_minerals','https://news.google.com/rss/search?q='+encodeURIComponent('(\"critical minerals\" OR \"rare earth\" OR lithium OR cobalt OR nickel OR graphite OR copper OR gallium OR germanium) (export OR supply OR mine OR policy OR sanctions) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
-const financialAlternative=feed('fxstreet_news','https://www.fxstreet.com/rss/news','global');
+// Publisher-restricted FXStreet is never polled to obtain commercially used text.
+// This Federal Reserve first-party RSS is a noncommercial discovery radar;
+// source-role and original-page evidence must be revalidated separately.
+const financialAlternative=feed('fed_press_official_radar','https://www.federalreserve.gov/feeds/press_all.xml','global');
 const googleMacro=feed('google_macro_metals','https://news.google.com/rss/search?q='+encodeURIComponent('(forex OR \"central bank\" OR gold OR silver) (rates OR demand OR supply OR intervention OR reserves) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
 const mineralNative=/(?:\b(?:litio|cobalto|cobre|n[ií]quel|grafito|tierras raras|minerales cr[ií]ticos|minera[cç][aã]o|min[eé]raux critiques|seltene erden)\b|关键矿产|稀土|锂|钴|희토류|리튬|редкозем)/iu;
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
@@ -51,17 +54,17 @@ export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=
    const old=cursors[spec.id];
    if(old?.retry_after>now){checks.push({id:spec.id,state:'COOLDOWN',candidates:0});return {healthy:false,recent:false};}
    try{
-    requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag,maxBytes:1024*1024});
+    requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag,lastModified:old?.last_modified,maxBytes:1024*1024});
     if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return {healthy:true,recent:false};}
     const rows=parseSectorFeed(data.text,spec,now);signals.push(...rows);
-    cursors[spec.id]={etag:data.etag,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
+    cursors[spec.id]={etag:data.etag,last_modified:data.lastModified??null,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
     return {healthy:true,recent:rows.some(s=>now-Date.parse(s.published_at)<=60*60000)};
    }catch(e){
     const message=String(e?.message??'');
     const denied=/ACCESS_DENIED|RATE_LIMITED/.test(message);
     const reason=denied?'ACCESS_DENIED':message==='OVERSIZE'?'OVERSIZE':
       message==='SECTOR_FEED_INVALID'?'FEED_SHAPE_INVALID':'UNAVAILABLE';
-    cursors[spec.id]={etag:null,retry_after:now+(denied?15:5)*60000,checked_at:now};
+    cursors[spec.id]={etag:null,retry_after:now+(reason==='ACCESS_DENIED'?60:message==='RATE_LIMITED'?15:5)*60000,checked_at:now};
     checks.push({id:spec.id,state:reason,candidates:0});
     return {healthy:false,recent:false};
    }

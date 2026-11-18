@@ -1,5 +1,6 @@
 import {createHash} from "node:crypto";
 import {COMMERCIAL_SOURCE_RIGHTS_EVIDENCE} from "../commercial-source-rights-evidence.mjs";
+import {redactedRightsRadar} from "./rights-redacted-speed-radar.mjs";
 
 /**
  * Rights intake planner, NOT a rights issuer.
@@ -213,6 +214,10 @@ export function planGeomacroCommercialRightsIntake(
   countries_in_queue:[...new Set(rows.map(x=>x.country_iso3))].length,
   event_claim_candidates:groups.length,
   groups,items:rows,duplicates:dup,
+  lane_b_redacted_radar:rows.map(row=>redactedRightsRadar({
+   category:row.category,country_iso3:row.country_iso3,
+   same_event_claim_sha256:row.same_event_claim_sha256,
+   original_published_at:row.original_published_at})),
   issuer_facts_signatures_created:0,
   issuer_rights_signatures_created:0,gro_signatures_created:0,
   real_source_legal_rights_created:0,
@@ -225,8 +230,10 @@ export function planGeomacroCommercialRightsIntake(
 }
 export function privateRightsIntakePublicSummary(plan){
  if(plan?.schema!==RIGHTS_INTAKE_SCHEMA)fail();
- const {items,groups,duplicates,...publicParts}=plan;
+ const {items,groups,duplicates,lane_b_redacted_radar,...publicParts}=plan;
  return Object.freeze({...publicParts,
+  redacted_speed_radar_signals:lane_b_redacted_radar?.length??0,
+  redacted_speed_radar_not_a_commercial_rights_grant:true,
   private_items_redacted:true,
   private_groups_redacted:true,
   private_original_uris_redacted:true,

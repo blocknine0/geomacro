@@ -26,7 +26,8 @@ async function fixture(category="GEOPOLITICS",sourceCount=2,{
  const groKeys=await webcrypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
  const reviewKeys=await webcrypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
  const independentRoles=sourceCount>1&&!duplicateSourceRole;
- const standardReady=independentRoles||internalCorroboration!==null;
+ // Private OSINT/Telegram radar is discovery-only; Standard needs two legal originals.
+ const standardReady=independentRoles;
  const eligibleTiers=["basic_focused",...(standardReady?["standard"]:[]),
   ...(independentRoles?["complex_full"]:[])];
  const audience=buildRiskStreamDualAudience({category,eventClass:"POLICY_CHANGE",
@@ -123,7 +124,7 @@ test("dual-audience mold emits deterministic institutional signals for all risk 
  }
 });
 
-test("redacted internal corroboration upgrades a one-anchor Basic grant to Standard",async()=>{
+test("redacted internal corroboration cannot upgrade one legal original above Basic",async()=>{
  const internal={raw_source_redacted:true,signal_count:1,
   families:["PRIVATE_OSINT"],max_severity_weight_0_100:61,
   max_corroboration_weight_0_1:.72,categories:["GEOPOLITICS"],corridors:[]};
@@ -132,10 +133,10 @@ test("redacted internal corroboration upgrades a one-anchor Basic grant to Stand
  const result=await response.json();
  assert.equal(response.status,200);
  assert.equal(result.status,"REVIEW_APPROVED");
- assert.deepEqual(result.grants[0].approval.eligible_tiers,["basic_focused","standard"]);
+ assert.deepEqual(result.grants[0].approval.eligible_tiers,["basic_focused"]);
  assert.deepEqual(result.grants[0].eligible_derived_score.eligible_tiers,
-  ["basic_focused","standard"]);
- assert.equal(result.grants[0].eligible_derived_score.agent_decision.tier,"STANDARD");
+  ["basic_focused"]);
+ assert.equal(result.grants[0].eligible_derived_score.agent_decision.tier,"BASIC");
  assert.equal(result.grants[0].eligible_derived_score.licensed_source_text_included,false);
  assert.doesNotMatch(JSON.stringify(result),/source title|watch confirms policy|https?:|www[.]|@/iu);
 });

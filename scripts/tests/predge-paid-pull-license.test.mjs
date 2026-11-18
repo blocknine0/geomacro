@@ -50,7 +50,9 @@ async function fixture(category="GEOPOLITICS",eligibleTiers=["basic_focused","st
   independent_source_rights_verified:true,customer_entitlement_verified:true,go_live_approved:true,
   canary_hold_cleared:true,source_gro_sha256:sourceHash,validated_gro_sha256:candidateHash,
   signed_release_receipt_sha256:sha("release-receipt"),reviewed_at:new Date(now-1000).toISOString(),
-  customer_entitlement_expires_at:new Date(now+1800000).toISOString(),eligible_tiers:eligibleTiers};
+  customer_entitlement_expires_at:new Date(now+1800000).toISOString(),eligible_tiers:eligibleTiers,
+  commercial_rights_model:"TWO_LANE_DERIVED_ONLY_V1",
+  original_observation_ids:[...candidate.source_originals],raw_sources_not_republished:true};
  const unsigned={...approval};
  approval.signature_b64=sign(null,Buffer.from("geomacro.commercial-independent-release-review.v1\n"+
   canonicalLicensedJson(unsigned)),release.privateKey).toString("base64");

@@ -88,3 +88,13 @@ export function validateSourceRightsManifest(manifest,now=Date.now()){
   pendingEntries:manifest.entries.filter(x=>x.status==="PENDING")
  };
 }
+
+/** An approved registry entry authorizes source *review*, not a paid event. */
+export function eligibleReviewedAnchor(entry,category,now=Date.now()){
+ try{
+  const m={schema:'geomacro.risk-stream-source-rights-reviewed.v1',entries:[entry]};
+  const r=validateSourceRightsManifest(m,now);
+  return r.approvedEntries.length===1&&entry.categories.includes(category)&&
+   RISK_STREAM_CATEGORY_ROLES[category]?.includes(entry.source_role)===true;
+ }catch{return false;}
+}

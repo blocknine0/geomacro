@@ -332,13 +332,26 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerE
       D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
     // Keep source intake held unless the remaining-day D1 row accounting
     // admits the entire producer schedule; one SQL call is not one billed row.
-    const sourceIntake=admitted&&rowsPerSlot>=3&&
-      writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
-      readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
-      futureReadRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
-    const archive=sourceIntake&&writeRoom>
-      D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40+900&&
-      futureWriteRoom>D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+archiveReserve;
+    // Paid capacity already has its own owner-paced envelope and the
+    // account-wide Predge/critical *remaining-day* reserve. Do not subtract
+    // the old Free-plan 23k/1.25M reserve a SECOND time from the current
+    // hourly allowance: it starves even a three-original microbundle.
+    // The finite writer cap remains within the fastlane's accepted 3..50.
+    const sourceRows=Math.min(50,rowsPerSlot);
+    const currentWriteReserve=2_000+sourceRows*16+40;
+    const currentReadReserve=4_000+3_200;
+    const remainingDayWriteReserve=D1_BUNDLE_LANES.critical.write_reserve+
+      slots*(sourceRows*16+40)+archiveReserve;
+    const remainingDayReadReserve=D1_BUNDLE_LANES.critical.read_reserve+
+      slots*3_200+30_000;
+    const sourceIntake=admitted&&sourceRows>=3&&
+      writeRoom>currentWriteReserve&&readRoom>currentReadReserve&&
+      futureWriteRoom>remainingDayWriteReserve&&
+      futureReadRoom>remainingDayReadReserve;
+    // Phase2H archive is a separate, bounded optional consumer. Its D1
+    // budget is not silently borrowed from the original-source reserve.
+    const archive=sourceIntake&&writeRoom>currentWriteReserve+900&&
+      futureWriteRoom>remainingDayWriteReserve;
     return Object.freeze({
       schema:"geomacro.d1-free-bundled-work-admission.v1",
       day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
@@ -347,11 +360,14 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerE
       critical:admitted,research:false,maintenance:false,
       phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
       source_intake:sourceIntake,governed_measurement:false,historical_recovery:false,
+      paid_source_current_paced_reserve_rows_written:sourceIntake?currentWriteReserve:0,
+      paid_source_current_paced_reserve_rows_read:sourceIntake?currentReadReserve:0,
+      paid_source_remaining_day_schedule_reserved:sourceIntake,
       // Share only the existing paced 20-minute source slot, never the
       // general research/signing/commerce lane. The actual writer separately
       // requires a fresh real-provider 30% monthly reserve receipt.
       paid_derived_news_source_lane:sourceIntake&&archive,
-      paid_derived_news_max_rows:sourceIntake&&archive?Math.min(30,rowsPerSlot):0,
+      paid_derived_news_max_rows:sourceIntake&&archive?Math.min(30,sourceRows):0,
       // Paid owns a SEPARATE original-source B2-first lane; the old
       // Free-only registered_private_max_new_rows stays zero by design.
       // This is ONLY a non-atomic daily allowance, requiring a fresh
@@ -359,12 +375,12 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerE
       // (hot50_source) in the publishing workflow before ANY provider write.
       paid_registered_original_source_lane:sourceIntake&&archive,
       paid_registered_original_max_rows:
-       sourceIntake&&archive?Math.min(20,rowsPerSlot):0,
+       sourceIntake&&archive?Math.min(20,sourceRows):0,
       phase2h_raw_archive_max_rows_per_slot:300,
       phase2h_raw_archive_requires_atomic_b2_quota:true,
       historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
       registered_private_max_new_rows:0,
-      source_intake_max_new_rows:sourceIntake?rowsPerSlot:0,snapshot_refresh:false,
+      source_intake_max_new_rows:sourceIntake?sourceRows:0,snapshot_refresh:false,
       structural_snapshot:false,
       structural_snapshot_max_b2_network_attempts:0,
       structural_snapshot_requires_atomic_b2_account_reservation:true,
