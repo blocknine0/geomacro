@@ -22,6 +22,17 @@ const PREDGE_TRIAL_VARS=Object.freeze({
 });
 const TRIAL_START=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|\+00:00)$/u;
 const deny=code=>{throw Error("CANARY_BINDINGS_"+code)};
+const bindingRows=version=>{
+ const raw=version?.resources?.bindings;
+ if(!raw)return [];
+ return Array.isArray(raw)?raw:Object.entries(raw).flatMap(([type,values])=>
+  Array.isArray(values)?values.map(v=>({...v,type:v.type??type})):[]
+ );
+};
+const RISK_STREAM_ATTESTER_SERVICES=Object.freeze([
+ {name:"RISK_STREAM_FACTS_ATTESTER",service:"geomacro-risk-stream-facts-attester"},
+ {name:"RISK_STREAM_RIGHTS_ATTESTER",service:"geomacro-risk-stream-rights-attester"}
+]);
 export function bindingInventory(version){
   const raw=version?.resources?.bindings;
   if(!raw)deny("UNAVAILABLE");
@@ -133,10 +144,13 @@ const canonical=x=>JSON.stringify(x,(_,v)=>
 export function diagnoseReviewedHot50BindingDelta(base,candidate,sha,reviewedSecrets=[],runtimeVars={}){
  const a=bindingInventory(base),b=bindingInventory(candidate);
  const desired=reviewedHot50CandidateVars(sha,runtimeVars);
- const riskQueues=runtimeVars.GEOMACRO_RISK_STREAM_QUEUES_BIND==="1"
+ const queuesEnabled=runtimeVars.GEOMACRO_RISK_STREAM_QUEUES_BIND==="1";
+ const riskQueues=queuesEnabled
   ?["RISK_STREAM_QUEUE","RISK_STREAM_DELIVERY_QUEUE"].filter(name=>!a.has(name)):[];
+ const riskAttesters=queuesEnabled
+  ?RISK_STREAM_ATTESTER_SERVICES.filter(({name})=>!a.has(name)).map(({name})=>name):[];
  const desiredNew=[...Object.keys(desired).filter(name=>!a.has(name)),
-  ...reviewedSecrets.filter(name=>!a.has(name)),...riskQueues];
+  ...reviewedSecrets.filter(name=>!a.has(name)),...riskQueues,...riskAttesters];
  const expected=new Set(desiredNew);
  const safe=name=>/^[A-Z_][A-Z0-9_]{0,100}$/u.test(name)?name:"REDACTED_INVALID_BINDING_NAME";
  const addition=[...b.keys()].filter(name=>!a.has(name)).sort();
@@ -150,9 +164,21 @@ export function diagnoseReviewedHot50BindingDelta(base,candidate,sha,reviewedSec
   for(const name of queueNames)
    if(b.has(name)&&b.get(name)!=="queue"&&!wronglyTyped.includes(name))
     wronglyTyped.push(name);
+ const serviceRows=new Map(bindingRows(candidate).map(row=>[row.name,row]));
+ const invalidServiceBindings=[];
+ if(queueBindingFlag==="1")
+  for(const {name,service} of RISK_STREAM_ATTESTER_SERVICES){
+   const row=serviceRows.get(name);
+   if(row&&(row.type!=="service"||row.service!==service||
+      Object.keys(row).some(key=>!["name","type","service"].includes(key)))){
+    if(row.type!=="service"&&!wronglyTyped.includes(name))wronglyTyped.push(name);
+    invalidServiceBindings.push(name);
+   }
+  }
  return Object.freeze({
   schema:"geomacro.protected-worker-binding-delta.v1",
-  status:unexpected.length||missing.length||removed.length||wronglyTyped.length?
+  status:unexpected.length||missing.length||removed.length||wronglyTyped.length||
+   invalidServiceBindings.length?
    "UNREVIEWED_BINDING_DELTA_HOLD":"NO_UNEXPECTED_BINDING_NAMES",
   actual_additions:addition.map(name=>({name:safe(name),type:b.get(name)})),
   expected_additions:[...expected].sort().map(safe),
@@ -160,6 +186,7 @@ export function diagnoseReviewedHot50BindingDelta(base,candidate,sha,reviewedSec
   expected_additions_missing:missing.map(safe),
   removed_binding_names:removed.map(safe),
   changed_binding_type_names:wronglyTyped.map(safe),
+  invalid_service_binding_names:invalidServiceBindings.map(safe),
   baseline_binding_count:a.size,candidate_binding_count:b.size,
   secret_values_included:false,plain_text_values_included:false,
   secret_metadata_included:false,traffic_promoted:false,payments:0
@@ -207,10 +234,19 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
   for(const name of queueNames)
    if(current.has(name)&&current.get(name)?.type!=="queue")
     deny("RISK_STREAM_QUEUE_TYPE_INVALID_"+name);
+  for(const {name,service} of RISK_STREAM_ATTESTER_SERVICES){
+   const row=current.get(name);
+   if(row?.type!=="service"||row.service!==service||
+      Object.keys(row).some(key=>!["name","type","service"].includes(key)))
+    deny("RISK_STREAM_ATTESTER_BINDING_MISMATCH_"+name);
+  }
  }else{
   for(const name of queueNames)
    if(!a.has(name)&&b.has(name))
     deny("RISK_STREAM_QUEUE_BINDING_UNREVIEWED_"+name);
+  for(const {name} of RISK_STREAM_ATTESTER_SERVICES)
+   if(!a.has(name)&&b.has(name))
+    deny("RISK_STREAM_ATTESTER_BINDING_UNREVIEWED_"+name);
  }
  const reviewerBinding=current.get("GEOMACRO_RELEASE_REVIEWER");
  const reviewerWasPresent=a.has("GEOMACRO_RELEASE_REVIEWER");
@@ -224,6 +260,8 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
  const expected=[...Object.keys(required).filter(n=>!a.has(n)),
    ...reviewedSecrets.filter(n=>!a.has(n)),
    ...(queueBindingFlag==="1"?queueNames.filter(n=>!a.has(n)):[]),
+   ...(queueBindingFlag==="1"?RISK_STREAM_ATTESTER_SERVICES.filter(({name})=>!a.has(name))
+    .map(({name})=>name):[]),
    ...(reviewerService&&!reviewerWasPresent?["GEOMACRO_RELEASE_REVIEWER"]:[])].sort();
  if(canonical(additions)!==canonical(expected)){
   // Keep the gate fail-closed while making a provider mismatch actionable.

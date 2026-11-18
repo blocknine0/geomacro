@@ -264,3 +264,42 @@ test('candidate carries Predge vars fail-closed and adds the paid token only whe
  assert.throws(()=>candidateConfig(baseline,sha,['UNKNOWN_SECRET']),
   /REVIEWED_SECRET_NOT_ADDITIVE/);
 });
+
+test('candidate attaches both exact attester services only with the reviewed queue flag',()=>{
+ const services=[
+  {name:'RISK_STREAM_FACTS_ATTESTER',type:'service',
+   service:'geomacro-risk-stream-facts-attester'},
+  {name:'RISK_STREAM_RIGHTS_ATTESTER',type:'service',
+   service:'geomacro-risk-stream-rights-attester'}
+ ];
+ const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:'1'};
+ const config=candidateConfig(baseline,sha,[],runtime);
+ assert.deepEqual(config.unsafe.bindings.filter(row=>
+  services.some(service=>service.name===row.name)),services);
+
+ const uploaded={resources:{...baseline.resources,bindings:[
+  ...Object.entries(config.vars).map(([name,text])=>({name,type:'plain_text',text})),
+  ...config.unsafe.bindings.map(row=>row.type==='inherit'?
+   structuredClone(baseline.resources.bindings.find(binding=>binding.name===row.name)):
+   structuredClone(row))
+ ]}};
+ assert.equal(verifyCandidateBindings(baseline,uploaded,sha,[],runtime),true);
+
+ const disabled=candidateConfig(baseline,sha,[],researchRuntime);
+ assert.equal(disabled.unsafe.bindings.some(row=>
+  services.some(service=>service.name===row.name)),false);
+ const unflagged=structuredClone(candidate());
+ unflagged.resources.bindings.push(...structuredClone(services));
+ assert.throws(()=>verifyCandidateBindings(baseline,unflagged,sha,[],researchRuntime),
+  /RISK_STREAM_ATTESTER_BINDING_UNREVIEWED_RISK_STREAM_FACTS_ATTESTER/u);
+
+ for(const mismatch of [
+  {...services[0],type:'queue'},
+  {...services[0],service:'wrong-attester'}
+ ]){
+  const live=structuredClone(baseline);
+  live.resources.bindings.push(mismatch);
+  assert.throws(()=>candidateConfig(live,sha,[],runtime),
+   /CANDIDATE_RISK_STREAM_ATTESTER_SERVICE_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+ }
+});
