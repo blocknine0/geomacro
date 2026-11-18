@@ -107,7 +107,7 @@ jobs:
         run: bun install --frozen-lockfile --registry=https://registry.npmjs.org/ --network-concurrency=8
 
       - name: Parse all GitHub Actions workflow YAML and protected Shadow checkout ref (offline)
-        run: node --test scripts/tests/github-workflow-yaml-parse.test.mjs
+        run: node --test scripts/tests/github-workflow-yaml-parse.test.mjs scripts/tests/private-global-osint-admission-workflows.test.mjs
 
       - name: Lovable mirror TypeScript source check (strict, GitHub authoritative)
         # Regression guard: app-only exclusions do NOT skip the separate Vitest suite.
