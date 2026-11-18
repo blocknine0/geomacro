@@ -23,6 +23,7 @@ test('denied upstream official fallback fails closed, not minted as verified Asi
  assert.equal(report.receipt.raw_content_persisted,false);
  assert.equal(report.receipt.all_country_events_guaranteed,false);
  assert.equal(report.signals.length,0);
- assert.equal(requests.includes('https://www.adb.org/rss.xml'),false);
- assert.equal(requests.some(value=>new URL(value).hostname==='www.fxstreet.com'),false);
+ const requestedHosts=requests.map(value=>new URL(value).hostname);
+ assert.equal(requestedHosts.includes('www.adb.org'),false);
+ assert.equal(requestedHosts.includes('www.fxstreet.com'),false);
 });
