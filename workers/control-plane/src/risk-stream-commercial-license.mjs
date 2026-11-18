@@ -8,6 +8,8 @@ export const GEOMACRO_LICENSE_ID="GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1";
 export const GEOMACRO_DERIVED_RIGHTS="GEOMACRO_COMMERCIAL_DERIVED_INTELLIGENCE";
 const SCHEMA="geomacro.commercial-derived-risk-envelope.v1";
 const DOMAIN="geomacro.commercial-derived-risk-license.v1\n";
+const RIGHTS_DOMAIN="geomacro.commercial-derived-rights-statement.v1\n";
+const PUBLISHER="https://geomacro.live";
 const HASH=/^[a-f0-9]{64}$/u;
 const ALLOWED=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const enc=new TextEncoder();
@@ -152,6 +154,8 @@ export async function issueGeoMacroCommercialLicense({
   licensor:"GeoMacro Technologies / Autonomous Intelligence Engine",
   rights_tier:GEOMACRO_DERIVED_RIGHTS,
   authorized_redistribution:true,
+  provider_meta:{publisher:PUBLISHER,product:"GEOMACRO_DERIVED_RISK_GATE",
+   original_source_text_disclosed:false,independent_accuracy_certified:false},
   license_scope:"GEOMACRO_DERIVED_MACHINE_INTELLIGENCE_ONLY",
   downstream_rights:["COMMERCIAL_REDISTRIBUTION_OF_DERIVED_SCORES",
    "DERIVED_ANALYTICS","OPERATIONAL_ADVISORY_USE"],
@@ -169,6 +173,7 @@ export async function issueGeoMacroCommercialLicense({
   // commercial envelope. This is derived GeoMacro content only; never source
   // URLs, headlines, publisher identities, or article text.
   eligible_derived_score:score,
+  commercial_rights:null,
   source_gro_sha256:record.payload_sha256,
   source_gro_payload_json:record.payload_json,
   source_gro_signature_b64:record.signature_b64,
@@ -178,10 +183,32 @@ export async function issueGeoMacroCommercialLicense({
   expires_at:gro.expires_at,
   execution_authorized:false,charged:false
  };
- const canonical=canonicalLicensedJson(base),payloadHash=await licensedSha(canonical);
+ // The reviewer approval is separately Ed25519-signed, bound to the same
+ // original observation set and explicitly attests only the rights-derived
+ // product. No publisher article license is inferred by the license signer.
+ if(approval?.commercial_rights_model!=="TWO_LANE_DERIVED_ONLY_V1"||
+    !Array.isArray(approval.original_observation_ids)||
+    JSON.stringify(approval.original_observation_ids)!==JSON.stringify(gro.source_originals)||
+    approval.raw_sources_not_republished!==true)fail("REVIEWED_RIGHTS_STATEMENT_MISSING");
  const priv=await crypto.subtle.importKey("pkcs8",decoded(licensePrivatePkcs8B64),
    {name:"Ed25519"},false,["sign"]);
  const verify=await pubkey(licensePublicSpkiB64);
+ const rights={schema:"geomacro.commercial-rights-statement.v1",
+  issuer:PUBLISHER,license_type:"GEOMACRO_DERIVED_INTELLIGENCE_ONLY",
+  original_observation_ids:[...gro.source_originals],
+  derived_only:true,licensed_source_text_included:false,
+  independent_accuracy_certified:false,raw_source_redacted:true,
+  raw_sources_not_republished:true,source_license_not_granted:true,
+  release_receipt_sha256:approval.signed_release_receipt_sha256,
+  expires_at:gro.expires_at};
+ const rightsSig=sigB64(new Uint8Array(await crypto.subtle.sign("Ed25519",priv,
+   bytes(RIGHTS_DOMAIN+canonicalLicensedJson(rights)))));
+ if(!await crypto.subtle.verify("Ed25519",verify,decoded(rightsSig),
+   bytes(RIGHTS_DOMAIN+canonicalLicensedJson(rights))))fail("RIGHTS_KEY_MISMATCH");
+ base.commercial_rights={...rights,signature_scheme:"Ed25519",
+  signature_domain:RIGHTS_DOMAIN.trim(),license_public_spki_b64:licensePublicSpkiB64,
+  signature_b64:rightsSig};
+ const canonical=canonicalLicensedJson(base),payloadHash=await licensedSha(canonical);
  const signature=new Uint8Array(await crypto.subtle.sign("Ed25519",priv,bytes(DOMAIN+canonical)));
  if(!await crypto.subtle.verify("Ed25519",verify,signature,bytes(DOMAIN+canonical)))
   fail("SIGNING_KEY_MISMATCH");
@@ -203,6 +230,9 @@ export async function verifyGeoMacroCommercialLicense(envelope,{now=Date.now(),t
   p.authorized_redistribution!==true||
   p.original_publisher_text_included!==false||
   p.third_party_publisher_licensing_not_granted!==true||
+  p.provider_meta?.publisher!==PUBLISHER||
+  p.provider_meta?.original_source_text_disclosed!==false||
+  p.provider_meta?.independent_accuracy_certified!==false||
   p.execution_authorized!==false||p.charged!==false||
   !isHot50RiskCountry(p.subject?.id)||!ALLOWED.has(p.category)||
   Date.parse(p.expires_at)<=now||
@@ -214,11 +244,32 @@ export async function verifyGeoMacroCommercialLicense(envelope,{now=Date.now(),t
   proof.timestamp_utc!==p.timestamp_utc||
   !HASH.test(proof.payload_sha256??""))
   fail("ENVELOPE_POLICY_INVALID");
+ const {commercial_rights:rights}=p;
+ if(rights?.schema!=="geomacro.commercial-rights-statement.v1"||
+  rights.issuer!==PUBLISHER||rights.license_type!=="GEOMACRO_DERIVED_INTELLIGENCE_ONLY"||
+  rights.derived_only!==true||rights.licensed_source_text_included!==false||
+  rights.independent_accuracy_certified!==false||rights.raw_source_redacted!==true||
+  rights.raw_sources_not_republished!==true||rights.source_license_not_granted!==true||
+  rights.release_receipt_sha256!==p.release_receipt_sha256||
+  rights.expires_at!==p.expires_at||
+  rights.signature_scheme!=="Ed25519"||rights.signature_domain!==RIGHTS_DOMAIN.trim()||
+  rights.license_public_spki_b64!==trustedLicensePublicSpkiB64||
+  !Array.isArray(rights.original_observation_ids)||
+  !rights.original_observation_ids.every(x=>HASH.test(x))||
+  new Set(rights.original_observation_ids).size!==rights.original_observation_ids.length)
+  fail("COMMERCIAL_RIGHTS_BLOCK_INVALID");
+ const {signature_scheme:omitScheme,signature_domain:omitDomain,
+  license_public_spki_b64:omitKey,signature_b64:omitSig,...rightsClaims}=rights;
+ if(!await crypto.subtle.verify("Ed25519",await pubkey(trustedLicensePublicSpkiB64),
+   decoded(rights.signature_b64),bytes(RIGHTS_DOMAIN+canonicalLicensedJson(rightsClaims))))
+  fail("COMMERCIAL_RIGHTS_SIGNATURE_INVALID");
  const source=await verifyCommercialSourceGro({
   gro_id:await licensedSha(JSON.stringify(JSON.parse(p.source_gro_payload_json).source_originals)),
   payload_json:p.source_gro_payload_json,
   payload_sha256:p.source_gro_sha256,signature_b64:p.source_gro_signature_b64
  },trustedGroPublicSpkiB64,now);
+ if(JSON.stringify(rights.original_observation_ids)!==JSON.stringify(source.source_originals))
+  fail("COMMERCIAL_RIGHTS_ORIGINAL_BINDING_INVALID");
  if(p.source_gro_key_spki_b64!==trustedGroPublicSpkiB64)
   fail("UPSTREAM_GRO_SIGNER_NOT_PINNED");
  if(source.subject.id!==p.subject.id||source.category!==p.category||

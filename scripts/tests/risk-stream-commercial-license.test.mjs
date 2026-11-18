@@ -45,7 +45,9 @@ function fixture(){
   production_release_verified:true,independent_source_rights_verified:true,
   customer_entitlement_verified:true,go_live_approved:true,canary_hold_cleared:true,
   validated_gro_sha256:hash,signed_release_receipt_sha256:sha("accepted-stage2-release"),
-  reviewed_at:new Date(now-30000).toISOString()};
+  reviewed_at:new Date(now-30000).toISOString(),
+  commercial_rights_model:"TWO_LANE_DERIVED_ONLY_V1",
+  original_observation_ids:[...p.source_originals],raw_sources_not_republished:true};
  release.signature_b64=sign(null,Buffer.from("geomacro.commercial-independent-release-review.v1\n"+
    canonicalLicensedJson(release)),releaseKey.privateKey).toString("base64");
  const inputs={record,groPublicSpkiB64:b64(groKey.publicKey),
@@ -75,6 +77,7 @@ test("one current rights-approved original can receive a Basic-only commercial l
   signature_b64:sign(null,Buffer.from(json),f.groKey.privateKey).toString("base64")};
  f.inputs.eligibleDerivedScore=source.eligible_derived_score;
  f.inputs.approval.validated_gro_sha256=hash;
+ f.inputs.approval.original_observation_ids=[...source.source_originals];
  resignRelease(f.inputs.approval,f.releaseKey.privateKey);
  const license=await issueGeoMacroCommercialLicense(f.inputs);
  assert.deepEqual(license.payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
@@ -86,6 +89,12 @@ test("GeoMacro derived commercial licence has domain-separated pinned Ed25519 pr
  assert.equal(e.payload.license_id,GEOMACRO_LICENSE_ID);
  assert.equal(e.license_proof.authorized_redistribution,true);
  assert.equal(e.payload.third_party_publisher_licensing_not_granted,true);
+ assert.equal(e.payload.provider_meta.publisher,"https://geomacro.live");
+ assert.equal(e.payload.commercial_rights.derived_only,true);
+ assert.equal(e.payload.commercial_rights.licensed_source_text_included,false);
+ assert.equal(e.payload.commercial_rights.independent_accuracy_certified,false);
+ assert.deepEqual(e.payload.commercial_rights.original_observation_ids,
+  JSON.parse(f.inputs.record.payload_json).source_originals);
  assert.equal(e.payload.derived.risk_score_0_100,62);
  const verified=await verifyGeoMacroCommercialLicense(e,{
   now,trustedLicensePublicSpkiB64:f.inputs.licensePublicSpkiB64,
@@ -104,7 +113,7 @@ test("modified commercial score, unknown signing key and forged release signatur
  const attacker=generateKeyPairSync("ed25519");
  await assert.rejects(verifyGeoMacroCommercialLicense(e,{
   now,trustedLicensePublicSpkiB64:b64(attacker.publicKey),
-  trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64}),/ENVELOPE_SIGNATURE_OR_HASH_INVALID/);
+  trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64}),/ENVELOPE_SIGNATURE_OR_HASH_INVALID|COMMERCIAL_RIGHTS_BLOCK_INVALID/);
  const t=fixture();
  t.inputs.approval.signature_b64=sign(null,Buffer.from("forge"),t.groKey.privateKey).toString("base64");
  await assert.rejects(issueGeoMacroCommercialLicense(t.inputs),/RELEASE_REVIEW_SIGNATURE_INVALID/);

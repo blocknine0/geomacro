@@ -34,7 +34,8 @@ const DAY_LIMIT=100;
 const HARD_CEILING=500;
 const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
- "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
+ "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer",
+ "X-GeoMacro-Publisher":"https://geomacro.live"};
 function fail(error,status=503,extra={}){
  return Response.json({ok:false,error,channel:"predge_b2b",verdict_id:null,
   tier:null,structure_type:null,customer_price_usdc:"0.00",

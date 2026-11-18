@@ -114,7 +114,9 @@ export async function runIsolatedCommercialE2E(env,{
   canary_hold_cleared:true,
   validated_gro_sha256:groHash,
   signed_release_receipt_sha256:releaseHash,
-  reviewed_at:iso(now)};
+  reviewed_at:iso(now),
+  commercial_rights_model:"TWO_LANE_DERIVED_ONLY_V1",
+  original_observation_ids:[...originals],raw_sources_not_republished:true};
  approval.signature_b64=b64(await crypto.subtle.sign("Ed25519",
   reviewKeys.privateKey,enc.encode(
     "geomacro.commercial-independent-release-review.v1\n"+
