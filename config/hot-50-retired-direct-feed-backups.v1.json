@@ -105,9 +105,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.minister.industry.gov.au/feed/all-media/rss.xml",
+      "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
       "type": "rss",
-      "description": "Australian Government Department of Industry ministers all-media RSS; runtime transport must be re-probed",
+      "description": "Australian Government Department of Industry ministers media-release RSS; runtime transport must be re-probed",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -131,9 +131,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
+      "url": "https://www.minister.industry.gov.au/feed/all-media/rss.xml",
       "type": "rss",
-      "description": "Australian Government Department of Industry ministers media-release RSS; runtime transport must be re-probed",
+      "description": "Australian Government Department of Industry ministers all-media RSS; runtime transport must be re-probed",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
