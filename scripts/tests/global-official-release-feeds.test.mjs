@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 4003)
-Total output lines: 198
-
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS as feeds,GLOBAL_MACRO_RELEASE_TOPIC,MINERAL_RELEASE_TOPIC,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication,verifiedGlobalRdfFeed} from '../lib/global-official-release-feeds.mjs';
@@ -59,7 +56,55 @@ test('IEA index admission is topical, deduped and never manufactures a publicati
  assert.equal(observed.kind,'PUBLISHER_INDEX_CHANGE');assert.equal(observed.sampled_records,1);assert.equal(observed.latest_native_publication_at,null);
 });
 test('IEA exact original News header must match the same article and consistent original metadata',()=>{
- ass…1003 tokens truncated…).family);
+ assert.equal(verifiedIeaOriginalPublication(page(),candidate,now),'2026-10-16T07:00:00.000Z');
+ for(const body of [page('2026-10-17T07:00:00Z'),page('2026-10-16'),page().replace('News<br/>','News updated<br/>'),page().replace('o-hero-news__meta','footer'),page().replace('<h1>','<h1>Unrelated '),page('2026-02-30T07:00:00Z'),page('2026-07-16T05:00:00Z'),page(undefined,'<meta property="article:published_time" content="2026-10-16T06:00:00Z">'),page(undefined,'<meta property="article:published_time" content="2026-10-17T06:00:00Z">')])assert.equal(verifiedIeaOriginalPublication(body,candidate,now),null);
+ assert.equal(verifiedIeaOriginalPublication(page(),{...candidate,articleUrl:'https://untrusted.example/news/zambia-critical-minerals-supply-security'},now),null);
+});
+
+test('new Canadian RDF reader require the exact registry and original clock',()=>{
+ for(const id of ['boc_press_global']){
+  const spec=feeds.find(s=>s.id===id);
+  const url='https://www.bankofcanada.ca/2026/10/canada-monetary-policy/';
+  const body=`<rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"><item><title>Canada Australia monetary policy decision</title><link>${url}</link><dc:date>2026-10-16T07:00:00Z</dc:date></item></rdf:RDF>`;
+  assert.equal(globalOriginalArticleUrl(url,spec),url);
+  assert.equal(validateFreeLineupProbePayload(spec,body).valid,true);
+  assert.equal(verifiedGlobalRdfFeed(spec.id,spec.url,body),true);
+  assert.equal(verifiedGlobalRdfFeed('unknown',spec.url,body),false);
+  assert.equal(verifiedGlobalRdfFeed(spec.id,spec.url+'/untrusted',body),false);
+  assert.equal(summarizeFreeSourceUpdates(spec,body,now).latest_native_publication_at,'2026-10-16T07:00:00.000Z');
+  for(const bad of [body.replaceAll('dc:date','dc:modified'),body.replace('2026-10-16T07:00:00Z','2026-10-17T07:00:00Z')])assert.equal(summarizeFreeSourceUpdates(spec,bad,now).latest_native_publication_at,null);
+ }
+ const bc=feeds.find(s=>s.id==='bc_minerals_global');
+ assert.equal(globalOriginalArticleUrl('https://news.gov.bc.ca/releases/2026MCM0031-001120',bc),'https://news.gov.bc.ca/releases/2026MCM0031-001120');
+ for(const url of ['https://news.gov.bc.ca.evil.example/releases/2026MCM0031-001120','https://news.gov.bc.ca/ministries/mining-and-critical-minerals','http://news.gov.bc.ca/releases/2026MCM0031-001120'])assert.equal(globalOriginalArticleUrl(url,bc),null);
+});
+
+test('targeted macro trade and rare-earth discovery use real strict official first-party identity',()=>{
+ const cases=[
+  ['govuk_global_trade_fx','macro','international trade',
+    'https://www.gov.uk/government/news/global-trade-and-inflation'],
+  ['govuk_global_rare_earth','rare_earth','rare earth',
+    'https://www.gov.uk/government/news/rare-earth-minerals-supply-chain'],
+ ];
+ for(const [id,category,keyword,article] of cases){
+  const spec=feeds.find(row=>row.id===id);
+  assert.ok(spec);assert.equal(spec.category,category);
+  assert.equal(spec.host,'www.gov.uk');assert.equal(spec.format,'json');
+  assert.ok(spec.url.startsWith('https://www.gov.uk/api/search.json?'));
+  assert.equal(new URL(spec.url).searchParams.get('q'),keyword);
+  assert.equal(new URL(spec.url).searchParams.get('filter_format'),'news_article');
+  assert.equal(new URL(spec.url).searchParams.get('count'),'10');
+  assert.equal(globalOriginalArticleUrl(article,spec),article);
+  assert.equal(globalOriginalArticleUrl(article.replace('www.gov.uk','www.gov.uk.evil.test'),spec),null);
+  assert.equal(globalOriginalArticleUrl(article+'#index-time',spec),null);
+  assert.equal(validateFreeLineupProbePayload(spec,JSON.stringify({total:0,results:[]})).valid,true);
+  assert.equal(validateFreeLineupProbePayload(spec,'<html>fake news</html>').valid,false);
+ }
+ // These complementary search lanes cannot count as independent publishers.
+ assert.equal(feeds.find(x=>x.id==='govuk_global_economy').family,
+   feeds.find(x=>x.id==='govuk_global_trade_fx').family);
+ assert.equal(feeds.find(x=>x.id==='govuk_global_minerals').family,
+   feeds.find(x=>x.id==='govuk_global_rare_earth').family);
 });
 
 test('UN Geneva official geopolitical feed accepts issuer press releases, not index/fake or future timestamps',()=>{
