@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-19T11:59:41.854Z",
+  "updated_at": "2026-11-19T13:39:58.907Z",
   "signals": [
     {
       "id": "geopolitics-0533859a",
@@ -148,6 +148,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-fd19d285",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Russia’s energy attacks deepen humanitarian and nuclear risks in Ukraine · United Kingdom",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Russia’s energy attacks deepen humanitarian and nuclear risks in Ukraine. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-19T10:57:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
