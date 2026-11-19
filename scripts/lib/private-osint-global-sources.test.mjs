@@ -7,6 +7,7 @@ import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {collectRegisteredReusableNews,registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
 /** Compare parsed HTTPS hostnames, never substrings in attacker-controlled URLs. */
@@ -272,7 +273,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
   typeof s.discovery_reference_url==="string"&&
   new URL(s.discovery_reference_url).protocol==="https:"));
  const bodyFor=url=>{
-  const title=isExpectedFeedHost(url,"www.industry.gov.au")
+  const title=isExpectedFeedHost(url,"www.minister.industry.gov.au")
    ?"Australia announces critical minerals lithium and rare-earth processing project"
    :isExpectedFeedHost(url,"www.dsti.gov.za")
     ?"South Africa announces critical minerals research and rare-earth mineral policy"
@@ -655,7 +656,7 @@ test("Ukraine president official native RSS joins continuous 15m private source 
  assert.equal(candidate.commercial_eligible,false);
  assert.equal(candidate.publicly_deliverable,false);
  const all=privateOsintGlobalSources();
- assert.ok(all.length<=463);
+ assert.ok(all.filter(source=>!isRetiredPrivateOsintSource(source)).length<=463);
  assert.equal(all.filter(s=>s.url===candidate.url).length,1);
  const source=all.find(s=>s.url===candidate.url);
  assert.equal(source.publisher_country_iso3,"UKR");
@@ -679,11 +680,11 @@ test("Ukraine president official native RSS joins continuous 15m private source 
  assert.equal(denied.summary.working_source_endpoints,0);
 });
 
-test("Indonesia private ANTARA source prefers independently monitored alternate publisher RSS",()=>{
+test("Indonesia private local source uses the official ESDM RSS endpoint",()=>{
  const doc=JSON.parse(readFileSync(new URL("../../config/private-osint-local-rss-candidates.v1.json",import.meta.url),"utf8"));
  const source=doc.sources.find(x=>x.id==="private_local_candidate_id_antara");
  assert.ok(source);
- assert.equal(source.url,"https://www.antaranews.com/en/rss/news");
+ assert.equal(source.url,"https://www.esdm.go.id/en?format=feed&type=rss");
  assert.equal(source.publisher_country_iso3,"IDN");
  assert.deepEqual(source.categories,["geopolitics","macro","rare_earth"]);
  assert.equal(source.transport_verified_at_registration,false);

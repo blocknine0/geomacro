@@ -286,5 +286,5 @@ test("routing keeps preexisting research and Risk Gate handlers unchanged",async
  const source=fs.readFileSync("workers/control-plane/src/index.mjs","utf8");
  assert.ok(source.includes('if(url.pathname==="/v1/pilot/check")return predgePilotCheckV2(request,env);'));
  assert.ok(source.includes("return predgeResearchDerivedNewsFeed(request,env);"));
- assert.ok(source.includes("return predgeRiskGateD1(request,env);"));
+ assert.ok(source.includes('return observedPredgeResponse(request,env,"v1",predgeRiskGateD1);'));
 });

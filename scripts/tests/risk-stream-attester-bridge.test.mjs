@@ -77,7 +77,7 @@ test("enabled internal corroboration reads only bounded private features and sig
   "country/category-only overlap must not qualify unrelated private context");
 });
 
-test("Telegram watch event contributes only when its closed event matches the verified original",async()=>{
+test("Telegram watch metadata never enters GRO corroboration or tier context",async()=>{
  const signature=Buffer.alloc(64).toString("base64");
  const binding=field=>({async fetch(){return Response.json({ok:true,proof:{[field]:signature}})}});
  const draft={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
@@ -94,9 +94,8 @@ test("Telegram watch event contributes only when its closed event matches the ve
   body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft})}),env);
  const body=await response.json();
  assert.equal(response.status,200);
- assert.equal(body.risk_context.origin_kind,"TELEGRAM_WATCH");
- assert.equal(body.risk_context.event_code,"SANCTIONS");
- assert.equal(body.risk_context.raw_source_redacted,true);
+ assert.equal(body.risk_context,null);
+ assert.doesNotMatch(JSON.stringify(body),/TELEGRAM_WATCH|SANCTIONS/u);
  assert.doesNotMatch(JSON.stringify(body),/headline|channel_name|https?:\/\//iu);
 });
 

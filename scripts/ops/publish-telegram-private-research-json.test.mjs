@@ -68,8 +68,10 @@ test("fake commercial authorization, raw source URL, copied headline and stale/e
 test("private research JSON reader is bounded, uns cored, never a paid/live country claim",async()=>{
  const fake={DB:{prepare(sql){
    assert.match(sql,/telegram_research_json/);
+   assert.match(sql,/watch_event/);
    const obj={bind(){return obj},async all(){return {results:[
-     {delivery_id:row.delivery_id,category:"rare_earth",country_iso3:"IND",published_at:row.published_at},
+     {delivery_id:row.delivery_id,category:"rare_earth",country_iso3:"IND",
+      watch_event:"critical_mineral_supply_shock",published_at:row.published_at},
    ]}}};return obj;
  }}};
  const res=await readPrivateTelegramResearchJson(fake,new URLSearchParams("country=IND&category=rare_earth"),NOW.getTime());
@@ -77,6 +79,7 @@ test("private research JSON reader is bounded, uns cored, never a paid/live coun
  const doc=await res.json();
  assert.equal(doc.items.length,1);
  assert.equal(doc.items[0].unverified_research_lead,true);
+ assert.equal(doc.items[0].watch_event,"critical_mineral_supply_shock");
  assert.equal(doc.items[0].source_content_included,false);
  assert.equal(doc.items[0].commercial_reuse_authorized,false);
  assert.equal(doc.public_news_reuse_authorized,false);

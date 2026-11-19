@@ -23,7 +23,7 @@ export async function readPrivateTelegramResearchJson(env,query=new URLSearchPar
    let where=" WHERE published_at >= ?",args=[cutoff];
    if(category){where+=" AND category = ?";args.push(category)}
    if(country){where+=" AND country_iso3 = ?";args.push(country)}
-   const result=await env.DB.prepare("SELECT delivery_id,category,country_iso3,published_at "+
+   const result=await env.DB.prepare("SELECT delivery_id,category,country_iso3,watch_event,published_at "+
      "FROM telegram_research_json"+where+
      " ORDER BY published_at DESC,delivery_id DESC LIMIT 101 OFFSET ?")
      .bind(...args,Number(offset)).all();
@@ -31,7 +31,7 @@ export async function readPrivateTelegramResearchJson(env,query=new URLSearchPar
    const items=rows.slice(0,100).map(r=>({
      schema:PRIVATE_TELEGRAM_JSON_SCHEMA,
      reference_id:r.delivery_id,
-     category:r.category,country_iso3:r.country_iso3,
+     category:r.category,country_iso3:r.country_iso3,watch_event:r.watch_event??null,
      source_timestamp_claimed_at:r.published_at,
      source_native_clock_independently_verified:false,
      source_scope:"AUTHORIZED_BOT_DIRECT_SUBMISSION_HASH_ONLY",

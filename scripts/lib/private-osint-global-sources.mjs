@@ -3,6 +3,7 @@ import {LAUNCH_NEWS_TOPIC_PATTERNS} from "../../src/lib/launch-news-coverage.ts"
 import {readFileSync} from "node:fs";
 import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 import {CONTINENT_COUNTRIES_195} from "./continent-country-195-rotation.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 
 export const PRIVATE_OSINT_CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 // RNZ's Pacific newsroom is an Oceania regional desk even though RNZ is
@@ -164,7 +165,7 @@ export function privateOsintGlobalSources(){
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  if(regional?.schema!=="geomacro.private-osint-regional-corridor-additions.v1"||
     regional.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
-    !Array.isArray(regional.sources)||regional.sources.length>48)
+    !Array.isArray(regional.sources)||regional.sources.length>49)
    throw Error("PRIVATE_OSINT_REGIONAL_EXPANSION_INVALID");
  const additionIds=new Set();
  for(const source of regional.sources){
@@ -301,7 +302,9 @@ export function privateOsintGlobalSources(){
  const result=[];
  for(let n=0;buckets.some(b=>n<b.length);n++)for(const b of buckets)if(b[n])result.push(b[n]);
  // Leave exactly 49 slots for the canonical 195-country discovery rotation.
- if(result.length>512-49)throw Error("PRIVATE_OSINT_NATIONAL_GAP_BREACHES_RUNTIME_CAP");
+ // Retired audit pins remain visible to the crosswalk but cannot be polled.
+ if(result.filter(source=>!isRetiredPrivateOsintSource(source)).length>512-49)
+  throw Error("PRIVATE_OSINT_NATIONAL_GAP_BREACHES_RUNTIME_CAP");
  // Refuse a registry regression that silently drops a major OSINT lane.
  // This threshold validates source diversity, not event volume or live health.
  for(const category of PRIVATE_OSINT_CATEGORIES){

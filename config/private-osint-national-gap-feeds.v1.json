@@ -336,7 +336,7 @@
     },
     {
       "id": "private_gap_bhs_bahamaspress",
-      "url": "https://bahamaspress.com/feed/",
+      "url": "https://opm.gov.bs/feed/",
       "publisher_country_iso3": "BHS",
       "continent": "north_america",
       "categories": [
@@ -345,7 +345,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://bahamaspress.com/",
+      "discovery_reference_url": "https://opm.gov.bs/press-room/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
