@@ -439,7 +439,7 @@ jobs:
         if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Dual-attest and admit licensed candidates under daily D1 cap
         if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
@@ -460,7 +460,8 @@ jobs:
         if: always()
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE" "$GEOMACRO_RISK_STREAM_RADAR_FILE"
 
   live-source-probe:
     name: Read-only live OSINT category and 195x3 source-health probe
@@ -692,6 +693,7 @@ jobs:
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
         run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Emit only verified-original candidate sidecars through facts and rights attesters
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
