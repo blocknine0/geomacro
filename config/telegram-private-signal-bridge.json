@@ -14,5 +14,40 @@
     "verification_status": "UNVERIFIED",
     "scoring_eligible": false,
     "commercial_eligible": false
+  },
+  "redacted_watch_routing": {
+    "categories": {
+      "GEOPOLITICS": "geopolitics",
+      "MACRO_FX": "macro",
+      "CRITICAL_MINERALS": "rare_earth"
+    },
+    "watch_events": [
+      "conflict",
+      "sanctions",
+      "export_ban",
+      "chokepoint_disruption",
+      "fx_sovereign_stress",
+      "critical_mineral_supply_shock"
+    ],
+    "input_fields": [
+      "country_iso3",
+      "category",
+      "watch_event",
+      "published_at"
+    ],
+    "processor": "scripts/lib/rights-redacted-speed-radar.mjs",
+    "next_action": "POLL_INDEPENDENT_APPROVED_LEGAL_ANCHOR",
+    "required_signal_flags": {
+      "raw_source_redacted": true,
+      "licensed_source_text_included": false,
+      "raw_sources_not_republished": true
+    },
+    "lane_a_source_filter": {
+      "commercial_rights_approved": 1,
+      "enabled": 1
+    },
+    "telegram_only_gro_authorized": false,
+    "raw_text_or_links_in_public_or_paid_tables": false,
+    "runtime_effect": false
   }
 }

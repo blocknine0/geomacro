@@ -363,12 +363,6 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
-      - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
-        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
-        env:
-          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
-        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Prioritize approved Lane A feeds from recent redacted Telegram watch metadata
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
@@ -376,6 +370,12 @@ jobs:
           CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
         run: node scripts/ops/append-telegram-speed-radar.mjs
+      - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Send only separately item-license-verified direct originals through dual attestation
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:

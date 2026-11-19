@@ -7,7 +7,7 @@ const document=()=>JSON.parse(readFileSync(new URL("../../config/retired-source-
 
 test("removed IDs and exact feed URL aliases cannot re-enter any replacement registry",()=>{
  const doc=document();
- assert.equal(doc.retired.length,127);
+ assert.equal(doc.retired.length,132);
  for(const old of doc.retired){
   assert.ok(isRetiredPrivateOsintSource(old));
   if(old.url)assert.ok(isRetiredPrivateOsintSource({id:"alias",url:old.url}));
