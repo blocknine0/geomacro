@@ -883,26 +883,6 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_lso_gov",
-      "url": "https://www.gov.ls/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "LSO",
-      "categories": [
-        "geopolitics",
-        "macro",
-        "rare_earth"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "Official Government of Lesotho RSS feed; live transport returned HTTP 200 with RSS content type and native item dates. Production runtime access and redistribution rights remain unverified.",
-      "discovery_reference_url": "https://www.gov.ls/news/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
       "id": "private_expansion_australian_mining",
       "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
       "continent": "oceania",
