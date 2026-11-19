@@ -87,4 +87,13 @@ test("unhealthy local candidates now use live official national RSS feeds",()=>{
  assert.equal(liberia.discovery_reference_url,"https://www.cbl.org.lr/index.php/media/news-press-release");
  assert.equal(liberia.type,"rss");
  assert.equal(liberia.commercial_eligible,false);
+
+ const rwanda=json("config/private-osint-local-gaplane.v1.json").sources
+  .find(row=>row.id==="private_gaplane_rwa_33");
+ assert.equal(rwanda.publisher_country_iso3,"RWA");
+ assert.equal(rwanda.url,"https://projectmanagement.risa.gov.rw/news.atom");
+ assert.equal(rwanda.discovery_reference_url,"https://projectmanagement.risa.gov.rw/news");
+ assert.equal(rwanda.type,"atom");
+ assert.equal(rwanda.commercial_eligible,false);
+ assert.equal(rwanda.publicly_deliverable,false);
 });

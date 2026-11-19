@@ -567,15 +567,15 @@
     },
     {
       "id": "private_gaplane_rwa_33",
-      "url": "https://www.ktpress.rw/feed/",
+      "url": "https://projectmanagement.risa.gov.rw/news.atom",
       "publisher_country_iso3": "RWA",
-      "discovery_reference_url": "https://www.ktpress.rw/",
+      "discovery_reference_url": "https://projectmanagement.risa.gov.rw/news",
       "categories": [
         "geopolitics",
         "macro",
         "rare_earth"
       ],
-      "type": "rss",
+      "type": "atom",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "publisher_native_dates_required": true,
       "transport_verified_at_registration": false,
