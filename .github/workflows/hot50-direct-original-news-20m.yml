@@ -15,6 +15,11 @@ on:
       - "scripts/lib/hot-50-direct-20m-sources.mjs"
       - "scripts/lib/hot-50-direct-20m-sources.test.mjs"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/collect-risk-stream-feed-extensions.mjs"
+      - "scripts/lib/rights-redacted-speed-radar.mjs"
+      - "scripts/tests/hot50-two-lane-rights.test.mjs"
+      - "scripts/tests/risk-stream-collector-candidate-sidecars.test.mjs"
+      - "scripts/tests/risk-stream-collector-handoff.test.mjs"
       - "scripts/lib/phase2i-durable-queue-client.mjs"
       - "scripts/tests/phase2i-durable-queue.test.mjs"
       - "workers/phase2i-durable-queue/worker.mjs"
@@ -130,6 +135,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/lib/hot-50-direct-20m-sources.mjs
+          node --test scripts/tests/hot50-two-lane-rights.test.mjs scripts/tests/risk-stream-collector-candidate-sidecars.test.mjs scripts/tests/risk-stream-collector-handoff.test.mjs
           node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
           node --test scripts/lib/three-domain-global-direct-20m-sources.test.mjs
           node --test scripts/lib/geopolitics-continuity-sources.test.mjs scripts/lib/macro-minerals-continuity-sources.test.mjs scripts/lib/hot50-three-category-official-gap-priority.test.mjs
@@ -283,8 +289,6 @@ jobs:
         run: node scripts/ops/emit-risk-stream-collector-sidecar.mjs
       - name: Remove transient licensed candidate sidecar
         if: always()
-        env:
-          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
           GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
