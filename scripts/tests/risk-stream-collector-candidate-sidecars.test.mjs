@@ -66,7 +66,7 @@ test("a redacted Lane B cell prioritizes only approved matching Lane A feeds on 
  ];
  const calls=[];
  const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
-  fetchImpl:async(url)=>{calls.push(url);return {ok:true,text:async()=>"<?xml version=\\"1.0\\"?><feed></feed>",
+  fetchImpl:async(url)=>{calls.push(url);return {ok:true,text:async()=>"<feed></feed>",
    headers:{get:()=>null}};},
   rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:feeds},
   sourceRegistry,
