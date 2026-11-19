@@ -6,6 +6,8 @@ import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records
 import {
  assertB2FirstSourceEnv,stageB2FirstPrivateOriginals,acknowledgeB2FirstD1
 } from "../ops/phase2h-b2-first-private-raw.mjs";
+import {verifyPhase2hB2Lifecycle}
+ from "../ops/phase2h-verify-b2-72h-lifecycle.mjs";
 const now=new Date("2026-11-03T19:50:00.000Z");
 const env={
  GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
@@ -257,6 +259,54 @@ test("untrusted raw lifecycle error strings can never disclose provider details"
   rows,now,env,governorFactory,
   lifecycleVerifier:async()=>{throw Error("SECRET native raw HTTP bearer");},
  }),/^Error: PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_UNVERIFIED$/u);
+});
+
+test("lifecycle 403 with archive-read credentials retries the distinct primary pair with a fresh reservation",async()=>{
+ const reservations=[],credentials=[];
+ const lifecycleEnv={...env,
+  B2_ARCHIVE_READ_KEY_ID:"archive-read-key-id",
+  B2_ARCHIVE_READ_APPLICATION_KEY:"archive-read-application-secret",
+ };
+ const result=await verifyPhase2hB2Lifecycle({env:lifecycleEnv,
+  governor:{reserve:async kind=>{reservations.push(kind);}},
+  fetchImpl:async(_url,init)=>{
+   const credential=init.headers.Authorization.match(/Credential=([^/]+)/u)?.[1];
+   credentials.push(credential);
+   return credentials.length===1
+    ?new Response("<Error><Code>AccessDenied</Code></Error>",{status:403})
+    :new Response("<LifecycleConfiguration></LifecycleConfiguration>",{status:200});
+  },
+ });
+ assert.deepEqual(credentials,["archive-read-key-id",env.B2_KEY_ID]);
+ assert.deepEqual(reservations,["GET","GET"]);
+ assert.equal(result.provider_lifecycle_readback_verified,true);
+ assert.equal(result.no_bucket_mutation,true);
+ const deniedReservations=[];
+ await assert.rejects(verifyPhase2hB2Lifecycle({env:lifecycleEnv,
+  governor:{reserve:async kind=>{deniedReservations.push(kind);}},
+  fetchImpl:async()=>new Response("<Error><Code>AccessDenied</Code></Error>",{status:403}),
+ }),error=>error.message==="PHASE2H_B2_72H_PROVIDER_LIFECYCLE_HTTP_403");
+ assert.deepEqual(deniedReservations,["GET","GET"]);
+});
+
+test("lifecycle failures preserve exact HTTP and shared quota reason codes",async()=>{
+ const reasons=[
+  ["PHASE2H_B2_72H_PROVIDER_LIFECYCLE_HTTP_403",
+   "PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_HTTP_403"],
+  ["B2_GLOBAL_DAILY_QUOTA_EXHAUSTED",
+   "PHASE2H_B2_FIRST_B2_GLOBAL_DAILY_QUOTA_EXHAUSTED"],
+  ["B2_ACCOUNT_GLOBAL_QUOTA_D1_NETWORK_FAILED",
+   "PHASE2H_B2_FIRST_B2_ACCOUNT_GLOBAL_QUOTA_D1_NETWORK_FAILED"],
+ ];
+ for(const [input,expected] of reasons){
+  let puts=0;
+  await assert.rejects(stageB2FirstPrivateOriginals({
+   rows,now,env,governorFactory,
+   lifecycleVerifier:async()=>{throw Error(input);},
+   b2Factory:()=>{puts++;throw Error("UNEXPECTED_B2");},
+  }),error=>error.message===expected);
+  assert.equal(puts,0);
+ }
 });
 
 test("known provider-native lifecycle rejection remains a redacted actionable error",async()=>{

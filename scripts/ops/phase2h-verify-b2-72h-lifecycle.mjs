@@ -103,6 +103,12 @@ export function parseS3LifecycleRules(xml){
 async function readPrivateB2LifecycleRules({
  env=process.env,fetchImpl=fetch,governor,
 }={}){
+ const archiveAccess=env.B2_ARCHIVE_READ_KEY_ID??"";
+ const archiveSecret=env.B2_ARCHIVE_READ_APPLICATION_KEY??"";
+ const primaryAccess=env.B2_KEY_ID??"";
+ const primarySecret=env.B2_APPLICATION_KEY??"";
+ const archivePair=archiveAccess.length>=12&&archiveSecret.length>=16;
+ const primaryPair=primaryAccess.length>=12&&primarySecret.length>=16;
  if(env.GITHUB_ACTIONS!=="true"||
     env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
     env.GITHUB_REF!=="refs/heads/main"||
@@ -110,52 +116,64 @@ async function readPrivateB2LifecycleRules({
     env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
     !["registered_original_archive","derived_news_backup"]
       .includes(env.B2_ACCOUNT_QUOTA_WORKFLOW_ID)||
-    (env.B2_ARCHIVE_READ_KEY_ID??env.B2_KEY_ID??"").length<12||
-    (env.B2_ARCHIVE_READ_APPLICATION_KEY??env.B2_APPLICATION_KEY??"").length<16)
+    (!archivePair&&!primaryPair))
   fail("PROTECTED_GOVERNED_MAIN_REQUIRED");
- const access=env.B2_ARCHIVE_READ_KEY_ID??env.B2_KEY_ID;
- const secret=env.B2_ARCHIVE_READ_APPLICATION_KEY??env.B2_APPLICATION_KEY;
+ const initial=archivePair
+  ?{access:archiveAccess,secret:archiveSecret,source:"archive_read"}
+  :{access:primaryAccess,secret:primarySecret,source:"primary"};
  const shared=governor??createB2D1AccountGovernor({env,fetchImpl});
- // Class C / metadata GET: a real global reservation, including provider
- // denials. No list of any bucket keys, object versions or other buckets.
- await shared.reserve("GET");
- const stamp=new Date().toISOString().replace(/[:-]|\.\d{3}/gu,"");
- const day=stamp.slice(0,8),region="us-east-005";
  const host=new URL(LIFECYCLE_ORIGIN).host;
  const path="/"+LIFECYCLE_BUCKET;
  const query="lifecycle=";
  const signedHeaders="host;x-amz-content-sha256;x-amz-date";
- const canonical=["GET",path,query,
-  "host:"+host+"\n"+"x-amz-content-sha256:"+EMPTY_SHA256+"\n"+
-  "x-amz-date:"+stamp+"\n",signedHeaders,EMPTY_SHA256].join("\n");
- const scope=day+"/"+region+"/s3/aws4_request";
- const toSign=["AWS4-HMAC-SHA256",stamp,scope,digest(canonical)].join("\n");
- const key=mac(mac(mac(mac("AWS4"+secret,day),region),"s3"),"aws4_request");
- const signature=createHmac("sha256",key).update(toSign).digest("hex");
- let response;
- try{
-  response=await fetchImpl(LIFECYCLE_ORIGIN+path+"?lifecycle",{
-   method:"GET",redirect:"error",cache:"no-store",
-   headers:{
-    "x-amz-content-sha256":EMPTY_SHA256,
-    "x-amz-date":stamp,
-    Authorization:"AWS4-HMAC-SHA256 Credential="+access+"/"+scope+
-      ", SignedHeaders="+signedHeaders+", Signature="+signature,
-   },
-   signal:AbortSignal.timeout(15000),
-  });
- }catch{fail("PROVIDER_UNAVAILABLE")}
+ const readOnce=async({access,secret})=>{
+  // Each provider attempt, including the credential fallback, consumes its
+  // own atomic D1 reservation. This remains a read-only lifecycle request.
+  await shared.reserve("GET");
+  const stamp=new Date().toISOString().replace(/[:-]|\.\d{3}/gu,"");
+  const day=stamp.slice(0,8),region="us-east-005";
+  const canonical=["GET",path,query,
+   "host:"+host+"\n"+"x-amz-content-sha256:"+EMPTY_SHA256+"\n"+
+   "x-amz-date:"+stamp+"\n",signedHeaders,EMPTY_SHA256].join("\n");
+  const scope=day+"/"+region+"/s3/aws4_request";
+  const toSign=["AWS4-HMAC-SHA256",stamp,scope,digest(canonical)].join("\n");
+  const key=mac(mac(mac(mac("AWS4"+secret,day),region),"s3"),"aws4_request");
+  const signature=createHmac("sha256",key).update(toSign).digest("hex");
+  let response;
+  try{
+   response=await fetchImpl(LIFECYCLE_ORIGIN+path+"?lifecycle",{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{
+     "x-amz-content-sha256":EMPTY_SHA256,
+     "x-amz-date":stamp,
+     Authorization:"AWS4-HMAC-SHA256 Credential="+access+"/"+scope+
+       ", SignedHeaders="+signedHeaders+", Signature="+signature,
+    },
+    signal:AbortSignal.timeout(15000),
+   });
+  }catch{fail("PROVIDER_UNAVAILABLE")}
+  if(response.redirected)fail("PROVIDER_RESPONSE_INVALID");
+  const size=Number(response.headers?.get("content-length")??0);
+  if(Number.isFinite(size)&&size>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
+  let body;
+  try{body=await response.text()}catch{fail("PROVIDER_RESPONSE_INVALID")}
+  if(body.length>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
+  return {response,body};
+ };
+ let result=await readOnce(initial);
+ // Some B2 application keys can read objects but lack GetBucketLifecycle.
+ // Retry a 403 only with the existing distinct primary key pair, and charge
+ // that second attempt to the same shared D1 account quota.
+ if(result.response.status===403&&initial.source==="archive_read"&&primaryPair&&
+    (primaryAccess!==initial.access||primarySecret!==initial.secret))
+  result=await readOnce({access:primaryAccess,secret:primarySecret});
+ const {response,body}=result;
  if(response.redirected)fail("PROVIDER_RESPONSE_INVALID");
- const size=Number(response.headers?.get("content-length")??0);
- if(Number.isFinite(size)&&size>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
- let body;
- try{body=await response.text()}catch{fail("PROVIDER_RESPONSE_INVALID")}
- if(body.length>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
  // A *provider-returned* NoSuchLifecycleConfiguration is evidence of
  // no active bucket rules; arbitrary 404, 401 or 403 are NOT evidence.
  if(response.status===404&&/<Code>NoSuchLifecycleConfiguration<\/Code>/u.test(body))
   return [];
- if(response.status!==200)fail("PROVIDER_LIFECYCLE_UNAVAILABLE");
+ if(response.status!==200)fail("PROVIDER_LIFECYCLE_HTTP_"+response.status);
  return parseS3LifecycleRules(body);
 }
 /** Separate strict 72h ciphertext-only queue prefix; never alter raw B2 rules. */
