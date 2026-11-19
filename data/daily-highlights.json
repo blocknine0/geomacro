@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-19T16:05:41.778Z",
+  "generated_at": "2026-11-19T21:51:36.926Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,63 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-e84e62f9",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Crimea is Ukraine · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "United Kingdom issued a statement at the UN Third Committee concerning Crimea is Ukraine. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-19T20:20:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3a38d6cf",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Crimea is Ukraine · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "United Kingdom issued a statement at the UN Third Committee concerning Crimea is Ukraine. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-19T19:13:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-25f7215d",
+      "category": "macro",
+      "title": "Geomacro finds Speech At the International Monetary: funded and Central Bank of Brazil Conference “A Quarter Century of Inflation Targeting in Latin America: Progress, Challenges, and the Road Ahead,” Bras&iacute;lia, Brazil · Brazil",
+      "why_it_matters": "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal.",
+      "what_changed": "Speech At the International Monetary funded and Central Bank of Brazil Conference “A Quarter Century of Inflation Targeting in Latin America: Progress, Challenges, and the Road Ahead,” Bras&iacute;lia, Brazil. Country or region mentioned: Brazil.",
+      "geography": "Brazil",
+      "development_type": "monetary policy",
+      "topic": "monetary policy",
+      "published_at": "2026-11-19T14:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Federal Reserve Board"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-fd19d285",
       "category": "geopolitics",
@@ -251,44 +308,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d3376d8c",
-      "category": "geopolitics",
-      "title": "Geomacro finds Third Committee: approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection · Ukraine",
-      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
-      "what_changed": "Third Committee approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection. Country or region mentioned: Ukraine.",
-      "geography": "Ukraine",
-      "development_type": "approval",
-      "topic": "geopolitical security",
-      "published_at": "2026-11-10T23:21:41.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ea497c95",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning South Sudan's authorities must allow UNMISS to operate without obstruction · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning South Sudan's authorities must allow UNMISS to operate without obstruction. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-10T17:04:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
