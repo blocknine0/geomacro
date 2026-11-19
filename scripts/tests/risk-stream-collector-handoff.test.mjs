@@ -29,7 +29,7 @@ test("scheduled direct and private collectors hand only complete licensed sideca
  assert.match(radar,/prioritizeApprovedAnchorSources/u);
  const collector=read("scripts/ops/collect-risk-stream-feed-extensions.mjs");
  assert.match(collector,/prioritizeApprovedAnchorSources/u);
- assert.match(collector,/const approved=new Map\\(manifest\\.entries\\.filter\\(row=>row\\.status==="APPROVED"/u);
+  assert.ok(collector.includes('const approved=new Map(manifest.entries.filter(row=>row.status==="APPROVED")'));
  const sidecar=read("scripts/ops/emit-risk-stream-collector-sidecar.mjs");
  assert.match(sidecar,/NO_ITEM_LICENSE_VERIFIED_CANDIDATES/u);
  assert.match(sidecar,/emitRiskStreamCandidates/u);
