@@ -68,7 +68,7 @@ async function projectProgressiveFacts(candidates,verifiedIds){
    [iso,c.category,c.title.normalize("NFKC").toLocaleLowerCase("en")
     .replace(/[^\\p{L}\\p{N}]+/gu," ").trim()].join("\\n")).digest("hex");
   facts.push({country_iso3:iso,derived_category:c.category,
-   event_fingerprint:fingerprint,publisher_domain:article.hostname.replace(/^www\\./u,""),
+   event_fingerprint:fingerprint,publisher_domain:article.hostname.replace(/^www\./u,""),
    canonical_source_url:article.href,event_clock:clock,
    clock_basis:"ORIGINAL_PUBLICATION",extracted_entities:[iso,c.category],
    rights_verified:false,commercial_eligible:false});
@@ -254,7 +254,7 @@ const approvedDomains=new Set(rightsManifest.entries
 const laneBCandidates=newlyAcknowledged.filter(candidate=>{
  const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
  if(!countryIso3||!HOT50_COUNTRY_SET.has(countryIso3))return false;
- const domain=String(candidate.sourceId??"").toLowerCase().replace(/^www\\./u,"");
+ const domain=String(candidate.sourceId??"").toLowerCase().replace(/^www\./u,"");
  return ![...approvedDomains].some(approved=>domain===approved||domain.endsWith("."+approved));
 });
 const radarSignals=laneBCandidates.map(candidate=>{
@@ -265,14 +265,14 @@ const radarSignals=laneBCandidates.map(candidate=>{
  const claim=createHash("sha256").update([
   countryIso3,candidate.category,published,
   String(candidate.title??"").normalize("NFKC").toLocaleLowerCase("en")
-   .replace(/\\s+/gu," ").trim()
+   .replace(/\s+/gu," ").trim()
  ].join("|")).digest("hex");
  return redactedRightsRadar({country_iso3:countryIso3,category,
   same_event_claim_sha256:claim,original_published_at:published,
   severity_delta:0,corroboration_count:1});
 });
 writeFileSync(radarPath,JSON.stringify({schema:"geomacro.rights-redacted-speed-radar-batch.v1",
- signals:radarSignals})+"\\n",{encoding:"utf8",mode:0o600,flag:"w"});
+ signals:radarSignals})+"\n",{encoding:"utf8",mode:0o600,flag:"w"});
 console.log(JSON.stringify({schema:"geomacro.rights-redacted-speed-radar-batch.v1",
  signals:radarSignals.length,priority_cells:new Set(radarSignals.map(x=>
   x.country_iso3+"|"+x.category)).size,raw_source_text_written:false,
