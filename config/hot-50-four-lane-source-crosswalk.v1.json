@@ -1116,6 +1116,17 @@
           "fallback_for_source_ids": [
             "private_mesh_abc_news_australia"
           ]
+        },
+        {
+          "id": "private_expansion_australian_mining",
+          "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
         }
       ],
       "telegram_discovery_candidates": [],
