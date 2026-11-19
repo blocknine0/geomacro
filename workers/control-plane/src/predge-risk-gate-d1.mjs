@@ -612,7 +612,9 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      issuer:"Geomacro",commercial_signatory:"Geomacro",
      source_origin_agnostic_commercial_seal:true,
      request_hash:requestHash,risk_gate:result,context,
-     verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     verdict_id:verdictId,source_gro_id:paidCommercialLicense?.gro_id??
+       (HASH.test(String(gro?.object_id??""))?gro.object_id:null),
+     channel,tier:lockedTier,structure_type:structureType,
      ...(paidCommercialLicense?(()=>{
        const score=paidCommercialLicense.eligible_derived_score;
        const posture={CONTINUE:"CONTINUE",REDUCE_EXPOSURE:"REDUCE_LIMIT",
