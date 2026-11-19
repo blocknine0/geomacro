@@ -612,6 +612,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      source_origin_agnostic_commercial_seal:true,
      request_hash:requestHash,risk_gate:result,context,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     source_gro_id:paidCommercialLicense?.gro_id??gro?.object_id??null,
      ...(paidCommercialLicense?(()=>{
        const score=paidCommercialLicense.eligible_derived_score;
        const posture={CONTINUE:"CONTINUE",REDUCE_EXPOSURE:"REDUCE_LIMIT",

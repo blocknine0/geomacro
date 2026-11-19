@@ -151,9 +151,9 @@ test("paid and legacy free routes are distinct and free traffic cannot touch pai
  assert.equal(d1Calls,0);
  const router=readFileSync("workers/control-plane/src/index.mjs","utf8");
  assert.ok(router.includes('url.pathname==="/v1/partner/predge/risk-gate"'));
- assert.ok(router.includes('return predgeRiskGateD1(request,env);'));
+ assert.ok(router.includes('return observedPredgeResponse(request,env,"v1",predgeRiskGateD1);'));
  assert.ok(router.includes('url.pathname==="/v2/partner/predge/paid-risk-gate"'));
- assert.ok(router.includes('return predgePaidRiskGateD1(request,env);'));
+ assert.ok(router.includes('return observedPredgeResponse(request,env,"v2",predgePaidRiskGateD1);'));
  assert.ok(router.includes('url.pathname==="/v2/partner/predge/verify-verdict"'));
  assert.ok(router.includes('return verifyPredgePaidVerdictD1(request,env);'));
 });
