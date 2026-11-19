@@ -14,6 +14,60 @@ import {REVIEWABLE_ADDITIVE_SECRETS,reviewedHot50CandidateVars,
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
+const CANDIDATE_GET_ATTEMPTS=4;
+const CANDIDATE_GET_BACKOFF_MS=250;
+const getSleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const providerErrorSuffix=value=>{
+ if(Number.isInteger(value)&&value>=0)return String(value);
+ if(typeof value==='string'&&/^[a-z0-9_-]{1,48}$/i.test(value))
+  return value.toUpperCase().replaceAll('-','_');
+ return null;
+};
+const unavailable=code=>Error('CANDIDATE_PROVIDER_UNAVAILABLE_'+code);
+function providerFailureCode(response,body,error,parseFailed=false){
+ const status=response?.status;
+ if(Number.isInteger(status)&&status>=100&&status<=599&&!response.ok)
+  return 'HTTP_'+status;
+ const providerCode=providerErrorSuffix(body?.errors?.[0]?.code);
+ if(providerCode)return 'CF_CODE_'+providerCode;
+ if(parseFailed)return 'NON_JSON_RESPONSE';
+ const networkCode=providerErrorSuffix(error?.code??error?.cause?.code);
+ if(networkCode)return 'NETWORK_'+networkCode;
+ if(error?.name==='TimeoutError'||error?.name==='AbortError')
+  return 'NETWORK_TIMEOUT';
+ if(error)return 'NETWORK_ERROR';
+ if(response?.status>=200&&response?.status<300)return 'INVALID_RESPONSE';
+ return Number.isInteger(status)?'HTTP_'+status:'HTTP_STATUS_UNKNOWN';
+}
+const isTransientStatus=status=>status===429||
+ Number.isInteger(status)&&status>=500&&status<=599;
+export async function getCandidateProviderJSON({root,path,token,fetchImpl=fetch,
+ sleep=getSleep}={}){
+ let lastCode='NETWORK_ERROR';
+ for(let attempt=0;attempt<CANDIDATE_GET_ATTEMPTS;attempt++){
+  let response,body,parseFailed=false,networkError=null;
+  try{
+   response=await fetchImpl(root+path,{headers:{Authorization:'Bearer '+token},
+    redirect:'error',signal:AbortSignal.timeout(20000)});
+  }catch(error){networkError=error;}
+  if(response){
+   try{body=await response.json();}
+   catch{parseFailed=true;}
+  }
+  lastCode=providerFailureCode(response,body,networkError,parseFailed);
+  const transient=networkError!==null||parseFailed||isTransientStatus(response?.status);
+  if(transient){
+   if(attempt<CANDIDATE_GET_ATTEMPTS-1){
+    await sleep(CANDIDATE_GET_BACKOFF_MS*2**attempt);continue;
+   }
+   throw unavailable(lastCode);
+  }
+  if(!response.ok||body?.success!==true||!body.result)
+   throw unavailable(lastCode);
+  return body.result;
+ }
+ throw unavailable(lastCode);
+}
 export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntimeVars={}){
  const bindings=version?.resources?.bindings,runtime=version?.resources?.script_runtime;
  if(!SHA.test(sha)||!Array.isArray(bindings)||!bindings.length||
@@ -170,13 +224,8 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  const head=run('git',['ls-remote','https://github.com/blocknine0/geomacro.git','refs/heads/main'],{encoding:'utf8'}).trim().split(/\s/)[0];
  if(head!==env.GITHUB_SHA)throw Error('CANDIDATE_MAIN_MOVED');
  const root='https://api.cloudflare.com/client/v4/accounts/'+env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/'+NAME;
- const get=async path=>{
-  const r=await fetchImpl(root+path,{headers:{Authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN},
-   redirect:'error',signal:AbortSignal.timeout(20000)});
-  const body=await r.json();
-  if(!r.ok||body.success!==true||!body.result)throw Error('CANDIDATE_PROVIDER_UNAVAILABLE');
-  return body.result;
- };
+ const get=path=>getCandidateProviderJSON({root,path,
+  token:env.CLOUDFLARE_API_TOKEN,fetchImpl});
  const deployment=await get('/deployments?per_page=1');
  const versions=deployment.deployments?.[0]?.versions;
  if(!Array.isArray(versions)||versions.length!==1||Number(versions[0].percentage)!==100||

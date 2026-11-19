@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersionIdFromWranglerEvents,
+import {candidateConfig,verifyCandidateBindings,prepareCandidate,getCandidateProviderJSON,
+ uploadedVersionIdFromWranglerEvents,
  assertBaselineRiskStreamSigningBindings,assertRiskStreamAttesterBearerBindings}
  from '../ops/prepare-optimized-worker-candidate.mjs';
 import {reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS}
@@ -76,6 +77,50 @@ test('candidate cannot upload from unprotected branch before provider access',as
  let calls=0;
  await assert.rejects(prepareCandidate({env:{},fetchImpl:async()=>{calls++}}),/PROTECTED_MAIN_REQUIRED/);
  assert.equal(calls,0);
+});
+
+test('candidate provider GET retries transient HTTP and network failures with bounded backoff',async()=>{
+ let calls=0;const delays=[];
+ const result=await getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/abc',token:'secret',sleep:async ms=>delays.push(ms),
+  fetchImpl:async()=>{
+   calls++;
+   if(calls===1)throw Object.assign(new TypeError('network unavailable'),
+    {cause:Object.assign(new Error('timeout'),{code:'ETIMEDOUT'})});
+   if(calls===2)return {ok:false,status:503,json:async()=>({success:false})};
+   if(calls===3)return {ok:false,status:429,json:async()=>({success:false})};
+   return {ok:true,status:200,json:async()=>({success:true,result:{id:'ready'}})};
+  }});
+ assert.deepEqual(result,{id:'ready'});
+ assert.equal(calls,4);assert.deepEqual(delays,[250,500,1000]);
+});
+
+test('candidate provider GET surfaces final HTTP, Cloudflare, and non-JSON failures',async()=>{
+ let calls=0;const delays=[];
+ await assert.rejects(getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/abc',token:'secret',sleep:async ms=>delays.push(ms),
+  fetchImpl:async()=>{calls++;return {ok:false,status:503,
+   json:async()=>({success:false})};}}),error=>{
+    assert.equal(error.message,'CANDIDATE_PROVIDER_UNAVAILABLE_HTTP_503');
+    assert.match(error.message,/^CANDIDATE_[A-Z0-9_]+$/u);return true;
+   });
+ assert.equal(calls,4);assert.deepEqual(delays,[250,500,1000]);
+ await assert.rejects(getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/abc',token:'secret',sleep:async()=>{},
+  fetchImpl:async()=>({ok:true,status:200,json:async()=>({success:false,
+   errors:[{code:1003,message:'private details'}]})})}),error=>{
+    assert.equal(error.message,'CANDIDATE_PROVIDER_UNAVAILABLE_CF_CODE_1003');
+    assert.match(error.message,/^CANDIDATE_[A-Z0-9_]+$/u);return true;
+   });
+ calls=0;delays.length=0;
+ await assert.rejects(getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/abc',token:'secret',sleep:async ms=>delays.push(ms),
+  fetchImpl:async()=>{calls++;return {ok:true,status:200,
+   json:async()=>{throw new SyntaxError('not JSON')}};}}),error=>{
+    assert.equal(error.message,'CANDIDATE_PROVIDER_UNAVAILABLE_NON_JSON_RESPONSE');
+    assert.match(error.message,/^CANDIDATE_[A-Z0-9_]+$/u);return true;
+   });
+ assert.equal(calls,4);assert.deepEqual(delays,[250,500,1000]);
 });
 
 test('candidate preserves enabled production cache and cross-version isolation',()=>{

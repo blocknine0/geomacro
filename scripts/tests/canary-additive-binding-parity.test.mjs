@@ -117,6 +117,36 @@ test("reviewed queue bindings pass parity only when the explicit queue flag is e
  assert.deepEqual(delta.expected_additions_missing,[]);
 });
 
+test("attester service rows accept only optional production environment metadata",()=>{
+ const queues=[
+  {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+ ];
+ const attesters=[
+  {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-facts-attester",environment:"production"},
+  {name:"RISK_STREAM_RIGHTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-rights-attester",environment:"production"}
+ ];
+ const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
+ const result=assessReviewedHot50BindingParity(version(streamBaseline),
+  version([...streamCandidate,...queues,...attesters]),sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime);
+ assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
+ for(const environment of ["staging","development",""]){
+  const bad=structuredClone(attesters);bad[0].environment=environment;
+  assert.throws(()=>assessReviewedHot50BindingParity(version(streamBaseline),
+   version([...streamCandidate,...queues,...bad]),sha,
+   REVIEWABLE_ADDITIVE_SECRETS,runtime),
+   /RISK_STREAM_ATTESTER_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+ }
+ const extra=structuredClone(attesters);extra[0].metadata="unexpected";
+ assert.throws(()=>assessReviewedHot50BindingParity(version(streamBaseline),
+  version([...streamCandidate,...queues,...extra]),sha,
+  REVIEWABLE_ADDITIVE_SECRETS,runtime),
+  /RISK_STREAM_ATTESTER_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+});
+
 test("queue additions without the reviewed flag and wrong queue types fail closed",()=>{
  const queues=[
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
