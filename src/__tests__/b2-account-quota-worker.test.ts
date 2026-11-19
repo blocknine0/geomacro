@@ -79,7 +79,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(B2_RELEASE_RESERVED).toEqual({GET:500,PUT:300,HEAD:10,NATIVE_AUTH:0});
     expect(B2_RELEASE_WORKFLOWS).toEqual(expect.arrayContaining([
       "step3_shadow_rehearsal","step3_production_verify","hot50_release_parity",
-      "step3_hot50_parity","deploy_quota_smoke",
+      "step3_hot50_parity","deploy_quota_smoke","registered_original_archive",
     ]));
   });
 

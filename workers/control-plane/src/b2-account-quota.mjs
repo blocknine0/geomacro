@@ -12,7 +12,8 @@ export const B2_DAILY_LIMITS = Object.freeze({
   // retain their separate bounded operation ceilings and count toward total.
   total: 3_000, GET: 2_000, PUT: 1_000, HEAD: 40, NATIVE_AUTH: 40,
 });
-// Keep a daily shared reserve for phase2h, GDELT, and release-parity jobs.
+// Keep a daily shared reserve for Phase2H, original-archive ACK seeding,
+// GDELT, and release-parity jobs.
 // The account-wide limits remain the hard ceiling for every workflow.
 export const B2_RELEASE_RESERVED = Object.freeze({
   GET: 500, PUT: 300, HEAD: 10, NATIVE_AUTH: 0,
@@ -20,7 +21,8 @@ export const B2_RELEASE_RESERVED = Object.freeze({
 export const B2_RELEASE_WORKFLOWS = Object.freeze([
   "step3_shadow_rehearsal", "step3_production_verify",
   "hot50_release_parity", "step3_hot50_parity", "deploy_quota_smoke",
-  "gdelt_v2_event_sync", "phase2h_b2_retention", "derived_news_backup",
+  "registered_original_archive", "gdelt_v2_event_sync",
+  "phase2h_b2_retention", "derived_news_backup",
 ]);
 const RELEASE_WORKFLOWS = new Set(B2_RELEASE_WORKFLOWS);
 const B2_CLASS_B_DAILY_LIMIT = B2_DAILY_LIMITS.GET;
