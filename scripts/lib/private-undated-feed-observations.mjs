@@ -171,9 +171,12 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
         const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1];
         try{
           const u=new URL(href);
+          const retiredStatcanFeed=source.id==="statcan_prices_original_atom_review"&&
+            u.hostname==="www150.statcan.gc.ca"&&u.pathname==="/n1/rss/dai-quo/18-eng.atom";
           return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&
             !u.hash&&source.original_hosts.includes(u.hostname)&&
-            u.pathname!==new URL(source.url).pathname;
+            u.pathname!==new URL(source.url).pathname&&
+            !retiredStatcanFeed;
         }catch{return false;}
       });
       if(hasPublisherLink && Buffer.byteLength(item,"utf8")<=8192){

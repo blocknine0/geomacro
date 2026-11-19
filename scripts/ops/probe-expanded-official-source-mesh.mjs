@@ -85,10 +85,13 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
   Object.freeze({
     id:"statcan_prices_original_atom_review",
     domain:"macro",kind:"original_publisher_prices_release",
-    url:"https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
+    // The officially documented subject Atom feed returned HTTP 403 in the
+    // live observation. Use the open Canada News Centre Atom API filtered to
+    // Statistics Canada; do not retry or disguise the denied endpoint.
+    url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=statisticscanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Statistics%20Canada",
     media:"atom",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
-    original_hosts:Object.freeze(["www150.statcan.gc.ca","www.statcan.gc.ca"]),
+    original_hosts:Object.freeze(["www150.statcan.gc.ca","www.statcan.gc.ca","www.canada.ca","canada.ca"]),
     topic:/\b(?:consumer prices?|producer prices?|price index|price indices|inflation|cost of living|industrial product price|raw materials price)\b/iu,
   }),
   Object.freeze({
@@ -266,7 +269,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
   uk_cabinet_security_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
-  statcan_prices_original_atom_review:/^\/n1\/(?:en\/)?daily-quotidien\/\d{6}\//u,
+  statcan_prices_original_atom_review:/^(?:\/n1\/(?:en\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z][a-z0-9-]{0,35}-eng\.(?:htm|html)|\/en\/statistics-canada\/news\/20\d{2}\/\d{2}\/[a-z0-9-]+\.html)$/u,
   uk_dbt_macro_trade_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   bc_minerals_original_rss_review:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,

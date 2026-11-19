@@ -20,9 +20,10 @@ const xml=`<rss version="2.0"><channel>
 const response=(body:string,type:string)=>new Response(body,{headers:{"content-type":type}});
 const atomCanada="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Critical minerals and consumer prices inflation update from government</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <updated>2026-10-10T06:59:00Z</updated>\n  <link rel=\"alternate\" href=\"https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-update.html\" />\n  </entry></feed>";
 const atomUk=`<feed><entry><title>Museum attendance record</title><published>2026-10-10T06:25:00Z</published><link rel="alternate" href="https://www.gov.uk/government/news/routine-notice"/></entry></feed>`;
-const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Consumer price index inflation and industrial product price update</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <link rel=\"alternate\" href=\"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm\" />\n  </entry></feed>";
+const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Consumer price index inflation and industrial product price update</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <link rel=\"alternate\" href=\"https://www.canada.ca/en/statistics-canada/news/2026/10/consumer-price-index-update.html\" />\n  </entry></feed>";
 describe("#1827 expanded official three-domain private observation lane",()=>{
-  it("has fourteen fixed publisher observations and exactly three domains",()=>{
+  it("has 21 fixed publisher observations and exactly three domains",()=>{
+    expect(EXPANDED_OFFICIAL_SOURCES).toHaveLength(21);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
       .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth","rare_earth","rare_earth","macro","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
@@ -41,7 +42,10 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(new URL(EXPANDED_OFFICIAL_SOURCES[6].alternate_url!).hostname)
       .toBe(new URL(EXPANDED_OFFICIAL_SOURCES[6].url).hostname);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk","www.ecb.europa.eu","www.gov.uk","www.gov.uk","www.gov.uk","www.gov.uk","www.gov.uk","news.gov.bc.ca"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","api.io.canada.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk","www.ecb.europa.eu","www.gov.uk","www.gov.uk","www.gov.uk","www.gov.uk","www.gov.uk","news.gov.bc.ca"]);
+    const statcan=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>s.id==="statcan_prices_original_atom_review")!;
+    expect(statcan.url).toBe("https://api.io.canada.ca/io-server/gc/news/en/v2?dept=statisticscanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Statistics%20Canada");
+    expect(statcan.original_hosts).toContain("www.canada.ca");
   });
   it("uses only exact same-issuer Fed monetary RSS after actual press_all 404, not after access denial",async()=>{
     const fed=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>
@@ -101,7 +105,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(options.credentials).toBeUndefined();
       if(new URL(url).hostname === "eiti.org")
         return response(JSON.stringify({data:[{id:1,year:2024}]}),"application/json");
-      if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
+      if(url.includes("dept=statisticscanada"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
       if(new URL(url).hostname === "www.gov.uk")return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
@@ -577,7 +581,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       }],
       ["statcan_prices_original_atom_review",{
         title:"Canada consumer price inflation release",
-        link:"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm",
+        link:"https://www.canada.ca/en/statistics-canada/news/2026/10/consumer-price-inflation-release.html",
       }],
       ["fed_monetary_original_press_rss_review",{
         title:"Federal Reserve monetary policy interest rates",

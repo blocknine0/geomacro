@@ -11,4 +11,4 @@ export const MINERALS_MESH=Object.freeze([
  {region:'asia',shared:[],primary:null,fallback:sectorFeed('us_doe_minerals_global','https://www.energy.gov/rss/energygov/2193718','global')},
  {region:'south_america',shared:[],primary:sectorFeed('guyana_mnr','https://mnr.gov.gy/feed/','south_america'),fallback:sectorFeed('mineria_desarrollo','https://www.mineriaydesarrollo.com/rss/mineria/','south_america')},
 ]);
-export const MINERALS_SOURCE_IDS=Object.freeze([...new Set(MINERALS_MESH.flatMap(g=>[g.primary?.id,g.fallback.id]).filter(Boolean)), 'mining_technology','google_minerals','google_macro_metals','fed_press_official_radar']);
+export const MINERALS_SOURCE_IDS=Object.freeze([...new Set([...MINERALS_MESH.flatMap(g=>[g.primary?.id,g.fallback.id]).filter(Boolean), 'mining_technology','google_minerals','google_macro_metals','fed_press_official_radar'])]);
