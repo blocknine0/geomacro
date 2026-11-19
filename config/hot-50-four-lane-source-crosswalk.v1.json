@@ -1059,7 +1059,7 @@
       "direct_news_osint_feeds": [
         {
           "id": "private_expansion_au_industry_news",
-          "url": "https://www.industry.gov.au/news.xml",
+          "url": "https://www.minister.industry.gov.au/feed/all-media/rss.xml",
           "categories": [
             "rare_earth"
           ],
@@ -1088,17 +1088,6 @@
           "feed_format": "rdf",
           "kind": "official_or_public_primary_candidate",
           "historical_probe_accepted": true,
-          "current_transport_verified": false
-        },
-        {
-          "id": "private_expansion_australian_mining",
-          "url": "https://www.australianmining.com.au/feed/",
-          "categories": [
-            "rare_earth"
-          ],
-          "feed_format": "rss",
-          "kind": "editorial_osint_candidate",
-          "historical_probe_accepted": false,
           "current_transport_verified": false
         },
         {
