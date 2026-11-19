@@ -91,16 +91,24 @@ test("facts attester refuses a modified payload and stale or future originals",a
  }
 });
 
-test("rights attester refuses unapproved and expired registry rows",async()=>{
+test("rights attester returns specific source registry refusal reasons with HTTP 403",async()=>{
  const candidate=fixture();
- const unapproved=await attestRights(request(candidate),rightsEnv({...registryRow,
-  commercial_rights_approved:0}),now);
- assert.equal(unapproved.status,403);
- assert.equal((await result(unapproved)).error,"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED");
- const expired=await attestRights(request(candidate),rightsEnv({...registryRow,
-  rights_expire_at:"2026-11-13"}),now);
- assert.equal(expired.status,403);
- assert.equal((await result(expired)).error,"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED");
+ const cases=[
+  [null,"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ROW_MISSING"],
+  [{...registryRow,source_id:"other_source"},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ROW_MISSING"],
+  [{...registryRow,enabled:0},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_DISABLED"],
+  [{...registryRow,commercial_rights_approved:0},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_NOT_APPROVED"],
+  [{...registryRow,publisher_root_domain:"other.test"},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_DOMAIN"],
+  [{...registryRow,parent_media_entity:"other_parent"},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ENTITY"],
+  [{...registryRow,source_role:"OTHER_ROLE"},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ROLE"],
+  [{...registryRow,rights_expire_at:"2026-11-13"},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_EXPIRED"],
+  [{...registryRow,rights_expire_at:"not-a-date"},"SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_EXPIRED"],
+ ];
+ for(const [row,error] of cases){
+  const response=await attestRights(request(candidate),rightsEnv(row),now);
+  assert.equal(response.status,403);
+  assert.equal((await result(response)).error,error);
+ }
 });
 
 test("both independent attesters refuse item-level noncommercial or third-party exceptions",async()=>{
