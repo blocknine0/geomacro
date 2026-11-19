@@ -263,7 +263,8 @@ jobs:
         if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Dual-attest and admit licensed candidates under daily D1 cap
         if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
@@ -284,7 +285,10 @@ jobs:
         if: always()
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE" "$GEOMACRO_RISK_STREAM_RADAR_FILE"
 
   collect-direct-20m:
     name: Fetch pinned direct publishers and stage native originals into canonical private D1
@@ -346,6 +350,7 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
           GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT: ${{ runner.temp }}/phase2i-ciphertext/queue.json
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
           GEOMACRO_PHASE2I_DURABLE_URL: ${{ vars.GEOMACRO_PHASE2I_DURABLE_URL }}
           GEOMACRO_PHASE2I_DURABLE_TOKEN: ${{ secrets.GEOMACRO_PHASE2I_DURABLE_TOKEN }}
           GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
