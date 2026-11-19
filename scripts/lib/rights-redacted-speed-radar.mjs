@@ -31,7 +31,9 @@ export function prioritizeApprovedAnchorSources(signals,sources){
  const cells=new Set(signals.filter(signal=>
   signal?.schema==='geomacro.rights-redacted-speed-radar.v1'&&
   signal.raw_source_redacted===true&&signal.licensed_source_text_included===false&&
-  signal.commercial_rights_approved===0&&/^[A-Z]{3}$/u.test(signal.country_iso3??'')&&
+  signal.raw_sources_not_republished===true&&signal.commercial_rights_approved===0&&
+  signal.corroborates_commercial_standard===false&&signal.signed_gro_authorized===false&&
+  signal.paid_delivery_authorized===false&&/^[A-Z]{3}$/u.test(signal.country_iso3??'')&&
   ['GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS'].includes(signal.category))
   .map(signal=>signal.country_iso3+'|'+signal.category));
  const ranked=sources.map((source,index)=>{
