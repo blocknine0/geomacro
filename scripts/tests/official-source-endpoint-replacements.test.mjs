@@ -35,8 +35,9 @@ test("IDN and recorded unhealthy country adapters point to first-party RSS alter
  const auIndustry=regional.find(row=>row.id==="private_expansion_au_industry_news");
  assert.equal(auIndustry.url,"https://www.minister.industry.gov.au/feed/all-media/rss.xml");
  assert.equal(auIndustry.commercial_eligible,false);
- assert.ok(!regional.some(row=>row.id==="private_expansion_australian_mining"),
-  "the current 403 publisher feed is retired from active source polling");
+ const mining=regional.find(row=>row.id==="private_expansion_australian_mining");
+ assert.equal(mining.url,"https://www.minister.industry.gov.au/feed/media-releases/rss.xml");
+ assert.equal(mining.commercial_eligible,false);
 });
 
 test("Botswana official bank feeds are discoverable through the bank's documented RSS service",()=>{
