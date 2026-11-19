@@ -34,9 +34,13 @@ test("IDN and recorded unhealthy country adapters point to first-party RSS alter
  assert.equal(ind.commercial_eligible,false);
  const auIndustry=regional.find(row=>row.id==="private_expansion_au_industry_news");
  assert.equal(auIndustry.url,"https://www.minister.industry.gov.au/feed/all-media/rss.xml");
+ assert.equal(auIndustry.publisher_country_iso3,"AUS");
+ assert.equal(auIndustry.type,"rss");
  assert.equal(auIndustry.commercial_eligible,false);
  const mining=regional.find(row=>row.id==="private_expansion_australian_mining");
  assert.equal(mining.url,"https://www.minister.industry.gov.au/feed/media-releases/rss.xml");
+ assert.equal(mining.publisher_country_iso3,"AUS");
+ assert.equal(mining.type,"rss");
  assert.equal(mining.commercial_eligible,false);
 });
 
