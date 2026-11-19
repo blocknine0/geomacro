@@ -30,6 +30,7 @@ import {appendAndLeasePhase2i,acknowledgePhase2i,phase2iDurableStatus,
  durableCandidateId} from "../lib/phase2i-durable-queue-client.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {HOT50_COUNTRY_SET} from "../lib/hot-50-country-watch.mjs";
+import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 
@@ -171,6 +172,7 @@ const native20mCounts=Object.fromEntries(["geopolitics","macro","rare_earth"]
 const temp=resolve(String(env.RUNNER_TEMP??"/never"));
 const priorPath=resolve(String(env.GEOMACRO_PHASE2I_PRIOR_QUEUE??"/missing"));
 const cipherPath=resolve(String(env.GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT??"/missing"));
+const radarPath=resolve(String(env.GEOMACRO_RISK_STREAM_RADAR_FILE??"/missing"));
 if(!priorPath.startsWith(temp+sep)||!cipherPath.startsWith(temp+sep)||
    priorPath===cipherPath)throw Error("PHASE2I_BACKLOG_RUNNER_PATH_INVALID");
 const candidateIdentity=c=>JSON.stringify([c.category,c.articleUrl,
@@ -241,6 +243,40 @@ const newlyAcknowledged=queue.candidates.filter(candidate=>{
   candidate.category+"\n"+candidate.articleUrl+"\n"+native).digest("hex");
  return verifiedStageIds.has(id);
 });
+// The radar is a redacted pointer only. Its hash is computed in memory from a
+// source title, then only numeric/corroboration metadata and the hash reach the
+// next Lane A step. Approved feed domains are excluded from Lane B signals.
+const rightsManifest=JSON.parse(readFileSync(
+ "config/risk-stream-source-rights-reviewed.v1.json","utf8"));
+const approvedDomains=new Set(rightsManifest.entries
+ .filter(row=>row.status==="APPROVED"&&row.commercial_rights_approved!==0)
+ .map(row=>String(row.publisher_root_domain??"").toLowerCase()).filter(Boolean));
+const laneBCandidates=newlyAcknowledged.filter(candidate=>{
+ const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
+ if(!countryIso3||!HOT50_COUNTRY_SET.has(countryIso3))return false;
+ const domain=String(candidate.sourceId??"").toLowerCase().replace(/^www\\./u,"");
+ return ![...approvedDomains].some(approved=>domain===approved||domain.endsWith("."+approved));
+});
+const radarSignals=laneBCandidates.map(candidate=>{
+ const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
+ const category={geopolitics:"geopolitics",macro:"macro",rare_earth:"rare_earth"}[candidate.category];
+ const published=candidate.datePrecision==="day"?
+  candidate.publishedAt.slice(0,10)+"T00:00:00.000Z":candidate.publishedAt;
+ const claim=createHash("sha256").update([
+  countryIso3,candidate.category,published,
+  String(candidate.title??"").normalize("NFKC").toLocaleLowerCase("en")
+   .replace(/\\s+/gu," ").trim()
+ ].join("|")).digest("hex");
+ return redactedRightsRadar({country_iso3:countryIso3,category,
+  same_event_claim_sha256:claim,original_published_at:published,
+  severity_delta:0,corroboration_count:1});
+});
+writeFileSync(radarPath,JSON.stringify({schema:"geomacro.rights-redacted-speed-radar-batch.v1",
+ signals:radarSignals})+"\\n",{encoding:"utf8",mode:0o600,flag:"w"});
+console.log(JSON.stringify({schema:"geomacro.rights-redacted-speed-radar-batch.v1",
+ signals:radarSignals.length,priority_cells:new Set(radarSignals.map(x=>
+  x.country_iso3+"|"+x.category)).size,raw_source_text_written:false,
+ licensed_source_text_included:false})); 
 const projectedByKey=new Map();
 for(const candidate of newlyAcknowledged){
  const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
