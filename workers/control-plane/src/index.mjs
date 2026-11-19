@@ -34,6 +34,7 @@ import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.
 import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts,projectUnverifiedProgressiveObservations} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgePaidRiskGateD1,predgeRiskGateD1,predgeRiskGateD1Readiness,verifyPredgePaidVerdictD1} from "./predge-risk-gate-d1.mjs";
+import {recordPredgeDeliveryObservation,reconcilePredgeDaily} from "./predge-daily-delivery-ledger.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
@@ -166,6 +167,41 @@ function authorized(request, env) {
   const supplied = bearer(request);
   if (!secureEqual(supplied, expected)) return { ok: false, status: 401, error: "UNAUTHORIZED" };
   return { ok: true };
+}
+
+async function observedPredgeResponse(request,env,apiVersion,handler){
+  try{
+    const response=await handler(request,env);
+    await recordPredgeDeliveryObservation({request,response,env,apiVersion});
+    return response;
+  }catch(error){
+    await recordPredgeDeliveryObservation({request,
+      response:Response.json({ok:false,error:"PREDGE_HANDLER_FAILED"},{status:500}),env,apiVersion});
+    throw error;
+  }
+}
+
+async function predgeDailyLedgerSummary(env,url){
+  const keys=[...url.searchParams.keys()];
+  if(keys.some(k=>k!=="day_utc")||url.searchParams.getAll("day_utc").length>1)
+    return json({ok:false,error:"PREDGE_DAILY_LEDGER_QUERY_INVALID"},400);
+  const day=url.searchParams.get("day_utc")??new Date().toISOString().slice(0,10);
+  const start=`${day}T00:00:00`,parsed=Date.parse(`${day}T00:00:00.000Z`);
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/u.test(day)||!Number.isFinite(parsed)||new Date(parsed).toISOString().slice(0,10)!==day)
+    return json({ok:false,error:"PREDGE_DAILY_LEDGER_DAY_INVALID"},400);
+  if(!env?.DB?.prepare)return json({ok:false,error:"PREDGE_DAILY_LEDGER_UNAVAILABLE"},503);
+  const next=new Date(parsed+86400000).toISOString().slice(0,19);
+  try{
+    const created=await env.DB.prepare(`SELECT gro_id,country_iso3,category,created_at,payload_json,
+      COALESCE(json_extract(payload_json,'$.eligible_derived_score.agent_decision.tier'),
+      json_extract(payload_json,'$.agent_decision.tier'),json_extract(payload_json,'$.tier')) AS tier
+      FROM risk_stream_signed_gro WHERE created_at>=? AND created_at<?`).bind(start,next).all();
+    const deliveries=await env.DB.prepare(`SELECT gro_id,receipt_sha256,day_utc,country_iso3,category,tier,delivery_status
+      FROM risk_stream_predge_daily_delivery_ledger WHERE day_utc=?`).bind(day).all();
+    const summary=reconcilePredgeDaily({day,createdRows:created?.results??[],deliveryRows:deliveries?.results??[]});
+    return Response.json({ok:true,...summary},{headers:{"Cache-Control":"private, no-store",
+      "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
+  }catch{return json({ok:false,error:"PREDGE_DAILY_LEDGER_UNAVAILABLE"},503);}
 }
 
 async function readJson(request, maxBytes = MAX_BODY_BYTES) {
@@ -1774,9 +1810,9 @@ export default {
       return predgeRiskGateD1Readiness(env);
     // Distinct risk-gate credential and D1 quota; never inherit root admin auth.
     if(url.pathname==="/v1/partner/predge/risk-gate")
-      return predgeRiskGateD1(request,env);
+      return observedPredgeResponse(request,env,"v1",predgeRiskGateD1);
     if(url.pathname==="/v2/partner/predge/paid-risk-gate")
-      return predgePaidRiskGateD1(request,env);
+      return observedPredgeResponse(request,env,"v2",predgePaidRiskGateD1);
     if(url.pathname==="/v1/store/risk-gate")
       return storeRiskGateD1(request,env);
     if(url.pathname==="/v2/partner/predge/verify-verdict")
@@ -1887,6 +1923,8 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/predge-daily-ledger")
+      return predgeDailyLedgerSummary(env,url);
     if(url.pathname==="/v1/internal/risk-stream/runtime"&&request.method==="GET")
       return json(riskStreamRuntimeStatus(env));
     if(url.pathname==="/v1/internal/risk-stream/readback"&&request.method==="POST")
