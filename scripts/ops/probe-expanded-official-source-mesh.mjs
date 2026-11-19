@@ -269,7 +269,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
   uk_cabinet_security_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
-  statcan_prices_original_atom_review:/^(?:\/n1\/(?:en\/)?daily-quotidien\/\d{6}\/|\/en\/statistics-canada\/news\/20\d{2}\/\d{2}\/[a-z0-9-]+\.html)$/u,
+  statcan_prices_original_atom_review:/^(?:\/n1\/(?:en\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z][a-z0-9-]{0,35}-eng\.(?:htm|html)|\/en\/statistics-canada\/news\/20\d{2}\/\d{2}\/[a-z0-9-]+\.html)$/u,
   uk_dbt_macro_trade_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   bc_minerals_original_rss_review:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,

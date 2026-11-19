@@ -23,7 +23,7 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   ecb_press_original_rss_review:/^\/press\/(?:pr|key)\/date\/20[0-9]{2}\/html\/[a-zA-Z0-9.~_-]{6,190}\.html$/u,
   uk_dbt_macro_trade_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
-  statcan_prices_original_atom_review:/^(?:\/n1\/(?:en\/)?daily-quotidien\/\d{6}\/|\/en\/statistics-canada\/news\/20\d{2}\/\d{2}\/[a-z0-9-]+\.html)$/u,
+  statcan_prices_original_atom_review:/^(?:\/n1\/(?:en\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z][a-z0-9-]{0,35}-eng\.(?:htm|html)|\/en\/statistics-canada\/news\/20\d{2}\/\d{2}\/[a-z0-9-]+\.html)$/u,
   bc_minerals_original_rss_review:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
