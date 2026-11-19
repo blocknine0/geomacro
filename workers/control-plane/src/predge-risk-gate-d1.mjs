@@ -677,7 +677,7 @@ async function runPredgeRiskGateAndObserve(request,env,now,authority,paidEndpoin
  try{
   const body=await requestCopy.json();
   const parsed=parseRequest(body,now);
-  if(!parsed?.category)return response;
+  if(!parsed?.category||parsed.subject.type!=="country")return response;
   const responseText=await response.clone().text();
   let receipt;
   let output;
@@ -693,8 +693,7 @@ async function runPredgeRiskGateAndObserve(request,env,now,authority,paidEndpoin
    endpoint_version:paidEndpoint?"v2":"v1",request_id:parsed.request_id,
    gro_id:output?.licensed_gro_id??output?.source_gro_id??null,
    receipt_sha256:receipt,day_utc:new Date(now).toISOString().slice(0,10),
-   country_iso3:parsed.subject.type==="country"?parsed.subject.id:
-     parsed.subject.id.split(">").join(""),
+   country_iso3:parsed.subject.id,
    category,tier,delivery_status:deliveryStatus,
    created_at:new Date(now).toISOString()
   });
