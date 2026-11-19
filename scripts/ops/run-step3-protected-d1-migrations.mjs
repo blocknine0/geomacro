@@ -63,7 +63,7 @@ import {auditStep30211WithoutRowidCounter}
  from "../lib/d1-step3-0211-counter-integrity.mjs";
 import {auditStep30211SpoolSource}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
-import {withStep3ConcurrentDriftRetry}
+import {withStep3ConcurrentDriftRetry,withStep3ReadOnlyQueryRetry}
  from "../lib/d1-step3-concurrent-drift-retry.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3NativeHistorySQL,
@@ -197,8 +197,8 @@ export function parseStep3WranglerQuery(raw,{maxRows=60}={}){
  return {rows:data[0].results,readRows:data[0].meta.rows_read};
 }
 function q(config,sql,{maxRows=60}={}){
- return parseStep3WranglerQuery(wrangler(config,[
-  "d1","execute","DB","--remote","--json","--command",sql]),{maxRows});
+ return withStep3ReadOnlyQueryRetry(()=>parseStep3WranglerQuery(wrangler(config,[
+  "d1","execute","DB","--remote","--json","--command",sql]),{maxRows}));
 }
 function writeD1Sql(config,sql){
  let data;

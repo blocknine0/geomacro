@@ -15,6 +15,7 @@ export const STEP3_SET_MAX_SOURCE_ROWS=100000;
 // Reviewed only for the 0211 spool ROWID join. The source-row ceiling is
 // separate from the caller's metered provider rows-read cap across all queries.
 export const STEP3_JOIN_MAX_SOURCE_ROWS=335000;
+export const STEP3_JOIN_CHUNK_ROWS=50000;
 const PREDICATES=Object.freeze({
  phase2h_private_raw_news:Object.freeze({
   idx_phase2h_pending_recent_ingested_category:'"b2_object_sha256" IS NULL',
@@ -154,12 +155,13 @@ export function auditStep3AllIndexesSet(table,query){
  * This is sufficient for bidirectional row/key membership: no missing row,
  * duplicate ROWID, orphan entry, or wrong-key entry can be admitted.
  *
- * Both halves are read inside ONE SQLite statement per index. The explicit
+ * Each bounded ROWID chunk is read inside one SQLite statement. The explicit
  * plan check prevents the optimizer from silently replacing the forced index
  * with an ordinary table scan. No raw source values leave the provider.
  * Cross-index transactional isolation and physical B2 parity are NOT claimed.
  */
-export function step3BuildIndexJoinSQL({table,index,columns}={}){
+export function step3BuildIndexJoinSQL({table,index,columns,
+ rowidStart=null,rowidEnd=null}={}){
  const t=q(table),ix=q(index);
  if(!Array.isArray(columns)||columns.length===0||columns.length>16||
     new Set(columns.map(x=>x?.name)).size!==columns.length||
@@ -168,8 +170,16 @@ export function step3BuildIndexJoinSQL({table,index,columns}={}){
   fail("JOIN_INDEX_COLUMNS_INVALID");
  const equal=columns.map(x=>
   "i."+q(x.name)+" IS s."+q(x.name)).join(" AND ");
+ if(rowidStart!==null&&!Number.isSafeInteger(rowidStart)||
+    rowidEnd!==null&&!Number.isSafeInteger(rowidEnd)||
+    rowidStart!==null&&rowidEnd!==null&&rowidEnd<=rowidStart)
+  fail("JOIN_ROWID_RANGE_INVALID");
+ const range=[];
+ if(rowidStart!==null)range.push("i.rowid>"+rowidStart);
+ if(rowidEnd!==null)range.push("i.rowid<="+rowidEnd);
  const joined=" FROM "+t+" AS i INDEXED BY "+ix+
-  " LEFT JOIN "+t+" AS s NOT INDEXED ON s.rowid=i.rowid";
+  " LEFT JOIN "+t+" AS s NOT INDEXED ON s.rowid=i.rowid"+
+  (range.length?" WHERE "+range.join(" AND "):"");
  const equality="SELECT COUNT(*) AS index_rows,"+
   "COUNT(DISTINCT i.rowid) AS distinct_rowids,"+
   "COALESCE(SUM(CASE WHEN s.rowid IS NULL OR NOT ("+equal+
@@ -210,6 +220,25 @@ export function auditStep3AllIndexesJoin(table,query){
     bound[0].n<1||bound[0].n>STEP3_JOIN_MAX_SOURCE_ROWS)
   fail("JOIN_SOURCE_ROWS_OUTSIDE_REVIEWED_BOUND");
  const rows=bound[0].n;
+ // Select stable keyset boundaries once. Each resulting ROWID interval
+ // contains at most STEP3_JOIN_CHUNK_ROWS canonical source rows, including
+ // when ROWIDs have gaps or are negative. Only aggregate bounds cross D1.
+ const chunks=[];let cursor=null,chunkedRows=0;
+ while(chunkedRows<rows){
+  const where=cursor===null?"":" WHERE rowid>"+cursor;
+  const boundarySQL="SELECT COUNT(*) AS n,MAX(rowid) AS end_rowid FROM ("+
+   "SELECT rowid FROM "+q(table)+" NOT INDEXED"+where+
+   " ORDER BY rowid LIMIT "+STEP3_JOIN_CHUNK_ROWS+")";
+  const boundary=read(query,boundarySQL,1);
+  const expected=Math.min(STEP3_JOIN_CHUNK_ROWS,rows-chunkedRows);
+  if(boundary.length!==1||boundary[0]?.n!==expected||
+     !Number.isSafeInteger(boundary[0]?.end_rowid)||
+     cursor!==null&&boundary[0].end_rowid<=cursor)
+   fail("JOIN_ROWID_CHUNK_BOUNDARY_UNVERIFIED");
+  chunks.push({rowidStart:cursor,rowidEnd:boundary[0].end_rowid,
+   sourceRows:boundary[0].n});
+  cursor=boundary[0].end_rowid;chunkedRows+=boundary[0].n;
+ }
  const quick=read(query,"PRAGMA quick_check("+q(table)+")",2);
  if(quick.length!==1||Object.values(quick[0]??{}).length!==1||
     Object.values(quick[0])[0]!=="ok")fail("JOIN_QUICK_CHECK_NOT_OK");
@@ -233,15 +262,29 @@ export function auditStep3AllIndexesJoin(table,query){
        !["BINARY","NOCASE","RTRIM"].includes(x.coll)))
    fail("JOIN_INDEX_XINFO_UNVERIFIED");
   const statements=step3BuildIndexJoinSQL({table,index:idx.name,
-   columns:columns.map(x=>({name:x.name,coll:x.coll}))});
+   columns:columns.map(x=>({name:x.name,coll:x.coll})),
+   rowidStart:chunks[0].rowidStart,rowidEnd:chunks[0].rowidEnd});
   const plan=read(query,statements.plan,20);
   if(!plan.some(x=>typeof x?.detail==="string"&&
       x.detail.includes("SCAN i USING COVERING INDEX "+idx.name))||
      !plan.some(x=>typeof x?.detail==="string"&&
       x.detail.includes("SEARCH s USING INTEGER PRIMARY KEY")))
    fail("JOIN_FORCED_INDEX_AND_CANONICAL_ROWID_PLAN_UNVERIFIED");
-  const proved=verifyStep3IndexJoinResult(
-   read(query,statements.equality,1),{sourceRows:rows});
+  const aggregate={index_rows:0,distinct_rowids:0,mismatched_rows:0};
+  for(const chunk of chunks){
+   const chunkSQL=step3BuildIndexJoinSQL({table,index:idx.name,
+    columns:columns.map(x=>({name:x.name,coll:x.coll})),
+    rowidStart:chunk.rowidStart,rowidEnd:chunk.rowidEnd}).equality;
+   const result=read(query,chunkSQL,1);
+   if(result.length!==1||
+      Object.keys(result[0]??{}).sort().join(",")!==
+       "distinct_rowids,index_rows,mismatched_rows"||
+      !Object.values(result[0]).every(Number.isSafeInteger)||
+      Object.values(result[0]).some(value=>value<0))
+    fail("JOIN_CHUNK_AGGREGATE_UNVERIFIED");
+   for(const key of Object.keys(aggregate))aggregate[key]+=result[0][key];
+  }
+  const proved=verifyStep3IndexJoinResult([aggregate],{sourceRows:rows});
   if(idx.unique===1&&read(query,statements.uniqueness,1).length!==0)
    fail("JOIN_UNIQUE_LOGICAL_CONSTRAINT_UNVERIFIED");
   proofs.push({index:idx.name,rows_compared:proved.verified_rows,
@@ -260,7 +303,8 @@ export function auditStep3AllIndexesJoin(table,query){
   total_existing_indexes:proofs.length,index_proofs:proofs,
   all_indexes_including_unique_considered:true,
   full_source_row_count_observed:rows,
-  per_index_single_statement_snapshot:true,
+  per_index_single_statement_snapshot:false,
+  per_index_chunk_count:chunks.length,
   cross_index_transactional_snapshot_proven:false,
   real_sqlite_integrity_check_claimed:false,
   physical_file_integrity_claimed:false,

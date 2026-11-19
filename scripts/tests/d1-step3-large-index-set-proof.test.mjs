@@ -4,7 +4,8 @@ import {DatabaseSync} from "node:sqlite";
 import {auditStep3AllIndexesSet,step3BuildIndexSetSQL,
  verifyStep3IndexSetResult,STEP3_SET_MAX_SOURCE_ROWS,
  step3BuildIndexJoinSQL,verifyStep3IndexJoinResult,
- auditStep3AllIndexesJoin,STEP3_JOIN_MAX_SOURCE_ROWS}
+ auditStep3AllIndexesJoin,STEP3_JOIN_MAX_SOURCE_ROWS,
+ STEP3_JOIN_CHUNK_ROWS}
  from "../lib/d1-step3-large-index-set-proof.mjs";
 const read=d=>(sql,max)=>{
  assert.match(sql,/^(?:SELECT |PRAGMA |EXPLAIN QUERY PLAN SELECT )/);
@@ -118,6 +119,31 @@ test("0211 covering-index ROWID join proves every key without full EXCEPT amplif
   assert.equal(proof.cross_index_transactional_snapshot_proven,false);
   assert.equal(proof.physical_file_integrity_claimed,false);
   assert.equal(JSON.stringify(proof).includes("source-"),false);
+ }finally{d.close()}
+});
+test("0211 ROWID join chunks and aggregates across the 50k source-row boundary",()=>{
+ const d=new DatabaseSync(":memory:");
+ try{
+  d.exec("CREATE TABLE ingestion_spool_queue(source_id TEXT,day_utc TEXT);"+
+   "CREATE INDEX idx_spool_source_id ON ingestion_spool_queue(source_id,day_utc)");
+  const ins=d.prepare("INSERT INTO ingestion_spool_queue VALUES(?,?)");
+  d.exec("BEGIN");
+  for(let i=0;i<STEP3_JOIN_CHUNK_ROWS+2;i++)
+   ins.run("source-"+(i%4),"2026-11-10");
+  d.exec("COMMIT");
+  let joinBatches=0;
+  const proof=auditStep3AllIndexesJoin("ingestion_spool_queue",(sql,max)=>{
+   if(sql.startsWith("SELECT ")&&sql.includes("COUNT(DISTINCT i.rowid)")){
+    joinBatches++;
+    assert.match(sql,/i\.rowid<=\d+/u);
+   }
+   const result=d.prepare(sql).all();assert(result.length<=max);return result;
+  });
+  assert.equal(joinBatches,2);
+  assert.equal(proof.per_index_chunk_count,2);
+  assert.equal(proof.per_index_single_statement_snapshot,false);
+  assert.equal(proof.full_source_row_count_observed,STEP3_JOIN_CHUNK_ROWS+2);
+  assert.equal(proof.index_proofs[0].rows_compared,STEP3_JOIN_CHUNK_ROWS+2);
  }finally{d.close()}
 });
 test("ROWID join rejects missing, duplicated and key-mismatched index members",()=>{
