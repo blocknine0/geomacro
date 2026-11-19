@@ -52,7 +52,9 @@ test("workflow keeps bounded isolated archive gate, preserves quota receipt and 
  const workflow=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
  assert.ok(workflow.includes('cron: "29 0,6,12,18 * * *"'));
  assert.doesNotMatch(workflow,/five-hour-slot:/u);
- assert.doesNotMatch(workflow,/workflow_dispatch:|manual-smoke-gate:/u);
+ assert.match(workflow,/workflow_dispatch:/u);
+ assert.match(workflow,/github.event_name == 'workflow_dispatch'[\s\S]*?github.ref == 'refs\/heads\/main'/u);
+ assert.match(workflow,/needs\.quota-admission\.outputs\.raw_archive == 'true'/u);
  assert.ok(workflow.includes("Automatic D1 raw-news deletion is PAUSED"));
  assert.doesNotMatch(workflow,/archive-then-retention:/u);
  assert.ok(workflow.includes("github.event.schedule == '29 0,6,12,18 * * *'"));
