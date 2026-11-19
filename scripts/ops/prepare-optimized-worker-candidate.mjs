@@ -126,6 +126,14 @@ export function candidateConfig(version,sha,reviewedSecretNames=[],predgeRuntime
   inheritedBindings.push({name:'RISK_STREAM_QUEUE',type:'queue',queue_name:'geomacro-risk-stream'});
  if(attachRiskQueues&&!names.has('RISK_STREAM_DELIVERY_QUEUE'))
   inheritedBindings.push({name:'RISK_STREAM_DELIVERY_QUEUE',type:'queue',queue_name:'geomacro-risk-stream-delivery'});
+ if(attachRiskQueues){
+  const existing=bindings.find(binding=>binding.name==='RISK_STREAM_PRIVATE_R2');
+  if(existing&&(existing.type!=='r2_bucket'||
+     existing.bucket_name!=='geomacro-risk-stream-private'))
+   throw Error('CANDIDATE_RISK_STREAM_ARCHIVE_R2_BINDING_MISMATCH');
+  if(!existing)inheritedBindings.push({name:'RISK_STREAM_PRIVATE_R2',type:'r2_bucket',
+   bucket_name:'geomacro-risk-stream-private'});
+ }
  const riskStreamAttesters=[
   {name:'RISK_STREAM_FACTS_ATTESTER',service:'geomacro-risk-stream-facts-attester'},
   {name:'RISK_STREAM_RIGHTS_ATTESTER',service:'geomacro-risk-stream-rights-attester'}
