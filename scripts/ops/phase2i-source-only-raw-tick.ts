@@ -68,7 +68,7 @@ async function projectProgressiveFacts(candidates,verifiedIds){
    [iso,c.category,c.title.normalize("NFKC").toLocaleLowerCase("en")
     .replace(/[^\\p{L}\\p{N}]+/gu," ").trim()].join("\\n")).digest("hex");
   facts.push({country_iso3:iso,derived_category:c.category,
-   event_fingerprint:fingerprint,publisher_domain:article.hostname.replace(/^www\./u,""),
+   event_fingerprint:fingerprint,publisher_domain:article.hostname.replace(/^www\\./u,""),
    canonical_source_url:article.href,event_clock:clock,
    clock_basis:"ORIGINAL_PUBLICATION",extracted_entities:[iso,c.category],
    rights_verified:false,commercial_eligible:false});
