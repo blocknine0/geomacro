@@ -672,6 +672,8 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
 async function runPredgeRiskGateAndObserve(request,env,now,authority,paidEndpoint){
  const requestCopy=request.clone();
  const response=await runPredgeRiskGateD1(request,env,now,authority,paidEndpoint);
+ // Do not let unauthenticated requests consume D1 writes through accounting.
+ if(serviceCredential(requestCopy,env,paidEndpoint))return response;
  // Accounting is best-effort and occurs after the unchanged decision path.
  // It never changes the response or turns a successful delivery into a failure.
  try{
