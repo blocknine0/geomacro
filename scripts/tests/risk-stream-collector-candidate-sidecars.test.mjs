@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync,sign} from "node:crypto";
 import {collectRiskStreamFeedExtensions} from "../ops/collect-risk-stream-feed-extensions.mjs";
+import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {normalizeRiskStreamInternalCorroboration} from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
@@ -51,6 +52,38 @@ for(const collector of ["direct","private"]){
   assert.equal(admission.item_license_skipped,0);
  });
 }
+
+
+test("a redacted Lane B cell prioritizes only approved matching Lane A feeds on the same scheduled poll",async()=>{
+ const approved=manifest.entries.find(row=>row.source_id==="uk_fcdo_ogl_official_atom");
+ const macro=manifest.entries.find(row=>row.source_id==="uk_hmt_ogl_official_atom");
+ const feeds=[
+  {...feed(macro.source_id),url:"https://www.gov.uk/government/organisations/hm-treasury.atom",
+   risk_category:"macro_economics"},
+  {...feed(approved.source_id),risk_category:"conflict"},
+  {...feed("unapproved-watch"),name:"unapproved-watch",risk_category:"conflict",
+   risk_stream_item_licensed:true,risk_stream_standard_item_license_candidate:true},
+ ];
+ const calls=[];
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
+  fetchImpl:async(url)=>{calls.push(url);return {ok:true,text:async()=>"<feed></feed>",
+   headers:{get:()=>null}};},
+  rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:feeds},
+  sourceRegistry,
+  radarSignals:[redactedRightsRadar({category:"geopolitics",country_iso3:"USA",
+   same_event_claim_sha256:"c".repeat(64),original_published_at:"2026-11-15T09:30:00Z",
+   severity_delta:0,corroboration_count:1})]});
+ assert.deepEqual(calls.slice(0,2),[
+  "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+  "https://www.gov.uk/government/organisations/hm-treasury.atom"
+ ]);
+ assert.equal(result.lane_b_redacted_signals,1);
+ assert.equal(result.lane_a_priority_sources,1);
+ assert.deepEqual(result.lane_a_priority_source_ids,["uk_fcdo_ogl_official_atom"]);
+ assert.equal(calls.includes("https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom"),true);
+ assert.doesNotMatch(JSON.stringify(result),/secret|publisher.*title/iu);
+});
+
 
 test("collector normalizes the Antarctica code to the sovereign Australia route before attestation",async()=>{
  const antarctica={...original,country_iso3:"ATA",
@@ -180,5 +213,7 @@ test("collector workflows run the sidecar builder immediately before the shared 
   assert.match(workflow,/emit-risk-stream-collector-sidecar\.mjs/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_FACTS_SPKI_B64/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_RIGHTS_SPKI_B64/u);
+  assert.match(workflow,/GEOMACRO_RISK_STREAM_RADAR_FILE/u);
+  assert.ok(workflow.includes('--radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE"'));
  }
 });

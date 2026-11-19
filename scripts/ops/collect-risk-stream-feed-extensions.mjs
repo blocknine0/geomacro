@@ -2,6 +2,8 @@
 import {readFileSync,writeFileSync} from "node:fs";
 import {prepareRiskStreamCandidate} from "../lib/risk-stream-candidate-builder.mjs";
 import {eventIdentityFields} from "../lib/risk-stream-event-fingerprint.mjs";
+import {prioritizeApprovedAnchorSources} from "../lib/rights-redacted-speed-radar.mjs";
+import {resolve,sep} from "node:path";
 
 const fail=code=>{throw Error("RISK_STREAM_FEED_EXTENSION_"+code)};
 const RIGHTS_PATH="config/risk-stream-source-rights-reviewed.v1.json";
@@ -210,17 +212,29 @@ function load(){
 
 /** Read only approved, opt-in feeds; discard metadata-only entries before emitting JSONL. */
 export async function collectRiskStreamFeedExtensions({collector="direct",now=Date.now(),
- fetchImpl=fetch,rightsManifest,feeds,sourceRegistry}={}){
+ fetchImpl=fetch,rightsManifest,feeds,sourceRegistry,radarSignals=[]}={}){
  if(!["direct","private","render"].includes(collector))fail("COLLECTOR_INVALID");
  const loaded=rightsManifest&&feeds?{rights:rightsManifest,feeds}:{...load()};
  const manifest=loaded.rights,registry=loaded.feeds;
  const approved=new Map(manifest.entries.filter(row=>row.status==="APPROVED")
   .map(row=>[row.source_id,row]));
  const sources=sourceRegistry??manifest.entries.map(row=>({...row,enabled:1,commercial_rights_approved:1}));
+ const priority=prioritizeApprovedAnchorSources(radarSignals,registry.sources.map(feed=>{
+  const rights=approved.get(feed.name);
+  const sourceRow=sources.find(row=>(row.source_id??row.name)===feed.name);
+  const country_iso3=SOURCE_COUNTRY[feed.name]??null;
+  return {...feed,source_id:feed.name,
+   categories:[CATEGORY_BY_FEED[feed.risk_category]].filter(Boolean),
+   country_iso3,global:true,
+   enabled:feed.risk_stream_item_licensed===true&&
+    feed.risk_stream_standard_item_license_candidate===true&&sourceRow?.enabled===1?1:0,
+   commercial_rights_approved:rights&&sourceRow?.commercial_rights_approved===1?1:0};
+ }));
+ const orderedFeeds=priority.sources;
  const originals=[],counts={feeds_checked:0,extensions_seen:0,
   standard_entries_seen:0,standard_candidates_built:0,feeds_without_candidate_extension:0,invalid:0,
   invalid_by_code:{}};
- for(const feed of registry.sources){
+ for(const feed of orderedFeeds){
   if(feed.risk_stream_item_licensed!==true||
      feed.risk_stream_standard_item_license_candidate!==true)continue;
   const rights=approved.get(feed.name);
@@ -271,14 +285,26 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
  }
  return {schema:"geomacro.risk-stream-collector-candidate-sidecar.v1",collector,
   status:originals.length?"ITEM_LICENSE_VERIFIED_CANDIDATES_READY":"NO_ITEM_LICENSE_VERIFIED_CANDIDATES",
-  originals,counts};
+  originals,counts,lane_b_redacted_signals:radarSignals.length,
+  lane_a_priority_sources:priority.prioritized_count,
+  lane_a_priority_source_ids:priority.prioritized_source_ids};
 }
 
 async function main(){
  const args=process.argv.slice(2),value=key=>{const i=args.indexOf(key);return i<0?null:args[i+1]??null};
- const collector=value("--collector"),output=value("--output");
+ const collector=value("--collector"),output=value("--output"),radarFile=value("--radar-file");
  if(!collector||!output)fail("COLLECTOR_AND_OUTPUT_REQUIRED");
- const result=await collectRiskStreamFeedExtensions({collector});
+ let radarSignals=[];
+ if(radarFile){
+  const temp=resolve(String(process.env.RUNNER_TEMP??"/never"));
+  const path=resolve(radarFile);
+  if(!path.startsWith(temp+sep))fail("RADAR_PATH_INVALID");
+  const radar=JSON.parse(readFileSync(path,"utf8"));
+  if(radar?.schema!=="geomacro.rights-redacted-speed-radar-batch.v1"||
+     !Array.isArray(radar.signals))fail("RADAR_BATCH_INVALID");
+  radarSignals=radar.signals;
+ }
+ const result=await collectRiskStreamFeedExtensions({collector,radarSignals});
  writeFileSync(output,result.originals.map(row=>JSON.stringify(row)).join("\n")+
   (result.originals.length?"\n":""),{encoding:"utf8",mode:0o600,flag:"w"});
  const {originals,...receipt}=result;
