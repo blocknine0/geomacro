@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.private-osint-local-rss-candidates.v1",
   "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
-  "interpretation": "16 public national-original and official publisher RSS endpoints selected ONLY after real GitHub Actions network probe (run 40382053243) returned HTTP/parse healthy states OBSERVED or EMPTY_OR_OUTSIDE_WINDOW for their feed transport. A quiet feed is not a current event, a news index is not page-native proof, and the publisher's country is not the event location. Re-probe each tick. Internal noncommercial research only.",
+  "interpretation": "16 public national-original and official publisher RSS endpoints selected ONLY after real GitHub Actions network probe (run 40382053243) returned HTTP/parse healthy states OBSERVED or EMPTY_OR_OUTSIDE_WINDOW for their feed transport. A quiet feed is not a current event, a news index is not page-native proof, and the publisher country is not the event location. Re-probe each tick. Internal noncommercial research only.",
   "sources": [
     {
       "id": "private_local_candidate_gh_bank",
@@ -343,28 +343,6 @@
       "discovery_reference_url": "https://www.elespectador.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_lso_gov",
-      "url": "https://www.gov.ls/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "LSO",
-      "categories": [
-        "geopolitics",
-        "macro",
-        "rare_earth"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.gov.ls/news/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "OFFICIAL_GOVERNMENT_RSS_CANDIDATE",
       "transport_verified_at_registration": false,
       "publisher_native_dates_required": true,
       "private_only": true,
