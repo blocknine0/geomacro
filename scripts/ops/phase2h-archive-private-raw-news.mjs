@@ -531,7 +531,13 @@ export async function runPhase2hGovernedRawB2({
  // No B2 original-news PUT while provider-side automatic deletion remains enabled.
  let lifecycle;
  try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor});}
- catch{fail("LIFECYCLE_NOT_VERIFIED")}
+ catch(error){
+  const message=typeof error?.message==="string"?error.message:"";
+  const safeReason=/^(?:PHASE2H_B2_72H_|B2_|D1_)[A-Z0-9_]+$/u.test(message)?message:null;
+  console.error(JSON.stringify({code:"PHASE2H_RAW_B2_LIFECYCLE_NOT_VERIFIED",
+   ...(safeReason?{reason:safeReason}:{})}));
+  fail("LIFECYCLE_NOT_VERIFIED");
+ }
  if(lifecycle?.phase2h_raw_prefix_verified!==true||
     lifecycle?.auto_deletion_paused!==true||
     lifecycle?.no_bucket_mutation!==true)

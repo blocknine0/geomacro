@@ -217,6 +217,31 @@ test("no B2 PUT, GET or D1 archive mutation if provider's manual B2 retention ca
  }),/PHASE2H_RAW_B2_LIFECYCLE_NOT_VERIFIED/u);
  assert.equal(writes,0);
 });
+test("lifecycle verifier failures log only an allowlisted provider reason beside the fail-closed code",async()=>{
+ const items=data().records,logs=[];
+ const original=console.error;
+ console.error=(...args)=>logs.push(args.join(" "));
+ try{
+  await assert.rejects(()=>runPhase2hGovernedRawB2({
+   now,windowAuthorizer:()=>true,
+   env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
+    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+    B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true"},
+   governorFactory:()=>({status:async()=>({ok:true,
+    used:{total:1,GET:0,PUT:0,NATIVE_AUTH:1},
+    limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
+   d1Factory:()=>({readPending:async()=>items,markArchived:async()=>{throw Error("MUST_NOT_WRITE")}}),
+   lifecycleVerifier:async()=>{throw Error("B2_ACCOUNT_QUOTA_EXHAUSTED")},
+   b2Factory:()=>{throw Error("B2_MUST_NOT_OPEN")}
+  }),/PHASE2H_RAW_B2_LIFECYCLE_NOT_VERIFIED/u);
+ }finally{console.error=original}
+ assert.equal(logs.length,1);
+ assert.deepEqual(JSON.parse(logs[0]),{
+  code:"PHASE2H_RAW_B2_LIFECYCLE_NOT_VERIFIED",
+  reason:"B2_ACCOUNT_QUOTA_EXHAUSTED"
+ });
+});
 test("maintenance archive never starts from an unscheduled credentialed job",async()=>{
  const r=await runPhase2hGovernedRawB2({
   now:new Date("2026-10-30T07:07:00.000Z"),

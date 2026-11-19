@@ -83,6 +83,8 @@ test("deletion run fails closed without provider admission and never changes PRE
  assert.match(manual,/default: DO_NOT_DELETE/u);
  assert.match(manual,/DELETE_B2_ACKED_ONLY/u);
  assert.ok(cycle.includes('cron: "29 0,6,12,18 * * *"'));
+ assert.ok(cycle.includes("workflow_dispatch:"));
+ assert.ok(cycle.includes("github.event_name == 'workflow_dispatch'"));
  assert.ok(cycle.includes("Automatic D1 raw-news deletion is PAUSED"));
  assert.match(cycle,/Every six hours: bounded pending original archive/u);
  assert.ok(manual.includes("steps.provider.outputs.retention_cleanup == 'true'"));
