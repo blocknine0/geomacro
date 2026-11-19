@@ -99,6 +99,43 @@ test("Telegram watch metadata never enters GRO corroboration or tier context",as
  assert.doesNotMatch(JSON.stringify(body),/headline|channel_name|https?:\/\//iu);
 });
 
+test("bridge preserves a safe labeled attester refusal code and its client status",async()=>{
+ const candidate={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",proof:null};
+ const signature=Buffer.alloc(64).toString("base64");
+ const makeRequest=()=>new Request("https://control.internal/v1/internal/risk-stream/attest",{
+  method:"POST",headers:{"content-type":"application/json"},
+  body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft:candidate})
+ });
+ const cases=[
+  {label:"FACTS",status:400,error:"FACTS_CANDIDATE_INVALID",expectedStatus:400},
+  {label:"RIGHTS",status:401,error:"RIGHTS_BEARER_REJECTED",expectedStatus:401},
+  {label:"FACTS",status:403,error:"FACTS_POLICY_DENIED",expectedStatus:403},
+  {label:"RIGHTS",status:413,error:"RIGHTS_REQUEST_TOO_LARGE",expectedStatus:413},
+  {label:"FACTS",status:500,error:"FACTS_ATTESTER_FAILURE",expectedStatus:503},
+  {label:"RIGHTS",status:502,error:"lowercase provider detail",expectedStatus:503},
+  {label:"FACTS",status:503,error:null,expectedStatus:503}
+ ];
+ for(const refusal of cases){
+  const binding=(label,field)=>({async fetch(){
+   if(refusal.label===label){
+    if(refusal.error===null)return new Response("unavailable",{status:refusal.status});
+    return Response.json({error:refusal.error},{status:refusal.status});
+   }
+   return Response.json({ok:true,proof:{[field]:signature}});
+  }});
+  const response=await attestRiskStreamOriginal(makeRequest(),{
+   RISK_STREAM_FACTS_ATTESTER:binding("FACTS","facts_signature_b64"),
+   RISK_STREAM_RIGHTS_ATTESTER:binding("RIGHTS","rights_signature_b64"),
+   RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN:"facts-bearer-test-token-0123456789",
+   RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN:"rights-bearer-test-token-0123456789"
+  });
+  const suffix=refusal.error&&/^[A-Z0-9_]{1,64}$/u.test(refusal.error)?"_"+refusal.error:"";
+  assert.equal(response.status,refusal.expectedStatus);
+  assert.deepEqual(await response.json(),{ok:false,
+   error:"ATTESTER_REFUSED_"+refusal.label+"_"+refusal.status+suffix});
+ }
+});
+
 test("bridge refuses missing bindings, invalid request, or malformed signatures",async()=>{
  const candidate={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",proof:null};
  const makeRequest=draft=>new Request("https://control.internal/v1/internal/risk-stream/attest",{

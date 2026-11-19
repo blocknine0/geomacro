@@ -36,7 +36,7 @@ function validSignature(value){
   return btoa(binary)===value;
  }catch{return false}
 }
-async function requestAttestation(binding,bearer,candidate){
+async function requestAttestation(binding,bearer,candidate,label){
  if(!binding?.fetch||typeof bearer!=="string"||!TOKEN.test(bearer))
   fail("ATTESTER_BINDING_OR_AUTH_UNAVAILABLE");
  let response;
@@ -45,7 +45,12 @@ async function requestAttestation(binding,bearer,candidate){
    method:"POST",headers:{Authorization:"Bearer "+bearer,"Content-Type":"application/json"},
    body:JSON.stringify(candidate)}));
  }catch{fail("ATTESTER_UNAVAILABLE")}
- if(!response?.ok)fail("ATTESTER_REFUSED");
+ if(!response?.ok){
+  let body;try{body=await response.json()}catch{}
+  const code=typeof body?.error==="string"&&
+   /^[A-Z0-9_]{1,64}$/u.test(body.error)?body.error:"";
+  fail("ATTESTER_REFUSED_"+label+"_"+response.status+(code?"_"+code:""));
+ }
  let body;try{body=await response.json()}catch{fail("ATTESTER_RESPONSE_INVALID")}
  const fields=Object.keys(body?.proof??{});
  if(body?.ok!==true||fields.length!==1||
@@ -107,14 +112,18 @@ export async function attestRiskStreamOriginal(request,env){
  }
  try{
   const [facts,rights]=await Promise.all([
-   requestAttestation(env.RISK_STREAM_FACTS_ATTESTER,env.RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN,draft),
-   requestAttestation(env.RISK_STREAM_RIGHTS_ATTESTER,env.RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN,draft)
+   requestAttestation(env.RISK_STREAM_FACTS_ATTESTER,env.RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN,
+    draft,"FACTS"),
+   requestAttestation(env.RISK_STREAM_RIGHTS_ATTESTER,env.RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN,
+    draft,"RIGHTS")
   ]);
   return Response.json({ok:true,proof:{...facts,...rights},risk_context:draft.risk_context??null},
    {headers:{"Cache-Control":"no-store"}});
  }catch(error){
   const code=String(error?.message??"");
-  const status=code==="ATTESTER_BINDING_OR_AUTH_UNAVAILABLE"?503:
+  const refusal=code.match(/^ATTESTER_REFUSED_(?:FACTS|RIGHTS)_(\d{3})(?:_[A-Z0-9_]{1,64})?$/u);
+  const returnedStatus=refusal?Number(refusal[1]):0;
+  const status=[400,401,403,413].includes(returnedStatus)?returnedStatus:
    code==="ATTESTER_RESPONSE_INVALID"?502:503;
   return Response.json({ok:false,error:code||"ATTESTER_UNAVAILABLE"},{status});
  }
