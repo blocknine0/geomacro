@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import {
  assertB2FirstSourceEnv,stageB2FirstPrivateOriginals,acknowledgeB2FirstD1
@@ -23,7 +24,7 @@ const rows=buildPhase2hPrivateRawRecords([{
 }],{now,derive:()=>[]}).records;
 const sufficient={
  ok:true,used:{total:0,GET:0,PUT:0,HEAD:0,NATIVE_AUTH:0},
-  limits:{total:4080,GET:2000,PUT:2000,HEAD:40,NATIVE_AUTH:40},
+  limits:B2_DAILY_LIMITS,
 };
 const verifiedLifecycle={
  phase2h_raw_prefix_verified:true,auto_deletion_paused:true,no_bucket_mutation:true,
@@ -94,7 +95,7 @@ test("quota hold cannot PUT B2 or manufacture verified storage",async()=>{
  let calls=0;
  const receipt=await stageB2FirstPrivateOriginals({
   rows,now,env,
-  governorFactory:()=>({status:async()=>({...sufficient,used:{...sufficient.used,total:4070}})}),
+  governorFactory:()=>({status:async()=>({...sufficient,used:{total:3000,GET:2000,PUT:960,HEAD:40,NATIVE_AUTH:0}})}),
   b2Factory:()=>{calls++;throw Error("UNEXPECTED_B2");},
  });
  assert.equal(receipt.storage_confirmed,false);

@@ -3,8 +3,8 @@ import { reserveB2AccountQuota, B2_DAILY_LIMITS } from "../../control-plane/src/
 const HARD_STORAGE_BYTES = 9_200_000_000;
 const CLEAN_TARGET_BYTES = 8_500_000_000;
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
-const DAILY_UPLOAD_LIMIT = 2_000;
-const DAILY_CLASS_A_LIMIT = 2_000;
+const DAILY_UPLOAD_LIMIT = 1_000;
+const DAILY_CLASS_A_LIMIT = 1_000;
 const DAILY_CLASS_B_LIMIT = 2_000;
 const CACHE_SECONDS = 7 * 24 * 60 * 60;
 const MANAGED_PREFIX = "geomacro-evidence/v1/private/b2-managed/";

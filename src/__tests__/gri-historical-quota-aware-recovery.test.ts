@@ -18,7 +18,7 @@ describe("quota-aware genuine immutable historical GRI retry",()=>{
   for(const d of [
    {get_requests:1998,total_requests:1998,put_requests:0,head_requests:0,native_auth_requests:0},
    {native_auth_requests:40,total_requests:40,get_requests:0,put_requests:0,head_requests:0},
-   {total_requests:4077,get_requests:2000,put_requests:2000,head_requests:40,native_auth_requests:37},
+   {total_requests:3000,get_requests:2000,put_requests:960,head_requests:40,native_auth_requests:0},
   ]){
    const x=decideGriHistoryQuotaAdmission({rows:[row(d)],now});
    expect(x.status).toBe("SHARED_B2_QUOTA_HELD");
