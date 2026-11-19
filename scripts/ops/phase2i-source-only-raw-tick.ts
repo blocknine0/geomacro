@@ -174,7 +174,9 @@ const priorPath=resolve(String(env.GEOMACRO_PHASE2I_PRIOR_QUEUE??"/missing"));
 const cipherPath=resolve(String(env.GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT??"/missing"));
 const radarPath=resolve(String(env.GEOMACRO_RISK_STREAM_RADAR_FILE??"/missing"));
 if(!priorPath.startsWith(temp+sep)||!cipherPath.startsWith(temp+sep)||
-   priorPath===cipherPath)throw Error("PHASE2I_BACKLOG_RUNNER_PATH_INVALID");
+   !radarPath.startsWith(temp+sep)||
+   new Set([priorPath,cipherPath,radarPath]).size!==3)
+ throw Error("PHASE2I_BACKLOG_RUNNER_PATH_INVALID");
 const candidateIdentity=c=>JSON.stringify([c.category,c.articleUrl,
  c.datePrecision==="day"?c.publishedAt.slice(0,10):c.publishedAt]);
 let queue,observedThisTickKeys,durableLease=null,durableAppend=null;
