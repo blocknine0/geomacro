@@ -5,8 +5,8 @@ import worker, { limits, signB2Request } from "../src/index.mjs";
 
 test("hard limits match the declared free-tier guardrails", () => {
   assert.equal(limits.hardStorageBytes, 9_200_000_000);
-  assert.equal(limits.dailyUploadLimit, 2_000);
-  assert.equal(limits.dailyClassALimit, 2_000);
+  assert.equal(limits.dailyUploadLimit, 1_000);
+  assert.equal(limits.dailyClassALimit, 1_000);
   assert.equal(limits.dailyClassBLimit, 2_040);
   assert.equal(limits.dailyClassCLimit, 40);
   assert.equal(limits.dailyClassCListLimit, 0);
