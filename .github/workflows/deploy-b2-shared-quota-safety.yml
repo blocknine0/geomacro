@@ -123,16 +123,16 @@ jobs:
           node "scripts/ops/$CONFIGURE_SCRIPT"
           RESULT="$(npx -y "wrangler@$WRANGLER_VERSION" d1 execute B2_QUOTA_DB \
             --remote --json --config "workers/$EDGE_PRODUCT-edge/wrangler.runtime.jsonc" \
-            --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
+            --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_workflow_quota') AS workflow_quota_table;")"
           printf '%s' "$RESULT" | node -e '
             let raw="";
             process.stdin.on("data",v=>raw+=v);
             process.stdin.on("end",()=>{
               const x=JSON.parse(raw);
               const rows=(Array.isArray(x)?x:x.result).flatMap(y=>y.results??[]);
-              if(rows.length!==1||Number(rows[0].version)<5||Number(rows[0].quota_table)!==1)
+              if(rows.length!==1||Number(rows[0].version)<6||Number(rows[0].quota_table)!==1||Number(rows[0].workflow_quota_table)!==1)
                 throw Error("B2_QUOTA_HOTFIX_SHARED_D1_UNVERIFIED");
-              console.log("PASS: existing D1 shared B2 quota schema v5 verified");
+              console.log("PASS: existing D1 shared B2 quota schema v6 verified");
             });
           '
       - name: Deploy quota-only Worker code on exact SHA, restore existing secrets

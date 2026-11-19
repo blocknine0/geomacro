@@ -688,9 +688,12 @@ jobs:
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
             --config wrangler.quota-bootstrap.jsonc \
             --file migrations/0014_b2_account_daily_request_quota.sql >/dev/null
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
+            --config wrangler.quota-bootstrap.jsonc \
+            --file migrations/0015_b2_workflow_daily_quota.sql >/dev/null
           proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
             --config wrangler.quota-bootstrap.jsonc \
-            --command "SELECT COUNT(*) AS table_count FROM sqlite_master WHERE type='table' AND name IN ('b2_account_daily_request_quota','b2_request_quota_workflow_receipt');")"
+            --command "SELECT COUNT(*) AS table_count FROM sqlite_master WHERE type='table' AND name IN ('b2_account_daily_request_quota','b2_request_quota_workflow_receipt','b2_account_daily_workflow_quota');")"
           printf '%s' "$proof" | node -e '
             let raw="";
             process.stdin.on("data",x=>raw+=x);
@@ -698,7 +701,7 @@ jobs:
               const parsed=JSON.parse(raw);
               const rows=(Array.isArray(parsed)?parsed:[parsed]).flatMap(x=>
                 x?.results??x?.result?.results??[]);
-              if(Number(rows[0]?.table_count)!==2)
+              if(Number(rows[0]?.table_count)!==3)
                 throw Error("B2_QUOTA_SCHEMA_BOOTSTRAP_READBACK_FAILED");
               console.log("B2_QUOTA_SCHEMA_BOOTSTRAP_READBACK=true");
             });

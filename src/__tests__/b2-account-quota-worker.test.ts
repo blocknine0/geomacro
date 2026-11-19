@@ -75,8 +75,8 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(B2_PUBLIC_EDGE_GLOBAL_GET_CEILING).toBe(10);
     expect(B2_APP_STRUCTURAL_SHARED_GET_CEILING).toBe(10);
     expect(B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING).toBe(18);
-    expect(B2_DAILY_LIMITS).toEqual({total:4080,GET:2000,PUT:2000,HEAD:40,NATIVE_AUTH:40});
-    expect(B2_RELEASE_RESERVED).toEqual({GET:100,PUT:50,HEAD:10,NATIVE_AUTH:0});
+    expect(B2_DAILY_LIMITS).toEqual({total:3000,GET:2000,PUT:1000,HEAD:40,NATIVE_AUTH:40});
+    expect(B2_RELEASE_RESERVED).toEqual({GET:500,PUT:300,HEAD:10,NATIVE_AUTH:0});
     expect(B2_RELEASE_WORKFLOWS).toEqual(expect.arrayContaining([
       "step3_shadow_rehearsal","step3_production_verify","hot50_release_parity",
       "step3_hot50_parity","deploy_quota_smoke",
@@ -87,19 +87,19 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     const {db,counters,byWorkflow}=fakeD1();
     const results = await Promise.all(Array.from({length:2025},(_,i)=>
       reserveB2AccountQuota(db,{kind:"PUT",workflow_id:"archive_"+(i%6)},{now:date})));
-    expect(results.filter(x=>x.ok)).toHaveLength(1950);
-    expect(results.filter(x=>!x.ok)).toHaveLength(75);
+    expect(results.filter(x=>x.ok)).toHaveLength(700);
+    expect(results.filter(x=>!x.ok)).toHaveLength(1325);
     expect(results.filter(x=>!x.ok).every(x=>x.error==="B2_GLOBAL_DAILY_QUOTA_EXHAUSTED")).toBe(true);
-    expect(counters.get("2026-10-09")?.put_requests).toBe(1950);
+    expect(counters.get("2026-10-09")?.put_requests).toBe(700);
     expect(byWorkflow.size).toBe(6);
     expect(Array.from(byWorkflow.values()).reduce((a,b)=>a+b,0)).toBe(1950);
-    const release=await Promise.all(Array.from({length:50},()=>reserveB2AccountQuota(db,{
+    const release=await Promise.all(Array.from({length:300},()=>reserveB2AccountQuota(db,{
       kind:"PUT",workflow_id:"step3_production_verify"},{now:date})));
     expect(release.every(x=>x.ok&&x.release_reserve_protected===true)).toBe(true);
     expect(counters.get("2026-10-09")?.put_requests).toBe(B2_DAILY_LIMITS.PUT);
   });
 
-  it("separately enforces GET and total hard caps, and starts a new day with fresh tickets", async () => {
+  it("enforces the GET ceiling and resets UTC-day tickets", async () => {
     const {db}=fakeD1();
     for (let i=0;i<B2_DAILY_LIMITS.GET;i++) {
       expect((await reserveB2AccountQuota(db,{
@@ -107,22 +107,22 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     }
     expect((await reserveB2AccountQuota(db,{kind:"GET",workflow_id:"reader_two"},{now:date})).ok)
       .toBe(false);
-    for(let i=0;i<B2_DAILY_LIMITS.PUT;i++) {
-      expect((await reserveB2AccountQuota(db,{kind:"PUT",workflow_id:"step3_shadow_rehearsal"},{now:date})).ok)
-        .toBe(true);
-    }
-    for(let i=0;i<B2_DAILY_LIMITS.HEAD;i++) {
-      expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"step3_shadow_rehearsal"},{now:date})).ok)
-        .toBe(true);
-    }
-    expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"writer_two"},{now:date})).ok)
-      .toBe(false);
     const status=await readB2AccountQuota(db,{now:date});
-    expect(status.used).toEqual({total:4040,GET:2000,PUT:2000,HEAD:40,NATIVE_AUTH:0});
+    expect(status.used).toEqual({total:2000,GET:2000,PUT:0,HEAD:0,NATIVE_AUTH:0});
     const next=await reserveB2AccountQuota(db,{kind:"GET",workflow_id:"reader_one"},
       {now:new Date("2026-10-10T00:00:01Z")});
     expect(next.ok).toBe(true);
     expect(next.day_utc).toBe("2026-10-10");
+  });
+
+  it("enforces the 3,000-request total across GET, PUT, and HEAD",async()=>{
+    const {db,counters}=fakeD1();
+    for(let i=0;i<B2_DAILY_LIMITS.PUT;i++)
+      expect((await reserveB2AccountQuota(db,{kind:"PUT",workflow_id:"step3_shadow_rehearsal"},{now:date})).ok).toBe(true);
+    for(let i=0;i<B2_DAILY_LIMITS.GET;i++)
+      expect((await reserveB2AccountQuota(db,{kind:"GET",workflow_id:"step3_shadow_rehearsal"},{now:date})).ok).toBe(true);
+    expect(counters.get("2026-10-09")?.total_requests).toBe(3000);
+    expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"step3_shadow_rehearsal"},{now:date})).ok).toBe(false);
   });
 
   it("reserves at least 15 GET quota tickets for core producer/restore paths, not the public edge",async()=>{

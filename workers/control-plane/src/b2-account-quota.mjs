@@ -7,31 +7,43 @@
 // Ambiguous requests are counted and never refunded. Each network attempt
 // still requires the existing same-D1 atomic reservation.
 export const B2_DAILY_LIMITS = Object.freeze({
-  // The shared D1 governor is the account-wide serialization point. Keep each
-  // B2 transaction class below the free-account guardrail: PUT/Class A 2,000;
-  // GET+HEAD/Class B 2,040; native authorization/Class C 40; no list tickets.
-  total: 4_080, GET: 2_000, PUT: 2_000, HEAD: 40, NATIVE_AUTH: 40,
+  // The shared D1 governor serializes the account envelope: at most 2,000
+  // GET, 1,000 PUT, and 3,000 requests total per UTC day. HEAD and native-auth
+  // retain their separate bounded operation ceilings and count toward total.
+  total: 3_000, GET: 2_000, PUT: 1_000, HEAD: 40, NATIVE_AUTH: 40,
 });
-// Reserve a small daily slice for release-critical workflows. HEAD's hard
-// ceiling is 40, so its protected slice is bounded to 10 tickets.
+// Keep a daily shared reserve for phase2h, GDELT, and release-parity jobs.
+// The account-wide limits remain the hard ceiling for every workflow.
 export const B2_RELEASE_RESERVED = Object.freeze({
-  GET: 100, PUT: 50, HEAD: 10, NATIVE_AUTH: 0,
+  GET: 500, PUT: 300, HEAD: 10, NATIVE_AUTH: 0,
 });
 export const B2_RELEASE_WORKFLOWS = Object.freeze([
   "step3_shadow_rehearsal", "step3_production_verify",
   "hot50_release_parity", "step3_hot50_parity", "deploy_quota_smoke",
+  "gdelt_v2_event_sync", "phase2h_b2_retention", "derived_news_backup",
 ]);
 const RELEASE_WORKFLOWS = new Set(B2_RELEASE_WORKFLOWS);
+const B2_CLASS_B_DAILY_LIMIT = B2_DAILY_LIMITS.GET;
 const RELEASE_TOTAL_RESERVE = Object.values(B2_RELEASE_RESERVED)
   .reduce((total, count) => total + count, 0);
+export const B2_P0B_DURABLE_SPOOL_DAILY_LIMITS = Object.freeze({
+  GET: 800, PUT: 500, total: 1_300,
+});
+function isReleaseWorkflow(workflowId) {
+  return RELEASE_WORKFLOWS.has(workflowId) ||
+    workflowId.startsWith("phase2h_");
+}
 function admissionLimits(workflowId) {
-  if (RELEASE_WORKFLOWS.has(workflowId)) return B2_DAILY_LIMITS;
+  if (isReleaseWorkflow(workflowId)) return Object.freeze({
+    ...B2_DAILY_LIMITS, CLASS_B: B2_CLASS_B_DAILY_LIMIT,
+  });
   return Object.freeze({
     total: B2_DAILY_LIMITS.total - RELEASE_TOTAL_RESERVE,
     GET: B2_DAILY_LIMITS.GET - B2_RELEASE_RESERVED.GET,
     PUT: B2_DAILY_LIMITS.PUT - B2_RELEASE_RESERVED.PUT,
     HEAD: B2_DAILY_LIMITS.HEAD - B2_RELEASE_RESERVED.HEAD,
     NATIVE_AUTH: B2_DAILY_LIMITS.NATIVE_AUTH - B2_RELEASE_RESERVED.NATIVE_AUTH,
+    CLASS_B: B2_CLASS_B_DAILY_LIMIT - B2_RELEASE_RESERVED.GET,
   });
 }
 // Preserve the existing TEN shared public cold-read tickets per UTC day.
@@ -110,6 +122,34 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
   const { kind, workflowId } = normalize(body?.kind, body?.workflow_id);
   const { day, iso } = clock(now);
   if (!db?.prepare) throw new Error("B2_QUOTA_D1_UNAVAILABLE");
+  let workflowUsed = null;
+  if (workflowId === "p0b_durable_spool") {
+    const workflowGet = kind === "GET" || kind === "HEAD" ? 1 : 0;
+    const workflowPut = kind === "PUT" ? 1 : 0;
+    workflowUsed = await db.prepare(`
+      INSERT INTO b2_account_daily_workflow_quota
+        (day_utc,workflow_id,get_requests,put_requests,total_requests,updated_at)
+      VALUES (?,?,?, ?,1,?)
+      ON CONFLICT(day_utc,workflow_id) DO UPDATE SET
+        get_requests=get_requests+excluded.get_requests,
+        put_requests=put_requests+excluded.put_requests,
+        total_requests=total_requests+excluded.total_requests,
+        updated_at=excluded.updated_at
+      WHERE b2_account_daily_workflow_quota.get_requests + excluded.get_requests <= ?
+        AND b2_account_daily_workflow_quota.put_requests + excluded.put_requests <= ?
+        AND b2_account_daily_workflow_quota.total_requests + excluded.total_requests <= ?
+      RETURNING get_requests,put_requests,total_requests
+    `).bind(day, workflowId, workflowGet, workflowPut, iso,
+      B2_P0B_DURABLE_SPOOL_DAILY_LIMITS.GET,
+      B2_P0B_DURABLE_SPOOL_DAILY_LIMITS.PUT,
+      B2_P0B_DURABLE_SPOOL_DAILY_LIMITS.total).first();
+    if (!workflowUsed) return {
+      ok: false, error: "B2_WORKFLOW_DAILY_QUOTA_EXHAUSTED",
+      day_utc: day, workflow_id: workflowId, reserved: false,
+      workflow_limits: B2_P0B_DURABLE_SPOOL_DAILY_LIMITS,
+      limits: B2_DAILY_LIMITS,
+    };
+  }
   const increments = KINDS.map(k => Number(k === kind));
   // This is evaluated within the SAME atomic quota UPSERT, not as a racy
   // SELECT or user-provided priority. Recovery workers never inherit this
@@ -122,12 +162,12 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
         ? B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING
         : PUBLIC_B2_READ_WORKFLOWS.has(workflowId)
           ? B2_PUBLIC_EDGE_GLOBAL_GET_CEILING : null;
-  const getCeiling = appGetCeiling === null ? limits.GET
-    : Math.min(appGetCeiling, limits.GET);
+  const getCeiling = appGetCeiling === null ? limits.CLASS_B
+    : Math.min(appGetCeiling, limits.CLASS_B);
   const row = await db.prepare(ATOMIC_B2_QUOTA_SQL).bind(
     day, ...increments, iso,
     limits.total,
-    kind === "GET" ? limits.GET : B2_DAILY_LIMITS.GET,
+    limits.CLASS_B,
     kind === "PUT" ? limits.PUT : B2_DAILY_LIMITS.PUT,
     kind === "HEAD" ? limits.HEAD : B2_DAILY_LIMITS.HEAD,
     kind === "NATIVE_AUTH" ? limits.NATIVE_AUTH : B2_DAILY_LIMITS.NATIVE_AUTH,
@@ -158,7 +198,13 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
     reserved: true, day_utc: day, kind,
     used, limits: B2_DAILY_LIMITS,
     admission_limits: limits,
-    release_reserve_protected: RELEASE_WORKFLOWS.has(workflowId),
+    release_reserve_protected: isReleaseWorkflow(workflowId),
+    workflow_used: workflowUsed ? {
+      GET: Number(workflowUsed.get_requests),
+      PUT: Number(workflowUsed.put_requests),
+      total: Number(workflowUsed.total_requests),
+    } : undefined,
+    workflow_limits: workflowUsed ? B2_P0B_DURABLE_SPOOL_DAILY_LIMITS : undefined,
     // No caller is permitted to infer B2 source freshness or rights.
     b2_operation_performed: false, public_published: false, chargeable: false,
   };
