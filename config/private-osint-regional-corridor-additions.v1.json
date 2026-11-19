@@ -830,7 +830,7 @@
     },
     {
       "id": "private_expansion_gy_mnr_rss_candidate",
-      "url": "https://dpi.gov.gy/feed/",
+      "url": "https://www.ggmc.gov.gy/feed/",
       "continent": "south_america",
       "publisher_country_iso3": "GUY",
       "categories": [
@@ -838,8 +838,8 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "Official Department of Public Information RSS feed for Government of Guyana news; remains private candidate-only and non-commercial until rights and runtime checks are separately verified.",
-      "discovery_reference_url": "https://dpi.gov.gy/",
+      "provenance_note": "Official Guyana Geology and Mines Commission RSS feed for first-party mining and mineral notices; remains private candidate-only and non-commercial until rights and runtime checks are separately verified.",
+      "discovery_reference_url": "https://www.ggmc.gov.gy/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,

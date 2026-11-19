@@ -72,11 +72,19 @@ test("unhealthy local candidates now use live official national RSS feeds",()=>{
  const guyana=json("config/private-osint-regional-corridor-additions.v1.json").sources
   .find(row=>row.id==="private_expansion_gy_mnr_rss_candidate");
  assert.equal(guyana.publisher_country_iso3,"GUY");
- assert.equal(guyana.url,"https://dpi.gov.gy/feed/");
- assert.equal(guyana.discovery_reference_url,"https://dpi.gov.gy/");
+ assert.equal(guyana.url,"https://www.ggmc.gov.gy/feed/");
+ assert.equal(guyana.discovery_reference_url,"https://www.ggmc.gov.gy/");
  assert.equal(guyana.type,"rss");
  assert.equal(guyana.provider_rights_verified,false);
  assert.equal(guyana.commercial_eligible,false);
  assert.equal(guyana.access_verified_in_production,false);
  assert.equal(guyana.publicly_deliverable,false);
+
+ const liberia=json("config/private-osint-local-gaplane.v1.json").sources
+  .find(row=>row.id==="private_gaplane_lbr_29");
+ assert.equal(liberia.publisher_country_iso3,"LBR");
+ assert.equal(liberia.url,"https://www.cbl.org.lr/rss.xml");
+ assert.equal(liberia.discovery_reference_url,"https://www.cbl.org.lr/index.php/media/news-press-release");
+ assert.equal(liberia.type,"rss");
+ assert.equal(liberia.commercial_eligible,false);
 });
