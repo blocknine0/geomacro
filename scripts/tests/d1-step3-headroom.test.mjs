@@ -33,7 +33,7 @@ const paid=(read,written)=>assessD1PaidMonthlyAdmission({
 });
 test("reviewed migration estimates admit the 335k Step 3 ceiling within headroom bounds",()=>{
  assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_read,
-  10_000_000);
+  20_000_000);
  assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_written,
   8_000_000);
  const estimateNow=new Date("2026-12-04T09:00:00.000Z");
@@ -52,6 +52,22 @@ test("reviewed migration estimates admit the 335k Step 3 ceiling within headroom
  assert.equal(maximumApproved.status,"PASS");
  assert.equal(maximumApproved.reserved_migration_rows_read,30_000_000);
  assert.equal(maximumApproved.reserved_migration_rows_written,9_000_000);
+ const readCap=assessD1PaidMonthlyAdmission({
+  usage:{...usage(100,100,estimateNow),
+   observed_through_utc:estimateNow.toISOString().slice(0,10)},
+  paidProof:paidProof(estimateNow),now:estimateNow,lane:"migration",
+  estimatedMigrationRowsRead:20_000_000
+ });
+ assert.equal(readCap.status,"PASS");
+ assert.equal(readCap.reserved_migration_rows_read,40_000_000);
+ const overReadCap=assessD1PaidMonthlyAdmission({
+  usage:{...usage(100,100,estimateNow),
+   observed_through_utc:estimateNow.toISOString().slice(0,10)},
+  paidProof:paidProof(estimateNow),now:estimateNow,lane:"migration",
+  estimatedMigrationRowsRead:20_000_001
+ });
+ assert.equal(overReadCap.status,"HOLD");
+ assert.equal(overReadCap.reason,"MIGRATION_ESTIMATED_COST_EXCEEDS_REVIEWED_BOUND");
 });
 test("Paid migration gate ignores retired 140k/day, admits only monthly observed reserve",()=>{
  assert.equal(STEP3_BUDGET.old_daily_140k_policy_applied,false);
