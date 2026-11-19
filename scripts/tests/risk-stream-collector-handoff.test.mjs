@@ -15,8 +15,21 @@ test("scheduled direct and private collectors hand only complete licensed sideca
   assert.doesNotMatch(workflow,/vars\.RISK_STREAM_ACTIVE == '1'.{0,180}emit-risk-stream-collector-sidecar/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_FACTS_SPKI_B64/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_RIGHTS_SPKI_B64/u);
+  assert.match(workflow,/GEOMACRO_RISK_STREAM_RADAR_FILE/u);
+  assert.ok(workflow.includes('--radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE"'));
   assert.match(workflow,/GEOMACRO_EXPECTED_CONTROL_PLANE_SOURCE_SHA: \$\{\{ vars\.GEOMACRO_STEP3_REVIEWED_SHA \|\| github\.sha \}\}/u);
  }
+ const sourceOnly=read("scripts/ops/phase2i-source-only-raw-tick.ts");
+ assert.match(sourceOnly,/redactedRightsRadar/u);
+ assert.match(sourceOnly,/raw_source_text_written:false/u);
+ assert.match(sourceOnly,/licensed_source_text_included:false/u);
+ const radar=read("scripts/lib/rights-redacted-speed-radar.mjs");
+ assert.match(radar,/commercial_rights_approved:0/u);
+ assert.match(radar,/signed_gro_authorized:false/u);
+ assert.match(radar,/prioritizeApprovedAnchorSources/u);
+ const collector=read("scripts/ops/collect-risk-stream-feed-extensions.mjs");
+ assert.match(collector,/prioritizeApprovedAnchorSources/u);
+ assert.match(collector,/const approved=new Map\\(manifest\\.entries\\.filter\\(row=>row\\.status==="APPROVED"/u);
  const sidecar=read("scripts/ops/emit-risk-stream-collector-sidecar.mjs");
  assert.match(sidecar,/NO_ITEM_LICENSE_VERIFIED_CANDIDATES/u);
  assert.match(sidecar,/emitRiskStreamCandidates/u);
