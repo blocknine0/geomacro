@@ -6,6 +6,7 @@
 // Load the canonical TS engine lazily only after signed GRO acceptance.\n// The D1 Worker is also imported by Node ESM ops tests without TS extension resolution.
 
 import {readCachedSignedGro} from "./signed-gro-read-cache.mjs";
+import {recordPredgeDeliveryEvent} from "./predge-delivery-ledger.mjs";
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
 import {readProgressiveFacts,generateProgressiveRiskGateDecision,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
@@ -611,7 +612,9 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      issuer:"Geomacro",commercial_signatory:"Geomacro",
      source_origin_agnostic_commercial_seal:true,
      request_hash:requestHash,risk_gate:result,context,
-     verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     verdict_id:verdictId,source_gro_id:paidCommercialLicense?.gro_id??
+       (HASH.test(String(gro?.object_id??""))?gro.object_id:null),
+     channel,tier:lockedTier,structure_type:structureType,
      ...(paidCommercialLicense?(()=>{
        const score=paidCommercialLicense.eligible_derived_score;
        const posture={CONTINUE:"CONTINUE",REDUCE_EXPOSURE:"REDUCE_LIMIT",
@@ -668,15 +671,49 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
 }
 
+async function runPredgeRiskGateAndObserve(request,env,now,authority,paidEndpoint){
+ const requestCopy=request.clone();
+ const response=await runPredgeRiskGateD1(request,env,now,authority,paidEndpoint);
+ // Do not let unauthenticated requests consume D1 writes through accounting.
+ if(serviceCredential(requestCopy,env,paidEndpoint))return response;
+ // Accounting is best-effort and occurs after the unchanged decision path.
+ // It never changes the response or turns a successful delivery into a failure.
+ try{
+  const body=await requestCopy.json();
+  const parsed=parseRequest(body,now);
+  if(!parsed?.category||parsed.subject.type!=="country")return response;
+  const responseText=await response.clone().text();
+  let receipt;
+  let output;
+  try{output=JSON.parse(responseText)}catch{output=null}
+  receipt=HASH.test(String(output?.audit_receipt_hash??""))?
+    output.audit_receipt_hash:await digest(responseText);
+  const tier={basic_focused:"BASIC",standard:"STANDARD",complex_full:"COMPLEX"}[parsed.tier];
+  const category={geopolitics:"GEOPOLITICS",macro:"MACRO_FX",
+    critical_minerals:"CRITICAL_MINERALS"}[parsed.category];
+  const deliveryStatus=response.status>=400||output?.ok!==true?"FAILED":
+    ["DELIVERED","TRIAL_DELIVERED"].includes(output?.entry_status)?"DELIVERED":"SENT";
+  await recordPredgeDeliveryEvent(env?.DB,{
+   endpoint_version:paidEndpoint?"v2":"v1",request_id:parsed.request_id,
+   gro_id:output?.licensed_gro_id??output?.source_gro_id??null,
+   receipt_sha256:receipt,day_utc:new Date(now).toISOString().slice(0,10),
+   country_iso3:parsed.subject.id,
+   category,tier,delivery_status:deliveryStatus,
+   created_at:new Date(now).toISOString()
+  });
+ }catch{/* Delivery accounting is observational and must fail open. */}
+ return response;
+}
+
 // The existing v1 route remains the non-commercial pilot/interoperability lane.
 // It never opts into Addendum pricing or writes rows into the paid usage ledger.
 export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
- return runPredgeRiskGateD1(request,env,now,authority,false);
+ return runPredgeRiskGateAndObserve(request,env,now,authority,false);
 }
 
 // Addendum v2 has its own versioned, fail-closed paid endpoint and billing lane.
 export async function predgePaidRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
- return runPredgeRiskGateD1(request,env,now,authority,true);
+ return runPredgeRiskGateAndObserve(request,env,now,authority,true);
 }
 
 /** A delivered Addendum v2 verdict is single-use; verification attempts after issuance are denied. */
