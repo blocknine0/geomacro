@@ -24,7 +24,7 @@ test('transient 503 PUT retries with bounded attempts and verifies exact protect
 test('400 invalid state never retries, no false ACK or readback',async()=>{
  let count=0;
  await assert.rejects(persistMacroFastlaneState({...options,state:state(),fetchImpl:async()=>{
-  count++;return ack({ok:false,error:'MACRO_STATE_INVALID'},400);},sleep:async()=>{}}),/MACRO_STATE_PUT_HTTP_400_MACRO_STATE_INVALID/);
+  count++;return ack({ok:false,error:'MACRO_STATE_INVALID',field:'mineral_checks[4].state'},400);},sleep:async()=>{}}),/MACRO_STATE_PUT_HTTP_400_MACRO_STATE_INVALID_FIELD_mineral_checks\[4\]\.state/);
  assert.equal(count,1);
 });
 test('readback mismatch never retries acknowledged PUT',async()=>{

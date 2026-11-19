@@ -13,36 +13,115 @@ const states=new Set(['OK','NOT_MODIFIED','COOLDOWN','ACCESS_DENIED','RATE_LIMIT
 const validCursorDate=c=>c.last_modified===undefined||c.last_modified===null||
  (typeof c.last_modified==='string'&&c.last_modified.length<=80&&
  /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(c.last_modified)&&Number.isFinite(Date.parse(c.last_modified)));
-export function validateMacroState(s,now=Date.now()){
- if(!s||s.schema!=='geomacro.macro-fastlane-state.v1'||!Number.isFinite(Date.parse(s.checked_at))||Date.parse(s.checked_at)>now+60000||Date.parse(s.checked_at)<now-15*60000||!Array.isArray(s.events)||s.events.length>128||!Array.isArray(s.quotes)||s.quotes.length>40||!Array.isArray(s.source_checks)||s.source_checks.length>15||typeof s.cursors!=='object'||s.cursors===null||Array.isArray(s.cursors)||Object.keys(s.cursors).some(k=>!ids.has(k))||!Number.isFinite(s.calendar_checked_at)||s.calendar_checked_at>now+60000||!Array.isArray(s.calendar_checks)||s.calendar_checks.length>3||!Array.isArray(s.price_checks)||s.price_checks.length>2)return false;
- if(s.mineral_cursors!==undefined&&(typeof s.mineral_cursors!=="object"||s.mineral_cursors===null||Array.isArray(s.mineral_cursors)||Object.entries(s.mineral_cursors).some(([id,c])=>!MINERALS_SOURCE_IDS.includes(id)||!c||!(c.etag===null||typeof c.etag==="string"&&c.etag.length<=200&&!/[\r\n]/.test(c.etag))||!Number.isFinite(c.retry_after)||c.retry_after>now+61*60000||!Number.isFinite(c.checked_at)||c.checked_at>now+60000||!validCursorDate(c))))return false;
- if(s.mineral_checks!==undefined&&(!Array.isArray(s.mineral_checks)||s.mineral_checks.length>13||s.mineral_checks.some(c=>!MINERALS_SOURCE_IDS.includes(c.id)||!states.has(c.state)||!Number.isSafeInteger(c.candidates)||c.candidates<0||c.candidates>150)))return false;
- if(s.mineral_regions!==undefined&&(!Array.isArray(s.mineral_regions)||![0,6].includes(s.mineral_regions.length)||s.mineral_regions.some(r=>!["africa","asia","europe","north_america","south_america","oceania"].includes(r.region)||["primary_healthy","recent_primary_release","fallback_attempted","fallback_healthy"].some(k=>typeof r[k]!=="boolean")||r.publisher_region_is_event_country!==false||typeof r.global_substitute_healthy!=="boolean")))return false;
- if(s.events.some(e=>!['cpi','ppi','nfp','fomc','ecb_rates'].includes(e.kind)||!['bls','fed','ecb'].includes(e.source)||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.000Z$/.test(e.at)||!Number.isFinite(Date.parse(e.at))))return false;
- if(s.source_checks.some(c=>!ids.has(c.id)||!(states.has(c.state)||/^HTTP_[45]\d\d$/.test(c.state))||!Number.isSafeInteger(c.candidates)||c.candidates<0||c.candidates>75))return false;
- if(s.calendar_checks.some(c=>!['bls','fed','ecb'].includes(c.id)||!['OK','UNAVAILABLE'].includes(c.state)||!Number.isSafeInteger(c.events)||c.events<0||c.events>128))return false;
- if(s.price_checks.some(c=>!['XAU/USD','XAG/USD'].includes(c.instrument)||!['CURRENT_INDICATION','STALE_OR_INVALID','UNAVAILABLE'].includes(c.state)))return false;
- if(Object.values(s.cursors).some(c=>!c||!(c.etag===null||typeof c.etag==='string'&&c.etag.length<=200&&!/[\r\n]/.test(c.etag))||!Number.isFinite(c.retry_after)||c.retry_after>now+16*60000||!Number.isFinite(c.checked_at)||c.checked_at>now+60000||!validCursorDate(c)))return false;
- if(s.fx_checked_at!==undefined&&(!Number.isSafeInteger(s.fx_checked_at)||s.fx_checked_at<0||s.fx_checked_at>now+60000))return false;
+const validHttpState=value=>states.has(value)||/^HTTP_[45]\d\d$/.test(value);
+const invalidCursorField=(cursor,now,maxRetryAhead)=>{
+ if(!cursor)return 'cursor';
+ if(!(cursor.etag===null||typeof cursor.etag==='string'&&cursor.etag.length<=200&&!/[\r\n]/.test(cursor.etag)))return 'etag';
+ if(!Number.isFinite(cursor.retry_after)||cursor.retry_after>now+maxRetryAhead)return 'retry_after';
+ if(!Number.isFinite(cursor.checked_at)||cursor.checked_at>now+60000)return 'checked_at';
+ if(!validCursorDate(cursor))return 'last_modified';
+ return null;
+};
+/** Return the precise first invalid field without echoing submitted source data. */
+export function macroStateInvalidField(s,now=Date.now()){
+ if(!s||s.schema!=='geomacro.macro-fastlane-state.v1')return 'schema';
+ const checked=Date.parse(s.checked_at);
+ if(!Number.isFinite(checked)||checked>now+60000||checked<now-15*60000)return 'checked_at';
+ if(!Array.isArray(s.events)||s.events.length>128)return 'events';
+ if(!Array.isArray(s.quotes)||s.quotes.length>40)return 'quotes';
+ if(!Array.isArray(s.source_checks)||s.source_checks.length>MACRO_NEWS_SOURCES.length)return 'source_checks';
+ if(typeof s.cursors!=='object'||s.cursors===null||Array.isArray(s.cursors))return 'cursors';
+ if(Object.keys(s.cursors).some(k=>!ids.has(k)))return 'cursors';
+ if(!Number.isFinite(s.calendar_checked_at)||s.calendar_checked_at>now+60000)return 'calendar_checked_at';
+ if(!Array.isArray(s.calendar_checks)||s.calendar_checks.length>3)return 'calendar_checks';
+ if(!Array.isArray(s.price_checks)||s.price_checks.length>2)return 'price_checks';
+ if(s.mineral_cursors!==undefined){
+  if(typeof s.mineral_cursors!=='object'||s.mineral_cursors===null||Array.isArray(s.mineral_cursors))return 'mineral_cursors';
+  for(const [id,c] of Object.entries(s.mineral_cursors)){
+   if(!MINERALS_SOURCE_IDS.includes(id))return `mineral_cursors.${id}`;
+   const field=invalidCursorField(c,now,61*60000);if(field)return `mineral_cursors.${id}.${field}`;
+  }
+ }
+ if(s.mineral_checks!==undefined){
+  if(!Array.isArray(s.mineral_checks)||s.mineral_checks.length>MINERALS_SOURCE_IDS.length)return 'mineral_checks';
+  for(let i=0;i<s.mineral_checks.length;i++){
+   const c=s.mineral_checks[i];
+   if(!c||typeof c!=='object'||!MINERALS_SOURCE_IDS.includes(c.id))return `mineral_checks[${i}].id`;
+   if(!validHttpState(c?.state))return `mineral_checks[${i}].state`;
+   if(!Number.isSafeInteger(c.candidates)||c.candidates<0||c.candidates>150)return `mineral_checks[${i}].candidates`;
+  }
+ }
+ if(s.mineral_regions!==undefined){
+  if(!Array.isArray(s.mineral_regions)||![0,6].includes(s.mineral_regions.length))return 'mineral_regions';
+  for(let i=0;i<s.mineral_regions.length;i++){
+   const r=s.mineral_regions[i];
+   if(!r||typeof r!=='object'||!['africa','asia','europe','north_america','south_america','oceania'].includes(r.region))return `mineral_regions[${i}].region`;
+   for(const k of ['primary_healthy','recent_primary_release','fallback_attempted','fallback_healthy'])if(typeof r[k]!=='boolean')return `mineral_regions[${i}].${k}`;
+   if(r.publisher_region_is_event_country!==false)return `mineral_regions[${i}].publisher_region_is_event_country`;
+   if(typeof r.global_substitute_healthy!=='boolean')return `mineral_regions[${i}].global_substitute_healthy`;
+  }
+ }
+ for(let i=0;i<s.events.length;i++){
+  const e=s.events[i];
+  if(!e||typeof e!=='object'||!['cpi','ppi','nfp','fomc','ecb_rates'].includes(e.kind))return `events[${i}].kind`;
+  if(!['bls','fed','ecb'].includes(e.source))return `events[${i}].source`;
+  if(typeof e.at!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.000Z$/.test(e.at)||!Number.isFinite(Date.parse(e.at)))return `events[${i}].at`;
+ }
+ for(let i=0;i<s.source_checks.length;i++){
+  const c=s.source_checks[i];
+  if(!c||typeof c!=='object'||!ids.has(c.id))return `source_checks[${i}].id`;
+  if(!validHttpState(c.state))return `source_checks[${i}].state`;
+  if(!Number.isSafeInteger(c.candidates)||c.candidates<0||c.candidates>75)return `source_checks[${i}].candidates`;
+ }
+ for(let i=0;i<s.calendar_checks.length;i++){
+  const c=s.calendar_checks[i];
+  if(!c||typeof c!=='object'||!['bls','fed','ecb'].includes(c.id))return `calendar_checks[${i}].id`;
+  if(!['OK','UNAVAILABLE'].includes(c?.state))return `calendar_checks[${i}].state`;
+  if(!Number.isSafeInteger(c.events)||c.events<0||c.events>128)return `calendar_checks[${i}].events`;
+ }
+ for(let i=0;i<s.price_checks.length;i++){
+  const c=s.price_checks[i];
+  if(!c||typeof c!=='object'||!['XAU/USD','XAG/USD'].includes(c.instrument))return `price_checks[${i}].instrument`;
+  if(!['CURRENT_INDICATION','STALE_OR_INVALID','UNAVAILABLE'].includes(c?.state))return `price_checks[${i}].state`;
+ }
+ for(const [id,c] of Object.entries(s.cursors)){
+  if(!ids.has(id))return `cursors.${id}`;
+  const field=invalidCursorField(c,now,16*60000);if(field)return `cursors.${id}.${field}`;
+ }
+ if(s.fx_checked_at!==undefined&&(!Number.isSafeInteger(s.fx_checked_at)||s.fx_checked_at<0||s.fx_checked_at>now+60000))return 'fx_checked_at';
  const fx=s.fx_reference;
  if(fx!==undefined&&fx!==null){
-  const day=Date.parse(String(fx.reference_date??"")+"T00:00:00Z");
-  if(fx.provider!=="ECB_DAILY_REFERENCE"||fx.base!=="EUR"||fx.intraday_live_verified!==false||fx.transaction_price!==false||
-     !/^\d{4}-\d{2}-\d{2}$/.test(fx.reference_date)||
-     !Number.isFinite(day)||day>now||now-day>8*86400000||
-     new Date(day).toISOString().slice(0,10)!==fx.reference_date||
-     !Array.isArray(fx.rates)||fx.rates.length!==3||
-     fx.rates.some((q,i)=>q.currency!==["USD","GBP","JPY"][i]||!Number.isFinite(q.per_eur)||q.per_eur<=0||q.per_eur>=1000000))return false;
+  if(typeof fx!=='object'||Array.isArray(fx))return 'fx_reference';
+  const day=Date.parse(String(fx.reference_date??'')+'T00:00:00Z');
+  if(fx.provider!=='ECB_DAILY_REFERENCE'||fx.base!=='EUR'||fx.intraday_live_verified!==false||fx.transaction_price!==false||
+   !/^\d{4}-\d{2}-\d{2}$/.test(fx.reference_date)||!Number.isFinite(day)||day>now||now-day>8*86400000||
+   new Date(day).toISOString().slice(0,10)!==fx.reference_date||!Array.isArray(fx.rates)||fx.rates.length!==3||
+   fx.rates.some((q,i)=>q.currency!==['USD','GBP','JPY'][i]||!Number.isFinite(q.per_eur)||q.per_eur<=0||q.per_eur>=1000000))return 'fx_reference';
  }
- if(s.quotes.some(q=>!['XAU/USD','XAG/USD'].includes(q.instrument)||q.currency!=='USD'||q.unit!=='troy_ounce'||q.quote_kind!=='provider_spot_indication'||q.provider_latency_verified!==false||q.exchange_tick_verified!==false||!Number.isFinite(q.value)||q.value<=0||!Number.isFinite(Date.parse(q.observed_at))||Date.parse(q.observed_at)>now||!Number.isFinite(Date.parse(q.received_at))||Date.parse(q.received_at)>now+60000))return false;
- const lease=Date.parse(s.quota_lease_until);return Number.isFinite(lease)&&lease>=now&&lease<=now+13*60000;
+ for(let i=0;i<s.quotes.length;i++){
+  const q=s.quotes[i];
+  if(!q||typeof q!=='object'||!['XAU/USD','XAG/USD'].includes(q.instrument))return `quotes[${i}].instrument`;
+  if(q.currency!=='USD')return `quotes[${i}].currency`;
+  if(q.unit!=='troy_ounce')return `quotes[${i}].unit`;
+  if(q.quote_kind!=='provider_spot_indication')return `quotes[${i}].quote_kind`;
+  if(q.provider_latency_verified!==false)return `quotes[${i}].provider_latency_verified`;
+  if(q.exchange_tick_verified!==false)return `quotes[${i}].exchange_tick_verified`;
+  if(!Number.isFinite(q.value)||q.value<=0)return `quotes[${i}].value`;
+  if(!Number.isFinite(Date.parse(q.observed_at))||Date.parse(q.observed_at)>now)return `quotes[${i}].observed_at`;
+  if(!Number.isFinite(Date.parse(q.received_at))||Date.parse(q.received_at)>now+60000)return `quotes[${i}].received_at`;
+ }
+ const lease=Date.parse(s.quota_lease_until);
+ if(!Number.isFinite(lease)||lease<now||lease>now+13*60000)return 'quota_lease_until';
+ return null;
 }
+export function validateMacroState(s,now=Date.now()){return macroStateInvalidField(s,now)===null;}
 export async function loadMacroState(env){
  const row=await env.DB.prepare('SELECT value_json FROM control_state WHERE key=? LIMIT 1').bind(KEY).first();
  return row?JSON.parse(row.value_json):{};
 }
 export async function storeMacroState(env,state,now=Date.now()){
- if(!validateMacroState(state,now))return reply({ok:false,error:'MACRO_STATE_INVALID'},400);
+ const invalidField=macroStateInvalidField(state,now);
+ if(invalidField)return reply({ok:false,error:'MACRO_STATE_INVALID',field:invalidField},400);
  // Explicit projection: neither private article titles nor URLs enter this row.
  const clean={
   mineral_cursors:Object.fromEntries(Object.entries(state.mineral_cursors??{}).map(([id,c])=>[id,{etag:c.etag,last_modified:c.last_modified??null,retry_after:c.retry_after,checked_at:c.checked_at}])),

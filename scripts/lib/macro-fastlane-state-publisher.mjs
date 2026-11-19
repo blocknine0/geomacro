@@ -9,6 +9,7 @@ const VALID_ERRORS=new Set(['MACRO_STATE_INVALID','MACRO_STATE_PAYLOAD_TOO_LARGE
  'MACRO_STATE_D1_WRITE_UNAVAILABLE','MACRO_STATE_D1_WRITE_UNVERIFIED',
  'BODY_TOO_LARGE','UNAUTHORIZED','CONTROL_PLANE_AUTH_UNCONFIGURED']);
 const safeCode=x=>VALID_ERRORS.has(x)?x:'UNCLASSIFIED';
+const safeField=x=>typeof x==='string'&&/^[a-z][a-z0-9_.\[\]-]{0,120}$/i.test(x)?x:null;
 const sleepDefault=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 export async function persistMacroFastlaneState({
@@ -49,8 +50,10 @@ export async function persistMacroFastlaneState({
      commercial_eligible:false,source_text_included:false});
    }
    lastError=safeCode(ack?.error);
-   if(!RETRYABLE.has(response.status))
-    throw Error('MACRO_STATE_PUT_HTTP_'+response.status+'_'+lastError);
+   if(!RETRYABLE.has(response.status)){
+    const field=ack?.error==='MACRO_STATE_INVALID'?safeField(ack.field):null;
+    throw Error('MACRO_STATE_PUT_HTTP_'+response.status+'_'+lastError+(field?'_FIELD_'+field:''));
+   }
   }catch(error){
    const code=String(error?.message??'');
    if(code.startsWith('MACRO_STATE_')){

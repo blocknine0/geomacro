@@ -173,7 +173,9 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
           const u=new URL(href);
           return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&
             !u.hash&&source.original_hosts.includes(u.hostname)&&
-            u.pathname!==new URL(source.url).pathname;
+            u.pathname!==new URL(source.url).pathname&&
+            !/(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(u.pathname)&&
+            !/\.(?:rss|atom|xml)$/iu.test(u.pathname);
         }catch{return false;}
       });
       if(hasPublisherLink && Buffer.byteLength(item,"utf8")<=8192){

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {MACRO_NEWS_SOURCES,planMacroSources,normalizeMetalQuote,normalizeXausMetalQuotes,measuredPriceReaction,macroPreciousTopic,macroEventContext} from '../lib/macro-fx-metals.mjs';
 import {parseMacroCalendar,zonedRelease,releaseWindowEvents} from '../lib/macro-release-calendar.mjs';
 import {collectMacroFastlane,parseMacroFeed} from '../lib/macro-fastlane-collector.mjs';
-import {MINERALS_MESH,collectCriticalMineralsFastlane,parseSectorFeed} from '../lib/critical-minerals-fastlane.mjs';
+import {MINERALS_MESH,MINERALS_SOURCE_IDS,collectCriticalMineralsFastlane,parseSectorFeed} from '../lib/critical-minerals-fastlane.mjs';
 import {deriveStatelessSignals} from '../../src/lib/stateless-intelligence-model.ts';
 import {verifyDerivedStory} from '../../workers/control-plane/src/website-derived-intelligence.mjs';
-import {validateMacroState,storeMacroState,loadMacroState,runMacroReleaseTick,publicMacroProjection,macroPriceEvidence} from '../../workers/control-plane/src/macro-fastlane.mjs';
+import {validateMacroState,macroStateInvalidField,storeMacroState,loadMacroState,runMacroReleaseTick,publicMacroProjection,macroPriceEvidence} from '../../workers/control-plane/src/macro-fastlane.mjs';
 import {buildDerivedNewsStructural} from '../../src/lib/derived-news-structural-bridge.ts';
 const now=Date.parse('2026-10-27T12:00:00Z');
 const at=new Date(now-60000).toISOString();
@@ -58,6 +58,34 @@ test('Macro lanes cover all pinned issuers and never double-fetch shared Fed/ECB
  const seen=new Set();for(let n=0;n<3;n++)for(const s of planMacroSources(now+n*300000,{reusedIds:['fed_press','ecb_press']})){assert.ok(!['fed_press','ecb_press'].includes(s.id));seen.add(s.id);}
  for(const s of MACRO_NEWS_SOURCES.filter(s=>!s.shared))assert.ok(seen.has(s.id),s.id);
  assert.equal(new Set(MACRO_NEWS_SOURCES.map(s=>s.url)).size,MACRO_NEWS_SOURCES.length);
+});
+test('six-region fastlane state accepts every registered mineral check including HTTP 403/404 and reports exact bad field',async()=>{
+ const fastlane=await collectMacroFastlane({now,state:freshState(),sourceIds:[],prices:false,calendars:false});
+ const sweep=await collectCriticalMineralsFastlane({now,state:fastlane.state,
+  fetchImpl:async()=>new Response('',{status:403})});
+ const sourceChecks=MACRO_NEWS_SOURCES.map((source,index)=>({id:source.id,state:index===0?'HTTP_403':index===1?'HTTP_404':'OK',candidates:0}));
+ const receivedChecks=new Map(sweep.checks.map(check=>[check.id,check]));
+ const state={...fastlane.state,checked_at:new Date(now+30_000).toISOString(),calendar_checked_at:now+30_000,
+  quotes:[{instrument:'XAU/USD',value:2700,currency:'USD',unit:'troy_ounce',
+   observed_at:new Date(now-10_000).toISOString(),received_at:new Date(now+30_000).toISOString(),
+   quote_kind:'provider_spot_indication',provider_latency_verified:false,exchange_tick_verified:false}],
+  source_checks:sourceChecks,mineral_cursors:sweep.cursors,
+  mineral_checks:MINERALS_SOURCE_IDS.map((id,index)=>({id,
+   state:index===0?'HTTP_403':index===1?'HTTP_404':receivedChecks.get(id)?.state??'UNAVAILABLE',
+   candidates:receivedChecks.get(id)?.candidates??0})),
+  mineral_regions:sweep.receipt.regional_groups};
+ assert.equal(MINERALS_SOURCE_IDS.length,state.mineral_checks.length);
+ assert.equal(new Set(MINERALS_SOURCE_IDS).size,MINERALS_SOURCE_IDS.length);
+ assert.equal(state.source_checks.length,MACRO_NEWS_SOURCES.length);
+ assert.equal(macroStateInvalidField(state,now),null);
+ assert.ok(validateMacroState(state,now));
+ const rejected={...state,mineral_checks:[{...state.mineral_checks[0],state:'HTTP_600'}]};
+ assert.equal(macroStateInvalidField(rejected,now),'mineral_checks[0].state');
+ const badCursor={...state,mineral_cursors:{...state.mineral_cursors,bgs_news:{etag:null,last_modified:'not a date',retry_after:now,checked_at:now}}};
+ assert.equal(macroStateInvalidField(badCursor,now),'mineral_cursors.bgs_news.last_modified');
+ const response=await storeMacroState({DB:new DB()},rejected,now);
+ assert.equal(response.status,400);
+ assert.deepEqual(await response.json(),{ok:false,error:'MACRO_STATE_INVALID',field:'mineral_checks[0].state'});
 });
 test('Gold/silver are Macro Economics; related markets share the one journal event ID',()=>{
  for(const title of ['World Gold Council reports central bank gold buying','Silver industrial demand increases as solar manufacturing expands']){
