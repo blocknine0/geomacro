@@ -445,7 +445,7 @@ jobs:
         if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Dual-attest and admit licensed candidates under daily D1 cap
         if: steps.risk-stream-queue.outputs.verified == 'true'
         env:
