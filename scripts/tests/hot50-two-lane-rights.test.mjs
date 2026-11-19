@@ -4,6 +4,7 @@ import {approvedLegalAnchor,hasIndependentApprovedRolePair}
  from '../../workers/control-plane/src/risk-stream-approved-role-pairs.mjs';
 import {redactedRightsRadar,prioritizeApprovedAnchorSources}
  from '../lib/rights-redacted-speed-radar.mjs';
+import {telegramWatchItemsToRadar} from '../ops/append-telegram-speed-radar.mjs';
 const now=Date.parse('2026-11-18T12:00:00Z');
 const make=(role,domain,parent,extra={})=>({source_role:role,
  publisher_root_domain:domain,parent_media_entity:parent,
@@ -55,4 +56,28 @@ test('Lane B radar prioritizes matching category anchors without granting rights
  assert.equal(signal.commercial_rights_approved,0);
  assert.equal(signal.signed_gro_authorized,false);
  assert.equal(signal.paid_delivery_authorized,false);
+});
+
+test('Telegram watch metadata becomes redacted Lane B signal and prioritizes approved Lane A cell',()=>{
+ const signals=telegramWatchItemsToRadar([{category:'rare_earth',country_iso3:'IDN',
+  watch_event:'critical_mineral_supply_shock',source_timestamp_claimed_at:'2026-11-18T11:00:00Z',
+  source_content_included:false,raw_article_included:false}],{now});
+ assert.equal(signals.length,1);
+ const [signal]=signals;
+ assert.equal(signal.country_iso3,'IDN');
+ assert.equal(signal.category,'CRITICAL_MINERALS');
+ assert.equal(signal.raw_source_redacted,true);
+ assert.equal(signal.licensed_source_text_included,false);
+ assert.equal(signal.raw_sources_not_republished,true);
+ assert.equal(signal.commercial_rights_approved,0);
+ assert.equal(signal.corroborates_commercial_standard,false);
+ assert.equal(signal.signed_gro_authorized,false);
+ const result=prioritizeApprovedAnchorSources([signal],[
+  {source_id:'idn-approved-minerals',country_iso3:'IDN',categories:['CRITICAL_MINERALS'],
+   enabled:1,commercial_rights_approved:1},
+  {source_id:'idn-unapproved-macro',country_iso3:'IDN',categories:['MACRO_FX'],
+   enabled:1,commercial_rights_approved:0},
+ ]);
+ assert.deepEqual(result.prioritized_source_ids,['idn-approved-minerals']);
+ assert.doesNotMatch(JSON.stringify(signal),/critical_mineral_supply_shock|Telegram|https?:/iu);
 });

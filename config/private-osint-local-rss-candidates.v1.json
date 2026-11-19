@@ -177,7 +177,7 @@
     },
     {
       "id": "private_local_candidate_id_antara",
-      "url": "https://www.antaranews.com/en/rss/news",
+      "url": "https://www.esdm.go.id/en?format=feed&type=rss",
       "continent": "asia",
       "publisher_country_iso3": "IDN",
       "categories": [
@@ -186,7 +186,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://en.antaranews.com/",
+      "discovery_reference_url": "https://www.esdm.go.id/en",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,

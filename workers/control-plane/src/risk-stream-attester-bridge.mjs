@@ -99,19 +99,8 @@ export async function attestRiskStreamOriginal(request,env){
      if(riskStreamInternalEventMatches(draft.category,draft.derived?.what,context.event_code))
       contexts.push(context);
     }
-    const watchResult=await env.DB.prepare(
-     "SELECT watch_event FROM telegram_research_json WHERE country_iso3=? AND category=? "+
-     "AND published_at>=? AND watch_event IS NOT NULL "+
-     "ORDER BY published_at DESC,delivery_id DESC LIMIT 8")
-     .bind(draft.country_iso3,privateCategory,cutoff).all();
-    for(const row of watchResult?.results??[]){
-     const context=normalizeRiskStreamInternalCorroboration({
-      source_kind:"TELEGRAM_WATCH",country_iso3:draft.country_iso3,category:draft.category,
-      text:String(row.watch_event??"").replaceAll("_"," "),severity_weight:20,
-      corroboration_weight:0.15,corridors:[]});
-     if(riskStreamInternalEventMatches(draft.category,draft.derived?.what,context.event_code))
-      contexts.push(context);
-    }
+    // Telegram watch metadata is consumed by the redacted speed-radar poller.
+    // It is never corroboration and cannot enter risk_context or tier scoring.
     if(contexts.length)draft={...draft,risk_context:contexts[0]};
    }
   }catch{return Response.json({ok:false,error:"PRIVATE_CORROBORATION_UNAVAILABLE"},{status:503});}

@@ -125,7 +125,7 @@ describe("Supabase-free Predge Risk Gate v1 migration",()=>{
    const sql=readFileSync("workers/control-plane/migrations/0020_predge_risk_gate_d1.sql","utf8");
    expect(route).toContain("forwardRiskGateToD1");
    expect(route).not.toContain("handleCommercialExternalRiskGateRequest");
-   expect(index).toContain("predgeRiskGateD1(request,env)");
+   expect(index).toContain('observedPredgeResponse(request,env,"v1",predgeRiskGateD1)');
    expect(worker).toContain("evaluateRiskGate(parsed,gro,new Date(now))");
    expect(worker.indexOf("if(!gro)return fail")).toBeLessThan(worker.indexOf("INSERT OR IGNORE INTO risk_gate_d1_requests"));
    expect(sql).toContain("risk_gate_d1_quota");

@@ -3918,14 +3918,14 @@
       "direct_news_osint_feeds": [
         {
           "id": "private_local_candidate_id_antara",
-          "url": "https://www.antaranews.com/en/rss/news",
+          "url": "https://www.esdm.go.id/en?format=feed&type=rss",
           "categories": [
             "geopolitics",
             "macro",
             "rare_earth"
           ],
           "feed_format": "rss",
-          "kind": "editorial_osint_candidate",
+          "kind": "official_or_public_primary_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
         },

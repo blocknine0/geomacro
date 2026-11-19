@@ -38,9 +38,9 @@
       "categories": [
         "macro"
       ],
-      "url": "https://www.thehindu.com/business/Economy/feeder/default.rss",
+      "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
       "type": "rss",
-      "description": "The Hindu Economy RSS; tax/fiscal topic discovery, not tax authority",
+      "description": "Government of India PIB Press Releases RSS; official feed, runtime transport must be re-probed",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -105,9 +105,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.miningmonthly.com/feed/rss",
+      "url": "https://www.minister.industry.gov.au/feed/all-media/rss.xml",
       "type": "rss",
-      "description": "Australia Mining Monthly RSS, Australia mining sector alternative",
+      "description": "Australian Government Department of Industry ministers all-media RSS; runtime transport must be re-probed",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -131,9 +131,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://stockhead.com.au/feed/",
+      "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
       "type": "rss",
-      "description": "Stockhead broader latest Australian business/mining editorial feed candidate; ABC feed reportedly stopped updating",
+      "description": "Australian Government Department of Industry ministers media-release RSS; runtime transport must be re-probed",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
