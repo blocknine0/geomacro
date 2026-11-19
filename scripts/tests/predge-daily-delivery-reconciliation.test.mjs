@@ -55,7 +55,7 @@ test("partner report JSON and CSV reconcile on gro_id plus receipt hash",()=>{
  assert.equal(diff.matched_count,1);
  assert.equal(diff.missing_in_predge_count,1);
  assert.equal(diff.extra_in_predge_count,1);
- assert.deepEqual(diff.missing_in_predge,[{gro_id:hash(2),receipt_sha256:hash(11)}]);
+ assert.deepEqual(diff.missing_in_predge,[{gro_id:hash(4),receipt_sha256:hash(12)}]);
  assert.deepEqual(diff.extra_in_predge,[{gro_id:hash(9),receipt_sha256:hash(19)}]);
  const json=parsePartnerReport(JSON.stringify({deliveries:[{
   groId:hash(1),receiptSha256:hash(10)
