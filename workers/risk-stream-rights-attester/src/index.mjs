@@ -72,14 +72,22 @@ async function registrySource(env,sourceId){
  if(!statement?.bind)fail("SOURCE_REGISTRY_BINDING_UNAVAILABLE");
  return statement.bind(sourceId).first();
 }
-function sourceMatches(event,row,now){
- if(!row||row.source_id!==event.source_id||row.enabled!==1||
-    row.commercial_rights_approved!==1||
-    row.publisher_root_domain!==event.publisher_root_domain||
-    row.parent_media_entity!==event.parent_media_entity||
-    row.source_role!==event.source_role)return false;
+function sourceMatchFailure(event,row,now){
+ if(!row||row.source_id!==event.source_id)
+  return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ROW_MISSING";
+ if(row.enabled!==1)return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_DISABLED";
+ if(row.commercial_rights_approved!==1)
+  return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_NOT_APPROVED";
+ if(row.publisher_root_domain!==event.publisher_root_domain)
+  return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_DOMAIN";
+ if(row.parent_media_entity!==event.parent_media_entity)
+  return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ENTITY";
+ if(row.source_role!==event.source_role)
+  return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_ROLE";
  const expiry=isoExpiry(row.rights_expire_at);
- return Number.isFinite(expiry)&&expiry>now;
+ if(!Number.isFinite(expiry)||expiry<=now)
+  return "SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_EXPIRED";
+ return null;
 }
 export async function attestRights(request,env,now=Date.now()){
  if(request.method!=="POST")return response({ok:false,error:"METHOD_NOT_ALLOWED"},405);
@@ -107,12 +115,13 @@ export async function attestRights(request,env,now=Date.now()){
    licence_url:itemLicense?.license_url,terms_url:itemLicense?.terms_url}},
    {sourceUrl:event.source_url,sourceDomain:event.publisher_root_domain,rawPayload:event.raw_payload});
   row=await registrySource(env,event.source_id);
-  if(!sourceMatches(event,row,now))fail("SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED");
+  const sourceFailure=sourceMatchFailure(event,row,now);
+  if(sourceFailure)fail(sourceFailure);
   key=await signingKey(env);
  }catch(error){
   const code=String(error?.message??"");
   const status=code==="SIGNING_KEY_UNAVAILABLE"||code==="SOURCE_REGISTRY_BINDING_UNAVAILABLE"?503:
-   code==="BODY_TOO_LARGE"?413:code==="SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED"?403:400;
+   code==="BODY_TOO_LARGE"?413:code.startsWith("SOURCE_RIGHTS_UNVERIFIED_OR_EXPIRED_")?403:400;
   return response({ok:false,error:code||"RIGHTS_ATTESTATION_REFUSED"},status);
  }
  const message="geomacro.machine-commercial-rights.v1\n"+riskStreamOriginalClaims(event);
