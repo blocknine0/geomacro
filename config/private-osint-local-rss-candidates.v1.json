@@ -350,6 +350,28 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_lso_gov",
+      "url": "https://www.gov.ls/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "LSO",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.gov.ls/news/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "OFFICIAL_GOVERNMENT_RSS_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
