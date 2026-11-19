@@ -27,7 +27,7 @@ const env={
 
 describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=>{
   it("admits capacity for two independent read-back-verified source archives",()=>{
-    const decision=evaluateGovernedB2Headroom(from({GET:1980,PUT:1980}),{
+    const decision=evaluateGovernedB2Headroom(from({GET:1480,PUT:680}),{
       getRequests:2,putRequests:2,now:clock,
     });
     expect(decision).toMatchObject({
@@ -43,12 +43,12 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
   });
 
   it("admits exactly one shared PUT+GET pair without weakening account limits",()=>{
-    const decision = evaluateGovernedB2Headroom(from({GET:1999,PUT:1999}),{
+    const decision = evaluateGovernedB2Headroom(from({GET:1999,PUT:999}),{
       getRequests:1,putRequests:1,now:clock,
     });
     expect(decision.admitted).toBe(true);
     expect(decision.b2_requests_by_this_check).toBe(0);
-    const denied = evaluateGovernedB2Headroom(from({GET:2000,PUT:1999}),{
+    const denied = evaluateGovernedB2Headroom(from({GET:1999,PUT:1000}),{
       getRequests:1,putRequests:1,now:clock,
     });
     expect(denied.admitted).toBe(false);
@@ -57,9 +57,9 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
   it("holds exactly at shared GET/PUT/total limits without spending a B2 ticket",()=>{
     for(const [status,request] of [
       [from({GET:1999,PUT:5}),{getRequests:2,putRequests:2}],
-      [from({GET:4,PUT:1999}),{getRequests:2,putRequests:2}],
-      [from({GET:1999,PUT:1999,HEAD:40,NATIVE_AUTH:39}),{getRequests:2,putRequests:2}],
-      [from({GET:1992,PUT:1992}),{getRequests:9,putRequests:9}],
+      [from({GET:4,PUT:999}),{getRequests:2,putRequests:2}],
+      [from({GET:2000,PUT:1000}),{getRequests:2,putRequests:2}],
+      [from({GET:1992,PUT:992}),{getRequests:9,putRequests:9}],
     ] as const) {
       const d=evaluateGovernedB2Headroom(status,{...request,now:clock});
       expect(d.admitted).toBe(false);

@@ -92,7 +92,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(results.filter(x=>!x.ok).every(x=>x.error==="B2_GLOBAL_DAILY_QUOTA_EXHAUSTED")).toBe(true);
     expect(counters.get("2026-10-09")?.put_requests).toBe(700);
     expect(byWorkflow.size).toBe(6);
-    expect(Array.from(byWorkflow.values()).reduce((a,b)=>a+b,0)).toBe(1950);
+    expect(Array.from(byWorkflow.values()).reduce((a,b)=>a+b,0)).toBe(700);
     const release=await Promise.all(Array.from({length:300},()=>reserveB2AccountQuota(db,{
       kind:"PUT",workflow_id:"step3_production_verify"},{now:date})));
     expect(release.every(x=>x.ok&&x.release_reserve_protected===true)).toBe(true);
