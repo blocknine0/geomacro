@@ -111,3 +111,22 @@ test("P0B daily counters reset at the UTC day boundary", async () => {
   assert.equal(nextDay.workflow_used.PUT, 1);
   assert.equal(nextDay.day_utc, "2026-11-20");
 });
+
+test("registered original archive can use the protected 1,900-to-2,000 GET reserve", async () => {
+  const db = createD1();
+  db.sqlite.prepare(`INSERT INTO b2_account_daily_request_quota
+    (day_utc,total_requests,get_requests,put_requests,head_requests,native_auth_requests,updated_at)
+    VALUES (?,?,?,?,?,?,?)`).run("2026-11-19", 1_900, 1_900, 0, 0, 0,
+      "2026-11-19T12:00:00.000Z");
+  const reserve = workflow_id => reserveB2AccountQuota(db,
+    { kind: "GET", workflow_id }, { now: NOW });
+
+  const routine = await reserve("routine_ingestion");
+  assert.equal(routine.error, "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED");
+
+  const archive = await reserve("registered_original_archive");
+  assert.equal(archive.ok, true);
+  assert.equal(archive.release_reserve_protected, true);
+  assert.equal(archive.used.GET, 1_901);
+  assert.equal(archive.admission_limits.GET, B2_DAILY_LIMITS.GET);
+});
