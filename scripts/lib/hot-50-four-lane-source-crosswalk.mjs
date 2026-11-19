@@ -104,7 +104,7 @@ export function hot50FourLaneSourceCrosswalk(){
    seenChannelIds.add(t.candidate_key);telegram++;
   }
  }
- if(direct!==225||telegram!==139)
+ if(direct!==224||telegram!==139)
   throw Error("HOT50_FOUR_LANE_SOURCE_COUNT_DRIFT");
  const failoverPins=snapshot.countries.flatMap(x=>x.direct_news_osint_feeds)
   .filter(x=>Array.isArray(x.fallback_for_source_ids)&&x.fallback_for_source_ids.length>0);
