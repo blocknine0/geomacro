@@ -272,7 +272,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
   typeof s.discovery_reference_url==="string"&&
   new URL(s.discovery_reference_url).protocol==="https:"));
  const bodyFor=url=>{
-  const title=isExpectedFeedHost(url,"www.industry.gov.au")
+  const title=isExpectedFeedHost(url,"www.minister.industry.gov.au")
    ?"Australia announces critical minerals lithium and rare-earth processing project"
    :isExpectedFeedHost(url,"www.dsti.gov.za")
     ?"South Africa announces critical minerals research and rare-earth mineral policy"
