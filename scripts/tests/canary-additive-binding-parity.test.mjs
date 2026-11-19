@@ -96,7 +96,8 @@ test("reviewed queue bindings pass parity only when the explicit queue flag is e
  const queueRuntime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
  const queues=[
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
-  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"},
+  {name:"RISK_STREAM_PRIVATE_R2",type:"r2_bucket",bucket_name:"geomacro-risk-stream-private"}
  ];
  const attesters=[
   {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
@@ -111,16 +112,49 @@ test("reviewed queue bindings pass parity only when the explicit queue flag is e
  assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
  assert.ok(result.additions.includes("RISK_STREAM_QUEUE"));
  assert.ok(result.additions.includes("RISK_STREAM_DELIVERY_QUEUE"));
+ assert.ok(result.additions.includes("RISK_STREAM_PRIVATE_R2"));
  const delta=diagnoseReviewedHot50BindingDelta(base,candidate,sha,
   REVIEWABLE_ADDITIVE_SECRETS,queueRuntime);
  assert.equal(delta.status,"NO_UNEXPECTED_BINDING_NAMES");
  assert.deepEqual(delta.expected_additions_missing,[]);
+ assert.ok(delta.expected_additions.includes("RISK_STREAM_PRIVATE_R2"));
+});
+
+test("private Risk Stream R2 binding is exact and requires the reviewed queue flag",()=>{
+ const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
+ const queues=[
+  {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+ ];
+ const attesters=[
+  {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-facts-attester"},
+  {name:"RISK_STREAM_RIGHTS_ATTESTER",type:"service",
+   service:"geomacro-risk-stream-rights-attester"}
+ ];
+ const r2={name:"RISK_STREAM_PRIVATE_R2",type:"r2_bucket",
+  bucket_name:"geomacro-risk-stream-private"};
+ const base=version(streamBaseline);
+ for(const mismatch of [
+  {...r2,type:"queue"},
+  {...r2,bucket_name:"other-bucket"},
+  {...r2,metadata:"unexpected"}
+ ]){
+  assert.throws(()=>assessReviewedHot50BindingParity(base,
+   version([...streamCandidate,...queues,...attesters,mismatch]),sha,
+   REVIEWABLE_ADDITIVE_SECRETS,runtime),/RISK_STREAM_ARCHIVE_R2_BINDING_MISMATCH/u);
+ }
+ assert.throws(()=>assessReviewedHot50BindingParity(base,
+  version([...streamCandidate,r2]),sha,
+  REVIEWABLE_ADDITIVE_SECRETS,researchRuntime),
+  /RISK_STREAM_ARCHIVE_R2_BINDING_UNREVIEWED/u);
 });
 
 test("attester service rows accept only optional production environment metadata",()=>{
  const queues=[
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
-  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"},
+  {name:"RISK_STREAM_PRIVATE_R2",type:"r2_bucket",bucket_name:"geomacro-risk-stream-private"}
  ];
  const attesters=[
   {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
@@ -150,7 +184,8 @@ test("attester service rows accept only optional production environment metadata
 test("queue additions without the reviewed flag and wrong queue types fail closed",()=>{
  const queues=[
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
-  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"},
+  {name:"RISK_STREAM_PRIVATE_R2",type:"r2_bucket",bucket_name:"geomacro-risk-stream-private"}
  ];
  const attesters=[
   {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
@@ -169,7 +204,7 @@ test("queue additions without the reviewed flag and wrong queue types fail close
  assert.throws(()=>assessReviewedHot50BindingParity(base,wrongType,sha,
   REVIEWABLE_ADDITIVE_SECRETS,{...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"}),
   /RISK_STREAM_QUEUE_TYPE_INVALID_RISK_STREAM_QUEUE/);
- const missing=version([...streamCandidate,queues[0],...attesters]);
+ const missing=version([...streamCandidate,queues[0],queues[2],...attesters]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,missing,sha,
   REVIEWABLE_ADDITIVE_SECRETS,{...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"}),
   /UNREVIEWED_ADDITION/);
@@ -566,7 +601,8 @@ test("Risk Stream attester service bindings require the explicit queue review fl
  const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:"1"};
  const queues=[
   {name:"RISK_STREAM_QUEUE",type:"queue",queue_name:"geomacro-risk-stream"},
-  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"}
+  {name:"RISK_STREAM_DELIVERY_QUEUE",type:"queue",queue_name:"geomacro-risk-stream-delivery"},
+  {name:"RISK_STREAM_PRIVATE_R2",type:"r2_bucket",bucket_name:"geomacro-risk-stream-private"}
  ];
  const attesters=[
   {name:"RISK_STREAM_FACTS_ATTESTER",type:"service",
@@ -585,6 +621,8 @@ test("Risk Stream attester service bindings require the explicit queue review fl
  assert.equal(delta.status,"NO_UNEXPECTED_BINDING_NAMES");
  assert.deepEqual(delta.expected_additions_missing,[]);
  for(const row of attesters)assert.ok(delta.expected_additions.includes(row.name));
+ assert.ok(result.additions.includes("RISK_STREAM_PRIVATE_R2"));
+ assert.ok(delta.expected_additions.includes("RISK_STREAM_PRIVATE_R2"));
 
  const unflagged=version([...streamCandidate,...attesters]);
  assert.throws(()=>assessReviewedHot50BindingParity(base,unflagged,sha,

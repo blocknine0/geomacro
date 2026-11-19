@@ -146,7 +146,8 @@ export function diagnoseReviewedHot50BindingDelta(base,candidate,sha,reviewedSec
  const desired=reviewedHot50CandidateVars(sha,runtimeVars);
  const queuesEnabled=runtimeVars.GEOMACRO_RISK_STREAM_QUEUES_BIND==="1";
  const riskQueues=queuesEnabled
-  ?["RISK_STREAM_QUEUE","RISK_STREAM_DELIVERY_QUEUE"].filter(name=>!a.has(name)):[];
+  ?["RISK_STREAM_QUEUE","RISK_STREAM_DELIVERY_QUEUE","RISK_STREAM_PRIVATE_R2"]
+   .filter(name=>!a.has(name)):[];
  const riskAttesters=queuesEnabled
   ?RISK_STREAM_ATTESTER_SERVICES.filter(({name})=>!a.has(name)).map(({name})=>name):[];
  const desiredNew=[...Object.keys(desired).filter(name=>!a.has(name)),
@@ -234,6 +235,12 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
   for(const name of queueNames)
    if(current.has(name)&&current.get(name)?.type!=="queue")
     deny("RISK_STREAM_QUEUE_TYPE_INVALID_"+name);
+  const archiveR2=current.get("RISK_STREAM_PRIVATE_R2");
+  if(archiveR2?.type!=="r2_bucket"||
+     archiveR2.bucket_name!=="geomacro-risk-stream-private"||
+     Object.keys(archiveR2).some(key=>
+      !["name","type","bucket_name"].includes(key)))
+   deny("RISK_STREAM_ARCHIVE_R2_BINDING_MISMATCH");
   for(const {name,service} of RISK_STREAM_ATTESTER_SERVICES){
    const row=current.get(name);
    if(row?.type!=="service"||row.service!==service||
@@ -246,6 +253,8 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
   for(const name of queueNames)
    if(!a.has(name)&&b.has(name))
     deny("RISK_STREAM_QUEUE_BINDING_UNREVIEWED_"+name);
+  if(!a.has("RISK_STREAM_PRIVATE_R2")&&b.has("RISK_STREAM_PRIVATE_R2"))
+   deny("RISK_STREAM_ARCHIVE_R2_BINDING_UNREVIEWED");
   for(const {name} of RISK_STREAM_ATTESTER_SERVICES)
    if(!a.has(name)&&b.has(name))
     deny("RISK_STREAM_ATTESTER_BINDING_UNREVIEWED_"+name);
@@ -262,6 +271,8 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
  const expected=[...Object.keys(required).filter(n=>!a.has(n)),
    ...reviewedSecrets.filter(n=>!a.has(n)),
    ...(queueBindingFlag==="1"?queueNames.filter(n=>!a.has(n)):[]),
+   ...(queueBindingFlag==="1"&&!a.has("RISK_STREAM_PRIVATE_R2")?
+    ["RISK_STREAM_PRIVATE_R2"]:[]),
    ...(queueBindingFlag==="1"?RISK_STREAM_ATTESTER_SERVICES.filter(({name})=>!a.has(name))
     .map(({name})=>name):[]),
    ...(reviewerService&&!reviewerWasPresent?["GEOMACRO_RELEASE_REVIEWER"]:[])].sort();

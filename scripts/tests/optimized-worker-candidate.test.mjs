@@ -311,6 +311,8 @@ test('candidate carries Predge vars fail-closed and adds the paid token only whe
 });
 
 test('candidate attaches both exact attester services only with the reviewed queue flag',()=>{
+ const archive={name:'RISK_STREAM_PRIVATE_R2',type:'r2_bucket',
+  bucket_name:'geomacro-risk-stream-private'};
  const services=[
   {name:'RISK_STREAM_FACTS_ATTESTER',type:'service',
    service:'geomacro-risk-stream-facts-attester'},
@@ -319,6 +321,7 @@ test('candidate attaches both exact attester services only with the reviewed que
  ];
  const runtime={...researchRuntime,GEOMACRO_RISK_STREAM_QUEUES_BIND:'1'};
  const config=candidateConfig(baseline,sha,[],runtime);
+ assert.ok(config.unsafe.bindings.some(row=>JSON.stringify(row)===JSON.stringify(archive)));
  assert.deepEqual(config.unsafe.bindings.filter(row=>
   services.some(service=>service.name===row.name)),services);
 
@@ -331,12 +334,18 @@ test('candidate attaches both exact attester services only with the reviewed que
  assert.equal(verifyCandidateBindings(baseline,uploaded,sha,[],runtime),true);
 
  const disabled=candidateConfig(baseline,sha,[],researchRuntime);
+ assert.equal(disabled.unsafe.bindings.some(row=>row.name===archive.name),false);
  assert.equal(disabled.unsafe.bindings.some(row=>
   services.some(service=>service.name===row.name)),false);
  const unflagged=structuredClone(candidate());
  unflagged.resources.bindings.push(...structuredClone(services));
  assert.throws(()=>verifyCandidateBindings(baseline,unflagged,sha,[],researchRuntime),
   /RISK_STREAM_ATTESTER_BINDING_UNREVIEWED_RISK_STREAM_FACTS_ATTESTER/u);
+
+ const unflaggedArchive=structuredClone(candidate());
+ unflaggedArchive.resources.bindings.push(structuredClone(archive));
+ assert.throws(()=>verifyCandidateBindings(baseline,unflaggedArchive,sha,[],researchRuntime),
+  /RISK_STREAM_ARCHIVE_R2_BINDING_UNREVIEWED/u);
 
  for(const mismatch of [
   {...services[0],type:'queue'},
@@ -346,5 +355,14 @@ test('candidate attaches both exact attester services only with the reviewed que
   live.resources.bindings.push(mismatch);
   assert.throws(()=>candidateConfig(live,sha,[],runtime),
    /CANDIDATE_RISK_STREAM_ATTESTER_SERVICE_BINDING_MISMATCH_RISK_STREAM_FACTS_ATTESTER/u);
+ }
+ for(const mismatch of [
+  {...archive,type:'queue'},
+  {...archive,bucket_name:'wrong-bucket'}
+ ]){
+  const live=structuredClone(baseline);
+  live.resources.bindings.push(mismatch);
+  assert.throws(()=>candidateConfig(live,sha,[],runtime),
+   /CANDIDATE_RISK_STREAM_ARCHIVE_R2_BINDING_MISMATCH/u);
  }
 });
