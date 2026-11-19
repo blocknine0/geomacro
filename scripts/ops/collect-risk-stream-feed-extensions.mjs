@@ -221,13 +221,14 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
  const sources=sourceRegistry??manifest.entries.map(row=>({...row,enabled:1,commercial_rights_approved:1}));
  const priority=prioritizeApprovedAnchorSources(radarSignals,registry.sources.map(feed=>{
   const rights=approved.get(feed.name);
+  const sourceRow=sources.find(row=>(row.source_id??row.name)===feed.name);
   const country_iso3=SOURCE_COUNTRY[feed.name]??null;
   return {...feed,source_id:feed.name,
    categories:[CATEGORY_BY_FEED[feed.risk_category]].filter(Boolean),
    country_iso3,global:true,
    enabled:feed.risk_stream_item_licensed===true&&
-    feed.risk_stream_standard_item_license_candidate===true?1:0,
-   commercial_rights_approved:rights?1:0};
+    feed.risk_stream_standard_item_license_candidate===true&&sourceRow?.enabled===1?1:0,
+   commercial_rights_approved:rights&&sourceRow?.commercial_rights_approved===1?1:0};
  }));
  const orderedFeeds=priority.sources;
  const originals=[],counts={feeds_checked:0,extensions_seen:0,
