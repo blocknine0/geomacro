@@ -237,7 +237,9 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
   for(const {name,service} of RISK_STREAM_ATTESTER_SERVICES){
    const row=current.get(name);
    if(row?.type!=="service"||row.service!==service||
-      Object.keys(row).some(key=>!["name","type","service"].includes(key)))
+      (row.environment!==undefined&&row.environment!=="production")||
+      Object.keys(row).some(key=>
+       !["name","type","service","environment"].includes(key)))
     deny("RISK_STREAM_ATTESTER_BINDING_MISMATCH_"+name);
   }
  }else{
