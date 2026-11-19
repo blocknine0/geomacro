@@ -51,3 +51,32 @@ test("Botswana official bank feeds are discoverable through the bank's documente
  assert.equal(rates.commercial_eligible,false);
  assert.equal(news.commercial_eligible,false);
 });
+
+test("unhealthy local candidates now use live official national RSS feeds",()=>{
+ const bahamas=json("config/private-osint-national-gap-feeds.v1.json").sources
+  .find(row=>row.id==="private_gap_bhs_bahamaspress");
+ assert.equal(bahamas.publisher_country_iso3,"BHS");
+ assert.equal(bahamas.url,"https://opm.gov.bs/feed/");
+ assert.equal(bahamas.discovery_reference_url,"https://opm.gov.bs/press-room/");
+ assert.equal(bahamas.type,"rss");
+ assert.equal(bahamas.commercial_eligible,false);
+
+ const skn=json("config/private-osint-local-gaplane.v1.json").sources
+  .find(row=>row.id==="private_gaplane_kna_supplement");
+ assert.equal(skn.publisher_country_iso3,"KNA");
+ assert.equal(skn.url,"https://sknis.gov.kn/feed/");
+ assert.equal(skn.discovery_reference_url,"https://sknis.gov.kn/");
+ assert.equal(skn.type,"rss");
+ assert.equal(skn.commercial_eligible,false);
+
+ const guyana=json("config/private-osint-regional-corridor-additions.v1.json").sources
+  .find(row=>row.id==="private_expansion_gy_mnr_rss_candidate");
+ assert.equal(guyana.publisher_country_iso3,"GUY");
+ assert.equal(guyana.url,"https://dpi.gov.gy/feed/");
+ assert.equal(guyana.discovery_reference_url,"https://dpi.gov.gy/");
+ assert.equal(guyana.type,"rss");
+ assert.equal(guyana.provider_rights_verified,false);
+ assert.equal(guyana.commercial_eligible,false);
+ assert.equal(guyana.access_verified_in_production,false);
+ assert.equal(guyana.publicly_deliverable,false);
+});

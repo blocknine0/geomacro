@@ -1214,9 +1214,9 @@
     },
     {
       "id": "private_gaplane_kna_supplement",
-      "url": "https://www.thestkittsnevisobserver.com/feed/",
+      "url": "https://sknis.gov.kn/feed/",
       "publisher_country_iso3": "KNA",
-      "discovery_reference_url": "https://www.thestkittsnevisobserver.com/",
+      "discovery_reference_url": "https://sknis.gov.kn/",
       "categories": [
         "geopolitics",
         "macro",
