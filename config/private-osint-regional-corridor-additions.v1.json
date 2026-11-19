@@ -901,6 +901,26 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_australian_mining",
+      "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "provenance_note": "Replaced the unavailable commercial publisher URL with the first-party Australian Government Department of Industry RSS media-release feed. Rights and production runtime health remain unverified.",
+      "discovery_reference_url": "https://www.industry.gov.au/contact-us/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
