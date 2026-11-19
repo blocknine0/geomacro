@@ -202,3 +202,23 @@ test("503 surfaces attester, private corroboration, and D1 provider error codes"
   assert.deepEqual(calls,Array(6).fill("/v1/internal/risk-stream/runtime"));
  }
 });
+
+test("full labeled attester refusal code is surfaced without retries",async()=>{
+ const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
+ const code="ATTESTER_REFUSED_RIGHTS_403_RIGHTS_BEARER_REJECTED";
+ const calls=[];
+ await assert.rejects(emitRiskStreamCandidates({originals:[originals[0]],sourceRegistry,
+  rightsManifest,now,dryRun:false,controlPlaneUrl:"https://control.invalid",
+  controlPlaneToken:"root-test-token",sleepImpl:async()=>{},
+  factsPublicB64:facts.publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  rightsPublicB64:rights.publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  fetchImpl:async url=>{
+   const path=new URL(url).pathname;calls.push(path);
+   if(path==="/v1/internal/risk-stream/runtime")return {ok:true,status:200,
+    json:async()=>({ok:true,schema:"geomacro.risk-stream-runtime-status.v1",ready:true})};
+   assert.equal(path,"/v1/internal/risk-stream/attest");
+   return {ok:false,status:403,json:async()=>({error:code})};
+  }}),/RISK_STREAM_EMITTER_HTTP_REJECTED_403_ATTESTER_REFUSED_RIGHTS_403_RIGHTS_BEARER_REJECTED/u);
+ assert.deepEqual(calls,["/v1/internal/risk-stream/runtime",
+  "/v1/internal/risk-stream/attest"]);
+});
