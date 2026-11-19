@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Read-only UTC daily Risk Gate and Predge delivery reconciliation. */
 import {mkdirSync,readFileSync,writeFileSync} from "node:fs";
-import {basename,dirname,resolve} from "node:path";
+import {basename,resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 
 const DATABASE_ID="db057ca9-9f6e-4957-ac28-144f3b798f9b";
@@ -12,7 +12,7 @@ const PRICE=Object.freeze({BASIC:{customer:0.15,net:0.10,fee:0.05},
  STANDARD:{customer:0.20,net:0.15,fee:0.05},
  COMPLEX:{customer:0.30,net:0.25,fee:0.05}});
 const fail=code=>{throw Error("PREDGE_DAILY_RECONCILIATION_"+code)};
-const validDay=day=>typeof day==="string"&&/^\\d{4}-\\d{2}-\\d{2}$/u.test(day)&&
+const validDay=day=>typeof day==="string"&&/^\d{4}-\d{2}-\d{2}$/u.test(day)&&
  Number.isFinite(Date.parse(day+"T00:00:00.000Z"))&&
  new Date(day+"T00:00:00.000Z").toISOString().slice(0,10)===day;
 
@@ -92,7 +92,7 @@ export function aggregatePredgeDailyLedger(createdRows,deliveryRows,{day}={}){
 
 function csvCell(value){
  const text=String(value??"");
- return /[",\\r\\n]/u.test(text)?'"'+text.replace(/"/gu,'""')+'"':text;
+ return /[",\r\n]/u.test(text)?'"'+text.replace(/"/gu,'""')+'"':text;
 }
 export function renderPredgeDailyCsv(report){
  const rows=[["day_utc","country_iso3","category","tier","created_total",
@@ -119,8 +119,8 @@ function csvRecords(text){
    else cell+=ch;
   }else if(ch==='"')quoted=true;
   else if(ch===","){row.push(cell);cell=""}
-  else if(ch==="\\n"){row.push(cell);records.push(row);row=[];cell=""}
-  else if(ch!=="\\r")cell+=ch;
+  else if(ch==="\n"){row.push(cell);records.push(row);row=[];cell=""}
+  else if(ch!=="\r")cell+=ch;
  }
  if(quoted)fail("PARTNER_CSV_UNTERMINATED_QUOTE");
  if(cell.length||row.length){row.push(cell);records.push(row)}
@@ -132,7 +132,7 @@ function csvRecords(text){
 export function parsePartnerReport(source,{name="partner-report"}={}){
  if(typeof source!=="string")fail("PARTNER_REPORT_INVALID");
  let rows;
- if(/\\.csv$/iu.test(name)){
+ if(/\.csv$/iu.test(name)){
   rows=csvRecords(source);
  }else{
   let parsed;try{parsed=JSON.parse(source)}catch{fail("PARTNER_JSON_INVALID")}
@@ -225,7 +225,7 @@ export async function runPredgeDailyReconciliation({day,partnerReport,outDir,
  }
  if(outDir){
   mkdirSync(outDir,{recursive:true});
-  writeFileSync(resolve(outDir,day+".json"),JSON.stringify(report,null,2)+"\\n");
+  writeFileSync(resolve(outDir,day+".json"),JSON.stringify(report,null,2)+"\n");
   writeFileSync(resolve(outDir,day+".csv"),renderPredgeDailyCsv(report));
  }
  return report;
@@ -234,9 +234,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  try{
   const args=parseArgs(process.argv.slice(2));
   const report=await runPredgeDailyReconciliation(args);
-  process.stdout.write(JSON.stringify(report,null,2)+"\\n");
+  process.stdout.write(JSON.stringify(report,null,2)+"\n");
  }catch(error){
-  process.stderr.write(String(error?.message??"PREDGE_DAILY_RECONCILIATION_FAILED").slice(0,160)+"\\n");
+  process.stderr.write(String(error?.message??"PREDGE_DAILY_RECONCILIATION_FAILED").slice(0,160)+"\n");
   process.exitCode=2;
  }
 }
