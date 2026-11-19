@@ -13,13 +13,6 @@ test("IDN and recorded unhealthy country adapters point to first-party RSS alter
  assert.equal(idn.provider_rights_verified,false);
  assert.equal(idn.commercial_eligible,false);
  const regional=json("config/private-osint-regional-corridor-additions.v1.json").sources;
- const lso=regional.find(row=>row.id==="private_expansion_lso_gov");
- assert.equal(lso.publisher_country_iso3,"LSO");
- assert.equal(lso.url,"https://www.gov.ls/feed/");
- assert.equal(lso.discovery_reference_url,"https://www.gov.ls/news/");
- assert.equal(lso.type,"rss");
- assert.equal(lso.provider_rights_verified,false);
- assert.equal(lso.commercial_eligible,false);
  const backups=json("config/hot-50-retired-direct-feed-backups.v1.json").sources;
  const replacements=new Map(backups.map(row=>[row.retired_source_id,row]));
  for(const id of ["private_expansion_au_industry_news","private_expansion_australian_mining"]){
@@ -42,6 +35,8 @@ test("IDN and recorded unhealthy country adapters point to first-party RSS alter
  assert.equal(mining.publisher_country_iso3,"AUS");
  assert.equal(mining.type,"rss");
  assert.equal(mining.commercial_eligible,false);
+ const retired=json("config/retired-source-replacements.v1.json");
+ assert.ok(retired.disabled_pending_live_verification.includes("private_replacement_5ed49cbd9cc83c8719ab"));
 });
 
 test("Botswana official bank feeds are discoverable through the bank's documented RSS service",()=>{
