@@ -65,7 +65,9 @@ export function aggregatePredgeDailyLedger(createdRows,deliveryRows,{day}={}){
      !Object.hasOwn(byTier,row.tier)||!["SENT","DELIVERED","FAILED"].includes(row.delivery_status)||
      !/^[a-f0-9]{64}$/u.test(String(row.receipt_sha256??"")))
    fail("DELIVERY_ROW_INVALID");
-  byTier[row.tier][row.delivery_status.toLowerCase()]+=1;
+  if(row.delivery_status==="SENT"||row.delivery_status==="DELIVERED")byTier[row.tier].sent+=1;
+  if(row.delivery_status==="DELIVERED")byTier[row.tier].delivered+=1;
+  if(row.delivery_status==="FAILED")byTier[row.tier].failed+=1;
   const cellKey=row.country_iso3+"|"+row.category+"|"+row.tier;
   const cell=deliveryCells.get(cellKey)??{sent:0,delivered:0,failed:0,expected_net_cents:0};
   if(row.delivery_status==="SENT"||row.delivery_status==="DELIVERED")cell.sent+=1;
