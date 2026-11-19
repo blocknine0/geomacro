@@ -8,7 +8,9 @@ test("Phase 2H B2 workflow requires archive-only provider approval and four six-
  assert.ok(yaml.includes("github.event.schedule == '29 0,6,12,18 * * *'"));
  assert.doesNotMatch(yaml,/archive-then-retention:/u);
  assert.doesNotMatch(yaml,/five-hour-slot:|cron: "21/u);
- assert.doesNotMatch(yaml,/workflow_dispatch:|manual-smoke-gate:|RUN_ONCE_PHASE2H/u);
+ assert.match(yaml,/workflow_dispatch:/u);
+ assert.match(yaml,/github.event_name == 'workflow_dispatch'[\s\S]*?github.ref == 'refs\/heads\/main'/u);
+ assert.doesNotMatch(yaml,/manual-smoke-gate:|RUN_ONCE_PHASE2H/u);
  assert.match(yaml,/Automatic D1 raw-news deletion is PAUSED/u);
  assert.match(yaml,/Every six hours: bounded pending original archive/u);
  const manual=readFileSync(".github/workflows/phase2h-manual-d1-storage-cleanup.yml","utf8");
