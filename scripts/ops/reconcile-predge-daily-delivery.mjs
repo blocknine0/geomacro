@@ -59,12 +59,23 @@ export function aggregatePredgeDailyLedger(createdRows,deliveryRows,{day}={}){
   byTier[tier].created+=count;
  }
  const deliveries=deliveryRows.filter(row=>row.day_utc===day);
+ const deliveryCells=new Map();
  for(const row of deliveries){
   if(!CATEGORIES.has(row.category)||!/^[A-Z]{3}$/u.test(String(row.country_iso3??""))||
      !Object.hasOwn(byTier,row.tier)||!["SENT","DELIVERED","FAILED"].includes(row.delivery_status)||
      !/^[a-f0-9]{64}$/u.test(String(row.receipt_sha256??"")))
    fail("DELIVERY_ROW_INVALID");
   byTier[row.tier][row.delivery_status.toLowerCase()]+=1;
+  const cellKey=row.country_iso3+"|"+row.category+"|"+row.tier;
+  const cell=deliveryCells.get(cellKey)??{sent:0,delivered:0,failed:0,expected_net_cents:0};
+  if(row.delivery_status==="SENT"||row.delivery_status==="DELIVERED")cell.sent+=1;
+  if(row.delivery_status==="DELIVERED"){
+   const cents=Math.round(Number(row.geomacro_net_usd)*100);
+   if(!Number.isFinite(Number(row.geomacro_net_usd)))fail("NET_AMOUNT_INVALID");
+   cell.delivered+=1;cell.expected_net_cents+=cents;
+  }
+  if(row.delivery_status==="FAILED")cell.failed+=1;
+  deliveryCells.set(cellKey,cell);
  }
  const sent=deliveries.filter(x=>x.delivery_status==="SENT"||x.delivery_status==="DELIVERED");
  const delivered=deliveries.filter(x=>x.delivery_status==="DELIVERED");
@@ -86,6 +97,12 @@ export function aggregatePredgeDailyLedger(createdRows,deliveryRows,{day}={}){
   created_by_tier:Object.fromEntries(Object.entries(byTier).map(([tier,value])=>[tier,value.created])),
   delivery_by_tier:byTier,created_by_country_category:countryCategory,
   created_by_country_category_tier:tierByCell,
+  delivery_by_country_category_tier:[...deliveryCells.entries()].map(([key,value])=>{
+   const [country_iso3,category,tier]=key.split("|");
+   return {country_iso3,category,tier,...value,
+    expected_geomacro_net_usd:(value.expected_net_cents/100).toFixed(2)};
+  }).sort((a,b)=>a.country_iso3.localeCompare(b.country_iso3)||
+   a.category.localeCompare(b.category)||a.tier.localeCompare(b.tier)),
   expected_geomacro_net_usd:(expectedNetCents/100).toFixed(2),
   reconciliation: null};
 }
@@ -98,17 +115,24 @@ export function renderPredgeDailyCsv(report){
  const rows=[["day_utc","country_iso3","category","tier","created_total",
   "sent_to_predge_total","delivered_total","failed_total","customer_price_usd",
   "expected_geomacro_net_usd","predge_fee_usd"]];
- for(const item of report.created_by_country_category_tier){
-  const tier=report.delivery_by_tier[item.tier]??{};
-  rows.push([report.day_utc,item.country_iso3,item.category,item.tier,item.created_total,
-   tier.sent+tier.delivered,tier.delivered,tier.failed,tier.customer_price_usd??0,
-   tier.geomacro_net_usd??0,tier.predge_fee_usd??0]);
+ const created=new Map(report.created_by_country_category_tier.map(row=>
+  [row.country_iso3+"|"+row.category+"|"+row.tier,row.created_total]));
+ const deliveries=new Map(report.delivery_by_country_category_tier.map(row=>
+  [row.country_iso3+"|"+row.category+"|"+row.tier,row]));
+ const keys=[...new Set([...created.keys(),...deliveries.keys()])].sort();
+ for(const key of keys){
+  const [country_iso3,category,tier]=key.split("|");
+  const delivery=deliveries.get(key)??{sent:0,delivered:0,failed:0,
+   expected_geomacro_net_usd:"0.00"};
+  const terms=PRICE[tier]??{customer:0,fee:0};
+  rows.push([report.day_utc,country_iso3,category,tier,created.get(key)??0,
+   delivery.sent,delivery.delivered,delivery.failed,terms.customer,
+   delivery.expected_geomacro_net_usd,terms.fee]);
  }
  if(rows.length===1)rows.push([report.day_utc,"","","",0,report.sent_to_predge_total,
   report.delivered_total,report.failed_total,"0.00",report.expected_geomacro_net_usd,"0.05"]);
  return rows.map(row=>row.map(csvCell).join(",")).join("\n")+"\n";
 }
-
 function csvRecords(text){
  const records=[];let row=[],cell="",quoted=false;
  for(let i=0;i<text.length;i++){
