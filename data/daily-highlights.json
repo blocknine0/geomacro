@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-19T02:44:28.630Z",
+  "generated_at": "2026-11-19T03:27:18.107Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-673f75aa",
+      "category": "geopolitics",
+      "title": "Geomacro finds Third Committee: approved Resolutions on Human Rights in Syria, Myanmar, Ukraine, Iran, Democratic People’s Republic of Korea amid Divisions over Country-Specific Scrutiny · Ukraine",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Third Committee approved Resolutions on Human Rights in Syria, Myanmar, Ukraine, Iran, Democratic People’s Republic of Korea amid Divisions over Country-Specific Scrutiny. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "approval",
+      "topic": "foreign policy",
+      "published_at": "2026-11-18T23:42:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-ddf0f99c",
       "category": "geopolitics",
@@ -271,23 +290,6 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-23d62ed6",
-      "category": "geopolitics",
-      "title": "Geomacro finds Security Council: met in New York on Ukraine Monday · Ukraine",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "Security Council met in New York on Ukraine Monday. Country or region mentioned: Ukraine.",
-      "geography": "Ukraine",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-09T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null

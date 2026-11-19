@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-19T02:39:12.908Z",
+  "updated_at": "2026-11-19T03:27:18.107Z",
   "signals": [
     {
       "id": "geopolitics-7e46d3c7",
@@ -274,6 +274,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-673f75aa",
+      "category": "geopolitics",
+      "title": "Geomacro finds Third Committee: approved Resolutions on Human Rights in Syria, Myanmar, Ukraine, Iran, Democratic People’s Republic of Korea amid Divisions over Country-Specific Scrutiny · Ukraine",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Third Committee approved Resolutions on Human Rights in Syria, Myanmar, Ukraine, Iran, Democratic People’s Republic of Korea amid Divisions over Country-Specific Scrutiny. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "approval",
+      "topic": "foreign policy",
+      "published_at": "2026-11-18T23:42:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
