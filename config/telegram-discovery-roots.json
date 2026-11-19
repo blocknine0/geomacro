@@ -6969,5 +6969,91 @@
       "endpoint_status": "TIMEOUT",
       "endpoint_disposition": "TIMEOUT"
     }
-  ]
+  ],
+  "watch_coverage": {
+    "scope": "HOT50_THREE_CATEGORY_DISCOVERY",
+    "country_iso3": [
+      "USA",
+      "CHN",
+      "IND",
+      "RUS",
+      "GBR",
+      "DEU",
+      "FRA",
+      "JPN",
+      "KOR",
+      "BEL",
+      "CAN",
+      "AUS",
+      "BRA",
+      "MEX",
+      "ITA",
+      "ESP",
+      "NLD",
+      "CHE",
+      "NOR",
+      "SWE",
+      "POL",
+      "UKR",
+      "TUR",
+      "SAU",
+      "ARE",
+      "IRN",
+      "ISR",
+      "EGY",
+      "QAT",
+      "OMN",
+      "IRQ",
+      "ZAF",
+      "NGA",
+      "COD",
+      "ZMB",
+      "CHL",
+      "PER",
+      "ARG",
+      "BOL",
+      "IDN",
+      "VNM",
+      "THA",
+      "MYS",
+      "SGP",
+      "PHL",
+      "PAK",
+      "BGD",
+      "KAZ",
+      "MNG",
+      "MMR"
+    ],
+    "category_watch_taxonomy": {
+      "GEOPOLITICS": [
+        "sanctions",
+        "maritime_chokepoint",
+        "conflict",
+        "diplomacy",
+        "defense",
+        "export_ban"
+      ],
+      "CRITICAL_MINERALS": [
+        "rare_earth",
+        "lithium",
+        "cobalt",
+        "nickel",
+        "copper",
+        "export_quota",
+        "mine_disruption",
+        "smelter_refining_halt",
+        "port_customs_bottleneck"
+      ],
+      "MACRO_FX": [
+        "central_bank_rate",
+        "fx_intervention",
+        "sovereign_debt",
+        "imf_program",
+        "inflation_cpi",
+        "tariff_trade_shock"
+      ]
+    },
+    "runtime_effect": false,
+    "telegram_source_authorization": false
+  }
 }

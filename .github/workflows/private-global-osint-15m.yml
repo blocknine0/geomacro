@@ -697,12 +697,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/verify-risk-stream-queue-provider.mjs
-      - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
-        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
-        env:
-          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
-        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Prioritize approved Lane A feeds from recent redacted Telegram watch metadata
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
@@ -710,6 +704,12 @@ jobs:
           CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN || secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
         run: node scripts/ops/append-telegram-speed-radar.mjs
+      - name: Build item-license-verified sidecar from standard Atom RSS or JSON entries
+        if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
+        env:
+          GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector private --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Emit only verified-original candidate sidecars through facts and rights attesters
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:

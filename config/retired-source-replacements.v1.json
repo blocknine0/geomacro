@@ -764,6 +764,36 @@
       "url": "https://www.samoaobserver.ws/rss",
       "reason": "UNAVAILABLE",
       "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_eri_supplement",
+      "url": "https://shabait.com/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 44463071714
+    },
+    {
+      "id": "private_gaplane_kwt_21",
+      "url": "https://timeskuwait.com/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 44463071714
+    },
+    {
+      "id": "private_mesh_the_reporter_ethiopia",
+      "url": "https://www.thereporterethiopia.com/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 44463071714
+    },
+    {
+      "id": "private_gaplane_gnq_supplement",
+      "url": "https://ahoraeg.com/feed/",
+      "reason": "MALFORMED",
+      "evidence_run_id": 44463071714
+    },
+    {
+      "id": "private_repo_0c6af81c318e74500bda",
+      "url": "https://www.rp.pl/rss_main",
+      "reason": "DENIED",
+      "evidence_run_id": 44463071714
     }
   ],
   "replacements": [

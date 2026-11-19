@@ -688,5 +688,96 @@
       "identity_basis": "Public Telegram channel says it is associated with @AuroraIntel on X; publisher consent not established",
       "rights": "INTERNAL_RESEARCH_ONLY"
     }
-  ]
+  ],
+  "hot50_watch_coverage": {
+    "country_universe": "config/hot-50-three-domain-watch.v1.json",
+    "country_iso3": [
+      "USA",
+      "CHN",
+      "IND",
+      "RUS",
+      "GBR",
+      "DEU",
+      "FRA",
+      "JPN",
+      "KOR",
+      "BEL",
+      "CAN",
+      "AUS",
+      "BRA",
+      "MEX",
+      "ITA",
+      "ESP",
+      "NLD",
+      "CHE",
+      "NOR",
+      "SWE",
+      "POL",
+      "UKR",
+      "TUR",
+      "SAU",
+      "ARE",
+      "IRN",
+      "ISR",
+      "EGY",
+      "QAT",
+      "OMN",
+      "IRQ",
+      "ZAF",
+      "NGA",
+      "COD",
+      "ZMB",
+      "CHL",
+      "PER",
+      "ARG",
+      "BOL",
+      "IDN",
+      "VNM",
+      "THA",
+      "MYS",
+      "SGP",
+      "PHL",
+      "PAK",
+      "BGD",
+      "KAZ",
+      "MNG",
+      "MMR"
+    ],
+    "categories": [
+      "GEOPOLITICS",
+      "MACRO_FX",
+      "CRITICAL_MINERALS"
+    ],
+    "watch_taxonomy": {
+      "GEOPOLITICS": [
+        "sanctions",
+        "maritime_chokepoint",
+        "conflict",
+        "diplomacy",
+        "defense",
+        "export_ban"
+      ],
+      "CRITICAL_MINERALS": [
+        "rare_earth",
+        "lithium",
+        "cobalt",
+        "nickel",
+        "copper",
+        "export_quota",
+        "mine_disruption",
+        "smelter_refining_halt",
+        "port_customs_bottleneck"
+      ],
+      "MACRO_FX": [
+        "central_bank_rate",
+        "fx_intervention",
+        "sovereign_debt",
+        "imf_program",
+        "inflation_cpi",
+        "tariff_trade_shock"
+      ]
+    },
+    "route": "redacted_speed_radar_to_lane_a_approved_anchor",
+    "runtime_effect": false
+  }
 }
