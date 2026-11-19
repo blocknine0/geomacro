@@ -12,7 +12,8 @@ test("IDN and recorded unhealthy country adapters point to first-party RSS alter
  assert.equal(idn.type,"rss");
  assert.equal(idn.provider_rights_verified,false);
  assert.equal(idn.commercial_eligible,false);
- const lso=local.sources.find(row=>row.id==="private_local_candidate_lso_gov");
+ const regional=json("config/private-osint-regional-corridor-additions.v1.json").sources;
+ const lso=regional.find(row=>row.id==="private_expansion_lso_gov");
  assert.equal(lso.publisher_country_iso3,"LSO");
  assert.equal(lso.url,"https://www.gov.ls/feed/");
  assert.equal(lso.discovery_reference_url,"https://www.gov.ls/news/");
@@ -31,6 +32,11 @@ test("IDN and recorded unhealthy country adapters point to first-party RSS alter
  assert.equal(ind.url,"https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1");
  assert.equal(ind.publisher_country_iso3,"IND");
  assert.equal(ind.commercial_eligible,false);
+ const auIndustry=regional.find(row=>row.id==="private_expansion_au_industry_news");
+ assert.equal(auIndustry.url,"https://www.minister.industry.gov.au/feed/all-media/rss.xml");
+ assert.equal(auIndustry.commercial_eligible,false);
+ assert.ok(!regional.some(row=>row.id==="private_expansion_australian_mining"),
+  "the current 403 publisher feed is retired from active source polling");
 });
 
 test("Botswana official bank feeds are discoverable through the bank's documented RSS service",()=>{
