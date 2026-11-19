@@ -224,7 +224,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   const country_iso3=SOURCE_COUNTRY[feed.name]??null;
   return {...feed,source_id:feed.name,
    categories:[CATEGORY_BY_FEED[feed.risk_category]].filter(Boolean),
-   country_iso3,global:country_iso3===null,
+   country_iso3,global:true,
    enabled:feed.risk_stream_item_licensed===true&&
     feed.risk_stream_standard_item_license_candidate===true?1:0,
    commercial_rights_approved:rights?1:0};
