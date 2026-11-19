@@ -3,14 +3,24 @@ import assert from 'node:assert/strict';
 import {retryTransientCanaryProbe,checkSource,observeStage}
  from '../canary-promoter.ts';
 const sha='a'.repeat(40),candidate='12345678-1234-1234-1234-123456789abc';
-test('four bounded attempts recover 503 propagation with 2s/4s/8s backoff and no synthetic response',async()=>{
+test('propagation retry succeeds on the sixth probe with bounded exponential backoff',async()=>{
  let attempts=0;const pauses=[];
  const response=await retryTransientCanaryProbe(async()=>{
-  attempts++;return attempts<4?{status:503}:{status:200,body:{ok:true}};
+  attempts++;return attempts<6?{status:200,body:{ok:false}}:{status:200,body:{ok:true}};
  },{pause:async ms=>pauses.push(ms),allowPropagation:true,log:()=>{},
  accept:r=>r.status===200&&r.body?.ok===true});
- assert.equal(attempts,4);assert.deepEqual(pauses,[2000,4000,8000]);
+ assert.equal(attempts,6);assert.deepEqual(pauses,[2000,4000,8000,10000,10000]);
  assert.equal(response.status,200);
+});
+test('allowPropagation defaults to eight attempts and fails closed on exhaustion',async()=>{
+ let attempts=0;const pauses=[];
+ await assert.rejects(retryTransientCanaryProbe(async()=>{
+  attempts++;return {status:200,body:{ready:false}};
+ },{pause:async ms=>pauses.push(ms),allowPropagation:true,log:()=>{},
+  accept:r=>r.status===200&&r.body?.ready===true}),
+  /CANARY_DIRECTED_TRANSIENT_RETRY_EXHAUSTED/u);
+ assert.equal(attempts,8);
+ assert.deepEqual(pauses,[2000,4000,8000,10000,10000,10000,15000]);
 });
 test('401/403, invalid release policy and SLO failures are not retried',async()=>{
  for(const status of [401,403]){
@@ -24,12 +34,22 @@ test('401/403, invalid release policy and SLO failures are not retried',async()=
   /CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED/);
  assert.equal(calls,1);
 });
-test('persistent directed SHA mismatch remains HOLD after exactly four probes',async()=>{
+test('non-propagation keeps the original four-attempt maximum',async()=>{
+ let calls=0;const pauses=[];
+ await assert.rejects(retryTransientCanaryProbe(async()=>{
+  calls++;return {status:503};
+ },{pause:async ms=>pauses.push(ms),log:()=>{}}),
+  /CANARY_TRANSIENT_NETWORK_RETRY_EXHAUSTED/u);
+ assert.equal(calls,4);assert.deepEqual(pauses,[2000,4000,8000]);
+ await assert.rejects(retryTransientCanaryProbe(async()=>({status:503}),{
+  pause:async()=>{},attempts:5,log:()=>{}}),/CANARY_RETRY_BOUNDS_INVALID/u);
+});
+test('persistent directed SHA mismatch remains HOLD after exactly eight probes',async()=>{
  let calls=0;
  await assert.rejects(checkSource(candidate,sha,async()=>{
   calls++;return new Response(JSON.stringify({ok:true,deployed_source_sha:'b'.repeat(40)}),{status:200});
  },{pause:async()=>{}}),/CANARY_DIRECTED_TRANSIENT_RETRY_EXHAUSTED/);
- assert.equal(calls,4);
+ assert.equal(calls,8);
 });
 test('transient directed health propagation recovers and readiness policy still checked',async()=>{
  let calls=0;
