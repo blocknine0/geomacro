@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {assessD1MigrationHeadroom,checkD1Headroom,
  HEADROOM_HOLD_CODE,STEP3_BUDGET} from "../ops/check-d1-headroom.mjs";
 import {
- parseD1PaidCycleGraphQL,assessD1PaidMonthlyAdmission
+ D1_PAID_MONTHLY_POLICY,parseD1PaidCycleGraphQL,
+ assessD1PaidMonthlyAdmission
 } from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {assessOneChangedBatchDelta}
  from "../ops/verify-d1-publisher-billable-shadow.mjs";
@@ -29,6 +30,28 @@ function usage(read,written,at=DAY){
 }
 const paid=(read,written)=>assessD1PaidMonthlyAdmission({
  usage:usage(read,written),paidProof:paidProof(),now:DAY,lane:"migration"
+});
+test("reviewed migration estimates admit the 335k Step 3 ceiling within headroom bounds",()=>{
+ assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_read,
+  10_000_000);
+ assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_written,
+  8_000_000);
+ const estimateNow=new Date("2026-12-04T09:00:00.000Z");
+ const assessRows=rows=>assessD1PaidMonthlyAdmission({
+  usage:{...usage(100,100,estimateNow),
+   observed_through_utc:estimateNow.toISOString().slice(0,10)},
+  paidProof:paidProof(estimateNow),now:estimateNow,lane:"migration",
+  estimatedMigrationRowsRead:rows*25,
+  estimatedMigrationRowsWritten:rows*20
+ });
+ const admitted=assessRows(335_000);
+ assert.equal(admitted.status,"PASS");
+ assert.equal(admitted.reserved_migration_rows_read,28_375_000);
+ assert.equal(admitted.reserved_migration_rows_written,7_700_000);
+ const maximumApproved=assessRows(400_000);
+ assert.equal(maximumApproved.status,"PASS");
+ assert.equal(maximumApproved.reserved_migration_rows_read,30_000_000);
+ assert.equal(maximumApproved.reserved_migration_rows_written,9_000_000);
 });
 test("Paid migration gate ignores retired 140k/day, admits only monthly observed reserve",()=>{
  assert.equal(STEP3_BUDGET.old_daily_140k_policy_applied,false);

@@ -61,8 +61,8 @@ export function assertPaidMonthlyPolicy(policy=D1_PAID_MONTHLY_POLICY){
      policy.monthly_opening_fraction!==0.08)||
     !safe(policy.migration_reserve_rows_read)||
     !safe(policy.migration_reserve_rows_written)||
-    !safe(policy.maximum_approved_migration_estimated_rows_read)||
-    !safe(policy.maximum_approved_migration_estimated_rows_written)||
+    policy.maximum_approved_migration_estimated_rows_read!==10_000_000||
+    policy.maximum_approved_migration_estimated_rows_written!==8_000_000||
     policy.provider_metrics_are_delayed!==true||
     policy.account_wide_atomic_cap_guaranteed!==false||
     policy.holds_only_optional_migrations_and_background_work!==true||
