@@ -83,7 +83,9 @@ test("a redacted Lane B cell prioritizes only approved matching Lane A feeds on 
  assert.equal(calls.includes("https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom"),true);
  assert.doesNotMatch(JSON.stringify(result),/secret|publisher.*title/iu);
 });
-\ntest("collector normalizes the Antarctica code to the sovereign Australia route before attestation",async()=>{
+
+
+test("collector normalizes the Antarctica code to the sovereign Australia route before attestation",async()=>{
  const antarctica={...original,country_iso3:"ATA",
   event_identity:{...original.event_identity,country_iso3:"ATA"}};
  const xml='<feed xmlns:gm="https://geomacro.live/ns/risk-stream/1"><entry><gm:geomacro_risk_stream_candidate>'+JSON.stringify(antarctica).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")+'</gm:geomacro_risk_stream_candidate></entry></feed>';
@@ -212,6 +214,6 @@ test("collector workflows run the sidecar builder immediately before the shared 
   assert.match(workflow,/RISK_STREAM_MACHINE_FACTS_SPKI_B64/u);
   assert.match(workflow,/RISK_STREAM_MACHINE_RIGHTS_SPKI_B64/u);
   assert.match(workflow,/GEOMACRO_RISK_STREAM_RADAR_FILE/u);
-  assert.match(workflow,/--radar-file "\\$GEOMACRO_RISK_STREAM_RADAR_FILE"/u);
+  assert.ok(workflow.includes('--radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE"'));
  }
 });
