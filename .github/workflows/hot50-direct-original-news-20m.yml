@@ -363,7 +363,8 @@ jobs:
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: node scripts/ops/collect-risk-stream-feed-extensions.mjs --collector direct --radar-file "$GEOMACRO_RISK_STREAM_RADAR_FILE" --output "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
       - name: Send only separately item-license-verified direct originals through dual attestation
         if: needs.quota-admission.outputs.risk_stream_sidecar_admitted == 'true' && steps.risk-stream-queue.outputs.verified == 'true'
         env:
@@ -384,7 +385,8 @@ jobs:
         if: always()
         env:
           GEOMACRO_RISK_STREAM_CANDIDATES_FILE: ${{ runner.temp }}/geomacro-risk-stream-candidates.jsonl
-        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE"
+          GEOMACRO_RISK_STREAM_RADAR_FILE: ${{ runner.temp }}/geomacro-risk-stream-radar.json
+        run: rm -f -- "$GEOMACRO_RISK_STREAM_CANDIDATES_FILE" "$GEOMACRO_RISK_STREAM_RADAR_FILE"
       - name: Require actual three-category native publisher runtime proof (D1-admitted)
         shell: bash
         run: |
