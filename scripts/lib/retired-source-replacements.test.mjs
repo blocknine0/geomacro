@@ -13,9 +13,9 @@ test("removed IDs and exact feed URL aliases cannot re-enter any replacement reg
   if(old.url)assert.ok(isRetiredPrivateOsintSource({id:"alias",url:old.url}));
  }
  const result=applyRetiredSourceReplacements(doc.retired);
- assert.equal(result.length,5);
- assert.equal(doc.disabled_pending_live_verification.length,7);
- assert.equal(doc.replacements.filter(x=>doc.disabled_pending_live_verification.includes(x.id)).length,2);
+ assert.equal(result.length,4);
+ assert.equal(doc.disabled_pending_live_verification.length,8);
+ assert.equal(doc.replacements.filter(x=>doc.disabled_pending_live_verification.includes(x.id)).length,3);
  assert.ok(doc.replacements.filter(x=>doc.disabled_pending_live_verification.includes(x.id)&&x.status)
   .every(x=>x.status==="disabled_pending_live_verification"));
  assert.equal(doc.unadmitted_candidates.length,5);
