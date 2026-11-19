@@ -169,15 +169,15 @@ test("ROWID join fails closed on forged provider plan, mismatch and FK/UNIQUE pr
  }finally{d.close()}
 });
 
-test("0211 spool join admits only the reviewed 300k cap",()=>{
- assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,300000);
- const currentProductionRows=180488;
+test("0211 spool join admits the reviewed 400k cap and current production rows",()=>{
+ assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,400000);
+ const currentProductionRows=314936;
  assert.equal(verifyStep3IndexJoinResult([{
   index_rows:currentProductionRows,distinct_rowids:currentProductionRows,mismatched_rows:0
  }],{sourceRows:currentProductionRows}).verified_rows,currentProductionRows);
- const atBound=[{index_rows:300000,distinct_rowids:300000,mismatched_rows:0}];
- assert.equal(verifyStep3IndexJoinResult(atBound,{sourceRows:300000}).verified_rows,300000);
- const overBound=[{index_rows:300001,distinct_rowids:300001,mismatched_rows:0}];
- assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:300001}),
+ const atBound=[{index_rows:400000,distinct_rowids:400000,mismatched_rows:0}];
+ assert.equal(verifyStep3IndexJoinResult(atBound,{sourceRows:400000}).verified_rows,400000);
+ const overBound=[{index_rows:400001,distinct_rowids:400001,mismatched_rows:0}];
+ assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:400001}),
   /COMPLETE_ROWID_AND_KEY_PARITY_UNVERIFIED/u);
 });
