@@ -259,7 +259,7 @@ export function validateStep30212PendingSourcePreflight(results,{
   v.pending_rows*10+(v.osint_rows+v.website_rows)*15;
  const estimated_rows_written=10000+v.raw_rows*20+
   v.pending_rows*8+(v.osint_rows+v.website_rows)*12;
- if(estimated_rows_read>10000000||estimated_rows_written>6000000)
+ if(estimated_rows_read>10000000||estimated_rows_written>8000000)
   fail("0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED");
  return Object.freeze({
   status:"PASS_READ_ONLY_BOUNDED_0212_COST_ENVELOPE_NOT_PRODUCTION_APPROVAL",

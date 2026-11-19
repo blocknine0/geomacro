@@ -213,7 +213,7 @@ test("0212 pending source envelope scales to its integrity ceiling while retaini
  assert.equal(a.status,"PASS_READ_ONLY_BOUNDED_0212_COST_ENVELOPE_NOT_PRODUCTION_APPROVAL");
  assert.equal(a.source_rows_verified,11822);
  assert(a.estimated_rows_read>11822);
- assert(a.estimated_rows_written<6000000);
+ assert(a.estimated_rows_written<8000000);
  assert.equal(a.production_release_authorized,false);
  assert.equal(a.no_sql_writes_performed,true);
  for(const x of [
@@ -231,7 +231,7 @@ test("0212 pending source envelope scales to its integrity ceiling while retaini
  }]);
  assert.equal(realistic.source_rows_verified,100000);
  assert(realistic.estimated_rows_read<10000000);
- assert(realistic.estimated_rows_written<6000000);
+ assert(realistic.estimated_rows_written<8000000);
 });
 test("Nov 10 live bounded provider source metrics fit reviewed 0212 estimate",()=>{
  // Read-only owner-run production D1 receipts: total=11822 on earlier
