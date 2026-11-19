@@ -124,7 +124,7 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
   if (!db?.prepare) throw new Error("B2_QUOTA_D1_UNAVAILABLE");
   let workflowUsed = null;
   if (workflowId === "p0b_durable_spool") {
-    const workflowGet = kind === "GET" || kind === "HEAD" ? 1 : 0;
+    const workflowGet = kind === "GET" ? 1 : 0;
     const workflowPut = kind === "PUT" ? 1 : 0;
     workflowUsed = await db.prepare(`
       INSERT INTO b2_account_daily_workflow_quota
