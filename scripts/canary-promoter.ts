@@ -87,15 +87,18 @@ function logCanaryUnderlyingError(error:any,log=(entry:string)=>console.error(en
   error_message:String(chain[0]?.message??error??'unknown'),
   cause_message:chain[0]?.cause?String(chain[0].cause?.message??chain[0].cause):null}));
 }
-/** Four total attempts with bounded 2s/4s/8s backoff. */
+/** Bounded retries; propagation gets a longer edge/deployment settling window. */
 export async function retryTransientCanaryProbe<T>(
- operation:()=>Promise<T>,{pause=wait,attempts=4,accept,allowPropagation=false,
+ operation:()=>Promise<T>,{pause=wait,attempts,accept,allowPropagation=false,
  log=(entry:string)=>console.error(entry)}:any={}
 ):Promise<T>{
- need(Number.isInteger(attempts)&&attempts>=1&&attempts<=4,'CANARY_RETRY_BOUNDS_INVALID');
+ const maxAttempts=allowPropagation?8:4;
+ const totalAttempts=attempts??maxAttempts;
+ need(Number.isInteger(totalAttempts)&&totalAttempts>=1&&totalAttempts<=maxAttempts,
+  'CANARY_RETRY_BOUNDS_INVALID');
  let lastError:any;
- const delays=[2000,4000,8000];
- for(let n=0;n<attempts;n++){
+ const delays=[2000,4000,8000,10000,10000,10000,15000];
+ for(let n=0;n<totalAttempts;n++){
   try{
    const response=await operation();
    const status=Number((response as any)?.status);
@@ -109,7 +112,7 @@ export async function retryTransientCanaryProbe<T>(
    lastError=error;
   }
   logCanaryUnderlyingError(lastError,log);
-  if(n<attempts-1)await pause(delays[n]);
+  if(n<totalAttempts-1)await pause(delays[Math.min(n,delays.length-1)]);
  }
  const exhausted=new Error(allowPropagation?'CANARY_DIRECTED_TRANSIENT_RETRY_EXHAUSTED':
   'CANARY_TRANSIENT_NETWORK_RETRY_EXHAUSTED',{cause:lastError});
@@ -182,7 +185,7 @@ export function verifyDistribution(deployment:any,expected:any[]){
  return true;
 }
 async function verifyDeploymentReadback(readCurrent:()=>Promise<any>,versions:any[],pause=wait){
- const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,attempts:4,
+ const observed=await retryTransientCanaryProbe(()=>readCurrent(),{pause,
   allowPropagation:true,accept:(value:any)=>{
    try{verifyDistribution(value,versions);return true}
    catch(error){if(String((error as any)?.message??'')==='CANARY_REMOTE_SPLIT_MISMATCH')return false;throw error;}
@@ -219,12 +222,12 @@ export async function checkSource(candidate:string,expectedSha:string,fetchImpl=
  // A 200 with an old source SHA is retried only within the fixed attempt bound;
  // a persistent mismatch still HOLDs.
  const health=await retryTransientCanaryProbe(()=>request('/health'),{
-  pause,attempts:4,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true&&
+  pause,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true&&
    v.body?.deployed_source_sha===expectedSha});
  need(health.status===200&&health.body?.ok===true&&
   health.body?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
  const readiness=await retryTransientCanaryProbe(()=>request('/v1/public/risk-gate-d1-readiness'),{
-  pause,attempts:4,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.status==='ready'});
+  pause,log,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.status==='ready'});
  const checks=readiness.body?.checks;
  need(readiness.status===200&&readiness.body?.status==='ready'&&
   checks?.database===true&&checks?.audit_store===true&&
@@ -455,7 +458,7 @@ export async function observeStage(base:string,candidate:string,pct:number,sha:s
    const baseline=await retryTransientCanaryProbe(async()=>{
     const health=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
     return {status:health.status,body:await health.json().catch(()=>null)};
-   },{pause,attempts:4,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true});
+   },{pause,allowPropagation:true,accept:(v:any)=>v.status===200&&v.body?.ok===true});
    need(baseline.status===200&&baseline.body?.ok===true,'CANARY_BASELINE_HEALTH_UNAVAILABLE');
   }else await sourceProbe(candidate,sha);
   const x=await probeCurrent();verifyDistribution(x,distribution(base,candidate,pct));
