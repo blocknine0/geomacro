@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {readFileSync,writeFileSync} from "node:fs";
+import {inflateRawSync} from "node:zlib";
 import {prepareRiskStreamCandidate} from "../lib/risk-stream-candidate-builder.mjs";
 import {eventIdentityFields} from "../lib/risk-stream-event-fingerprint.mjs";
 import {prioritizeApprovedAnchorSources} from "../lib/rights-redacted-speed-radar.mjs";
@@ -9,6 +10,13 @@ const fail=code=>{throw Error("RISK_STREAM_FEED_EXTENSION_"+code)};
 const RIGHTS_PATH="config/risk-stream-source-rights-reviewed.v1.json";
 const FEEDS_PATH="config/unified-rss-feed-registry.v1.json";
 const MAX_FEED_BYTES=2_000_000;
+const ECB_CURRENCY_COUNTRY={USD:"USA",GBP:"GBR",JPY:"JPN",CNY:"CHN",INR:"IND",KRW:"KOR",
+ AUD:"AUS",CAD:"CAN",CHF:"CHE",BRL:"BRA",MXN:"MEX",PLN:"POL",SEK:"SWE",NOK:"NOR",
+ TRY:"TUR",ZAR:"ZAF",SGD:"SGP",MYR:"MYS",THB:"THA",IDR:"IDN",PHP:"PHL"};
+const GDELT_FIPS_COUNTRY={UK:"GBR",TU:"TUR",KS:"KOR",IZ:"IRQ",AE:"ARE",CH:"CHN",GM:"DEU",
+ SF:"ZAF",CG:"COD",JA:"JPN",RS:"RUS",AS:"AUS",SP:"ESP",SZ:"CHE",SW:"SWE",UP:"UKR",
+ SA:"SAU",IS:"ISR",MU:"OMN",NI:"NGA",ZA:"ZMB",CI:"CHL",BL:"BOL",VM:"VNM",SN:"SGP",
+ RP:"PHL",BG:"BGD",MG:"MNG",BM:"MMR"};
 const CATEGORY_BY_FEED={conflict:"GEOPOLITICS",macro_economics:"MACRO_FX",
  commodities:"CRITICAL_MINERALS"};
 export const CRITICAL_MINERAL_SUPPLY_TERMS=/mineral|lithium|cobalt|copper|rare earth|graphite|nickel|manganese|titanium|tungsten|gallium|germanium|uranium|silicon|zinc|aluminum|aluminium|bauxite|platinum|palladium|antimony|vanadium|mining|\bmine\b|smelter|refining|refinery|ore|metal|battery|supply chain|export control|critical raw/iu;
@@ -105,6 +113,90 @@ async function boundedText(response){
  if(typeof text!=="string"||Buffer.byteLength(text,"utf8")>MAX_FEED_BYTES)fail("FEED_SIZE_INVALID");
  return text;
 }
+async function boundedBytes(response){
+ const declared=response.headers?.get?.("content-length");
+ if(declared&&Number(declared)>MAX_FEED_BYTES)fail("FEED_SIZE_INVALID");
+ if(response.body?.getReader){
+  const reader=response.body.getReader(),chunks=[];let size=0;
+  try{
+   while(true){const {done,value}=await reader.read();if(done)break;
+    size+=value.byteLength;if(size>MAX_FEED_BYTES){await reader.cancel();fail("FEED_SIZE_INVALID")}
+    chunks.push(Buffer.from(value));
+   }
+  }finally{reader.releaseLock()}
+  return Buffer.concat(chunks,size);
+ }
+ if(typeof response.arrayBuffer!=="function")fail("BINARY_RESPONSE_UNAVAILABLE");
+ const bytes=Buffer.from(await response.arrayBuffer());
+ if(bytes.byteLength>MAX_FEED_BYTES)fail("FEED_SIZE_INVALID");
+ return bytes;
+}
+function unzipSingleDeflateEntry(zip){
+ if(!Buffer.isBuffer(zip)||zip.length<22||zip.length>MAX_FEED_BYTES)fail("ZIP_SIZE_INVALID");
+ const minimum=Math.max(0,zip.length-65_557);let end=-1;
+ for(let i=zip.length-22;i>=minimum;i--)if(zip.readUInt32LE(i)===0x06054b50){end=i;break}
+ if(end<0)fail("ZIP_DIRECTORY_MISSING");
+ const entries=zip.readUInt16LE(end+10),directorySize=zip.readUInt32LE(end+12),directoryOffset=zip.readUInt32LE(end+16);
+ if(entries!==1||directorySize>MAX_FEED_BYTES||directoryOffset+directorySize>end)fail("ZIP_ENTRY_COUNT_INVALID");
+ if(zip.readUInt32LE(directoryOffset)!==0x02014b50)fail("ZIP_DIRECTORY_INVALID");
+ const flags=zip.readUInt16LE(directoryOffset+8),method=zip.readUInt16LE(directoryOffset+10),
+  compressedSize=zip.readUInt32LE(directoryOffset+20),uncompressedSize=zip.readUInt32LE(directoryOffset+24),
+  nameLength=zip.readUInt16LE(directoryOffset+28),extraLength=zip.readUInt16LE(directoryOffset+30),
+  commentLength=zip.readUInt16LE(directoryOffset+32),localOffset=zip.readUInt32LE(directoryOffset+42);
+ if(flags&1||method!==8||compressedSize>MAX_FEED_BYTES||uncompressedSize>MAX_FEED_BYTES||
+  directoryOffset+46+nameLength+extraLength+commentLength>end||localOffset+30>directoryOffset||
+  zip.readUInt32LE(localOffset)!==0x04034b50)fail("ZIP_ENTRY_UNSUPPORTED");
+ const localNameLength=zip.readUInt16LE(localOffset+26),localExtraLength=zip.readUInt16LE(localOffset+28),
+  dataOffset=localOffset+30+localNameLength+localExtraLength;
+ if(dataOffset+compressedSize>directoryOffset)fail("ZIP_ENTRY_TRUNCATED");
+ let csv;try{csv=inflateRawSync(zip.subarray(dataOffset,dataOffset+compressedSize),
+  {maxOutputLength:MAX_FEED_BYTES})}catch{fail("ZIP_DEFLATE_INVALID")}
+ if(csv.byteLength!==uncompressedSize)fail("ZIP_UNCOMPRESSED_SIZE_MISMATCH");
+ return csv.toString("utf8");
+}
+function parseCsvRows(csv){
+ const rows=[];let row=[],field="",quoted=false;
+ for(let i=0;i<csv.length;i++){
+  const char=csv[i];
+  if(quoted){if(char==='"'&&csv[i+1]==='"'){field+='"';i++}else if(char==='"')quoted=false;else field+=char;continue}
+  if(char==='"'&&field.length===0){quoted=true;continue}
+  if(char===","){row.push(field);field="";continue}
+  if(char==="\n"||char==="\r"){
+   if(char==="\r"&&csv[i+1]==="\n")i++;
+   row.push(field);field="";if(row.some(value=>value!==""))rows.push(row);row=[];continue;
+  }
+  field+=char;
+ }
+ if(quoted)fail("CSV_QUOTE_UNTERMINATED");
+ if(field.length||row.length){row.push(field);rows.push(row)}
+ return rows;
+}
+function gdeltEventEntries(csv,archiveUrl,now){
+ const rows=parseCsvRows(csv),entries=[],selectedCountries=new Set();
+ for(const columns of rows){
+  if(columns.length<59||!/^\d+$/u.test(columns[0])||!/^\d{8}$/u.test(columns[1]))continue;
+  const [globalEventId,sqlDate]=columns,eventCode=columns[26],quadClass=columns[29],goldsteinScale=columns[30];
+  if(!/^\d{1,4}$/u.test(eventCode)||!/^\d$/u.test(quadClass)||
+   (goldsteinScale!==""&&!/^-?\d+(?:\.\d+)?$/u.test(goldsteinScale)))continue;
+  const eventType=/^(?:16|17)/u.test(eventCode)?"sanctions_policy":
+   ["3","4"].includes(quadClass)?"conflict_escalation":null;
+  if(!eventType)continue;
+  const updated=`${sqlDate.slice(0,4)}-${sqlDate.slice(4,6)}-${sqlDate.slice(6,8)}T00:00:00.000Z`;
+  const published=Date.parse(updated);
+  if(!Number.isFinite(published)||published>now||now-published>72*60*60*1000)continue;
+  const countries=[...new Set([columns[53],columns[7],columns[17]].map(code=>
+   GDELT_FIPS_COUNTRY[code]??HOT50_ISO2[code]??hot50Iso3FromValue(code)).filter(code=>
+    code&&HOT50.has(code)&&!selectedCountries.has(code)))].slice(0,25-selectedCountries.size);
+  if(!countries.length)continue;
+  for(const country of countries)selectedCountries.add(country);
+  entries.push({id:globalEventId,link:archiveUrl,updated,title:"GDELT factual event record",summary:"",
+   countries,country_iso3:countries[0],gdelt_facts:{global_event_id:globalEventId,sql_date:sqlDate,
+    actor1_code:columns[5],actor2_code:columns[15],event_code:eventCode,quad_class:quadClass,
+    event_type:eventType,goldstein_scale:goldsteinScale,action_geo_country_code:columns[53]}});
+  if(selectedCountries.size>=25)break;
+ }
+ return entries;
+}
 const xmlText=value=>String(value).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu,"$1")
  .replace(/&(?:amp|lt|gt|quot|apos);/gu,entity=>({"&amp;":"&","&lt;":"<","&gt;":">","&quot;":"\"","&apos;":"'"})[entity]);
 
@@ -123,6 +215,22 @@ export function extractRiskStreamFeedExtensions(xml){
 }
 
 export function standardEntries(xml){
+ if(typeof xml==="string"&&/<Cube\b[^>]*\btime=["']\d{4}-\d{2}-\d{2}["']/iu.test(xml)){
+  const day=xml.match(/<Cube\b[^>]*\btime=["'](\d{4}-\d{2}-\d{2})["']/iu)?.[1];
+  if(!day)return [];
+  const rows=[];
+  for(const match of xml.matchAll(/<Cube\b([^>]*)\/?\s*>/giu)){
+   const attrs=match[1],currency=attrs.match(/\bcurrency=["']([A-Z]{3})["']/iu)?.[1],
+    rate=attrs.match(/\brate=["']([0-9]+(?:\.[0-9]+)?)["']/iu)?.[1];
+   if(!currency||!rate||!ECB_CURRENCY_COUNTRY[currency])continue;
+   rows.push({id:`ecb-euro-reference-${day}-${currency}`,
+    link:"https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
+    updated:`${day}T00:00:00.000Z`,title:`ECB euro exchange rate for ${currency}`,
+    summary:"Dated ECB euro reference currency rate.",country_iso3:ECB_CURRENCY_COUNTRY[currency],
+    reference_statistic:{value:rate,reference_currency:"EUR",counter_currency:currency}});
+  }
+  return rows;
+ }
  if(typeof xml==="string"&&/^[\s]*[\[{]/u.test(xml)){
   try{
    const value=JSON.parse(xml);
@@ -238,16 +346,20 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  const ecbStats=entry.reference_statistic;
  if(licenseId==="ECB_REFERENCE_STATISTICS"&&(!ecbStats||!Number.isFinite(Number(ecbStats.value))||
   !ecbStats.reference_currency||!ecbStats.counter_currency))return [];
+ const gdeltFacts=entry.gdelt_facts;
  const evidence=licenseId==="ECB_REFERENCE_STATISTICS"?
-  {marker:"ECB reference statistics, values unmodified"}:htmlLicenseEvidence(page,rights,sourceUrl.href);
+  {marker:"ECB reference statistics, values unmodified"}:licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
+   {marker:"GDELT factual event metadata only"}:htmlLicenseEvidence(page,rights,sourceUrl.href);
  if(!evidence)return [];
  const itemRights=String(entry.rights_markers??"");
  if(/non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b/iu.test(itemRights))return [];
  const declaredLicenses=[...itemRights.matchAll(/https:\/\/[^\s<>"']+/giu)].map(x=>x[0].replace(/[),.;]+$/u,""));
  if(declaredLicenses.some(url=>url!==rights.rights_evidence.licence_url&&url!==rights.rights_evidence.terms_url))return [];
  const corpus=`${entry.title} ${entry.summary}`.toLowerCase();
- const eventType=CATEGORY_TERMS[category].find(([rx,type])=>rx.test(corpus)&&
-  (category!=="CRITICAL_MINERALS"||CRITICAL_MINERAL_SUPPLY_TERMS.test(corpus)))?.[1];
+ const eventType=licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
+  gdeltFacts.event_type:
+  CATEGORY_TERMS[category].find(([rx,type])=>rx.test(corpus)&&
+   (category!=="CRITICAL_MINERALS"||CRITICAL_MINERAL_SUPPLY_TERMS.test(corpus)))?.[1];
  if(!eventType)return [];
  const countries=matchHot50Countries(entry,corpus,rights.source_id);
  if(!countries.length)return [];
@@ -258,7 +370,12 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
   const event_identity={country_iso3,event_type:eventType,actor_id:rights.parent_media_entity,
    target_id:country_iso3.toLowerCase()+"_policy_subject",location_id:country_iso3.toLowerCase()+"_national_scope",
    occurred_at:published_at};
-  const raw_payload=licenseId==="ECB_REFERENCE_STATISTICS"?JSON.stringify({
+  const raw_payload=licenseId==="GDELT_FACTS_ONLY"?JSON.stringify({
+   schema:"geomacro.gdelt.factual-event.v1",license_notice_url:rights.rights_evidence.licence_url,
+   license_marker:evidence.marker,global_event_id:gdeltFacts.global_event_id,sql_date:gdeltFacts.sql_date,
+   actor1_code:gdeltFacts.actor1_code,actor2_code:gdeltFacts.actor2_code,event_code:gdeltFacts.event_code,
+   goldstein_scale:gdeltFacts.goldstein_scale===""?null:Number(gdeltFacts.goldstein_scale),country_iso3,
+   published_at,source_url:sourceUrl.href}):licenseId==="ECB_REFERENCE_STATISTICS"?JSON.stringify({
    schema:"geomacro.ecb.reference-statistic.v1",license_notice_url:rights.rights_evidence.licence_url,
    license_marker:evidence.marker,series_key:`${ecbStats.reference_currency}/${ecbStats.counter_currency}`,
    observed_at:entry.updated,published_at,value:Number(ecbStats.value),
@@ -337,8 +454,24 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   let body;try{body=await boundedText(response)}catch{continue}
   let extensions;try{extensions=extractRiskStreamFeedExtensions(body)}catch{counts.invalid++;continue}
   if(extensions.length===0)counts.feeds_without_candidate_extension++;
-  const standard=standardEntries(body);
-  const feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
+  let standard,feedOrigin;
+  if(feed.name==="gdelt_v2_factual_events"){
+   const archiveName=body.match(/(?:^|\s)([\w.-]+\.export\.CSV\.zip)(?:\s|$)/iu)?.[1];
+   if(!archiveName)continue;
+   const archiveUrl=new URL(archiveName,url.href);
+   if(archiveUrl.protocol!=="https:"||archiveUrl.hostname!=="data.gdeltproject.org")continue;
+   let archiveResponse,archive;
+   try{archiveResponse=await fetchImpl(archiveUrl.href,{method:"GET",redirect:"error",
+    signal:AbortSignal.timeout(15_000),headers:{Accept:"application/zip, application/octet-stream"}});
+    if(!archiveResponse?.ok)continue;
+    archive=unzipSingleDeflateEntry(await boundedBytes(archiveResponse));}
+   catch{continue}
+   standard=gdeltEventEntries(archive,archiveUrl.href,now);
+   feedOrigin="OFFICIAL_API";
+  }else{
+   standard=standardEntries(body);
+   feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
+  }
   const current=standard.filter(entry=>{
    const published=Date.parse(entry?.updated??"");
    if(!Number.isFinite(published)){counts.undated_entries_skipped++;return false}
@@ -349,7 +482,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   const built=await Promise.all(current.map(async entry=>{
    counts.standard_entries_seen++;
    let page="";
-   if(licenseIdFromRights(rights)!=="ECB_REFERENCE_STATISTICS"){
+   if(!["ECB_REFERENCE_STATISTICS","GDELT_FACTS_ONLY"].includes(licenseIdFromRights(rights))){
     let itemUrl;try{itemUrl=new URL(entry.link)}catch{return []}
     if(itemUrl.protocol==="http:"&&(itemUrl.hostname===rights.publisher_root_domain||
      itemUrl.hostname.endsWith("."+rights.publisher_root_domain)))itemUrl.protocol="https:";
@@ -368,7 +501,14 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
    }
    return accepted;
   }));
-  originals.push(...built.flat());
+  const standardCandidates=built.flat();
+  if(feed.name==="gdelt_v2_factual_events"){
+   const countries=new Set();
+   for(const original of standardCandidates){
+    if(countries.has(original.country_iso3)||countries.size>=25)continue;
+    countries.add(original.country_iso3);originals.push(original);
+   }
+  }else originals.push(...standardCandidates);
   for(const original of extensions){
    counts.extensions_seen++;
    if(original.source_id!==feed.name||original.feed_origin!=="RSS"||

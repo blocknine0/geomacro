@@ -246,7 +246,7 @@
     },
     {
       "name": "gdelt_v2_factual_events",
-      "url": "https://api.gdeltproject.org/api/v2/geo/geo?query=(conflict%20OR%20sanctions%20OR%20%22central%20bank%22%20OR%20%22critical%20minerals%22)&mode=PointData&format=GeoJSON&timespan=24h",
+      "url": "https://data.gdeltproject.org/gdeltv2/lastupdate.txt",
       "source_type": "official",
       "credibility_score": 0.91,
       "risk_category": "conflict",
@@ -273,7 +273,7 @@
     },
     {
       "name": "ecb_fx_reference_rates",
-      "url": "https://www.ecb.europa.eu/rss/fxref-usd.html",
+      "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
       "source_type": "official",
       "credibility_score": 0.982,
       "risk_category": "macro_economics",
