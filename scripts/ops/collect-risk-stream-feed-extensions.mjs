@@ -13,6 +13,7 @@ const MAX_FEED_BYTES=2_000_000;
 const MAX_STRUCTURED_FEED_CANDIDATES=500;
 const MAX_HTML_PAGE_FETCHES_PER_FEED=25;
 const FED_H10_ENDPOINT="https://www.federalreserve.gov/feeds/data/H10_H10.XML";
+const BOC_FX_ENDPOINT="https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=2";
 const ECB_CURRENCY_COUNTRY={USD:"USA",GBP:"GBR",JPY:"JPN",CNY:"CHN",INR:"IND",KRW:"KOR",
  AUD:"AUS",CAD:"CAN",CHF:"CHE",BRL:"BRA",MXN:"MEX",PLN:"POL",SEK:"SWE",NOK:"NOR",
  TRY:"TUR",ZAR:"ZAF",SGD:"SGP",MYR:"MYS",THB:"THA",IDR:"IDN",PHP:"PHL"};
@@ -102,7 +103,8 @@ export const SOURCE_COUNTRY={uk_fcdo_ogl_official_atom:"GBR",uk_obr_ogl_macro_at
  uk_dbt_ogl_minerals_atom:"GBR",uk_hmt_ogl_official_atom:"GBR",uk_desnz_ogl_minerals_atom:"GBR",
  uk_mod_ogl_security_atom:"GBR",uk_cabinet_ogl_security_atom:"GBR",uk_bist_ogl_minerals_atom:"GBR",
  ecb_fx_reference_rates:"DEU",us_fed_h10_public_domain:"USA",usgs_minerals_public_domain:"USA",
- geoscience_australia_ccby:"AUS",eu_jrc_rmis_ccby:"BEL"};
+ geoscience_australia_ccby:"AUS",eu_jrc_rmis_ccby:"BEL",
+ bank_of_canada_fx_ogl:"CAN",rba_fx_ccby:"AUS"};
 export function matchHot50Countries(entry={},corpus=`${entry.title??""} ${entry.summary??""}`,sourceId=null,maxCountries=3){
  const direct=[entry.country_iso3,...(entry.countries??[])].map(value=>String(value??"").toUpperCase());
  const mentioned=Object.entries(COUNTRY_TERMS).filter(([,names])=>names.some(name=>
@@ -366,6 +368,52 @@ export function standardEntries(xml,now=Date.now()){
  }
  return rows;
 }
+
+function bankOfCanadaEntries(body,now){
+ let payload;try{payload=JSON.parse(body)}catch{return []}
+ if(!Array.isArray(payload?.observations))return [];
+ const eligible=payload.observations.filter(row=>/^\d{4}-\d{2}-\d{2}$/u.test(row?.d??"")&&
+  Date.parse(`${row.d}T00:00:00.000Z`)<=now).sort((a,b)=>b.d.localeCompare(a.d));
+ const observation=eligible[0];if(!observation)return [];
+ const day=observation.d,publishedMs=Math.min(Date.parse(`${day}T16:00:00.000Z`),now);
+ if(now-publishedMs>72*60*60*1000)return [];
+ const entries=[];
+ for(const [key,raw] of Object.entries(observation)){
+  const currency=key.match(/^FX([A-Z]{3})CAD$/u)?.[1];
+  if(!currency||!ECB_CURRENCY_COUNTRY[currency])continue;
+  const value=Number(typeof raw==="object"?raw?.v:raw);
+  if(!Number.isFinite(value))continue;
+  entries.push({id:`boc-fx-${day}-${currency}`,link:BOC_FX_ENDPOINT,updated:new Date(publishedMs).toISOString(),
+   title:`Bank of Canada exchange rate ${currency}`,summary:"Daily foreign exchange rate observation.",
+   country_iso3:ECB_CURRENCY_COUNTRY[currency],reference_statistic:{value:String(value),
+    reference_currency:"CAD",counter_currency:currency}});
+ }
+ return entries;
+}
+
+function rbaFxEntries(xml,now){
+ const rows=standardEntries(xml,now),currencies=Object.keys(ECB_CURRENCY_COUNTRY);
+ const aliases={USD:/\b(?:US|U\.S\.|United States) dollar\b/iu,GBP:/\b(?:UK|British|pound sterling)\b/iu,
+  JPY:/\bJapanese yen\b/iu,CNY:/\b(?:Chinese|renminbi)\b/iu,INR:/\bIndian rupee\b/iu,
+  KRW:/\bSouth Korean won\b/iu,AUD:/\bAustralian dollar\b/iu,CAD:/\bCanadian dollar\b/iu,
+  CHF:/\bSwiss franc\b/iu,BRL:/\bBrazilian real\b/iu,MXN:/\bMexican peso\b/iu,
+  PLN:/\bPolish zloty\b/iu,SEK:/\bSwedish krona\b/iu,NOK:/\bNorwegian krone\b/iu,
+  TRY:/\bTurkish lira\b/iu,ZAR:/\bSouth African rand\b/iu,SGD:/\bSingapore dollar\b/iu,
+  MYR:/\bMalaysian ringgit\b/iu,THB:/\bThai baht\b/iu,IDR:/\bIndonesian rupiah\b/iu,
+  PHP:/\bPhilippine peso\b/iu};
+ return rows.flatMap(row=>{
+  const text=`${row.title??""} ${row.summary??""} ${row.link??""}`;
+  const codeMatch=text.match(/\b([A-Z]{3})\b/gu)?.find(code=>currencies.includes(code));
+  const currency=codeMatch??Object.entries(aliases).find(([,pattern])=>pattern.test(text))?.[0];
+  const rawRate=text.match(/(?:^|[^\d])([0-9]+(?:\.[0-9]+)?)(?:[^\d]|$)/u)?.[1];
+  const value=Number(rawRate),published=Date.parse(row.updated??"");
+  if(!currency||!Number.isFinite(value)||!Number.isFinite(published)||published>now||now-published>72*3600000)return [];
+  return [{...row,id:row.id||`rba-fx-${row.updated}-${currency}`,updated:new Date(published).toISOString(),
+   title:`Reserve Bank of Australia exchange rate ${currency}`,summary:"Daily foreign exchange rate observation.",
+   country_iso3:ECB_CURRENCY_COUNTRY[currency],reference_statistic:{value:String(value),
+    reference_currency:"AUD",counter_currency:currency}}];
+ });
+}
 function htmlLicenseEvidence(page,rights,itemUrl){
  const url=rights.rights_evidence.licence_url;
  const licenseId=licenseIdFromRights(rights);
@@ -396,6 +444,9 @@ function licenseIdFromRights(rights){
  if(url==="https://www.usa.gov/government-works")return "US_GOV_PUBLIC_DOMAIN";
  if(url==="https://www.gdeltproject.org/about.html")return "GDELT_FACTS_ONLY";
  if(url==="https://www.ecb.europa.eu/home/html/disclaimer.en.html")return "ECB_REFERENCE_STATISTICS";
+ if(url==="https://www.bankofcanada.ca/terms/")return "BANK_OF_CANADA_OGL";
+ if(url==="https://www.rba.gov.au/copyright/")return "RBA_CC_BY_4";
+ if(url==="https://www.un.org/en/about-us/terms-of-use")return "UN_NEWS_TERMS";
  return null;
 }
 function publisherOwnedForLicense(licenseId){
@@ -417,11 +468,18 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  if(fedH10&&(!Number.isFinite(Number(ecbStats.value))||!ecbStats.reference_currency||
   !ecbStats.counter_currency))return [];
  const gdeltFacts=entry.gdelt_facts;
+ const referenceFx=["BANK_OF_CANADA_OGL","RBA_CC_BY_4"].includes(licenseId)&&Boolean(entry.reference_statistic);
+ const unNews=licenseId==="UN_NEWS_TERMS";
+ if(referenceFx&&(!Number.isFinite(Number(entry.reference_statistic.value))||
+  !entry.reference_statistic.reference_currency||!entry.reference_statistic.counter_currency))return [];
  const evidence=licenseId==="ECB_REFERENCE_STATISTICS"?
   {marker:"ECB reference statistics, values unmodified"}:fedH10?
    {marker:"Federal Reserve H.10 public-domain exchange-rate observation"}:
    licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
-   {marker:"GDELT factual event metadata only"}:htmlLicenseEvidence(page,rights,sourceUrl.href);
+   {marker:"GDELT factual event metadata only"}:licenseId==="BANK_OF_CANADA_OGL"&&referenceFx?
+   {marker:"Bank of Canada factual FX observation only"}:licenseId==="RBA_CC_BY_4"&&referenceFx?
+   {marker:"Reserve Bank of Australia factual FX observation only"}:unNews?
+   {marker:"UN News factual metadata only; no article text republished"}:htmlLicenseEvidence(page,rights,sourceUrl.href);
  if(!evidence)return [];
  const itemRights=String(entry.rights_markers??"");
  if(/non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b/iu.test(itemRights))return [];
@@ -459,6 +517,18 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
    observed_at:entry.updated,published_at,value:Number(ecbStats.value),
    unit:`${ecbStats.counter_currency} per ${ecbStats.reference_currency}`,
    reference_currency:ecbStats.reference_currency,counter_currency:ecbStats.counter_currency}):
+   licenseId==="BANK_OF_CANADA_OGL"?JSON.stringify({schema:"geomacro.boc.fx-rate.v1",
+    license_notice_url:rights.rights_evidence.licence_url,license_marker:evidence.marker,
+    observed_at:entry.updated,published_at,country_iso3,currency:ecbStats.counter_currency,
+    reference_currency:ecbStats.reference_currency,value:Number(ecbStats.value)}):
+   licenseId==="RBA_CC_BY_4"?JSON.stringify({schema:"geomacro.rba.fx-rate.v1",
+    license_notice_url:rights.rights_evidence.licence_url,license_marker:evidence.marker,
+    observed_at:entry.updated,published_at,country_iso3,currency:ecbStats.counter_currency,
+    reference_currency:ecbStats.reference_currency,value:Number(ecbStats.value)}):
+   unNews?JSON.stringify({schema:"geomacro.un-news.factual-record.v1",
+    license_notice_url:rights.rights_evidence.licence_url,license_marker:evidence.marker,
+    record_id:String(entry.id),published_at,country_iso3,category,event_type:eventType,
+    item_url:sourceUrl.href}):
    licenseId==="ECB_REFERENCE_STATISTICS"?JSON.stringify({
    schema:"geomacro.ecb.reference-statistic.v1",license_notice_url:rights.rights_evidence.licence_url,
    license_marker:evidence.marker,series_key:`${ecbStats.reference_currency}/${ecbStats.counter_currency}`,
@@ -554,12 +624,17 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
    catch{continue}
    standard=gdeltEventEntries(archive,archiveUrl.href,now);
    feedOrigin="OFFICIAL_API";
+  }else if(feed.name==="bank_of_canada_fx_ogl"){
+   standard=bankOfCanadaEntries(body,now);feedOrigin="OFFICIAL_API";
+  }else if(feed.name==="rba_fx_ccby"){
+   standard=rbaFxEntries(body,now);feedOrigin="RSS";
   }else{
    standard=standardEntries(body,now);
    feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
   }
   const structuredCandidateFeed=feedOrigin==="OFFICIAL_API"||
    ["GDELT_FACTS_ONLY","ECB_REFERENCE_STATISTICS"].includes(licenseIdFromRights(rights))||
+   ["BANK_OF_CANADA_OGL","RBA_CC_BY_4","UN_NEWS_TERMS"].includes(licenseIdFromRights(rights))||
    feed.name==="us_fed_h10_public_domain";
   const current=standard.filter(entry=>{
    const published=Date.parse(entry?.updated??"");
@@ -572,7 +647,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   const built=await Promise.all(current.map(async entry=>{
    counts.standard_entries_seen++;
    let page="";
-   if(!["ECB_REFERENCE_STATISTICS","GDELT_FACTS_ONLY"].includes(licenseIdFromRights(rights))&&
+   if(!["ECB_REFERENCE_STATISTICS","GDELT_FACTS_ONLY","BANK_OF_CANADA_OGL","RBA_CC_BY_4","UN_NEWS_TERMS"].includes(licenseIdFromRights(rights))&&
       feed.name!=="us_fed_h10_public_domain"){
     if(htmlPageFetches>=MAX_HTML_PAGE_FETCHES_PER_FEED)return [];
     htmlPageFetches++;

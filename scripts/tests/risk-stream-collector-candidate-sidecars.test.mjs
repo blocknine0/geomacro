@@ -11,11 +11,15 @@ import {normalizeRiskStreamInternalCorroboration} from "../../workers/control-pl
 import {prepareRiskStreamCandidate} from "../lib/risk-stream-candidate-builder.mjs";
 import {validateRiskStreamItemLicense} from "../../workers/control-plane/src/risk-stream-item-license-guard.mjs";
 
-const manifest=JSON.parse(readFileSync("config/risk-stream-source-rights-reviewed.v1.json","utf8"));
+const fullManifest=JSON.parse(readFileSync("config/risk-stream-source-rights-reviewed.v1.json","utf8"));
 const feedManifest=JSON.parse(readFileSync("config/unified-rss-feed-registry.v1.json","utf8"));
-const source=manifest.entries.find(row=>row.source_id==="uk_fcdo_ogl_official_atom");
 const now=Date.parse("2026-11-15T10:00:00.000Z");
+const manifest={...fullManifest,entries:fullManifest.entries.filter(row=>
+ !row.rights_evidence?.reviewed_at||Date.parse(row.rights_evidence.reviewed_at)<=now)};
+const source=manifest.entries.find(row=>row.source_id==="uk_fcdo_ogl_official_atom");
 const sourceRegistry=manifest.entries.filter(row=>row.status==="APPROVED")
+ .map(row=>({...row,enabled:1,commercial_rights_approved:1}));
+const fullSourceRegistry=fullManifest.entries.filter(row=>row.status==="APPROVED")
  .map(row=>({...row,enabled:1,commercial_rights_approved:1}));
 const original={category:"GEOPOLITICS",country_iso3:"GBR",feed_origin:"RSS",
  source_id:source.source_id,source_role:source.source_role,
@@ -48,7 +52,7 @@ test("all nine reviewed Lane A sources are wired to matching opt-in feed entries
   "worldbank_commodity_prices_cc_by_4","ecb_fx_reference_rates","us_fed_h10_public_domain",
   "usgs_minerals_public_domain","geoscience_australia_ccby","eu_jrc_rmis_ccby"];
  for(const id of ids){
-  const rights=manifest.entries.find(row=>row.source_id===id);
+  const rights=fullManifest.entries.find(row=>row.source_id===id);
   const entry=feedManifest.sources.find(row=>row.name===id);
   assert.ok(rights,`${id} must exist in the reviewed rights manifest`);
   assert.ok(entry,`${id} must exist in the feed registry`);
@@ -68,6 +72,94 @@ test("all nine reviewed Lane A sources are wired to matching opt-in feed entries
  assert.match(feedManifest.sources.find(row=>row.name==="geoscience_australia_ccby").url,
   /^https:\/\/services\.ga\.gov\.au\/gis\/rest\/services\/.+f=geojson$/u);
  assert.equal(feedManifest.feed_count,feedManifest.sources.length);
+});
+
+test("new Bank of Canada, RBA, and UN News sources use reviewed feeds",()=>{
+ const expected={
+  bank_of_canada_fx_ogl:["bankofcanada.ca","https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=2"],
+  rba_fx_ccby:["rba.gov.au","https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml"],
+  un_news_org_rss:["news.un.org","https://news.un.org/feed/subscribe/en/news/all/rss.xml"]};
+ for(const [id,[domain,url]] of Object.entries(expected)){
+  const rights=fullManifest.entries.find(row=>row.source_id===id);
+  const sourceFeed=feedManifest.sources.find(row=>row.name===id);
+  assert.equal(rights?.status,"APPROVED");
+  assert.equal(rights?.publisher_root_domain,domain);
+  assert.equal(sourceFeed?.url,url);
+  assert.equal(sourceFeed?.risk_stream_item_licensed,true);
+  assert.equal(sourceFeed?.risk_stream_standard_item_license_candidate,true);
+ }
+ assert.equal(feedManifest.sources.find(row=>row.name==="uk_dbt_ogl_minerals_atom").url,
+  "https://www.gov.uk/search/news-and-communications.atom?keywords=critical+minerals");
+ assert.equal(feedManifest.feed_count,feedManifest.sources.length);
+});
+
+test("Bank of Canada FX JSON pairs with ECB on the same Hot 50 currency identity",async()=>{
+ const boc=fullManifest.entries.find(row=>row.source_id==="bank_of_canada_fx_ogl");
+ const ecb=fullManifest.entries.find(row=>row.source_id==="ecb_fx_reference_rates");
+ const bocUrl="https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=2";
+ const ecbUrl="https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
+ const now=Date.parse("2026-11-20T12:00:00Z");
+ const bocBody=JSON.stringify({observations:[{d:"2026-11-19",FXINRCAD:{v:"60.1234"}},
+  {d:"2026-11-20",FXINRCAD:{v:"60.2345"}}]});
+ const ecbBody='<Envelope><Cube><Cube time="2026-11-20"><Cube currency="INR" rate="103.5"/></Cube></Cube></Envelope>';
+ const collect=async(sourceRights,url,body,category)=>collectRiskStreamFeedExtensions({collector:"direct",now,
+  fetchImpl:async(actual)=>{assert.equal(actual,url);return {ok:true,text:async()=>body,
+   headers:{get:()=>"bank_of_canada_fx_ogl"===sourceRights.source_id?"application/json":"application/xml"}}},
+  rightsManifest:fullManifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(sourceRights.source_id),url,risk_category:category}]},sourceRegistry:fullSourceRegistry});
+ const [bocResult,ecbResult]=await Promise.all([collect(boc,bocUrl,bocBody,"macro_economics"),
+  collect(ecb,ecbUrl,ecbBody,"macro_economics")]);
+ assert.equal(bocResult.originals.length,1);
+ const bocOriginal=bocResult.originals[0],ecbOriginal=ecbResult.originals[0];
+ assert.equal(bocOriginal.country_iso3,"IND");
+ assert.equal(bocOriginal.event_identity.event_type,"fx_intervention");
+ assert.equal(bocOriginal.event_fingerprint,ecbOriginal.event_fingerprint);
+ assert.equal(JSON.parse(bocOriginal.raw_payload).schema,"geomacro.boc.fx-rate.v1");
+ assert.doesNotMatch(bocOriginal.raw_payload,/headline|article|summary|body/iu);
+ assert.doesNotThrow(()=>prepareRiskStreamCandidate(bocOriginal,fullSourceRegistry,now,{rightsManifest:fullManifest}));
+ assert.doesNotThrow(()=>validateRiskStreamItemLicense(bocOriginal.item_license_evidence,boc,
+  {sourceUrl:bocOriginal.source_url,sourceDomain:boc.publisher_root_domain,rawPayload:bocOriginal.raw_payload}));
+});
+
+test("RBA RDF/RSS exchange-rate items become factual MACRO_FX candidates",async()=>{
+ const rights=fullManifest.entries.find(row=>row.source_id==="rba_fx_ccby");
+ const url="https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml";
+ const xml='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"><item rdf:about="https://www.rba.gov.au/statistics/frequency/exchange-rates.html"><title>US Dollar (USD)</title><link>https://www.rba.gov.au/statistics/frequency/exchange-rates.html</link><description>1.5312 Australian dollars per US dollar.</description><dc:date>2026-11-20T10:00:00Z</dc:date></item></rdf:RDF>';
+ const now=Date.parse("2026-11-20T12:00:00Z");
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
+  fetchImpl:async(actual)=>{assert.equal(actual,url);return {ok:true,text:async()=>xml,
+   headers:{get:()=>"application/rdf+xml"}}},rightsManifest:fullManifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url,risk_category:"macro_economics"}]},sourceRegistry:fullSourceRegistry});
+ assert.equal(result.originals.length,1);
+ const candidate=result.originals[0];
+ assert.equal(candidate.country_iso3,"USA");
+ assert.equal(candidate.event_identity.event_type,"fx_intervention");
+ assert.equal(JSON.parse(candidate.raw_payload).schema,"geomacro.rba.fx-rate.v1");
+ assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,fullSourceRegistry,now,{rightsManifest:fullManifest}));
+ assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
+  {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
+});
+
+test("UN News RSS emits factual records with strategic-corridor enrichment",async()=>{
+ const rights=fullManifest.entries.find(row=>row.source_id==="un_news_org_rss");
+ const url="https://news.un.org/feed/subscribe/en/news/all/rss.xml";
+ const xml='<rss version="2.0"><channel><item><guid>un-news-20261120-1</guid><title>Sanctions policy update near the Red Sea</title><link>https://news.un.org/en/story/2026/11/1234567</link><description>Officials discuss India and regional shipping.</description><pubDate>Fri, 20 Nov 2026 09:30:00 GMT</pubDate></item></channel></rss>';
+ const now=Date.parse("2026-11-20T12:00:00Z");
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
+  fetchImpl:async(actual)=>{assert.equal(actual,url);return {ok:true,text:async()=>xml,
+   headers:{get:()=>"application/rss+xml"}}},rightsManifest:fullManifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url,risk_category:"conflict"}]},sourceRegistry:fullSourceRegistry});
+ assert.equal(result.originals.length,1);
+ const candidate=result.originals[0];
+ assert.equal(candidate.country_iso3,"IND");
+ assert.match(candidate.derived.what,/Corridor focus: Red Sea\./u);
+ assert.equal(JSON.parse(candidate.raw_payload).schema,"geomacro.un-news.factual-record.v1");
+ assert.doesNotMatch(candidate.raw_payload,/Sanctions policy update|Officials discuss|headline/iu);
+ assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,fullSourceRegistry,now,{rightsManifest:fullManifest}));
+ assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
+  {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
 });
 
 test("GDELT GeoJSON features map country properties to Hot 50 codes",()=>{

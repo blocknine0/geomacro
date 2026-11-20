@@ -1,6 +1,6 @@
 {
   "schema": "geomacro.unified-rss-feed-registry.v1",
-  "feed_count": 40,
+  "feed_count": 43,
   "sources": [
     {
       "name": "un_all_documents_rss",
@@ -162,7 +162,7 @@
     },
     {
       "name": "uk_dbt_ogl_minerals_atom",
-      "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+      "url": "https://www.gov.uk/search/news-and-communications.atom?keywords=critical+minerals",
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "commodities",
@@ -313,6 +313,33 @@
       "source_type": "official",
       "credibility_score": 0.955,
       "risk_category": "commodities",
+      "risk_stream_item_licensed": true,
+      "risk_stream_standard_item_license_candidate": true
+    },
+    {
+      "name": "bank_of_canada_fx_ogl",
+      "url": "https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=2",
+      "source_type": "official",
+      "credibility_score": 0.982,
+      "risk_category": "macro_economics",
+      "risk_stream_item_licensed": true,
+      "risk_stream_standard_item_license_candidate": true
+    },
+    {
+      "name": "rba_fx_ccby",
+      "url": "https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml",
+      "source_type": "official",
+      "credibility_score": 0.982,
+      "risk_category": "macro_economics",
+      "risk_stream_item_licensed": true,
+      "risk_stream_standard_item_license_candidate": true
+    },
+    {
+      "name": "un_news_org_rss",
+      "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+      "source_type": "official",
+      "credibility_score": 0.982,
+      "risk_category": "conflict",
       "risk_stream_item_licensed": true,
       "risk_stream_standard_item_license_candidate": true
     }
