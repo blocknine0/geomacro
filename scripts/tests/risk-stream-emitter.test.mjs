@@ -34,6 +34,9 @@ const originals=rightsManifest.entries.map((source,index)=>({category:"GEOPOLITI
  derived:{what:"A measure was announced.",why:"It affects an institution.",
   market:"Market access could tighten.",watch:"Watch official implementation."},
  reporting_position:"confirms"}));
+const makeDistinctOriginals=count=>Array.from({length:count},(_,index)=>({...originals[0],
+ event_identity:{...originals[0].event_identity,target_id:`foreign_bank_${index}`,
+  location_id:`washington_dc_${index}`},raw_payload:originals[0].raw_payload+` Event record ${index}.`}));
 
 test("dry run validates pair and makes no HTTP request",async()=>{
  let calls=0;
@@ -170,6 +173,42 @@ test("send mode checks live runtime, obtains genuine signatures, gets Queue ACK 
  assert.equal(privateContext?.event_code,"SANCTIONS");
  assert.equal(privateContext?.raw_source_redacted,true);
  assert.doesNotMatch(JSON.stringify(batches),/osint\.invalid|private headline|secret/iu);
+});
+
+test("send mode chunks ingest batches at 10 and readback requests at 100 IDs",async()=>{
+ const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
+ const eventBatches=[],readbackChunks=[];
+ const fetchImpl=async(url,options)=>{
+  const path=new URL(url).pathname;
+  if(path==="/v1/internal/risk-stream/runtime")return {ok:true,status:200,
+   json:async()=>({ok:true,schema:"geomacro.risk-stream-runtime-status.v1",ready:true})};
+  if(path==="/v1/internal/risk-stream/attest"){
+   const draft=JSON.parse(options.body).draft,claim=riskStreamOriginalClaims(draft);
+   return {ok:true,status:200,json:async()=>({proof:{
+    facts_signature_b64:sign(null,Buffer.from("geomacro.machine-original-facts.v1\n"+claim),facts.privateKey).toString("base64"),
+    rights_signature_b64:sign(null,Buffer.from("geomacro.machine-commercial-rights.v1\n"+claim),rights.privateKey).toString("base64")}})};
+  }
+  if(path==="/v1/internal/risk-stream/events"){
+   const body=JSON.parse(options.body);eventBatches.push(body.items);
+   return {ok:true,status:202,json:async()=>({ok:true,accepted:body.items.length,commercial_delivery:false})};
+  }
+  assert.equal(path,"/v1/internal/risk-stream/readback");
+  const ids=JSON.parse(options.body).observation_ids;readbackChunks.push(ids);
+  return {ok:true,status:200,json:async()=>({ok:true,requested:ids.length,
+   readback_count:ids.length,readback_verified:true,observation_ids:ids})};
+ };
+ const result=await emitRiskStreamCandidates({originals:makeDistinctOriginals(105),sourceRegistry,
+  rightsManifest,now,dryRun:false,controlPlaneUrl:"https://control.invalid",
+  controlPlaneToken:"root-test-token",factsPublicB64:facts.publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  rightsPublicB64:rights.publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  fetchImpl,sleepImpl:async()=>{}});
+ assert.equal(result.status,"POSTED");
+ assert.equal(result.candidate_count,105);
+ assert.deepEqual(eventBatches.map(batch=>batch.length),[10,10,10,10,10,10,10,10,10,10,5]);
+ assert.ok(eventBatches.every(batch=>batch.length<=10));
+ assert.deepEqual(readbackChunks.map(ids=>ids.length),[100,5]);
+ assert.ok(readbackChunks.every(ids=>ids.length<=100));
+ assert.equal(new Set(readbackChunks.flat()).size,105);
 });
 
 test("send mode fails before attestation when the live Queue consumer serves a stale Worker version",async()=>{
