@@ -2,6 +2,12 @@ const ACTIONS=new Set(["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"]);
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const CORRIDORS=new Set(["RED_SEA","MALACCA","HORMUZ","PANAMA","SUEZ","BAB_EL_MANDEB","TAIWAN_STRAIT","SOUTH_CHINA_SEA","BLACK_SEA","BOSPORUS","MOZAMBIQUE_CHANNEL","CAPE_OF_GOOD_HOPE",
  "BALTIC_SEA","ARCTIC_NORTHERN_SEA_ROUTE"]);
+const CORRIDOR_LABELS=Object.freeze({RED_SEA:"Red Sea",MALACCA:"Malacca Strait",
+ HORMUZ:"Strait of Hormuz",PANAMA:"Panama Canal",SUEZ:"Suez Canal",
+ BAB_EL_MANDEB:"Bab el-Mandeb",TAIWAN_STRAIT:"Taiwan Strait",SOUTH_CHINA_SEA:"South China Sea",
+ BLACK_SEA:"Black Sea",BOSPORUS:"Bosporus",MOZAMBIQUE_CHANNEL:"Mozambique Channel",
+ CAPE_OF_GOOD_HOPE:"Cape of Good Hope",BALTIC_SEA:"Baltic Sea",
+ ARCTIC_NORTHERN_SEA_ROUTE:"Northern Sea Route"});
 const ASSETS=Object.freeze({
  GEOPOLITICS:["sovereign_risk","cross_border_trade","shipping_routes","maritime_chokepoints","payment_rails","clearinghouses","war_risk_insurance","freight_indices"],
  MACRO_FX:["foreign_exchange","fx_pairs","interest_rates","sovereign_funding","energy_commodities","bank_capital","bank_liquidity","interbank_funding","equity_indices","capital_flows"],
@@ -172,6 +178,18 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
  const corridorAssets=strategicCorridors.flatMap(x=>CORRIDOR_ASSETS[x]??[]);
  const enrichedAssets=[...new Set([...ASSETS[category],...eventAssets,...corridorAssets,...affectedAssets])].sort();
  if(enrichedAssets.length>24)throw Error("RISK_STREAM_DUAL_AUDIENCE_INVALID");
+ const corridorNames=[...new Set(strategicCorridors)].map(x=>CORRIDOR_LABELS[x]);
+ const corridorFocus=corridorNames.slice(0,2).join(", ")+
+  (corridorNames.length>2?" +"+(corridorNames.length-2)+" more":"");
+ const assetNames=enrichedAssets.slice(0,3).map(x=>x.replaceAll("_"," "));
+ const assetFocus=assetNames.join(", ")+(enrichedAssets.length>3?" +"+(enrichedAssets.length-3)+" more":"");
+ const briefContext=["Trigger: "+trigger+".",
+  corridorNames.length?"Strategic corridors: "+corridorFocus+".":null,
+  assetNames.length?"Priority assets: "+assetFocus+".":null].filter(Boolean).join(" ");
+ const causalContext=[corridorNames.length?"Corridors: "+corridorFocus:null,
+  assetNames.length?"Assets: "+enrichedAssets.slice(0,2).map(x=>x.replaceAll("_"," ")).join(", ")+
+   (enrichedAssets.length>2?" +"+(enrichedAssets.length-2)+" more":""):null]
+  .filter(Boolean).join("; ");
  return {
   agent_decision:{action_posture:posture,gate_state:posture,
    risk_score_0_100:Number(score.toFixed(2)),value_0_100:Number(score.toFixed(2)),
@@ -184,18 +202,18 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
    upgrade_available:tier==="BASIC"&&corroborationReady,ttl_seconds:ttlSeconds},
   analyst_brief:{risk_mechanism:mechanism,
    downstream_effects:category==="MACRO_FX"?
-    "Funding costs, currency conversion, and risk limits may adjust if the observation persists.":
+    "Funding costs, currency conversion, and risk limits may adjust if the observation persists. "+briefContext:
     category==="CRITICAL_MINERALS"?
-     "Input availability, delivery timing, and downstream production costs may adjust if the observation persists.":
-     "Counterparty access, transit reliability, and compliance exposure may adjust if the observation persists.",
+     "Input availability, delivery timing, and downstream production costs may adjust if the observation persists. "+briefContext:
+     "Counterparty access, transit reliability, and compliance exposure may adjust if the observation persists. "+briefContext,
    price_impact_summary:category==="MACRO_FX"?
-    "Monitor volatility and repricing; this output does not forecast a guaranteed price move.":
+    "Monitor volatility and repricing; this output does not forecast a guaranteed price move. "+briefContext:
     category==="CRITICAL_MINERALS"?
-     "Monitor supply premiums and substitution risk; this output does not forecast a guaranteed price move.":
-     "Monitor risk premia and route sensitivity; this output does not forecast a guaranteed price move.",
+     "Monitor supply premiums and substitution risk; this output does not forecast a guaranteed price move. "+briefContext:
+     "Monitor risk premia and route sensitivity; this output does not forecast a guaranteed price move. "+briefContext,
    trigger,transmission_mechanism:mechanism,direct_price_supply_impact:directImpact,
-   causal_summary:"Trigger: "+trigger+". Transmission Mechanism: "+mechanism+
-    " Direct Price/Supply Impact: "+directImpact,
+   causal_summary:"Trigger: "+trigger+". Transmission Mechanism: "+mechanism.slice(0,42)+
+    (causalContext?". "+causalContext:"")+" Direct Price/Supply Impact: "+directImpact,
    raw_source_redacted:true,licensed_source_text_included:false,
    cross_category_outlook:"Assess linked geopolitical, macroeconomic, and critical-minerals conditions using separately verified evidence."},
   raw_source_redacted:true,licensed_source_text_included:false

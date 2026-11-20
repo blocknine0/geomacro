@@ -247,6 +247,10 @@ jobs:
         env:
           OPERATION: ${{ inputs.operation }}
           EVENT_NAME: ${{ github.event_name }}
+          RISK_STREAM_ACTIVE: ${{ vars.RISK_STREAM_ACTIVE }}
+          STREAM_INGESTION_ENABLED: ${{ vars.STREAM_INGESTION_ENABLED }}
+          STREAM_MODE: ${{ vars.STREAM_MODE }}
+          RISK_STREAM_HOT50_AUTONOMOUS_ENABLED: ${{ vars.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED }}
         run: |
           set -euo pipefail
           # Never schedule a full physical B2/R2 LIST+GET parity census.

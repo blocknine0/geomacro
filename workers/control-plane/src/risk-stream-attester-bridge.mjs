@@ -6,6 +6,11 @@ import {riskStreamInternalEventMatches}
 import {validateReusableSourceNewsItem} from "./reusable-source-news.mjs";
 const TOKEN=/^[A-Za-z0-9+/_=-]{32,256}$/u;
 const BASE64=/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
+const TELEGRAM_WATCH_FEATURES=Object.freeze({
+ conflict:"armed conflict",sanctions:"sanctions",export_ban:"export ban",
+ chokepoint_disruption:"shipping disruption",fx_sovereign_stress:"fx stress",
+ critical_mineral_supply_shock:"critical mineral supply shock"
+});
 const fail=code=>{throw Error(code)};
 function exact(value,keys){return value&&typeof value==="object"&&!Array.isArray(value)&&
  Object.keys(value).sort().join("|")===keys.slice().sort().join("|")}
@@ -78,17 +83,18 @@ export async function attestRiskStreamOriginal(request,env){
  // indexed window only on this authenticated internal attestation route; the
  // public Risk Gate endpoints are unchanged. The default is OFF. No private
  // title, URL, source or organization text crosses the signing boundary.
- if(env.RISK_STREAM_PRIVATE_OSINT_CORROBORATION_ENABLED==="1"&&!draft.risk_context){
+ const corroborationEnabled=env.RISK_STREAM_PRIVATE_OSINT_CORROBORATION_ENABLED!=="0"&&
+  (env.RISK_STREAM_PRIVATE_OSINT_CORROBORATION_ENABLED==="1"||env.RISK_STREAM_ACTIVE==="1");
+ if(corroborationEnabled&&!draft.risk_context){
   try{
    const privateCategory={GEOPOLITICS:"geopolitics",MACRO_FX:"macro",
     CRITICAL_MINERALS:"rare_earth"}[draft.category];
+   const contexts=[],cutoff=new Date(Date.now()-25*3600000).toISOString();
    if(privateCategory&&/^[A-Z]{3}$/u.test(draft.country_iso3??"")){
-    const cutoff=new Date(Date.now()-25*3600000).toISOString();
     const result=await env.DB.prepare(
      "SELECT projection_json FROM private_osint_news_25h WHERE country_iso3=? AND category=? "+
      "AND native_feed_published_at>=? ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 8")
      .bind(draft.country_iso3,privateCategory,cutoff).all();
-    const contexts=[];
     for(const row of result?.results??[]){
      let item;try{item=JSON.parse(row.projection_json)}catch{continue}
      try{validateReusableSourceNewsItem(item,Date.now())}catch{continue}
@@ -104,10 +110,28 @@ export async function attestRiskStreamOriginal(request,env){
      if(riskStreamInternalEventMatches(draft.category,draft.derived?.what,context.event_code))
       contexts.push(context);
     }
-    // Telegram watch metadata is consumed by the redacted speed-radar poller.
-    // It is never corroboration and cannot enter risk_context or tier scoring.
-    if(contexts.length)draft={...draft,risk_context:contexts[0]};
    }
+   const watchCategory={GEOPOLITICS:"geopolitics",MACRO_FX:"macro",
+    CRITICAL_MINERALS:"rare_earth"}[draft.category];
+   if(privateCategory&&watchCategory&&/^[A-Z]{3}$/u.test(draft.country_iso3??"")){
+    const telegram=await env.DB.prepare(
+     "SELECT country_iso3,category,watch_event,published_at FROM telegram_research_json "+
+     "WHERE country_iso3=? AND category=? AND published_at>=? AND published_at<=? "+
+     "AND watch_event IS NOT NULL ORDER BY published_at DESC,delivery_id DESC LIMIT 8")
+     .bind(draft.country_iso3,watchCategory,cutoff,new Date().toISOString()).all();
+    for(const row of telegram?.results??[]){
+     const feature=TELEGRAM_WATCH_FEATURES[row.watch_event];
+     const published=Date.parse(row.published_at??"");
+     if(!feature||row.country_iso3!==draft.country_iso3||row.category!==watchCategory||
+        !Number.isFinite(published)||published>Date.now()||Date.now()-published>25*3600000)continue;
+     const context=normalizeRiskStreamInternalCorroboration({
+      source_kind:"TELEGRAM_WATCH",country_iso3:draft.country_iso3,category:draft.category,
+      text:feature,severity_weight:30,corridors:[],corroboration_weight:0.2});
+     if(riskStreamInternalEventMatches(draft.category,draft.derived?.what,context.event_code))
+      contexts.push(context);
+    }
+   }
+   if(contexts.length)draft={...draft,risk_context:contexts[0]};
   }catch{return Response.json({ok:false,error:"PRIVATE_CORROBORATION_UNAVAILABLE"},{status:503});}
  }
  try{
