@@ -12,6 +12,7 @@ const FEEDS_PATH="config/unified-rss-feed-registry.v1.json";
 const MAX_FEED_BYTES=2_000_000;
 const MAX_STRUCTURED_FEED_CANDIDATES=500;
 const MAX_HTML_PAGE_FETCHES_PER_FEED=25;
+const FED_H10_ENDPOINT="https://www.federalreserve.gov/feeds/data/H10_H10.XML";
 const ECB_CURRENCY_COUNTRY={USD:"USA",GBP:"GBR",JPY:"JPN",CNY:"CHN",INR:"IND",KRW:"KOR",
  AUD:"AUS",CAD:"CAN",CHF:"CHE",BRL:"BRA",MXN:"MEX",PLN:"POL",SEK:"SWE",NOK:"NOR",
  TRY:"TUR",ZAR:"ZAF",SGD:"SGP",MYR:"MYS",THB:"THA",IDR:"IDN",PHP:"PHL"};
@@ -48,6 +49,23 @@ const EVENT_COPY=Object.freeze({
  critical_mineral_production:"CRITICAL_MINERAL_PRODUCTION: mine or processing output changes.",
  critical_mineral_supply:"CRITICAL_MINERAL_SUPPLY: material availability or supply-chain terms change.",
 });
+const STRATEGIC_CORRIDORS=[
+ [/\bRED SEA\b/iu,"Red Sea"],
+ [/\bBAB[\s-]+EL[\s-]+MANDEB\b/iu,"Bab el Mandeb"],
+ [/\b(?:STRAIT OF HORMUZ|HORMUZ)\b/iu,"Strait of Hormuz"],
+ [/\bMALACCA\b/iu,"Malacca Strait"],
+ [/\bSUEZ(?: CANAL)?\b/iu,"Suez Canal"],
+ [/\bPANAMA(?: CANAL)?\b/iu,"Panama Canal"],
+ [/\bTAIWAN STRAIT\b/iu,"Taiwan Strait"],
+ [/\bSOUTH CHINA SEA\b/iu,"South China Sea"],
+ [/\bBLACK SEA\b/iu,"Black Sea"],
+ [/\bBOSPORUS\b/iu,"Bosporus"],
+ [/\bBALTIC SEA\b/iu,"Baltic Sea"],
+ [/\bNORTHERN SEA ROUTE\b/iu,"Northern Sea Route"],
+ [/\bMOZAMBIQUE CHANNEL\b/iu,"Mozambique Channel"],
+ [/\bCAPE OF GOOD HOPE\b/iu,"Cape of Good Hope"],
+ [/\bGIUK GAP\b/iu,"GIUK Gap"]
+];
 export const COUNTRY_TERMS={USA:["united states","united states of america","u.s.","u.s.a.","usa","american"],GBR:["united kingdom","great britain","britain","british","english","uk"],
  CHN:["china","chinese"],IND:["india","indian"],RUS:["russia","russian"],
  UKR:["ukraine","ukrainian"],ISR:["israel","israeli"],PSE:["palestine","palestinian","gaza"],
@@ -85,12 +103,13 @@ export const SOURCE_COUNTRY={uk_fcdo_ogl_official_atom:"GBR",uk_obr_ogl_macro_at
  uk_mod_ogl_security_atom:"GBR",uk_cabinet_ogl_security_atom:"GBR",uk_bist_ogl_minerals_atom:"GBR",
  ecb_fx_reference_rates:"DEU",us_fed_h10_public_domain:"USA",usgs_minerals_public_domain:"USA",
  geoscience_australia_ccby:"AUS",eu_jrc_rmis_ccby:"BEL"};
-export function matchHot50Countries(entry={},corpus=`${entry.title??""} ${entry.summary??""}`,sourceId=null){
+export function matchHot50Countries(entry={},corpus=`${entry.title??""} ${entry.summary??""}`,sourceId=null,maxCountries=3){
  const direct=[entry.country_iso3,...(entry.countries??[])].map(value=>String(value??"").toUpperCase());
  const mentioned=Object.entries(COUNTRY_TERMS).filter(([,names])=>names.some(name=>
   new RegExp(`(?:^|[^\\p{L}])${name.replaceAll(".","\\.")}(?:$|[^\\p{L}])`,'iu').test(corpus))).map(([iso])=>iso);
+ const limit=Number.isInteger(maxCountries)?Math.max(1,Math.min(6,maxCountries)):3;
  const countries=[...new Set([...direct,...mentioned].map(normalizeSovereignIso3)
-  .filter(iso=>HOT50.has(iso)&&iso!==SOURCE_COUNTRY[sourceId]))].slice(0,3);
+  .filter(iso=>HOT50.has(iso)&&iso!==SOURCE_COUNTRY[sourceId]))].slice(0,limit);
  if(!countries.length&&SOURCE_COUNTRY[sourceId])countries.push(SOURCE_COUNTRY[sourceId]);
  return countries;
 }
@@ -213,7 +232,56 @@ export function extractRiskStreamFeedExtensions(xml){
  return rows;
 }
 
-export function standardEntries(xml){
+function fedH10Entries(xml,now){
+ const current=now instanceof Date?now.getTime():typeof now==="number"?now:Date.parse(now);
+ if(typeof xml!=="string"||!Number.isFinite(current))return [];
+ const attribute=(text,name)=>text.match(new RegExp(`(?:^|\\s)${name}=["']([^"']+)["']`,'iu'))?.[1]??null;
+ const valueById=(text,id)=>{
+  for(const match of text.matchAll(/<(?:[\w.-]+:)?Value\b([^>]*)\/?\s*>/giu))
+   if(attribute(match[1],"id")?.toUpperCase()===id)return attribute(match[1],"value");
+  return null;
+ };
+ const textValue=(text,name)=>text.match(new RegExp(`<(?:[\\w.-]+:)?${name}\\b[^>]*>([^<]+)<\\/(?:[\\w.-]+:)?${name}\\s*>`,'iu'))?.[1]?.trim()??null;
+ const tagAttribute=(text,name,attr)=>{
+  const tag=text.match(new RegExp(`<(?:[\\w.-]+:)?${name}\\b([^>]*)\\/?\\s*>`,'iu'));
+  return tag?attribute(tag[1],attr):null;
+ };
+ const entries=[];
+ for(const seriesMatch of xml.matchAll(/<(?:[\w.-]+:)?Series\b([^>]*)>([\s\S]*?)<\/(?:[\w.-]+:)?Series\s*>/giu)){
+  const seriesAttrs=seriesMatch[1],series=seriesMatch[2];
+  const currency=(attribute(seriesAttrs,"CURRENCY")??valueById(series,"CURRENCY")??textValue(series,"CURRENCY")??"").toUpperCase();
+  const country_iso3=HOT50_CURRENCY_COUNTRY[currency];
+  if(!country_iso3)continue;
+  for(const obsMatch of series.matchAll(/<(?:[\w.-]+:)?Obs\b([^>]*)>([\s\S]*?)<\/(?:[\w.-]+:)?Obs\s*>/giu)){
+   const obsAttrs=obsMatch[1],obs=obsMatch[2];
+   const timePeriod=attribute(obsAttrs,"TIME_PERIOD")??valueById(obs,"TIME_PERIOD")??
+    tagAttribute(obs,"ObsDimension","value")??textValue(obs,"TIME_PERIOD");
+   if(!/^\d{4}-\d{2}-\d{2}$/u.test(timePeriod??""))continue;
+   const periodStart=Date.parse(`${timePeriod}T00:00:00.000Z`);
+   const requestedTime=Date.parse(`${timePeriod}T16:00:00.000Z`);
+   if(!Number.isFinite(periodStart)||periodStart>current||!Number.isFinite(requestedTime))continue;
+   const publishedMs=Math.min(requestedTime,current);
+   if(current-publishedMs>72*60*60*1000)continue;
+   const rawValue=attribute(obsAttrs,"OBS_VALUE")??valueById(obs,"OBS_VALUE")??
+    tagAttribute(obs,"ObsValue","value")??textValue(obs,"ObsValue")??textValue(obs,"OBS_VALUE");
+   const value=Number(rawValue);
+   if(rawValue===null||rawValue===""||!Number.isFinite(value))continue;
+   const updated=new Date(publishedMs).toISOString();
+   entries.push({id:`fed-h10-${timePeriod}-${currency}`,link:FED_H10_ENDPOINT,updated,
+    title:`Federal Reserve H.10 exchange rate for ${currency}`,
+    summary:"Daily foreign exchange rate observation.",country_iso3,
+    reference_statistic:{value:String(value),reference_currency:"USD",counter_currency:currency}});
+  }
+ }
+ return entries;
+}
+
+export function standardEntries(xml,now=Date.now()){
+ if(typeof xml==="string"&&/<(?:[\w.-]+:)?Series\b/iu.test(xml)&&
+  /<(?:[\w.-]+:)?Obs\b/iu.test(xml)){
+  const entries=fedH10Entries(xml,now);
+  if(entries.length)return entries;
+ }
  if(typeof xml==="string"&&/<Cube\b[^>]*\btime=["']\d{4}-\d{2}-\d{2}["']/iu.test(xml)){
   const day=xml.match(/<Cube\b[^>]*\btime=["'](\d{4}-\d{2}-\d{2})["']/iu)?.[1];
   if(!day)return [];
@@ -343,28 +411,35 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
   sourceUrl.hostname.endsWith("."+rights.publisher_root_domain)))return [];
  const licenseId=licenseIdFromRights(rights);if(!licenseId)return [];
  const ecbStats=entry.reference_statistic;
+ const fedH10=feed.name==="us_fed_h10_public_domain"&&Boolean(ecbStats);
  if(licenseId==="ECB_REFERENCE_STATISTICS"&&(!ecbStats||!Number.isFinite(Number(ecbStats.value))||
   !ecbStats.reference_currency||!ecbStats.counter_currency))return [];
+ if(fedH10&&(!Number.isFinite(Number(ecbStats.value))||!ecbStats.reference_currency||
+  !ecbStats.counter_currency))return [];
  const gdeltFacts=entry.gdelt_facts;
  const evidence=licenseId==="ECB_REFERENCE_STATISTICS"?
-  {marker:"ECB reference statistics, values unmodified"}:licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
+  {marker:"ECB reference statistics, values unmodified"}:fedH10?
+   {marker:"Federal Reserve H.10 public-domain exchange-rate observation"}:
+   licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
    {marker:"GDELT factual event metadata only"}:htmlLicenseEvidence(page,rights,sourceUrl.href);
  if(!evidence)return [];
  const itemRights=String(entry.rights_markers??"");
  if(/non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b/iu.test(itemRights))return [];
  const declaredLicenses=[...itemRights.matchAll(/https:\/\/[^\s<>"']+/giu)].map(x=>x[0].replace(/[),.;]+$/u,""));
  if(declaredLicenses.some(url=>url!==rights.rights_evidence.licence_url&&url!==rights.rights_evidence.terms_url))return [];
- const corpus=`${entry.title} ${entry.summary}`.toLowerCase();
+ const corpus=`${entry.title} ${entry.summary} ${entry.text??""} ${entry.content??""} ${entry.content_text??""}`.toLowerCase();
  const eventType=licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
   gdeltFacts.event_type:
   CATEGORY_TERMS[category].find(([rx,type])=>rx.test(corpus)&&
    (category!=="CRITICAL_MINERALS"||CRITICAL_MINERAL_SUPPLY_TERMS.test(corpus)))?.[1];
  if(!eventType)return [];
- const countries=matchHot50Countries(entry,corpus,rights.source_id);
+ const countries=matchHot50Countries(entry,corpus,rights.source_id,
+  category==="CRITICAL_MINERALS"?6:3);
  if(!countries.length)return [];
  const published=new Date(entry.updated);
  if(!Number.isFinite(published.getTime()))return [];
  const published_at=published.toISOString();
+ const corridor=STRATEGIC_CORRIDORS.find(([pattern])=>pattern.test(corpus))?.[1]??null;
  return countries.map(country_iso3=>{
   const gdeltFactsOnly=licenseId==="GDELT_FACTS_ONLY";
   const event_identity={country_iso3,event_type:eventType,
@@ -377,7 +452,14 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
    license_marker:evidence.marker,global_event_id:gdeltFacts.global_event_id,sql_date:gdeltFacts.sql_date,
    actor1_code:gdeltFacts.actor1_code,actor2_code:gdeltFacts.actor2_code,event_code:gdeltFacts.event_code,
    goldstein_scale:gdeltFacts.goldstein_scale===""?null:Number(gdeltFacts.goldstein_scale),country_iso3,
-   published_at,source_url:sourceUrl.href}):licenseId==="ECB_REFERENCE_STATISTICS"?JSON.stringify({
+   published_at,source_url:sourceUrl.href}):fedH10?JSON.stringify({
+   schema:"geomacro.federal-reserve.h10-reference-statistic.v1",
+   license_notice_url:rights.rights_evidence.licence_url,license_marker:evidence.marker,
+   series_key:`${ecbStats.reference_currency}/${ecbStats.counter_currency}`,
+   observed_at:entry.updated,published_at,value:Number(ecbStats.value),
+   unit:`${ecbStats.counter_currency} per ${ecbStats.reference_currency}`,
+   reference_currency:ecbStats.reference_currency,counter_currency:ecbStats.counter_currency}):
+   licenseId==="ECB_REFERENCE_STATISTICS"?JSON.stringify({
    schema:"geomacro.ecb.reference-statistic.v1",license_notice_url:rights.rights_evidence.licence_url,
    license_marker:evidence.marker,series_key:`${ecbStats.reference_currency}/${ecbStats.counter_currency}`,
    observed_at:entry.updated,published_at,value:Number(ecbStats.value),
@@ -395,7 +477,8 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
     terms_url:rights.rights_evidence.terms_url,item_url:sourceUrl.href,item_license_marker:evidence.marker,
     publisher_owned_content_only:publisherOwnedForLicense(licenseId),third_party_exceptions:false,non_commercial:false,
     restricted_material:false,factual_record_only:true,original_text_republished:false},
-   derived:{what:EVENT_COPY[eventType],
+   derived:{what:[EVENT_COPY[eventType],corridor?`Corridor focus: ${corridor}.`:null]
+    .filter(Boolean).join(" "),
     why:`Risk classification: ${eventType.replaceAll("_"," ")} in ${country_iso3}; assess the jurisdiction and affected sector before changing exposure.`,
     market:category==="MACRO_FX"?`Potential channels include ${country_iso3} currency liquidity, FX settlement and sovereign financing.`:
      category==="CRITICAL_MINERALS"?`Potential channels include ${country_iso3} mineral throughput, processing availability and benchmark premiums.`:
@@ -472,11 +555,12 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
    standard=gdeltEventEntries(archive,archiveUrl.href,now);
    feedOrigin="OFFICIAL_API";
   }else{
-   standard=standardEntries(body);
+   standard=standardEntries(body,now);
    feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
   }
   const structuredCandidateFeed=feedOrigin==="OFFICIAL_API"||
-   ["GDELT_FACTS_ONLY","ECB_REFERENCE_STATISTICS"].includes(licenseIdFromRights(rights));
+   ["GDELT_FACTS_ONLY","ECB_REFERENCE_STATISTICS"].includes(licenseIdFromRights(rights))||
+   feed.name==="us_fed_h10_public_domain";
   const current=standard.filter(entry=>{
    const published=Date.parse(entry?.updated??"");
    if(!Number.isFinite(published)){counts.undated_entries_skipped++;return false}
@@ -488,7 +572,8 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   const built=await Promise.all(current.map(async entry=>{
    counts.standard_entries_seen++;
    let page="";
-   if(!["ECB_REFERENCE_STATISTICS","GDELT_FACTS_ONLY"].includes(licenseIdFromRights(rights))){
+   if(!["ECB_REFERENCE_STATISTICS","GDELT_FACTS_ONLY"].includes(licenseIdFromRights(rights))&&
+      feed.name!=="us_fed_h10_public_domain"){
     if(htmlPageFetches>=MAX_HTML_PAGE_FETCHES_PER_FEED)return [];
     htmlPageFetches++;
     let itemUrl;try{itemUrl=new URL(entry.link)}catch{return []}
