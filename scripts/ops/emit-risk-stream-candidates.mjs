@@ -164,7 +164,7 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
  const readbackUrl=new URL("/v1/internal/risk-stream/readback",controlPlaneUrl).href;
  for(let offset=0;offset<observationIds.length;offset+=100){
   const ids=observationIds.slice(offset,offset+100);
-  for(let attempt=1;attempt<=30;attempt++){
+  for(let attempt=1;attempt<=90;attempt++){
    const readback=await requestJson(fetchImpl,readbackUrl,{method:"POST",
     headers:{Authorization:"Bearer "+controlPlaneToken,"Content-Type":"application/json"},
     body:JSON.stringify({schema:"geomacro.risk-stream-readback-request.v1",
@@ -173,7 +173,7 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
       readback.requested===ids.length&&readback.readback_count===ids.length&&
       Array.isArray(readback.observation_ids)&&
       ids.every(id=>readback.observation_ids.includes(id)))break;
-   if(attempt===30)fail("D1_READBACK_TIMEOUT");
+   if(attempt===90)fail("D1_READBACK_TIMEOUT");
    await sleepImpl(2000);
   }
  }
