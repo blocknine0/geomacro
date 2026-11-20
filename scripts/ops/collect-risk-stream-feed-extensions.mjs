@@ -174,7 +174,7 @@ function parseCsvRows(csv){
  return rows;
 }
 function gdeltEventEntries(csv,archiveUrl,now){
- const rows=parseCsvRows(csv),entries=[];
+ const rows=csv.split(/\r?\n/u).filter(Boolean).map(line=>line.split("\t")),entries=[];
  for(const columns of rows){
   if(columns.length<59||!/^\d+$/u.test(columns[0])||!/^\d{8}$/u.test(columns[1]))continue;
   const [globalEventId,sqlDate]=columns,eventCode=columns[26],quadClass=columns[29],goldsteinScale=columns[30];
@@ -457,9 +457,9 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   if(extensions.length===0)counts.feeds_without_candidate_extension++;
   let standard,feedOrigin;
   if(feed.name==="gdelt_v2_factual_events"){
-   const archiveName=body.match(/(?:^|\s)([\w.-]+\.export\.CSV\.zip)(?:\s|$)/iu)?.[1];
+   const archiveName=body.match(/(?:^|\s|\/)([\w.-]+\.export\.CSV\.zip)(?:\s|$)/iu)?.[1];
    if(!archiveName)continue;
-   const archiveUrl=new URL(archiveName,url.href);
+   const archiveUrl=new URL(`https://data.gdeltproject.org/gdeltv2/${archiveName}`);
    if(archiveUrl.protocol!=="https:"||archiveUrl.hostname!=="data.gdeltproject.org")continue;
    let archiveResponse,archive;
    try{archiveResponse=await fetchImpl(archiveUrl.href,{method:"GET",redirect:"error",
