@@ -38,18 +38,6 @@ const CATEGORY_TERMS={
   [CRITICAL_MINERAL_SUPPLY_TERMS,"critical_mineral_supply"],
   [/trade|customs/iu,"trade_disruption"]]
 };
-const EVENT_COPY=Object.freeze({
- sanctions_policy:"SANCTIONS_POLICY: jurisdictional restrictions tighten.",
- ceasefire:"CEASEFIRE: operational security conditions enter a transition.",
- conflict_escalation:"CONFLICT_ESCALATION: security pressure increases.",
- trade_disruption:"TRADE_DISRUPTION: cross-border access faces a policy or logistics change.",
- central_bank_policy:"CENTRAL_BANK_POLICY: monetary stance or policy settings change.",
- inflation_release:"INFLATION_RELEASE: consumer-price conditions receive a dated update.",
- fx_intervention:"FX_INTERVENTION: currency liquidity or exchange-rate action changes.",
- critical_mineral_export_control:"CRITICAL_MINERAL_EXPORT_CONTROL: mineral trade access tightens.",
- critical_mineral_production:"CRITICAL_MINERAL_PRODUCTION: mine or processing output changes.",
- critical_mineral_supply:"CRITICAL_MINERAL_SUPPLY: material availability or supply-chain terms change.",
-});
 const STRATEGIC_CORRIDORS=[
  [/\bRED SEA\b/iu,"Red Sea"],
  [/\bBAB[\s-]+EL[\s-]+MANDEB\b/iu,"Bab el Mandeb"],
@@ -67,6 +55,55 @@ const STRATEGIC_CORRIDORS=[
  [/\bCAPE OF GOOD HOPE\b/iu,"Cape of Good Hope"],
  [/\bGIUK GAP\b/iu,"GIUK Gap"]
 ];
+const SIGNAL_THEMES=[
+ [/maritime|shipping|vessel|port|freight|chokepoint|strait|canal/iu,"maritime"],
+ [/missile|drone|airstrike|air strike|strike|intercept/iu,"strike"],
+ [/sanction|tariff|export control|export ban|customs/iu,"trade_controls"],
+ [/central bank|interest rate|exchange rate|foreign exchange|\bfx\b|liquidity|currency/iu,"central_bank_fx"],
+ [/mining|mine output|refining|refinery|smelter|rare earth|cobalt|lithium|copper|nickel|graphite/iu,"minerals"]
+];
+const COUNTRY_ASSETS={AUS:"AUD rates, iron ore and LNG",COD:"cobalt, copper and refined-metal flows",
+ KAZ:"uranium, copper and KZT funding",ZMB:"copper, cobalt and ZMW funding"};
+function buildDerivedSignal({theme,country,corridor,corpus,category,eventType}){
+ const place=country+(corridor?` via ${corridor}`:"");
+ const assets=Object.entries({cobalt:/cobalt/iu,copper:/copper/iu,lithium:/lithium/iu,
+  nickel:/nickel/iu,"rare-earth oxides":/rare earth/iu,uranium:/uranium/iu,
+  LNG:/\blng\b|liquefied natural gas/iu,oil:/oil|crude/iu}).find(([,rx])=>rx.test(corpus))?.[0]
+  ??COUNTRY_ASSETS[country]??(category==="MACRO_FX"?"local FX and short-dated rates":
+   category==="CRITICAL_MINERALS"?"ore, refined output and benchmark premiums":"freight, energy and trade finance");
+ let signal;
+ if(theme==="maritime")signal={
+  what:`${place}: shipping or chokepoint pressure could alter transit time and cargo availability.`,
+  why:`Longer routes can raise freight and war-risk cover, delaying ${assets} and working-capital settlement.`,
+  market:`Watch ${assets}, bunker fuel, freight rates and marine-insurance costs for ${country}-linked cargoes.`,
+  watch:`Over 24–72h, check route closures, vessel queues, freight quotes and insurance premia; flag sustained moves above recent ranges.`};
+ else if(theme==="strike")signal={
+  what:`${place}: reported strike or interception risk may interrupt nearby transport or production assets.`,
+  why:`Damage, airspace limits or precautionary shutdowns can reduce ${assets} availability and raise delivery risk.`,
+  market:`Track ${assets}, export-terminal throughput, freight costs and ${country} sovereign or currency risk.`,
+  watch:`Over 24–72h, verify facility outages, flight or port restrictions, official damage counts and confirmed shipment delays.`};
+ else if(theme==="trade_controls")signal={
+  what:`${place}: a trade-control change may restrict licensing, pricing or counterparties for ${assets}.`,
+  why:`Compliance checks can delay settlement and reroute supply, widening delivered costs and reducing accessible volumes.`,
+  market:`Monitor ${assets}, export volumes, buyer premiums, ${country} FX and bank-settlement delays.`,
+  watch:`Over 24–72h, check effective dates, licence notices, named product codes, customs holds and price or FX moves.`};
+ else if(theme==="central_bank_fx")signal={
+  what:`${place}: central-bank or FX conditions may change local funding and currency liquidity.`,
+  why:`Rate expectations and intervention can shift hedging costs, import cover and sovereign funding conditions.`,
+  market:`Watch ${country} currency pairs, short-dated yields, swap spreads and liquidity against ${assets}.`,
+  watch:`Over 24–72h, compare official fixings, reserve or intervention notices, bid–ask spreads and 1–3 month forward points.`};
+ else if(theme==="minerals")signal={
+  what:`${place}: mining or processing conditions may change supply of ${assets}.`,
+  why:`Output, power, transport or export constraints can alter refined availability, delivery timing and buyer premiums.`,
+  market:`Track ${assets}, mine/refinery utilization, export volumes and benchmark-to-spot premiums.`,
+  watch:`Over 24–72h, verify facility status, production guidance, port dispatches and measurable premium or futures moves.`};
+ else signal={
+  what:`${place}: ${eventType.replaceAll("_"," ")} may change operating and policy exposure.`,
+  why:`The channel runs through ${assets}, cross-border access and counterparties; confirm implementation before repricing.`,
+  market:`Monitor ${assets}, trade volumes, local FX and sovereign funding spreads.`,
+  watch:`Over 24–72h, check dated official notices, confirmed volume changes, price spreads and settlement delays.`};
+ return signal;
+}
 export const COUNTRY_TERMS={USA:["united states","united states of america","u.s.","u.s.a.","usa","american"],GBR:["united kingdom","great britain","britain","british","english","uk"],
  CHN:["china","chinese"],IND:["india","indian"],RUS:["russia","russian"],
  UKR:["ukraine","ukrainian"],ISR:["israel","israeli"],PSE:["palestine","palestinian","gaza"],
@@ -77,10 +114,10 @@ export const COUNTRY_TERMS={USA:["united states","united states of america","u.s
  FRA:["france","french"],MEX:["mexico","mexican"],ITA:["italy","italian"],ESP:["spain","spanish"],NLD:["netherlands","dutch"],
  CHE:["switzerland","swiss"],NOR:["norway","norwegian"],SWE:["sweden","swedish"],POL:["poland","polish"],
  TUR:["turkey","türkiye","turkiye","turkish"],EGY:["egypt","egyptian"],QAT:["qatar","qatari"],OMN:["oman","omani"],
- IRQ:["iraq","iraqi"],NGA:["nigeria","nigerian"],COD:["democratic republic of the congo","dr congo","congo"],ZMB:["zambia","zambian"],
+ IRQ:["iraq","iraqi"],NGA:["nigeria","nigerian"],COD:["democratic republic of the congo","dr congo","drc","kinshasa","katanga","congo"],ZMB:["zambia","zambian","lusaka","copperbelt"],
  ARG:["argentina","argentine"],BOL:["bolivia","bolivian"],VNM:["vietnam","vietnamese"],THA:["thailand","thai"],
  MYS:["malaysia","malaysian"],SGP:["singapore","singaporean"],PHL:["philippines","philippine","filipino"],PAK:["pakistan","pakistani"],
- BGD:["bangladesh","bangladeshi"],KAZ:["kazakhstan","kazakh"],MNG:["mongolia","mongolian"],MMR:["myanmar","burma","burmese"]};
+ BGD:["bangladesh","bangladeshi"],KAZ:["kazakhstan","kazakh","astana","almaty"],MNG:["mongolia","mongolian"],MMR:["myanmar","burma","burmese"]};
 const normalizeSovereignIso3=value=>value==="ATA"?"AUS":value;
 export const HOT50=new Set(["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL","CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE","POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN","IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN","VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]);
 const HOT50_ISO2={US:"USA",CN:"CHN",IN:"IND",RU:"RUS",GB:"GBR",DE:"DEU",FR:"FRA",JP:"JPN",KR:"KOR",BE:"BEL",
@@ -456,6 +493,7 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  const category=CATEGORY_BY_FEED[feed.risk_category];
  if(!category||!entry.id||!entry.link||!entry.updated)return [];
  let sourceUrl;try{sourceUrl=new URL(entry.link)}catch{return []}
+ if(feed.name==="rba_fx_ccby")sourceUrl=new URL("https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml");
  if(sourceUrl.protocol==="http:"&&(sourceUrl.hostname===rights.publisher_root_domain||
   sourceUrl.hostname.endsWith("."+rights.publisher_root_domain)))sourceUrl.protocol="https:";
  if(sourceUrl.protocol!=="https:"||!(sourceUrl.hostname===rights.publisher_root_domain||
@@ -498,6 +536,7 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  if(!Number.isFinite(published.getTime()))return [];
  const published_at=published.toISOString();
  const corridor=STRATEGIC_CORRIDORS.find(([pattern])=>pattern.test(corpus))?.[1]??null;
+ const theme=SIGNAL_THEMES.find(([pattern])=>pattern.test(corpus))?.[1]??null;
  return countries.map(country_iso3=>{
   const gdeltFactsOnly=licenseId==="GDELT_FACTS_ONLY";
   const event_identity={country_iso3,event_type:eventType,
@@ -538,6 +577,7 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
    JSON.stringify({id:entry.id,link:sourceUrl.href,updated:entry.updated,
     country_iso3,category,license_marker:evidence.marker,license_url:rights.rights_evidence.licence_url,
     terms_url:rights.rights_evidence.terms_url});
+  const derived=buildDerivedSignal({theme,country:country_iso3,corridor,corpus,category,eventType});
   const original={schema:"geomacro.risk-stream-original.v1",kind:"VERIFIED_ORIGINAL",country_iso3,
    category,feed_origin:feedOrigin,source_id:rights.source_id,source_role:rights.source_role,
    publisher_root_domain:rights.publisher_root_domain,parent_media_entity:rights.parent_media_entity,
@@ -547,13 +587,7 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
     terms_url:rights.rights_evidence.terms_url,item_url:sourceUrl.href,item_license_marker:evidence.marker,
     publisher_owned_content_only:publisherOwnedForLicense(licenseId),third_party_exceptions:false,non_commercial:false,
     restricted_material:false,factual_record_only:true,original_text_republished:false},
-   derived:{what:[EVENT_COPY[eventType],corridor?`Corridor focus: ${corridor}.`:null]
-    .filter(Boolean).join(" "),
-    why:`Risk classification: ${eventType.replaceAll("_"," ")} in ${country_iso3}; assess the jurisdiction and affected sector before changing exposure.`,
-    market:category==="MACRO_FX"?`Potential channels include ${country_iso3} currency liquidity, FX settlement and sovereign financing.`:
-     category==="CRITICAL_MINERALS"?`Potential channels include ${country_iso3} mineral throughput, processing availability and benchmark premiums.`:
-     `Potential channels include ${country_iso3} operating continuity, trade routing, freight and sovereign risk.`,
-    watch:"Track formal implementation, affected counterparties and independent evidence before escalation."}};
+   derived};
   return {...original,...eventIdentityFields(original)};
  });
 }
