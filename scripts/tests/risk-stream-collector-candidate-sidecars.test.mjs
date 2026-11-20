@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync,sign} from "node:crypto";
-import {collectRiskStreamFeedExtensions,CRITICAL_MINERAL_SUPPLY_TERMS,HOT50,matchHot50Countries,SOURCE_COUNTRY} from "../ops/collect-risk-stream-feed-extensions.mjs";
+import {collectRiskStreamFeedExtensions,CRITICAL_MINERAL_SUPPLY_TERMS,HOT50,matchHot50Countries,SOURCE_COUNTRY,standardEntries} from "../ops/collect-risk-stream-feed-extensions.mjs";
 import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
@@ -58,7 +58,64 @@ test("all nine reviewed Lane A sources are wired to matching opt-in feed entries
   assert.ok(url.hostname===rights.publisher_root_domain||
    url.hostname.endsWith(`.${rights.publisher_root_domain}`),`${id} endpoint must match its reviewed root`);
  }
+ assert.match(feedManifest.sources.find(row=>row.name==="gdelt_v2_factual_events").url,
+  /^https:\/\/api\.gdeltproject\.org\/api\/v2\/geo\/geo\?/u);
+ assert.match(feedManifest.sources.find(row=>row.name==="ecb_fx_reference_rates").url,
+  /^https:\/\/www\.ecb\.europa\.eu\/rss\/fxref-usd\.html$/u);
+ assert.match(feedManifest.sources.find(row=>row.name==="us_fed_h10_public_domain").url,
+  /^https:\/\/www\.federalreserve\.gov\/feeds\/data\/H10_H10\.XML$/u);
+ assert.match(feedManifest.sources.find(row=>row.name==="geoscience_australia_ccby").url,
+  /^https:\/\/services\.ga\.gov\.au\/gis\/rest\/services\/.+f=geojson$/u);
  assert.equal(feedManifest.feed_count,feedManifest.sources.length);
+});
+
+test("GDELT GeoJSON features map country properties to Hot 50 codes",()=>{
+ const body=JSON.stringify({type:"FeatureCollection",features:[
+  {type:"Feature",id:"gdelt-feature-1",properties:{id:"gdelt-feature-1",country_name:"China",
+   date:"2026-11-15T09:30:00Z",title:"Conflict escalation in China",
+   url:"https://api.gdeltproject.org/api/v2/geo/geo?feature=1"},geometry:{type:"Point",coordinates:[116.4,39.9]}},
+  {type:"Feature",id:"gdelt-feature-2",properties:{id:"gdelt-feature-2",countries:["CHN","IND","RUS","USA"],
+   date:"2026-11-15T09:31:00Z",title:"Sanctions update"},geometry:{type:"Point",coordinates:[0,0]}},
+  {type:"Feature",id:"gdelt-feature-3",properties:{id:"gdelt-feature-3",country:"CN",
+   date:"2026-11-15T09:32:00Z",title:"Conflict escalation"},geometry:{type:"Point",coordinates:[0,0]}}
+ ]});
+ const entries=standardEntries(body);
+ assert.equal(entries.length,3);
+ assert.equal(entries[0].country_iso3,"CHN");
+ assert.deepEqual(matchHot50Countries(entries[0],entries[0].title),["CHN"]);
+ assert.deepEqual(matchHot50Countries(entries[1],entries[1].title),["CHN","IND","RUS"]);
+ assert.equal(entries[2].country_iso3,"CHN");
+});
+
+test("RSS 1.0/RDF items read dc:date for ECB and Federal Reserve feeds",()=>{
+ const rdf=(publisher,title,url,date)=>`<?xml version="1.0"?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>${publisher}</title></channel><item rdf:about="${url}"><title>${title}</title><link>${url}</link><description>Daily exchange rate information.</description><dc:date>${date}</dc:date></item></rdf:RDF>`;
+ const ecb=standardEntries(rdf("ECB","1.0992 USD = 1 EUR 2026-11-19 ECB Reference rate",
+  "http://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html?date=2026-11-19",
+  "2026-11-19T14:15:00+01:00"));
+ const fed=standardEntries(rdf("Federal Reserve","US: H10 foreign exchange rates for India",
+  "http://www.federalreserve.gov/releases/H10#1","2026-11-16T16:15:00-05:00"));
+ assert.equal(ecb[0].updated,"2026-11-19T14:15:00+01:00");
+ assert.equal(ecb[0].id,"http://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html?date=2026-11-19");
+ assert.match(fed[0].updated,/2026-11-16/u);
+ assert.equal(fed[0].link,"http://www.federalreserve.gov/releases/H10#1");
+});
+
+test("ECB RDF reference-rate statistics prepare and validate as a licensed macro candidate",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="ecb_fx_reference_rates");
+ const endpoint="https://www.ecb.europa.eu/rss/fxref-usd.html";
+ const rdf=`<?xml version="1.0"?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cb="http://www.cbwiki.net/wiki/index.php/Specification_1.1"><item rdf:about="http://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html?date=2026-11-20&amp;rate=1.0992"><title>1.0992 USD = 1 EUR 2026-11-20 ECB Reference rate</title><link>http://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html?date=2026-11-20&amp;rate=1.0992</link><description>1 EUR buys 1.0992 US dollar (USD); reference exchange rates.</description><dc:date>2026-11-20T10:15:00+01:00</dc:date><cb:statistics><cb:exchangeRate><cb:value frequency="daily" decimals="4">1.0992</cb:value><cb:baseCurrency unit_mult="0">EUR</cb:baseCurrency><cb:targetCurrency>USD</cb:targetCurrency></cb:exchangeRate></cb:statistics></item></rdf:RDF>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now:Date.parse("2026-11-20T12:00:00Z"),
+  fetchImpl:async(url)=>({ok:true,text:async()=>{assert.equal(url,endpoint);return rdf;},headers:{get:()=>"application/rdf+xml"}}),
+  rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url:endpoint,risk_category:"macro_economics"}]},sourceRegistry});
+ assert.equal(result.originals.length,1);
+ const candidate=result.originals[0];
+ assert.equal(candidate.country_iso3,"USA");
+ assert.equal(candidate.category,"MACRO_FX");
+ assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,sourceRegistry,
+  Date.parse("2026-11-20T12:00:00Z"),{rightsManifest:manifest}));
+ assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
+  {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
 });
 
 test("approved non-UK macro and minerals sources have country fallbacks",()=>{

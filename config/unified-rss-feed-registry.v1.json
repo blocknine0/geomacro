@@ -246,7 +246,7 @@
     },
     {
       "name": "gdelt_v2_factual_events",
-      "url": "https://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+      "url": "https://api.gdeltproject.org/api/v2/geo/geo?query=(conflict%20OR%20sanctions%20OR%20%22central%20bank%22%20OR%20%22critical%20minerals%22)&mode=PointData&format=GeoJSON&timespan=24h",
       "source_type": "official",
       "credibility_score": 0.91,
       "risk_category": "conflict",
@@ -273,7 +273,7 @@
     },
     {
       "name": "ecb_fx_reference_rates",
-      "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
+      "url": "https://www.ecb.europa.eu/rss/fxref-usd.html",
       "source_type": "official",
       "credibility_score": 0.982,
       "risk_category": "macro_economics",
@@ -300,7 +300,7 @@
     },
     {
       "name": "geoscience_australia_ccby",
-      "url": "https://ecat.ga.gov.au/geonetwork/srv/api/records?from=1&to=25&q=critical%20minerals",
+      "url": "https://services.ga.gov.au/gis/rest/services/AustralianCriticalMineralsOperatingMinesAndDeposits/MapServer/7/query?where=1%3D1&outFields=*&returnGeometry=false&f=geojson",
       "source_type": "official",
       "credibility_score": 0.955,
       "risk_category": "commodities",
