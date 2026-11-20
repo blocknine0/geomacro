@@ -125,6 +125,77 @@ test("ECB daily XML emits multi-currency Hot 50 candidates that validate",async(
  }
 });
 
+test("Federal Reserve H.10 observations share ECB daily FX event fingerprints",async()=>{
+ const ecb=manifest.entries.find(row=>row.source_id==="ecb_fx_reference_rates");
+ const fed=manifest.entries.find(row=>row.source_id==="us_fed_h10_public_domain");
+ const ecbFeed=feedManifest.sources.find(row=>row.name===ecb.source_id);
+ const fedFeed=feedManifest.sources.find(row=>row.name===fed.source_id);
+ const now=Date.parse("2026-11-20T12:00:00.000Z");
+ const ecbXml=`<Envelope><Cube time="2026-11-20"><Cube currency="INR" rate="102.50"/></Cube></Envelope>`;
+ const fedXml=`<frb:DataSet xmlns:frb="https://www.federalreserve.gov/feeds/data"><frb:Series>
+  <frb:SeriesKey><frb:Value id="CURRENCY" value="INR"/></frb:SeriesKey>
+  <frb:Obs><frb:ObsDimension value="2026-11-20"/><frb:ObsValue value="88.25"/></frb:Obs>
+  </frb:Series></frb:DataSet>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>{
+  if(url===ecbFeed.url)return {ok:true,text:async()=>ecbXml,headers:{get:()=>"application/xml"}};
+  assert.equal(url,fedFeed.url);
+  return {ok:true,text:async()=>fedXml,headers:{get:()=>"application/xml"}};
+ },rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[ecbFeed,fedFeed]},sourceRegistry});
+ assert.equal(result.originals.length,2);
+ const ecbOriginal=result.originals.find(row=>row.source_id===ecb.source_id);
+ const fedOriginal=result.originals.find(row=>row.source_id===fed.source_id);
+ assert.ok(ecbOriginal);
+ assert.ok(fedOriginal);
+ assert.equal(fedOriginal.source_url,"https://www.federalreserve.gov/feeds/data/H10_H10.XML");
+ assert.equal(fedOriginal.country_iso3,"IND");
+ assert.equal(fedOriginal.category,"MACRO_FX");
+ assert.equal(fedOriginal.event_identity.event_type,"fx_intervention");
+ assert.equal(fedOriginal.published_at,"2026-11-20T12:00:00.000Z");
+ assert.equal(ecbOriginal.event_fingerprint,fedOriginal.event_fingerprint);
+ assert.deepEqual(ecbOriginal.entities,fedOriginal.entities);
+});
+
+test("strategic corridor mentions enrich derived what without source-text reuse",async()=>{
+ const xml=`<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry><id>corridor-red-sea</id><title>Sanctions policy update near Red Sea</title>
+   <updated>2026-11-15T09:30:00Z</updated><link href="https://www.gov.uk/government/news/corridor-item-one"/>
+   <summary>United Kingdom sanctions policy update.</summary></entry>
+  <entry><id>corridor-taiwan-strait</id><title>Sanctions policy update near Taiwan Strait</title>
+   <updated>2026-11-15T09:35:00Z</updated><link href="https://www.gov.uk/government/news/corridor-item-two"/>
+   <summary>United Kingdom sanctions policy update.</summary></entry></feed>`;
+ const page=`<a rel="license" href="${source.rights_evidence.licence_url}">Open Government Licence v3.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url===feed().url?xml:page,headers:{get:()=>"application/atom+xml"}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(result.originals.length,2);
+ const redSea=result.originals.find(row=>row.source_url.endsWith("corridor-item-one"));
+ const taiwanStrait=result.originals.find(row=>row.source_url.endsWith("corridor-item-two"));
+ assert.match(redSea.derived.what,/Corridor focus: Red Sea\./u);
+ assert.match(taiwanStrait.derived.what,/Corridor focus: Taiwan Strait\./u);
+ for(const row of result.originals){
+  assert.ok(row.derived.what.length<=360);
+  assert.doesNotMatch(row.derived.what,/(?:https?:\/\/|<[^>]+>)/iu);
+ }
+});
+
+test("critical-mineral entries expand country matching to six Hot 50 countries",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="uk_dbt_ogl_minerals_atom");
+ const sourceFeed=feedManifest.sources.find(row=>row.name===rights.source_id);
+ const xml=`<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>mineral-six-country</id>
+  <title>Critical mineral production update for China, India, Australia, Brazil, Chile and Peru</title>
+  <updated>2026-11-15T09:30:00Z</updated>
+  <link href="https://www.gov.uk/government/news/mineral-production-six-countries"/>
+  <summary>Mine output and battery supply across the six named jurisdictions.</summary>
+  </entry></feed>`;
+ const page=`<a rel="license" href="${rights.rights_evidence.licence_url}">Open Government Licence v3.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url===sourceFeed.url?xml:page,headers:{get:()=>"application/atom+xml"}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[sourceFeed]},sourceRegistry});
+ assert.equal(result.originals.length,6);
+ assert.deepEqual(result.originals.map(row=>row.country_iso3),["CHN","IND","AUS","BRA","CHL","PER"]);
+ assert.ok(result.originals.every(row=>row.category==="CRITICAL_MINERALS"));
+});
+
 function crc32(buffer){
  let crc=0xffffffff;
  for(const byte of buffer){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}
