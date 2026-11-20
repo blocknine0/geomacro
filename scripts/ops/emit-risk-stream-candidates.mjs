@@ -104,7 +104,9 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
  const unpairedFingerprints=new Set(pairing.unpaired_event_fingerprints);
  const basicRows=prepared.filter(row=>!pairedIndexes.has(row.candidate)&&
   unpairedFingerprints.has(eventFingerprint(row.original)));
- const acceptedRows=[...pairedRows,...basicRows];
+ const acceptedRows=[...pairedRows,...basicRows].sort((left,right)=>
+  Number(left.candidate.source_id==="gdelt_v2_factual_events")-
+  Number(right.candidate.source_id==="gdelt_v2_factual_events"));
  const drafts=acceptedRows.map(row=>row.candidate);
  if(dryRun)return {status:"DRY_RUN",paired_events:pairing.pairs.length,
   candidate_count:drafts.length,contradictions:pairing.contradictions.length,
@@ -135,8 +137,12 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
     attesterEndpoint.username||attesterEndpoint.password||attesterEndpoint.hash||
     endpoint.username||endpoint.password||endpoint.hash)
   fail("HTTPS_REQUIRED");
- const candidates=[];
- for(const draft of drafts){
+ const candidates=new Array(drafts.length);let nextDraft=0;
+ const attestNext=async()=>{
+  while(true){
+   const index=nextDraft++;
+   if(index>=drafts.length)return;
+   const draft=drafts[index];
   const answer=await requestJson(fetchImpl,attesterEndpoint.href,{method:"POST",
    headers:{Authorization:"Bearer "+controlPlaneToken,"Content-Type":"application/json"},
    body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft})},{sleepImpl});
@@ -149,8 +155,10 @@ export async function emitRiskStreamCandidates({originals,sourceRegistry,now=Dat
   catch{fail("ATTESTER_SIGNATURE_VERIFICATION_FAILED")}
   const current=now instanceof Date?now.getTime():typeof now==="number"?now:Date.parse(now);
   await inspectRiskStreamCandidates([built],current);
-  candidates.push(built);
- }
+   candidates[index]=built;
+  }
+ };
+ await Promise.all(Array.from({length:Math.min(5,drafts.length)},()=>attestNext()));
  for(let offset=0;offset<candidates.length;offset+=10){
   const items=candidates.slice(offset,offset+10);
   const receipt=await requestJson(fetchImpl,endpoint.href,{method:"POST",
