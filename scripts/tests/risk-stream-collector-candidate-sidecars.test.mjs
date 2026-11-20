@@ -319,6 +319,55 @@ test("ordinary Atom entries derive guarded sidecars from entry fields and the li
  assert.equal(admitted.item_license_skipped,0);
 });
 
+test("independent VERIFIED_ORIGINAL publishers share the same daily event identity",async()=>{
+ const reliefweb=manifest.entries.find(row=>row.source_id==="un_reliefweb_api_ccby");
+ const reliefwebFeed=feedManifest.sources.find(row=>row.name===reliefweb.source_id);
+ const globalVoices=manifest.entries.find(row=>row.source_id==="global_voices_original_cc_by_3");
+ const globalVoicesFeed=feedManifest.sources.find(row=>row.name===globalVoices.source_id);
+ const reliefwebUrl="https://reliefweb.int/report/2026/sanctions-policy-russia";
+ const globalVoicesUrl="https://globalvoices.org/2026/11/15/sanctions-policy-russia";
+ const atom=(id,title,updated,link)=>`<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+  <id>${id}</id><title>${title}</title><updated>${updated}</updated>
+  <link rel="alternate" href="${link}"/><summary>United Kingdom sanctions policy update.</summary>
+  </entry></feed>`;
+ const reliefwebFeedRow={...reliefwebFeed,name:reliefweb.source_id};
+ const voicesFeed={...globalVoicesFeed,name:globalVoices.source_id};
+ const feedBodies=new Map([
+  [reliefwebFeedRow.url,JSON.stringify({items:[{id:"reliefweb-2026-11-15",url:reliefwebUrl,
+   date_published:"2026-11-15T09:30:00.000Z",title:"United Kingdom sanctions policy update",
+   summary:"United Kingdom sanctions policy update.",license:reliefweb.rights_evidence.licence_url}]})],
+  [voicesFeed.url,atom("voices-2026-11-15","United Kingdom sanctions policy update",
+   "2026-11-15T09:45:00.000Z",globalVoicesUrl)]
+ ]);
+ const bySource=new Map([[reliefweb.source_id,reliefweb],[globalVoices.source_id,globalVoices]]);
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>feedBodies.get(url)??(()=>{
+   const rights=[...bySource.values()].find(row=>url.startsWith(`https://${row.publisher_root_domain}/`));
+   if(!rights)return "";
+   const marker=rights.source_id===reliefweb.source_id?"Creative Commons Attribution 4.0":
+    "Creative Commons Attribution 3.0";
+   return `<html><a rel="license" href="${rights.rights_evidence.licence_url}">${marker}</a></html>`;
+  })(),headers:{get:()=>"application/atom+xml"}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[reliefwebFeedRow,voicesFeed]},sourceRegistry});
+ assert.equal(result.originals.length,2,JSON.stringify({counts:result.counts,ids:result.originals.map(row=>row.source_id)}));
+ const [reliefwebOriginal,voices]=result.originals;
+ assert.equal(reliefwebOriginal.source_id,reliefweb.source_id);
+ assert.equal(voices.source_id,globalVoices.source_id);
+ assert.notEqual(reliefwebOriginal.publisher_root_domain,voices.publisher_root_domain);
+ assert.notEqual(reliefwebOriginal.parent_media_entity,voices.parent_media_entity);
+ assert.notEqual(reliefwebOriginal.source_id,voices.source_id);
+ assert.equal(reliefwebOriginal.category,"GEOPOLITICS");
+ assert.equal(voices.category,"GEOPOLITICS");
+ assert.equal(reliefwebOriginal.event_identity.event_type,"sanctions_policy");
+ assert.equal(voices.event_identity.event_type,"sanctions_policy");
+ assert.equal(reliefwebOriginal.event_identity.actor_id,"gbr_sanctions_policy");
+ assert.match(reliefwebOriginal.event_identity.actor_id,/^[a-z][a-z0-9_-]{2,79}$/u);
+ assert.equal(reliefwebOriginal.event_identity.occurred_at,"2026-11-15T00:00:00.000Z");
+ assert.equal(voices.event_identity.occurred_at,"2026-11-15T00:00:00.000Z");
+ assert.equal(reliefwebOriginal.event_fingerprint,voices.event_fingerprint);
+ assert.deepEqual(reliefwebOriginal.entities,voices.entities);
+});
+
 test("standard Atom items with item-level restrictions or no license evidence are rejected",async()=>{
  const ordinary=`<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>tag:x,1</id>
   <title>Sanctions policy for Russia</title><updated>2026-11-15T09:30:00Z</updated>
