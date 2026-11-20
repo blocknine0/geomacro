@@ -77,8 +77,8 @@ test("enabled internal corroboration reads only bounded private features and sig
   "country/category-only overlap must not qualify unrelated private context");
 });
 
-test("Telegram watch metadata never enters GRO corroboration or tier context",async()=>{
- const signature=Buffer.alloc(64).toString("base64");
+test("Telegram watch rows add only validated redacted event-code corroboration",async()=>{
+ const signature=Buffer.alloc(64).toString("base64"),now=new Date().toISOString();
  const binding=field=>({async fetch(){return Response.json({ok:true,proof:{[field]:signature}})}});
  const draft={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
   country_iso3:"USA",category:"GEOPOLITICS",derived:{what:"Sanctions action"},proof:null};
@@ -88,15 +88,47 @@ test("Telegram watch metadata never enters GRO corroboration or tier context",as
   RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN:"facts-bearer-test-token-0123456789",
   RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN:"rights-bearer-test-token-0123456789",
   DB:{prepare(sql){return {bind(){return this},all:async()=>({results:
-   sql.includes("telegram_research_json")?[{watch_event:"sanctions"}]:[]})}}}};
+   sql.includes("telegram_research_json")?[{country_iso3:"USA",category:"geopolitics",
+    watch_event:"sanctions",published_at:now}]:[]})}}}};
  const response=await attestRiskStreamOriginal(new Request("https://control.internal/v1/internal/risk-stream/attest",{
   method:"POST",headers:{"content-type":"application/json"},
   body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",draft})}),env);
  const body=await response.json();
  assert.equal(response.status,200);
- assert.equal(body.risk_context,null);
- assert.doesNotMatch(JSON.stringify(body),/TELEGRAM_WATCH|SANCTIONS/u);
- assert.doesNotMatch(JSON.stringify(body),/headline|channel_name|https?:\/\//iu);
+ assert.equal(body.risk_context.origin_kind,"TELEGRAM_WATCH");
+ assert.equal(body.risk_context.event_code,"SANCTIONS");
+ assert.equal(body.risk_context.raw_source_redacted,true);
+ assert.doesNotMatch(JSON.stringify(body),/headline|channel_name|@private|https?:\/\//iu);
+});
+
+test("RISK_STREAM_ACTIVE enables corroboration by default and explicit zero disables it",async()=>{
+ const signature=Buffer.alloc(64).toString("base64"),calls=[];
+ const binding=field=>({async fetch(request){calls.push(await request.json());
+  return Response.json({ok:true,proof:{[field]:signature}})}});
+ const makeRequest=()=>new Request("https://control.internal/v1/internal/risk-stream/attest",{
+  method:"POST",headers:{"content-type":"application/json"},
+  body:JSON.stringify({schema:"geomacro.risk-stream-attestation-request.v1",
+   draft:{schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
+    country_iso3:"USA",category:"GEOPOLITICS",derived:{what:"Sanctions action"},proof:null}})
+ });
+ const bindings={RISK_STREAM_FACTS_ATTESTER:binding("facts_signature_b64"),
+  RISK_STREAM_RIGHTS_ATTESTER:binding("rights_signature_b64"),
+  RISK_STREAM_FACTS_ATTESTER_BEARER_TOKEN:"facts-bearer-test-token-0123456789",
+  RISK_STREAM_RIGHTS_ATTESTER_BEARER_TOKEN:"rights-bearer-test-token-0123456789"};
+ const active=await attestRiskStreamOriginal(makeRequest(),{...bindings,RISK_STREAM_ACTIVE:"1",
+  DB:{prepare(sql){return {bind(){return this},all:async()=>({results:
+   sql.includes("telegram_research_json")?[{country_iso3:"USA",category:"geopolitics",
+    watch_event:"sanctions",published_at:new Date().toISOString()}]:[]})}}}});
+ assert.equal(active.status,200);
+ assert.equal((await active.json()).risk_context.origin_kind,"TELEGRAM_WATCH");
+ const before=calls.length;
+ let reads=0;
+ const optedOut=await attestRiskStreamOriginal(makeRequest(),{...bindings,RISK_STREAM_ACTIVE:"1",
+  RISK_STREAM_PRIVATE_OSINT_CORROBORATION_ENABLED:"0",DB:{prepare(){reads++;throw Error("must not read")}}});
+ assert.equal(optedOut.status,200);
+ assert.equal((await optedOut.json()).risk_context,null);
+ assert.equal(reads,0);
+ assert.equal(calls.length,before+2);
 });
 
 test("bridge preserves a safe labeled attester refusal code and its client status",async()=>{

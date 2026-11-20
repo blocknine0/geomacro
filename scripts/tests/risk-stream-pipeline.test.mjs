@@ -7,6 +7,8 @@ import {processRiskStreamBatch,enqueueRiskStreamEvents,consumeRiskStreamQueue,
  from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {normalizeRiskStreamInternalCorroboration}
  from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
+import {buildRiskStreamDualAudience,validRiskStreamDualAudience}
+ from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
 
 const digest=v=>createHash("sha256").update(v).digest("hex");
 const signing=()=>generateKeyPairSync("ed25519");
@@ -37,6 +39,25 @@ test("signed eligible scores are transparent event-class heuristics across all t
  }
  assert.equal(deriveRiskStreamEligibleScore("GEOPOLITICS","USA","A generic test event"),null);
  assert.equal(deriveRiskStreamEligibleScore("UNMAPPED","USA","Sanctions"),null);
+});
+test("dual-audience summaries specify the trigger, corridor, and priority assets",()=>{
+ const value=buildRiskStreamDualAudience({category:"GEOPOLITICS",eventClass:"MARITIME_BLOCKADE",
+  score:75,confidence:0.8,tier:"STANDARD",
+  strategicCorridors:["RED_SEA","TAIWAN_STRAIT","SUEZ"],
+  affectedAssets:["usd_inr","lithium"],corroborationReady:true});
+ assert.equal(validRiskStreamDualAudience(value),true);
+ const {downstream_effects:effects,price_impact_summary:price,causal_summary:causal}=
+  value.analyst_brief;
+ for(const summary of [effects,price,causal]){
+  assert.match(summary,/maritime blockade/iu);
+  assert.match(summary,/Red Sea|Taiwan Strait|Suez Canal/u);
+  assert.match(summary,/brent crude|freight rates|lithium|shipping routes/iu);
+  assert.ok(summary.length<=360);
+  assert.doesNotMatch(summary,/https?:\/\/|headline|publisher|telegram|@/iu);
+ }
+ assert.equal(value.agent_decision.strategic_corridors.length,3);
+ assert.equal(value.analyst_brief.raw_source_redacted,true);
+ assert.equal(value.analyst_brief.licensed_source_text_included,false);
 });
 test("dual-attested originals produce signed eligible_derived_score objects in all three categories",async()=>{
  const cases=[
