@@ -143,25 +143,27 @@ function zipOneCsv(name,text){
  end.writeUInt16LE(1,10);end.writeUInt32LE(central.length,12);end.writeUInt32LE(local.length+compressed.length,16);
  return Buffer.concat([local,compressed,central,end]);
 }
-function gdeltCsvRow({id,date,country,event="145",quad="4"}){
+function gdeltTsvRow({id,date,country,event="145",quad="4"}){
  const columns=Array(61).fill("");columns[0]=String(id);columns[1]=date;columns[5]="GOV";
  columns[7]="";columns[15]="";columns[17]="";columns[26]=event;columns[29]=quad;
  columns[30]="-2.5";columns[53]=country;columns[60]="https://example.invalid/article?prose=must-not-enter-payload";
- return columns.map(value=>/[",\r\n]/u.test(value)?`"${value.replaceAll('"','""')}"`:value).join(",");
+ return columns.join("\t");
 }
 
-test("GDELT lastupdate ZIP emits up to 500 distinct factual candidates across Hot 50 countries",async()=>{
+test("GDELT full-URL lastupdate ZIP emits tab-delimited factual candidates",async()=>{
  const rights=manifest.entries.find(row=>row.source_id==="gdelt_v2_factual_events");
  const now=Date.parse("2026-11-20T12:00:00Z"),feedUrl="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
  const archiveUrl="https://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip";
  const countryCodes=["US","CN","IN","RU","GB","DE","FR","JP","KR","BE","CA","AU","BR","MX",
   "IT","ES","NL","SZ","NO","SE","PL","UA","TR","SA","AE","IR","IL","EG","QA","OM","IQ",
   "SF","NG","CG","ZM","CL","PE","AR","BO","ID","VN","TH","MY","SG","PH","PK","BD","KZ","MN","MM"];
- const csv=Array.from({length:510},(_,index)=>gdeltCsvRow({id:1000000000+index,date:"20261120",
+ const csv=Array.from({length:510},(_,index)=>gdeltTsvRow({id:1000000000+index,date:"20261120",
   country:countryCodes[index%countryCodes.length]})).join("\n");
  const archive=zipOneCsv("20261120103000.export.CSV",csv);
  const fetchImpl=async(url)=>{
-  if(url===feedUrl)return {ok:true,text:async()=>"20261120103000.export.CSV.zip 12345\n",headers:{get:()=>"text/plain"}};
+  if(url===feedUrl)return {ok:true,text:async()=>
+   "152384 0123456789abcdef0123456789abcdef http://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip\n",
+   headers:{get:()=>"text/plain"}};
   assert.equal(url,archiveUrl);
   return {ok:true,arrayBuffer:async()=>archive.buffer.slice(archive.byteOffset,archive.byteOffset+archive.byteLength),
    headers:{get:(name)=>name==="content-length"?String(archive.length):"application/zip"}};
