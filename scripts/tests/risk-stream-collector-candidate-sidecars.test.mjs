@@ -239,6 +239,61 @@ test("non-UK CC BY and public-domain items pass candidate preparation and item-l
  }
 });
 
+test("JSON API data[] records emit up to three matched Hot 50 country candidates",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="global_voices_original_cc_by_3");
+ const entry={id:"gv-json-1",url:"https://globalvoices.org/2026/11/15/sample/",
+  date_published:"2026-11-15T09:30:00.000Z",title:"Conflict escalation affects China, India and Russia",
+  summary:"A dated conflict escalation report concerning three Hot 50 countries.",
+  country:[{iso3:"CHN"},{iso3:"IND"},{iso3:"RUS"},{iso3:"USA"}]};
+ const body=JSON.stringify({data:[{id:entry.id,fields:entry}]});
+ const page=`<a rel="license" href="${rights.rights_evidence.licence_url}">Creative Commons Attribution 3.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url.endsWith("/feed/")?body:page,headers:{get:()=>url.endsWith("/feed/")?"application/json":"text/html"}}),
+  rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url:"https://globalvoices.org/feed/",risk_category:"conflict"}]},sourceRegistry});
+ assert.deepEqual(result.originals.map(row=>row.country_iso3),["CHN","IND","RUS"]);
+ assert.ok(result.originals.every(row=>row.source_id===rights.source_id&&row.category==="GEOPOLITICS"));
+ assert.equal(result.counts.standard_candidates_built,3);
+});
+
+test("GeoJSON feature properties are normalized without losing country and license evidence",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="geoscience_australia_ccby");
+ const endpoint="https://ecat.ga.gov.au/geonetwork/srv/api/records?from=1&to=25&q=critical%20minerals";
+ const body=JSON.stringify({features:[{id:"ga-record-9",properties:{
+  id:"ga-record-9",url:"https://www.ga.gov.au/data/ga-record-9",
+  date_modified:"2026-11-15T09:30:00Z",title:"Critical mineral supply data for Australia",
+  description:"A fresh critical mineral supply record.",country_iso3:"AUS",
+  license:"CC BY 4.0"}}]});
+ const page=`<a rel="license" href="${rights.rights_evidence.licence_url}">CC BY 4.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url===endpoint?body:page,headers:{get:()=>url===endpoint?"application/geo+json":"text/html"}}),
+  rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url:endpoint,risk_category:"commodities"}]},sourceRegistry});
+ assert.equal(result.originals.length,1);
+ assert.equal(result.originals[0].country_iso3,"AUS");
+ assert.equal(result.originals[0].category,"CRITICAL_MINERALS");
+ assert.equal(result.originals[0].source_id,rights.source_id);
+});
+
+test("JSON API stale and future entries are filtered before item pages are fetched",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="global_voices_original_cc_by_3");
+ const pageUrls=[];
+ const body=JSON.stringify({data:[
+  {id:"stale",fields:{id:"stale",url:"https://globalvoices.org/stale",date_published:"2026-11-10T09:00:00Z",
+   title:"Conflict escalation in China",country:[{iso3:"CHN"}]}},
+  {id:"future",fields:{id:"future",url:"https://globalvoices.org/future",date_published:"2026-11-16T11:00:00Z",
+   title:"Conflict escalation in India",country:[{iso3:"IND"}]}}
+ ]});
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>{
+  pageUrls.push(url);return {ok:true,text:async()=>body,headers:{get:()=>"application/json"}};
+ },rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+  ...feed(rights.source_id),url:"https://globalvoices.org/feed/",risk_category:"conflict"}]},sourceRegistry});
+ assert.equal(result.originals.length,0);
+ assert.equal(result.counts.stale_entries_skipped,1);
+ assert.equal(result.counts.future_entries_skipped,1);
+ assert.deepEqual(pageUrls,["https://globalvoices.org/feed/"]);
+});
+
 test("private collector adds only redacted corroboration features at dual attestation",async()=>{
  const result=await collectRiskStreamFeedExtensions({collector:"private",now,fetchImpl:fetchFixture,
   rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
