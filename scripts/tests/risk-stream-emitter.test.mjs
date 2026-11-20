@@ -161,7 +161,7 @@ test("send mode checks live runtime, obtains genuine signatures, gets Queue ACK 
   "/v1/internal/risk-stream/attest",
   "/v1/internal/risk-stream/events","/v1/internal/risk-stream/readback",
   "/v1/internal/risk-stream/readback"]);
- assert.deepEqual(delays,[2000,1000]);
+ assert.deepEqual(delays,[2000,2000]);
  assert.equal(batches[0].schema,"geomacro.risk-stream-ingest-batch.v1");
  assert.equal(batches[0].items.length,2);
  assert.equal(batches[0].items[0].event_fingerprint,batches[0].items[1].event_fingerprint);
@@ -221,4 +221,35 @@ test("full labeled attester refusal code is surfaced without retries",async()=>{
   }}),/RISK_STREAM_EMITTER_HTTP_REJECTED_403_ATTESTER_REFUSED_RIGHTS_403_RIGHTS_BEARER_REJECTED/u);
  assert.deepEqual(calls,["/v1/internal/risk-stream/runtime",
   "/v1/internal/risk-stream/attest"]);
+});
+
+test("D1 readback waits 30 times at two seconds before timing out",async()=>{
+ const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
+ const sleeps=[],paths=[];let readbackAttempts=0;
+ await assert.rejects(emitRiskStreamCandidates({originals:[originals[0]],sourceRegistry,
+  rightsManifest,now,dryRun:false,controlPlaneUrl:"https://control.invalid",
+  controlPlaneToken:"root-test-token",sleepImpl:async ms=>sleeps.push(ms),
+  factsPublicB64:facts.publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  rightsPublicB64:rights.publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  fetchImpl:async(url,options)=>{
+   const path=new URL(url).pathname;paths.push(path);
+   if(path==="/v1/internal/risk-stream/runtime")return {ok:true,status:200,
+    json:async()=>({ok:true,schema:"geomacro.risk-stream-runtime-status.v1",ready:true})};
+   if(path==="/v1/internal/risk-stream/attest"){
+    const draft=JSON.parse(options.body).draft,claim=riskStreamOriginalClaims(draft);
+    return {ok:true,status:200,json:async()=>({proof:{
+     facts_signature_b64:sign(null,Buffer.from("geomacro.machine-original-facts.v1\n"+claim),facts.privateKey).toString("base64"),
+     rights_signature_b64:sign(null,Buffer.from("geomacro.machine-commercial-rights.v1\n"+claim),rights.privateKey).toString("base64")}})};
+   }
+   if(path==="/v1/internal/risk-stream/events")return {ok:true,status:202,
+    json:async()=>({ok:true,accepted:1,commercial_delivery:false})};
+   assert.equal(path,"/v1/internal/risk-stream/readback");
+   readbackAttempts++;
+   return {ok:true,status:200,json:async()=>({ok:true,requested:1,readback_count:0,
+    readback_verified:false,observation_ids:[]})};
+  }}),/RISK_STREAM_EMITTER_D1_READBACK_TIMEOUT/u);
+ assert.equal(readbackAttempts,30);
+ assert.equal(paths.filter(path=>path==="/v1/internal/risk-stream/readback").length,30);
+ assert.equal(sleeps.length,29);
+ assert.ok(sleeps.every(ms=>ms===2000));
 });

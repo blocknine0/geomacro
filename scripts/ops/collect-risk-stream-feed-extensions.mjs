@@ -10,6 +10,8 @@ const fail=code=>{throw Error("RISK_STREAM_FEED_EXTENSION_"+code)};
 const RIGHTS_PATH="config/risk-stream-source-rights-reviewed.v1.json";
 const FEEDS_PATH="config/unified-rss-feed-registry.v1.json";
 const MAX_FEED_BYTES=2_000_000;
+const MAX_STRUCTURED_FEED_CANDIDATES=500;
+const MAX_HTML_PAGE_FETCHES_PER_FEED=25;
 const ECB_CURRENCY_COUNTRY={USD:"USA",GBP:"GBR",JPY:"JPN",CNY:"CHN",INR:"IND",KRW:"KOR",
  AUD:"AUS",CAD:"CAN",CHF:"CHE",BRL:"BRA",MXN:"MEX",PLN:"POL",SEK:"SWE",NOK:"NOR",
  TRY:"TUR",ZAR:"ZAF",SGD:"SGP",MYR:"MYS",THB:"THA",IDR:"IDN",PHP:"PHL"};
@@ -172,7 +174,7 @@ function parseCsvRows(csv){
  return rows;
 }
 function gdeltEventEntries(csv,archiveUrl,now){
- const rows=parseCsvRows(csv),entries=[],selectedCountries=new Set();
+ const rows=parseCsvRows(csv),entries=[];
  for(const columns of rows){
   if(columns.length<59||!/^\d+$/u.test(columns[0])||!/^\d{8}$/u.test(columns[1]))continue;
   const [globalEventId,sqlDate]=columns,eventCode=columns[26],quadClass=columns[29],goldsteinScale=columns[30];
@@ -185,15 +187,12 @@ function gdeltEventEntries(csv,archiveUrl,now){
   const published=Date.parse(updated);
   if(!Number.isFinite(published)||published>now||now-published>72*60*60*1000)continue;
   const countries=[...new Set([columns[53],columns[7],columns[17]].map(code=>
-   GDELT_FIPS_COUNTRY[code]??HOT50_ISO2[code]??hot50Iso3FromValue(code)).filter(code=>
-    code&&HOT50.has(code)&&!selectedCountries.has(code)))].slice(0,25-selectedCountries.size);
+   GDELT_FIPS_COUNTRY[code]??HOT50_ISO2[code]??hot50Iso3FromValue(code)).filter(code=>code&&HOT50.has(code)))];
   if(!countries.length)continue;
-  for(const country of countries)selectedCountries.add(country);
   entries.push({id:globalEventId,link:archiveUrl,updated,title:"GDELT factual event record",summary:"",
    countries,country_iso3:countries[0],gdelt_facts:{global_event_id:globalEventId,sql_date:sqlDate,
     actor1_code:columns[5],actor2_code:columns[15],event_code:eventCode,quad_class:quadClass,
     event_type:eventType,goldstein_scale:goldsteinScale,action_geo_country_code:columns[53]}});
-  if(selectedCountries.size>=25)break;
  }
  return entries;
 }
@@ -368,7 +367,8 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  const published_at=published.toISOString();
  return countries.map(country_iso3=>{
   const event_identity={country_iso3,event_type:eventType,actor_id:rights.parent_media_entity,
-   target_id:country_iso3.toLowerCase()+"_policy_subject",location_id:country_iso3.toLowerCase()+"_national_scope",
+   target_id:licenseId==="GDELT_FACTS_ONLY"?"gdelt_event_"+gdeltFacts.global_event_id:
+    country_iso3.toLowerCase()+"_policy_subject",location_id:country_iso3.toLowerCase()+"_national_scope",
    occurred_at:published_at};
   const raw_payload=licenseId==="GDELT_FACTS_ONLY"?JSON.stringify({
    schema:"geomacro.gdelt.factual-event.v1",license_notice_url:rights.rights_evidence.licence_url,
@@ -436,6 +436,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
  const originals=[],counts={feeds_checked:0,extensions_seen:0,
   standard_entries_seen:0,standard_candidates_built:0,feeds_without_candidate_extension:0,invalid:0,
   stale_entries_skipped:0,future_entries_skipped:0,undated_entries_skipped:0,invalid_by_code:{}};
+ let structuredCandidatesEmitted=0;
  for(const feed of orderedFeeds){
   if(feed.risk_stream_item_licensed!==true||
      feed.risk_stream_standard_item_license_candidate!==true)continue;
@@ -472,17 +473,22 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
    standard=standardEntries(body);
    feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
   }
+  const structuredCandidateFeed=feedOrigin==="OFFICIAL_API"||
+   ["GDELT_FACTS_ONLY","ECB_REFERENCE_STATISTICS"].includes(licenseIdFromRights(rights));
   const current=standard.filter(entry=>{
    const published=Date.parse(entry?.updated??"");
    if(!Number.isFinite(published)){counts.undated_entries_skipped++;return false}
    if(published>now){counts.future_entries_skipped++;return false}
    if(now-published>72*60*60*1000){counts.stale_entries_skipped++;return false}
    return true;
-  }).slice(0,25);
+  }).slice(0,structuredCandidateFeed?MAX_STRUCTURED_FEED_CANDIDATES:MAX_HTML_PAGE_FETCHES_PER_FEED);
+  let htmlPageFetches=0;
   const built=await Promise.all(current.map(async entry=>{
    counts.standard_entries_seen++;
    let page="";
    if(!["ECB_REFERENCE_STATISTICS","GDELT_FACTS_ONLY"].includes(licenseIdFromRights(rights))){
+    if(htmlPageFetches>=MAX_HTML_PAGE_FETCHES_PER_FEED)return [];
+    htmlPageFetches++;
     let itemUrl;try{itemUrl=new URL(entry.link)}catch{return []}
     if(itemUrl.protocol==="http:"&&(itemUrl.hostname===rights.publisher_root_domain||
      itemUrl.hostname.endsWith("."+rights.publisher_root_domain)))itemUrl.protocol="https:";
@@ -501,15 +507,13 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
    }
    return accepted;
   }));
-  const standardCandidates=built.flat();
-  if(feed.name==="gdelt_v2_factual_events"){
-   const countries=new Set();
-   for(const original of standardCandidates){
-    if(countries.has(original.country_iso3)||countries.size>=25)continue;
-    countries.add(original.country_iso3);originals.push(original);
-   }
-  }else originals.push(...standardCandidates);
+  const structuredCandidateBudget=Math.max(0,MAX_STRUCTURED_FEED_CANDIDATES-structuredCandidatesEmitted);
+  const standardCandidates=built.flat().slice(0,structuredCandidateFeed?
+   structuredCandidateBudget:MAX_HTML_PAGE_FETCHES_PER_FEED);
+  originals.push(...standardCandidates);
+  if(structuredCandidateFeed)structuredCandidatesEmitted+=standardCandidates.length;
   for(const original of extensions){
+   if(structuredCandidateFeed&&structuredCandidatesEmitted>=MAX_STRUCTURED_FEED_CANDIDATES)break;
    counts.extensions_seen++;
    if(original.source_id!==feed.name||original.feed_origin!=="RSS"||
       CATEGORY_BY_FEED[feed.risk_category]!==original.category){
@@ -520,7 +524,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
      event_identity:{...original.event_identity,country_iso3:"AUS"}}:original;
     const candidate={...normalized,...eventIdentityFields(normalized)};
     prepareRiskStreamCandidate(candidate,sources,now,{rightsManifest:manifest});
-    originals.push(candidate);
+    originals.push(candidate);if(structuredCandidateFeed)structuredCandidatesEmitted++;
    }catch{counts.invalid++;}
   }
  }
