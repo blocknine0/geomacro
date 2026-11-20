@@ -366,10 +366,12 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  if(!Number.isFinite(published.getTime()))return [];
  const published_at=published.toISOString();
  return countries.map(country_iso3=>{
-  const event_identity={country_iso3,event_type:eventType,actor_id:rights.parent_media_entity,
-   target_id:licenseId==="GDELT_FACTS_ONLY"?"gdelt_event_"+gdeltFacts.global_event_id:
+  const gdeltFactsOnly=licenseId==="GDELT_FACTS_ONLY";
+  const event_identity={country_iso3,event_type:eventType,
+   actor_id:gdeltFactsOnly?rights.parent_media_entity:`${country_iso3.toLowerCase()}_${eventType}`,
+   target_id:gdeltFactsOnly?"gdelt_event_"+gdeltFacts.global_event_id:
     country_iso3.toLowerCase()+"_policy_subject",location_id:country_iso3.toLowerCase()+"_national_scope",
-   occurred_at:published_at};
+   occurred_at:gdeltFactsOnly?published_at:`${published_at.slice(0,10)}T00:00:00.000Z`};
   const raw_payload=licenseId==="GDELT_FACTS_ONLY"?JSON.stringify({
    schema:"geomacro.gdelt.factual-event.v1",license_notice_url:rights.rights_evidence.licence_url,
    license_marker:evidence.marker,global_event_id:gdeltFacts.global_event_id,sql_date:gdeltFacts.sql_date,
