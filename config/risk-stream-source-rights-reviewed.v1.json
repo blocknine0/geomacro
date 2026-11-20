@@ -151,7 +151,9 @@
       "parent_media_entity": "global_voices",
       "source_role": "INDEPENDENT_REGIONAL",
       "categories": [
-        "GEOPOLITICS"
+        "GEOPOLITICS",
+        "MACRO_FX",
+        "CRITICAL_MINERALS"
       ],
       "status": "APPROVED",
       "rights_evidence": {
@@ -403,7 +405,9 @@
       "parent_media_entity": "un_news",
       "source_role": "INDEPENDENT_REGIONAL",
       "categories": [
-        "GEOPOLITICS"
+        "GEOPOLITICS",
+        "MACRO_FX",
+        "CRITICAL_MINERALS"
       ],
       "status": "APPROVED",
       "rights_evidence": {
