@@ -360,6 +360,60 @@
         "notes": "EXAMPLE - NOT REVIEWED"
       },
       "rights_expire_at": null
+    },
+    {
+      "source_id": "bank_of_canada_fx_ogl",
+      "publisher_root_domain": "bankofcanada.ca",
+      "parent_media_entity": "bank_of_canada",
+      "source_role": "MARKET_PRICE",
+      "categories": [
+        "MACRO_FX"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.bankofcanada.ca/terms/",
+        "terms_url": "https://www.bankofcanada.ca/terms/",
+        "reviewed_at": "2026-11-20T09:00:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Restrict collection to structured Bank of Canada FX observations and factual rate fields. Do not retain article text or expressive content."
+      },
+      "rights_expire_at": "2027-11-20"
+    },
+    {
+      "source_id": "rba_fx_ccby",
+      "publisher_root_domain": "rba.gov.au",
+      "parent_media_entity": "reserve_bank_of_australia",
+      "source_role": "MARKET_PRICE",
+      "categories": [
+        "MACRO_FX"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.rba.gov.au/copyright/",
+        "terms_url": "https://www.rba.gov.au/copyright/",
+        "reviewed_at": "2026-11-20T09:00:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Restrict collection to structured exchange-rate observations and factual rate fields. Do not retain article text or expressive content."
+      },
+      "rights_expire_at": "2027-11-20"
+    },
+    {
+      "source_id": "un_news_org_rss",
+      "publisher_root_domain": "news.un.org",
+      "parent_media_entity": "un_news",
+      "source_role": "INDEPENDENT_REGIONAL",
+      "categories": [
+        "GEOPOLITICS"
+      ],
+      "status": "APPROVED",
+      "rights_evidence": {
+        "licence_url": "https://www.un.org/en/about-us/terms-of-use",
+        "terms_url": "https://www.un.org/en/about-us/terms-of-use",
+        "reviewed_at": "2026-11-20T09:00:00.000Z",
+        "reviewer": "repository-rights-evidence-audit",
+        "notes": "Restrict collection to factual metadata and derived analysis. Do not republish original article text, headlines, or summaries."
+      },
+      "rights_expire_at": "2027-11-20"
     }
   ]
 }
