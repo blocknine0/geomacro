@@ -150,13 +150,15 @@ function gdeltCsvRow({id,date,country,event="145",quad="4"}){
  return columns.map(value=>/[",\r\n]/u.test(value)?`"${value.replaceAll('"','""')}"`:value).join(",");
 }
 
-test("GDELT lastupdate ZIP emits up to 25 distinct factual Hot 50 candidates",async()=>{
+test("GDELT lastupdate ZIP emits up to 500 distinct factual candidates across Hot 50 countries",async()=>{
  const rights=manifest.entries.find(row=>row.source_id==="gdelt_v2_factual_events");
  const now=Date.parse("2026-11-20T12:00:00Z"),feedUrl="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
  const archiveUrl="https://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip";
- const countryCodes=["US","CN","IN","RS","UK","GM","FR","JA","KS","BE","CA","AS","BR",
-  "MX","IT","SP","NL","SZ","NO","SW","PL","UP","TU","SA","AE","IR","IS","EG","QA","MU"];
- const csv=countryCodes.map((country,index)=>gdeltCsvRow({id:1000000000+index,date:"20261120",country})).join("\n");
+ const countryCodes=["US","CN","IN","RU","GB","DE","FR","JP","KR","BE","CA","AU","BR","MX",
+  "IT","ES","NL","SZ","NO","SE","PL","UA","TR","SA","AE","IR","IL","EG","QA","OM","IQ",
+  "SF","NG","CG","ZM","CL","PE","AR","BO","ID","VN","TH","MY","SG","PH","PK","BD","KZ","MN","MM"];
+ const csv=Array.from({length:510},(_,index)=>gdeltCsvRow({id:1000000000+index,date:"20261120",
+  country:countryCodes[index%countryCodes.length]})).join("\n");
  const archive=zipOneCsv("20261120103000.export.CSV",csv);
  const fetchImpl=async(url)=>{
   if(url===feedUrl)return {ok:true,text:async()=>"20261120103000.export.CSV.zip 12345\n",headers:{get:()=>"text/plain"}};
@@ -167,8 +169,9 @@ test("GDELT lastupdate ZIP emits up to 25 distinct factual Hot 50 candidates",as
  const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl,rightsManifest:manifest,
   feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
    ...feed(rights.source_id),url:feedUrl,risk_category:"conflict"}]},sourceRegistry});
- assert.equal(result.originals.length,25);
- assert.equal(new Set(result.originals.map(row=>row.country_iso3)).size,25);
+ assert.equal(result.originals.length,500);
+ assert.equal(new Set(result.originals.map(row=>row.country_iso3)).size,50);
+ assert.equal(new Set(result.originals.map(row=>JSON.parse(row.raw_payload).global_event_id)).size,500);
  for(const candidate of result.originals){
   assert.equal(candidate.category,"GEOPOLITICS");
   const payload=JSON.parse(candidate.raw_payload);
@@ -361,6 +364,27 @@ test("standard feed scan admits up to 25 separately item-licensed entries per fe
  assert.equal(result.counts.standard_entries_seen,25);
  assert.equal(result.counts.standard_candidates_built,25);
  assert.equal(result.originals.length,25);
+});
+
+test("structured JSON feeds scan up to 500 entries but fetch at most 25 item pages",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="un_reliefweb_api_ccby");
+ const endpoint="https://api.reliefweb.int/v2/reports?appname=geomacro.live&limit=500";
+ const items=Array.from({length:40},(_,index)=>({id:`report-${index}`,url:
+  `https://reliefweb.int/report/2026/report-${index}`,date_published:"2026-11-15T09:30:00Z",
+  title:"Sanctions policy update for India",license:rights.rights_evidence.licence_url}));
+ const htmlFetches=[];
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>{
+  if(url===endpoint)return {ok:true,text:async()=>JSON.stringify({items}),
+   headers:{get:()=>"application/json"}};
+  htmlFetches.push(url);
+  return {ok:true,text:async()=>`<a rel="license" href="${rights.rights_evidence.licence_url}">CC BY 4.0</a>`,
+   headers:{get:()=>"text/html"}};
+ },rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+  ...feed(rights.source_id),url:endpoint,risk_category:"conflict"}]},sourceRegistry});
+ assert.equal(result.counts.standard_entries_seen,40);
+ assert.equal(htmlFetches.length,25);
+ assert.equal(result.originals.length,25);
+ assert.ok(result.originals.every(candidate=>candidate.source_id===rights.source_id));
 });
 
 test("non-UK CC BY and public-domain items pass candidate preparation and item-license validation",()=>{
