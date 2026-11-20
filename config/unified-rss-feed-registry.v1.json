@@ -246,7 +246,7 @@
     },
     {
       "name": "gdelt_v2_factual_events",
-      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=*&mode=ArtList&format=json&maxrecords=250&sort=DateDesc",
+      "url": "https://data.gdeltproject.org/gdeltv2/lastupdate.txt",
       "source_type": "official",
       "credibility_score": 0.91,
       "risk_category": "conflict",
@@ -264,7 +264,7 @@
     },
     {
       "name": "worldbank_commodity_prices_cc_by_4",
-      "url": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/world-bank-commodities-price-data-the-pink-sheet",
+      "url": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
       "source_type": "official",
       "credibility_score": 0.955,
       "risk_category": "macro_economics",
@@ -309,7 +309,7 @@
     },
     {
       "name": "eu_jrc_rmis_ccby",
-      "url": "https://rmis.jrc.ec.europa.eu/eu-critical-raw-materials",
+      "url": "https://rmis.jrc.ec.europa.eu/critical-and-strategic-materials",
       "source_type": "official",
       "credibility_score": 0.955,
       "risk_category": "commodities",

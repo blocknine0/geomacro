@@ -52,6 +52,7 @@ const COUNTRY_TERMS={USA:["united states","u.s.","usa","american"],GBR:["united 
  MYS:["malaysia","malaysian"],SGP:["singapore","singaporean"],PHL:["philippines","filipino"],PAK:["pakistan","pakistani"],
  BGD:["bangladesh","bangladeshi"],KAZ:["kazakhstan","kazakh"],MNG:["mongolia","mongolian"],MMR:["myanmar","burma","burmese"]};
 const normalizeSovereignIso3=value=>value==="ATA"?"AUS":value;
+const HOT50=new Set(["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL","CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE","POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN","IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN","VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]);
 const SOURCE_COUNTRY={uk_fcdo_ogl_official_atom:"GBR",uk_obr_ogl_macro_atom:"GBR",
  uk_dbt_ogl_minerals_atom:"GBR",uk_hmt_ogl_official_atom:"GBR",uk_desnz_ogl_minerals_atom:"GBR",
  uk_mod_ogl_security_atom:"GBR",uk_cabinet_ogl_security_atom:"GBR",uk_bist_ogl_minerals_atom:"GBR"};
@@ -96,13 +97,26 @@ export function extractRiskStreamFeedExtensions(xml){
 function standardEntries(xml){
  if(typeof xml==="string"&&/^[\s]*[\[{]/u.test(xml)){
   try{
-   const value=JSON.parse(xml),items=Array.isArray(value)?value:value?.items??value?.entries??[];
-   if(Array.isArray(items))return items.map(item=>({
-    id:String(item?.id??item?.guid??""),link:String(item?.url??item?.external_url??item?.link??""),
-    updated:String(item?.date_modified??item?.date_published??item?.updated??item?.published??""),
-    title:stripMarkup(item?.title??""),summary:stripMarkup(item?.summary??item?.content_text??item?.description??""),
-    rights_markers:[item?.rights,item?.license,item?.license_url,...(Array.isArray(item?.tags)?item.tags:[])].filter(Boolean).join(" ")
-   }));
+   const value=JSON.parse(xml);
+   let items=Array.isArray(value)?value:value?.items??value?.entries??value?.data??value?.features??[];
+   if(Array.isArray(value)&&value.length===2&&Array.isArray(value[1]))items=value[1];
+   if(Array.isArray(items))return items.map(item=>{
+    const fields=item?.fields??item?.properties??item??{},date=fields.date;
+    const countries=Array.isArray(fields.country)?fields.country.map(row=>typeof row==="string"?row:
+     row?.iso3??row?.iso3Code??row?.countryiso3code??row?.name??row?.value).filter(Boolean):[];
+    let link=String(fields.href??fields.url??fields.external_url??fields.link??fields.url_alias??
+     item?.href??item?.url??item?.link??"");
+    if(link.startsWith("/"))link="https://reliefweb.int"+link;
+    return {id:String(fields.id??fields.uuid??fields.guid??item?.id??item?.guid??""),
+     link,
+     updated:String(fields.date_modified??fields.date_published??fields.updated??fields.published??
+      date?.created??date?.published??date?.original??""),
+     title:stripMarkup(fields.title??fields.name??""),
+     summary:stripMarkup(fields.summary??fields.content_text??fields.description??fields.name??""),
+     rights_markers:[fields.rights,fields.license,fields.license_url,fields.copyright,
+      ...(Array.isArray(fields.tags)?fields.tags:[])].filter(Boolean).join(" "),
+     countries,country_iso3:fields.countryiso3code??fields.country_iso3??fields.iso3};
+   });
   }catch{return []}
  }
  const rows=[];
@@ -169,56 +183,56 @@ function licenseIdFromRights(rights){
 function publisherOwnedForLicense(licenseId){
  return licenseId==="UK_OGL_V3"||licenseId==="US_GOV_PUBLIC_DOMAIN";
 }
-function normalizedEntryCandidate(entry,feed,rights,page,feedOrigin="RSS"){
+function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  const category=CATEGORY_BY_FEED[feed.risk_category];
- if(!category||!entry.id||!entry.link||!entry.updated)return null;
- let sourceUrl;try{sourceUrl=new URL(entry.link)}catch{return null}
+ if(!category||!entry.id||!entry.link||!entry.updated)return [];
+ let sourceUrl;try{sourceUrl=new URL(entry.link)}catch{return []}
  if(sourceUrl.protocol!=="https:"||!(sourceUrl.hostname===rights.publisher_root_domain||
-  sourceUrl.hostname.endsWith("."+rights.publisher_root_domain)))return null;
- const evidence=htmlLicenseEvidence(page,rights,sourceUrl.href);if(!evidence)return null;
- const licenseId=licenseIdFromRights(rights);if(!licenseId)return null;
+  sourceUrl.hostname.endsWith("."+rights.publisher_root_domain)))return [];
+ const evidence=htmlLicenseEvidence(page,rights,sourceUrl.href);if(!evidence)return [];
+ const licenseId=licenseIdFromRights(rights);if(!licenseId)return [];
  const itemRights=String(entry.rights_markers??"");
- if(/non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b/iu.test(itemRights))return null;
+ if(/non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b/iu.test(itemRights))return [];
  const declaredLicenses=[...itemRights.matchAll(/https:\/\/[^\s<>"']+/giu)].map(x=>x[0].replace(/[),.;]+$/u,""));
- if(declaredLicenses.some(url=>url!==rights.rights_evidence.licence_url&&url!==rights.rights_evidence.terms_url))return null;
+ if(declaredLicenses.some(url=>url!==rights.rights_evidence.licence_url&&url!==rights.rights_evidence.terms_url))return [];
  const corpus=`${entry.title} ${entry.summary}`.toLowerCase();
  const eventType=CATEGORY_TERMS[category].find(([rx,type])=>rx.test(corpus)&&
   (category!=="CRITICAL_MINERALS"||/mineral|lithium|cobalt|copper|rare earth|graphite/iu.test(corpus)))?.[1];
- if(!eventType)return null;
- const countries=Object.entries(COUNTRY_TERMS).filter(([iso,names])=>iso!==SOURCE_COUNTRY[rights.source_id]&&names.some(name=>
-  new RegExp(`(?:^|[^\\p{L}])${name.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&")}(?:$|[^\\p{L}])`,'iu').test(corpus)));
- // Prefer a uniquely named subject country. When the publisher is an
- // official national source and the item has no foreign-country mention,
- // the reviewed publisher jurisdiction is the conservative subject.
- if(countries.length>1)return null;
- const country_iso3=normalizeSovereignIso3(countries[0]?.[0]??SOURCE_COUNTRY[rights.source_id]);
- if(!country_iso3)return null;
+ if(!eventType)return [];
+ const direct=[entry.country_iso3,...(entry.countries??[])].map(value=>String(value??"").toUpperCase());
+ const mentioned=Object.entries(COUNTRY_TERMS).filter(([,names])=>names.some(name=>
+  new RegExp(`(?:^|[^\\p{L}])${name.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&")}(?:$|[^\\p{L}])`,'iu').test(corpus))).map(([iso])=>iso);
+ const countries=[...new Set([...direct,...mentioned].map(normalizeSovereignIso3)
+  .filter(iso=>HOT50.has(iso)&&iso!==SOURCE_COUNTRY[rights.source_id]))].slice(0,3);
+ if(!countries.length&&SOURCE_COUNTRY[rights.source_id])countries.push(SOURCE_COUNTRY[rights.source_id]);
+ if(!countries.length)return [];
  const published=new Date(entry.updated);
- if(!Number.isFinite(published.getTime()))return null;
+ if(!Number.isFinite(published.getTime()))return [];
  const published_at=published.toISOString();
- const event_identity={country_iso3,event_type:eventType,actor_id:rights.parent_media_entity,
-  target_id:country_iso3.toLowerCase()+"_policy_subject",location_id:country_iso3.toLowerCase()+"_national_scope",
-  occurred_at:published_at};
- const raw_payload=JSON.stringify({id:entry.id,link:sourceUrl.href,updated:entry.updated,
-  country_iso3,category,license_marker:evidence.marker,license_url:rights.rights_evidence.licence_url,
-  terms_url:rights.rights_evidence.terms_url});
- const original={schema:"geomacro.risk-stream-original.v1",kind:"VERIFIED_ORIGINAL",country_iso3,
-  category,feed_origin:feedOrigin,source_id:rights.source_id,source_role:rights.source_role,
-  publisher_root_domain:rights.publisher_root_domain,parent_media_entity:rights.parent_media_entity,
-  source_url:sourceUrl.href,published_at,event_identity,raw_payload,
-  reporting_position:"confirms",
-  item_license_evidence:{license_id:licenseId,license_url:rights.rights_evidence.licence_url,
-   terms_url:rights.rights_evidence.terms_url,item_url:sourceUrl.href,item_license_marker:evidence.marker,
-   publisher_owned_content_only:publisherOwnedForLicense(licenseId),third_party_exceptions:false,non_commercial:false,
-   restricted_material:false,factual_record_only:true,original_text_republished:false},
-  derived:{what:EVENT_COPY[eventType],
-   why:`Risk classification: ${eventType.replaceAll("_"," ")} in ${country_iso3}; assess the jurisdiction and affected sector before changing exposure.`,
-   market:category==="MACRO_FX"?`Potential channels include ${country_iso3} currency liquidity, FX settlement and sovereign financing.`:
-    category==="CRITICAL_MINERALS"?`Potential channels include ${country_iso3} mineral throughput, processing availability and benchmark premiums.`:
-    `Potential channels include ${country_iso3} operating continuity, trade routing, freight and sovereign risk.`,
-   watch:"Track formal implementation, affected counterparties and independent evidence before escalation."}};
- const identity=eventIdentityFields(original);
- return {...original,...identity};
+ return countries.map(country_iso3=>{
+  const event_identity={country_iso3,event_type:eventType,actor_id:rights.parent_media_entity,
+   target_id:country_iso3.toLowerCase()+"_policy_subject",location_id:country_iso3.toLowerCase()+"_national_scope",
+   occurred_at:published_at};
+  const raw_payload=JSON.stringify({id:entry.id,link:sourceUrl.href,updated:entry.updated,
+   country_iso3,category,license_marker:evidence.marker,license_url:rights.rights_evidence.licence_url,
+   terms_url:rights.rights_evidence.terms_url});
+  const original={schema:"geomacro.risk-stream-original.v1",kind:"VERIFIED_ORIGINAL",country_iso3,
+   category,feed_origin:feedOrigin,source_id:rights.source_id,source_role:rights.source_role,
+   publisher_root_domain:rights.publisher_root_domain,parent_media_entity:rights.parent_media_entity,
+   source_url:sourceUrl.href,published_at,event_identity,raw_payload,
+   reporting_position:"confirms",
+   item_license_evidence:{license_id:licenseId,license_url:rights.rights_evidence.licence_url,
+    terms_url:rights.rights_evidence.terms_url,item_url:sourceUrl.href,item_license_marker:evidence.marker,
+    publisher_owned_content_only:publisherOwnedForLicense(licenseId),third_party_exceptions:false,non_commercial:false,
+    restricted_material:false,factual_record_only:true,original_text_republished:false},
+   derived:{what:EVENT_COPY[eventType],
+    why:`Risk classification: ${eventType.replaceAll("_"," ")} in ${country_iso3}; assess the jurisdiction and affected sector before changing exposure.`,
+    market:category==="MACRO_FX"?`Potential channels include ${country_iso3} currency liquidity, FX settlement and sovereign financing.`:
+     category==="CRITICAL_MINERALS"?`Potential channels include ${country_iso3} mineral throughput, processing availability and benchmark premiums.`:
+     `Potential channels include ${country_iso3} operating continuity, trade routing, freight and sovereign risk.`,
+    watch:"Track formal implementation, affected counterparties and independent evidence before escalation."}};
+  return {...original,...eventIdentityFields(original)};
+ });
 }
 
 function load(){
@@ -253,7 +267,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
  const orderedFeeds=priority.sources;
  const originals=[],counts={feeds_checked:0,extensions_seen:0,
   standard_entries_seen:0,standard_candidates_built:0,feeds_without_candidate_extension:0,invalid:0,
-  invalid_by_code:{}};
+  stale_entries_skipped:0,future_entries_skipped:0,undated_entries_skipped:0,invalid_by_code:{}};
  for(const feed of orderedFeeds){
   if(feed.risk_stream_item_licensed!==true||
      feed.risk_stream_standard_item_license_candidate!==true)continue;
@@ -274,20 +288,31 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   if(extensions.length===0)counts.feeds_without_candidate_extension++;
   const standard=standardEntries(body);
   const feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
-  const built=await Promise.all(standard.slice(0,25).map(async entry=>{
+  const current=standard.filter(entry=>{
+   const published=Date.parse(entry?.updated??"");
+   if(!Number.isFinite(published)){counts.undated_entries_skipped++;return false}
+   if(published>now){counts.future_entries_skipped++;return false}
+   if(now-published>72*60*60*1000){counts.stale_entries_skipped++;return false}
+   return true;
+  }).slice(0,25);
+  const built=await Promise.all(current.map(async entry=>{
    counts.standard_entries_seen++;
    let page="";
    try{const pageResponse=await fetchImpl(entry.link,{method:"GET",redirect:"error",
     signal:AbortSignal.timeout(15_000),headers:{Accept:"text/html"}});
-    if(!pageResponse?.ok)return null;page=await boundedText(pageResponse);
-   }catch{return null}
-   const original=normalizedEntryCandidate(entry,feed,rights,page,feedOrigin);if(!original)return null;
-   counts.standard_candidates_built++;
-   try{prepareRiskStreamCandidate(original,sources,now,{rightsManifest:manifest});return original}
-   catch(error){counts.invalid++;const code=String(error?.message??"INVALID").slice(0,100);
-    counts.invalid_by_code[code]=(counts.invalid_by_code[code]??0)+1;return null}
+    if(!pageResponse?.ok)return [];page=await boundedText(pageResponse);
+   }catch{return []}
+   const candidates=normalizedEntryCandidates(entry,feed,rights,page,feedOrigin);if(!candidates.length)return [];
+   const accepted=[];
+   for(const original of candidates){
+    counts.standard_candidates_built++;
+    try{prepareRiskStreamCandidate(original,sources,now,{rightsManifest:manifest});accepted.push(original)}
+    catch(error){counts.invalid++;const code=String(error?.message??"INVALID").slice(0,100);
+     counts.invalid_by_code[code]=(counts.invalid_by_code[code]??0)+1}
+   }
+   return accepted;
   }));
-  originals.push(...built.filter(Boolean));
+  originals.push(...built.flat());
   for(const original of extensions){
    counts.extensions_seen++;
    if(original.source_id!==feed.name||original.feed_origin!=="RSS"||
