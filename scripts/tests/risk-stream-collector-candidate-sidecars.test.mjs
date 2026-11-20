@@ -7,8 +7,11 @@ import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 import {normalizeRiskStreamInternalCorroboration} from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
+import {prepareRiskStreamCandidate} from "../lib/risk-stream-candidate-builder.mjs";
+import {validateRiskStreamItemLicense} from "../../workers/control-plane/src/risk-stream-item-license-guard.mjs";
 
 const manifest=JSON.parse(readFileSync("config/risk-stream-source-rights-reviewed.v1.json","utf8"));
+const feedManifest=JSON.parse(readFileSync("config/unified-rss-feed-registry.v1.json","utf8"));
 const source=manifest.entries.find(row=>row.source_id==="uk_fcdo_ogl_official_atom");
 const now=Date.parse("2026-11-15T10:00:00.000Z");
 const sourceRegistry=manifest.entries.filter(row=>row.status==="APPROVED")
@@ -38,6 +41,25 @@ const feed=(name=source.source_id)=>({name,url:"https://www.gov.uk/government/or
 const fetchFixture=async(_url,options)=>({ok:true,text:async()=>{
  assert.equal(options.redirect,"error");return candidateXml;
 }});
+
+test("all nine reviewed Lane A sources are wired to matching opt-in feed entries",()=>{
+ const ids=["global_voices_original_cc_by_3","gdelt_v2_factual_events","un_reliefweb_api_ccby",
+  "worldbank_commodity_prices_cc_by_4","ecb_fx_reference_rates","us_fed_h10_public_domain",
+  "usgs_minerals_public_domain","geoscience_australia_ccby","eu_jrc_rmis_ccby"];
+ for(const id of ids){
+  const rights=manifest.entries.find(row=>row.source_id===id);
+  const entry=feedManifest.sources.find(row=>row.name===id);
+  assert.ok(rights,`${id} must exist in the reviewed rights manifest`);
+  assert.ok(entry,`${id} must exist in the feed registry`);
+  assert.equal(entry.risk_stream_item_licensed,true);
+  assert.equal(entry.risk_stream_standard_item_license_candidate,true);
+  const url=new URL(entry.url);
+  assert.equal(url.protocol,"https:");
+  assert.ok(url.hostname===rights.publisher_root_domain||
+   url.hostname.endsWith(`.${rights.publisher_root_domain}`),`${id} endpoint must match its reviewed root`);
+ }
+ assert.equal(feedManifest.feed_count,feedManifest.sources.length);
+});
 
 for(const collector of ["direct","private"]){
  test(`${collector} scheduled collector writes an item-licensed candidate accepted by the handoff`,async()=>{
@@ -165,6 +187,56 @@ test("standard JSON Feed items use published link and timestamp fields without a
   text:async()=>url.endsWith(".atom")?restricted:page,headers:{get:()=>null}}),rightsManifest:manifest,
   feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
  assert.equal(skipped.originals.length,0);
+});
+
+test("standard feed scan admits up to 25 separately item-licensed entries per feed",async()=>{
+ const entries=Array.from({length:26},(_,index)=>`<entry><id>tag:gov.uk,2026:news/${index}</id>
+  <title>UK sanctions policy for Russia</title><updated>2026-11-15T09:30:00Z</updated>
+  <link rel="alternate" href="https://www.gov.uk/government/news/sanctions-policy-russia-${index}"/>
+  <summary>Sanctions policy update relating to Russia.</summary></entry>`).join("");
+ const xml=`<feed xmlns="http://www.w3.org/2005/Atom">${entries}</feed>`;
+ const page=`<a rel="license" href="${source.rights_evidence.licence_url}">Open Government Licence v3.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url.endsWith(".atom")?xml:page,headers:{get:()=>null}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(result.counts.standard_entries_seen,25);
+ assert.equal(result.counts.standard_candidates_built,25);
+ assert.equal(result.originals.length,25);
+});
+
+test("non-UK CC BY and public-domain items pass candidate preparation and item-license validation",()=>{
+ const cases=[
+  {sourceId:"geoscience_australia_ccby",licenseId:"CC_BY_4.0",country:"AUS",
+   marker:"Creative Commons Attribution 4.0 International",publisherOwned:false,
+   sourceUrl:"https://www.ga.gov.au/data/minerals-record"},
+  {sourceId:"usgs_minerals_public_domain",licenseId:"US_GOV_PUBLIC_DOMAIN",country:"USA",
+   marker:"USGS-authored factual mineral data, public domain",publisherOwned:true,
+   sourceUrl:"https://www.usgs.gov/data/mineral-record"},
+ ];
+ for(const row of cases){
+  const rights=manifest.entries.find(entry=>entry.source_id===row.sourceId);
+  const raw_payload=JSON.stringify({record_id:"item-1",license_marker:row.marker,
+   license_url:rights.rights_evidence.licence_url,terms_url:rights.rights_evidence.terms_url,
+   factual_value:42});
+  const original={category:rights.categories[0],country_iso3:row.country,feed_origin:"OFFICIAL_API",
+   source_id:rights.source_id,source_role:rights.source_role,
+   publisher_root_domain:rights.publisher_root_domain,parent_media_entity:rights.parent_media_entity,
+   source_url:row.sourceUrl,published_at:"2026-11-15T09:30:00.000Z",
+   event_identity:{country_iso3:row.country,event_type:"critical_mineral_supply",
+    actor_id:rights.parent_media_entity,target_id:"mineral_supply",location_id:"national_scope",
+    occurred_at:"2026-11-15T09:00:00.000Z"},raw_payload,
+   item_license_evidence:{license_id:row.licenseId,license_url:rights.rights_evidence.licence_url,
+    terms_url:rights.rights_evidence.terms_url,item_url:row.sourceUrl,item_license_marker:row.marker,
+    publisher_owned_content_only:row.publisherOwned,third_party_exceptions:false,
+    non_commercial:false,restricted_material:false,factual_record_only:true,original_text_republished:false},
+   reporting_position:"confirms",derived:{what:"Material availability receives a verified update.",
+    why:"The observed record changes a supply-side assessment.",
+    market:"Availability and processing conditions may affect regional supply.",
+    watch:"Track follow-up data and any changes to the recorded supply position."}};
+  assert.doesNotThrow(()=>validateRiskStreamItemLicense(original.item_license_evidence,rights,
+   {sourceUrl:row.sourceUrl,sourceDomain:rights.publisher_root_domain,rawPayload:raw_payload}));
+  assert.doesNotThrow(()=>prepareRiskStreamCandidate(original,sourceRegistry,now,{rightsManifest:manifest}));
+ }
 });
 
 test("private collector adds only redacted corroboration features at dual attestation",async()=>{
