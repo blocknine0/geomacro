@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync,sign} from "node:crypto";
+import {deflateRawSync} from "node:zlib";
 import {collectRiskStreamFeedExtensions,CRITICAL_MINERAL_SUPPLY_TERMS,HOT50,matchHot50Countries,SOURCE_COUNTRY,standardEntries} from "../ops/collect-risk-stream-feed-extensions.mjs";
 import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
@@ -58,10 +59,10 @@ test("all nine reviewed Lane A sources are wired to matching opt-in feed entries
   assert.ok(url.hostname===rights.publisher_root_domain||
    url.hostname.endsWith(`.${rights.publisher_root_domain}`),`${id} endpoint must match its reviewed root`);
  }
- assert.match(feedManifest.sources.find(row=>row.name==="gdelt_v2_factual_events").url,
-  /^https:\/\/api\.gdeltproject\.org\/api\/v2\/geo\/geo\?/u);
+ assert.equal(feedManifest.sources.find(row=>row.name==="gdelt_v2_factual_events").url,
+  "https://data.gdeltproject.org/gdeltv2/lastupdate.txt");
  assert.match(feedManifest.sources.find(row=>row.name==="ecb_fx_reference_rates").url,
-  /^https:\/\/www\.ecb\.europa\.eu\/rss\/fxref-usd\.html$/u);
+  /^https:\/\/www\.ecb\.europa\.eu\/stats\/eurofxref\/eurofxref-daily\.xml$/u);
  assert.match(feedManifest.sources.find(row=>row.name==="us_fed_h10_public_domain").url,
   /^https:\/\/www\.federalreserve\.gov\/feeds\/data\/H10_H10\.XML$/u);
  assert.match(feedManifest.sources.find(row=>row.name==="geoscience_australia_ccby").url,
@@ -100,22 +101,86 @@ test("RSS 1.0/RDF items read dc:date for ECB and Federal Reserve feeds",()=>{
  assert.equal(fed[0].link,"http://www.federalreserve.gov/releases/H10#1");
 });
 
-test("ECB RDF reference-rate statistics prepare and validate as a licensed macro candidate",async()=>{
+test("ECB daily XML emits multi-currency Hot 50 candidates that validate",async()=>{
  const rights=manifest.entries.find(row=>row.source_id==="ecb_fx_reference_rates");
- const endpoint="https://www.ecb.europa.eu/rss/fxref-usd.html";
- const rdf=`<?xml version="1.0"?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cb="http://www.cbwiki.net/wiki/index.php/Specification_1.1"><item rdf:about="http://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html?date=2026-11-20&amp;rate=1.0992"><title>1.0992 USD = 1 EUR 2026-11-20 ECB Reference rate</title><link>http://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html?date=2026-11-20&amp;rate=1.0992</link><description>1 EUR buys 1.0992 US dollar (USD); reference exchange rates.</description><dc:date>2026-11-20T10:15:00+01:00</dc:date><cb:statistics><cb:exchangeRate><cb:value frequency="daily" decimals="4">1.0992</cb:value><cb:baseCurrency unit_mult="0">EUR</cb:baseCurrency><cb:targetCurrency>USD</cb:targetCurrency></cb:exchangeRate></cb:statistics></item></rdf:RDF>`;
+ const endpoint="https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
+ const currencies={USD:"USA",GBP:"GBR",JPY:"JPN",CNY:"CHN",INR:"IND",KRW:"KOR",AUD:"AUS",
+  CAD:"CAN",CHF:"CHE",BRL:"BRA",MXN:"MEX",PLN:"POL",SEK:"SWE",NOK:"NOR",TRY:"TUR",
+  ZAR:"ZAF",SGD:"SGP",MYR:"MYS",THB:"THA",IDR:"IDN",PHP:"PHL"};
+ const cubes=Object.keys(currencies).map((currency,index)=>
+  `<Cube currency="${currency}" rate="${(1.1+index/1000).toFixed(4)}"/>`).join("");
+ const xml=`<gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01" xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref"><gesmes:Cube><Cube time="2026-11-20">${cubes}</Cube></gesmes:Cube></gesmes:Envelope>`;
  const result=await collectRiskStreamFeedExtensions({collector:"direct",now:Date.parse("2026-11-20T12:00:00Z"),
-  fetchImpl:async(url)=>({ok:true,text:async()=>{assert.equal(url,endpoint);return rdf;},headers:{get:()=>"application/rdf+xml"}}),
+  fetchImpl:async(url)=>({ok:true,text:async()=>{assert.equal(url,endpoint);return xml;},headers:{get:()=>"application/xml"}}),
   rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
    ...feed(rights.source_id),url:endpoint,risk_category:"macro_economics"}]},sourceRegistry});
- assert.equal(result.originals.length,1);
- const candidate=result.originals[0];
- assert.equal(candidate.country_iso3,"USA");
- assert.equal(candidate.category,"MACRO_FX");
- assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,sourceRegistry,
-  Date.parse("2026-11-20T12:00:00Z"),{rightsManifest:manifest}));
- assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
-  {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
+ assert.equal(result.originals.length,21);
+ assert.deepEqual(Object.fromEntries(result.originals.map(row=>[row.raw_payload.match(/"counter_currency":"([A-Z]{3})"/u)[1],row.country_iso3])),currencies);
+ for(const candidate of result.originals){
+  assert.equal(candidate.category,"MACRO_FX");
+  assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,sourceRegistry,
+   Date.parse("2026-11-20T12:00:00Z"),{rightsManifest:manifest}));
+  assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
+   {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
+ }
+});
+
+function crc32(buffer){
+ let crc=0xffffffff;
+ for(const byte of buffer){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}
+ return (crc^0xffffffff)>>>0;
+}
+function zipOneCsv(name,text){
+ const filename=Buffer.from(name),plain=Buffer.from(text),compressed=deflateRawSync(plain),crc=crc32(plain);
+ const local=Buffer.alloc(30+filename.length);local.writeUInt32LE(0x04034b50,0);local.writeUInt16LE(20,4);
+ local.writeUInt16LE(8,8);local.writeUInt32LE(crc,14);local.writeUInt32LE(compressed.length,18);
+ local.writeUInt32LE(plain.length,22);local.writeUInt16LE(filename.length,26);filename.copy(local,30);
+ const central=Buffer.alloc(46+filename.length);central.writeUInt32LE(0x02014b50,0);
+ central.writeUInt16LE(20,4);central.writeUInt16LE(20,6);central.writeUInt16LE(8,10);
+ central.writeUInt32LE(crc,16);central.writeUInt32LE(compressed.length,20);
+ central.writeUInt32LE(plain.length,24);central.writeUInt16LE(filename.length,28);filename.copy(central,46);
+ const end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50,0);end.writeUInt16LE(1,8);
+ end.writeUInt16LE(1,10);end.writeUInt32LE(central.length,12);end.writeUInt32LE(local.length+compressed.length,16);
+ return Buffer.concat([local,compressed,central,end]);
+}
+function gdeltCsvRow({id,date,country,event="145",quad="4"}){
+ const columns=Array(61).fill("");columns[0]=String(id);columns[1]=date;columns[5]="GOV";
+ columns[7]="";columns[15]="";columns[17]="";columns[26]=event;columns[29]=quad;
+ columns[30]="-2.5";columns[53]=country;columns[60]="https://example.invalid/article?prose=must-not-enter-payload";
+ return columns.map(value=>/[",\r\n]/u.test(value)?`"${value.replaceAll('"','""')}"`:value).join(",");
+}
+
+test("GDELT lastupdate ZIP emits up to 25 distinct factual Hot 50 candidates",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="gdelt_v2_factual_events");
+ const now=Date.parse("2026-11-20T12:00:00Z"),feedUrl="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
+ const archiveUrl="https://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip";
+ const countryCodes=["US","CN","IN","RS","UK","GM","FR","JA","KS","BE","CA","AS","BR",
+  "MX","IT","SP","NL","SZ","NO","SW","PL","UP","TU","SA","AE","IR","IS","EG","QA","MU"];
+ const csv=countryCodes.map((country,index)=>gdeltCsvRow({id:1000000000+index,date:"20261120",country})).join("\n");
+ const archive=zipOneCsv("20261120103000.export.CSV",csv);
+ const fetchImpl=async(url)=>{
+  if(url===feedUrl)return {ok:true,text:async()=>"20261120103000.export.CSV.zip 12345\n",headers:{get:()=>"text/plain"}};
+  assert.equal(url,archiveUrl);
+  return {ok:true,arrayBuffer:async()=>archive.buffer.slice(archive.byteOffset,archive.byteOffset+archive.byteLength),
+   headers:{get:(name)=>name==="content-length"?String(archive.length):"application/zip"}};
+ };
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl,rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url:feedUrl,risk_category:"conflict"}]},sourceRegistry});
+ assert.equal(result.originals.length,25);
+ assert.equal(new Set(result.originals.map(row=>row.country_iso3)).size,25);
+ for(const candidate of result.originals){
+  assert.equal(candidate.category,"GEOPOLITICS");
+  const payload=JSON.parse(candidate.raw_payload);
+  assert.equal(payload.schema,"geomacro.gdelt.factual-event.v1");
+  assert.equal(payload.country_iso3,candidate.country_iso3);
+  assert.equal(payload.event_code,"145");
+  assert.equal(payload.quad_class,undefined);
+  assert.doesNotMatch(candidate.raw_payload,/must-not-enter-payload|example\.invalid/u);
+  assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,sourceRegistry,now,{rightsManifest:manifest}));
+  assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
+   {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
+ }
 });
 
 test("approved non-UK macro and minerals sources have country fallbacks",()=>{
