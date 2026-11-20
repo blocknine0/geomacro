@@ -95,6 +95,39 @@ test('candidate provider GET retries transient HTTP and network failures with bo
  assert.equal(calls,4);assert.deepEqual(delays,[250,500,1000]);
 });
 
+test('uploaded Worker version readback retries 404 and ordinary 404 fails immediately',async()=>{
+ let calls=0;const delays=[];
+ const result=await getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/uploaded-version',token:'secret',retry404:true,
+  sleep:async ms=>delays.push(ms),fetchImpl:async()=>{
+   calls++;
+   if(calls<3)return {ok:false,status:404,json:async()=>({success:false})};
+   return {ok:true,status:200,json:async()=>({success:true,result:{id:'uploaded-version'}})};
+  }});
+ assert.deepEqual(result,{id:'uploaded-version'});
+ assert.equal(calls,3);assert.deepEqual(delays,[1000,2000]);
+
+ calls=0;delays.length=0;
+ await assert.rejects(getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/baseline-version',token:'secret',sleep:async ms=>delays.push(ms),
+  fetchImpl:async()=>{calls++;return {ok:false,status:404,
+   json:async()=>({success:false})};}}),error=>{
+    assert.equal(error.message,'CANDIDATE_PROVIDER_UNAVAILABLE_HTTP_404');return true;
+   });
+ assert.equal(calls,1);assert.deepEqual(delays,[]);
+
+ calls=0;delays.length=0;
+ await assert.rejects(getCandidateProviderJSON({root:'https://api.example.test',
+  path:'/versions/not-yet-visible',token:'secret',retry404:true,
+  sleep:async ms=>delays.push(ms),fetchImpl:async()=>{
+   calls++;return {ok:false,status:404,json:async()=>({success:false})};
+  }}),error=>{
+    assert.equal(error.message,'CANDIDATE_PROVIDER_UNAVAILABLE_HTTP_404');return true;
+   });
+ assert.equal(calls,6);
+ assert.deepEqual(delays,[1000,2000,4000,6000,8000]);
+});
+
 test('candidate provider GET surfaces final HTTP, Cloudflare, and non-JSON failures',async()=>{
  let calls=0;const delays=[];
  await assert.rejects(getCandidateProviderJSON({root:'https://api.example.test',
@@ -195,7 +228,7 @@ test('candidate selection never guesses from previous versions sharing a SHA',as
  const source=readFileSync(new URL('../ops/prepare-optimized-worker-candidate.mjs',import.meta.url),'utf8');
  assert.match(source,/WRANGLER_OUTPUT_FILE_PATH/u);
  assert.match(source,/uploadedVersionIdFromWranglerEvents/u);
- assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId);"));
+ assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId,{retry404:true});"));
  assert.doesNotMatch(source,/versions\?deployable=true/u);
 });
 
