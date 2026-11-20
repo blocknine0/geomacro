@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {normalizeRiskStreamInternalCorroboration,
- summarizeRiskStreamInternalCorroboration,isRiskStreamInternalCorroboration}
+ summarizeRiskStreamInternalCorroboration,isRiskStreamInternalCorroboration,
+ riskStreamInternalEventMatches}
  from "../../workers/control-plane/src/risk-stream-internal-corroboration.mjs";
 
 test("Private OSINT and Telegram watch input reduces to country, event, weight and corridor features",()=>{
@@ -43,4 +44,28 @@ test("invalid source categories and raw/unbounded feature values fail closed",()
  assert.throws(()=>normalizeRiskStreamInternalCorroboration({source_kind:"RESTRICTED_NEWS",
   country_iso3:"USA",category:"GEOPOLITICS",text:"x",severity_weight:50,
   corroboration_weight:.5}),/RISK_STREAM_INTERNAL_CORROBORATION_INVALID/u);
+});
+
+test("normalized internal events cover chokepoints, conflict, macro crypto, and broad minerals",()=>{
+ const cases=[
+  ["GEOPOLITICS","shipping_chokepoints","CHOKEPOINT_DISRUPTION"],
+  ["GEOPOLITICS","conflict escalation","CONFLICT"],
+  ["MACRO_FX","central_bank monetary_policy inflation interest_rate","MACRO_POLICY_STRESS"],
+  ["MACRO_FX","stablecoin crypto liquidity","FX_SOVEREIGN_STRESS"],
+  ["CRITICAL_MINERALS","dysprosium refining capacity","MINERAL_SUPPLY_SHOCK"],
+  ["CRITICAL_MINERALS","polysilicon smelting","MINERAL_SUPPLY_SHOCK"],
+ ];
+ for(const [category,text,eventCode] of cases){
+  for(const source_kind of ["PRIVATE_OSINT","TELEGRAM_WATCH"]){
+   const item=normalizeRiskStreamInternalCorroboration({source_kind,
+    country_iso3:"USA",category,text,severity_weight:60,corroboration_weight:.7});
+   assert.equal(item.event_code,eventCode,`${source_kind}: ${text} normalization`);
+   assert.equal(riskStreamInternalEventMatches(category,text,eventCode),true,
+    `${category} event should match ${text}`);
+   assert.equal(riskStreamInternalEventMatches(category,text.replaceAll("_","-"),eventCode),true,
+    `${category} event should normalize hyphens`);
+  }
+ }
+ assert.equal(riskStreamInternalEventMatches("GEOPOLITICS","conflict escalation","CONFLICT"),true);
+ assert.equal(riskStreamInternalEventMatches("CRITICAL_MINERALS","rare earth battery supply","MINERAL_SUPPLY_SHOCK"),true);
 });

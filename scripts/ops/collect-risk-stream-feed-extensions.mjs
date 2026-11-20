@@ -23,14 +23,16 @@ const GDELT_FIPS_COUNTRY={UK:"GBR",TU:"TUR",KS:"KOR",IZ:"IRQ",AE:"ARE",CH:"CHN",
  RP:"PHL",BG:"BGD",MG:"MNG",BM:"MMR"};
 const CATEGORY_BY_FEED={conflict:"GEOPOLITICS",macro_economics:"MACRO_FX",
  commodities:"CRITICAL_MINERALS"};
-export const CRITICAL_MINERAL_SUPPLY_TERMS=/mineral|lithium|cobalt|copper|rare earth|graphite|nickel|manganese|titanium|tungsten|gallium|germanium|uranium|silicon|zinc|aluminum|aluminium|bauxite|platinum|palladium|antimony|vanadium|mining|\bmine\b|smelter|refining|refinery|ore|metal|battery|supply chain|export control|critical raw/iu;
+export const CRITICAL_MINERAL_SUPPLY_TERMS=/rare earth|ndpr|dysprosium|terbium|lithium|cobalt|nickel|copper|graphite|gallium|germanium|antimony|tungsten|manganese|vanadium|titanium|uranium|potash|phosphate|polysilicon|silicon|zinc|alumin(?:um|ium)|bauxite|alumina|indium|tellurium|bismuth|chromium|molybdenum|niobium|tantalum|zirconium|beryllium|scandium|platinum|palladium|rhodium|pgm|battery supply chain|semiconductor mineral|critical raw(?: material)?|smelter|smelting|refining capacity|mining royalty|critical mineral|mining|\bmine\b|refining|refinery|ore|metal|battery|supply chain|export control/iu;
+const MACRO_FX_TERMS=/central bank|interest rate|fx reserve|currency|sovereign debt|bond yield|inflation|capital controls|crypto|cryptocurrency|bitcoin|\bbtc\b|ethereum|\beth\b|stablecoin|\busdc\b|\busdt\b|cbdc|digital asset|digital currency|\bdefi\b|tokenization|\bvasp\b|crypto exchange|etf flow/iu;
 const CATEGORY_TERMS={
  GEOPOLITICS:[[/sanction|asset freeze|export control/iu,"sanctions_policy"],
   [/ceasefire|hostilities pause/iu,"ceasefire"],
   [/attack|missile|troops|military|conflict|war|gaza|ukraine/iu,"conflict_escalation"],
   [/tariff|trade restriction|trade disruption/iu,"trade_disruption"]],
- MACRO_FX:[[/interest rate|monetary policy|bank rate/iu,"central_bank_policy"],
-  [/inflation|consumer prices/iu,"inflation_release"],
+ MACRO_FX:[[/central bank|interest rate|monetary policy|bank rate|inflation|sovereign debt|bond yield|capital controls/iu,"central_bank_policy"],
+  [/crypto|cryptocurrency|bitcoin|\bbtc\b|ethereum|\beth\b|stablecoin|\busdc\b|\busdt\b|cbdc|digital asset|digital currency|\bdefi\b|tokenization|\bvasp\b|crypto exchange|etf flow|fx reserve/iu,"fx_intervention"],
+  [/consumer prices/iu,"inflation_release"],
   [/currency|exchange rate|sterling|pound/iu,"fx_intervention"],
   [/trade|tariff|customs/iu,"trade_disruption"]],
  CRITICAL_MINERALS:[[/export ban|export control/iu,"critical_mineral_export_control"],
@@ -59,8 +61,9 @@ const SIGNAL_THEMES=[
  [/maritime|shipping|vessel|port|freight|chokepoint|strait|canal/iu,"maritime"],
  [/missile|drone|airstrike|air strike|strike|intercept/iu,"strike"],
  [/sanction|tariff|export control|export ban|customs/iu,"trade_controls"],
- [/central bank|interest rate|exchange rate|foreign exchange|\bfx\b|liquidity|currency/iu,"central_bank_fx"],
- [/mining|mine output|refining|refinery|smelter|rare earth|cobalt|lithium|copper|nickel|graphite/iu,"minerals"]
+ [/crypto|cryptocurrency|bitcoin|\bbtc\b|ethereum|\beth\b|stablecoin|\busdc\b|\busdt\b|cbdc|digital asset|digital currency|\bdefi\b|tokenization|\bvasp\b|crypto exchange|etf flow/iu,"crypto_macro"],
+ [/central bank|interest rate|exchange rate|foreign exchange|\bfx\b|liquidity|currency|inflation|capital controls|bond yield|sovereign debt/iu,"central_bank_fx"],
+ [CRITICAL_MINERAL_SUPPLY_TERMS,"minerals"]
 ];
 const COUNTRY_ASSETS={AUS:"AUD rates, iron ore and LNG",COD:"cobalt, copper and refined-metal flows",
  KAZ:"uranium, copper and KZT funding",ZMB:"copper, cobalt and ZMW funding"};
@@ -72,7 +75,12 @@ function buildDerivedSignal({theme,country,corridor,corpus,category,eventType}){
   ??COUNTRY_ASSETS[country]??(category==="MACRO_FX"?"local FX and short-dated rates":
    category==="CRITICAL_MINERALS"?"ore, refined output and benchmark premiums":"freight, energy and trade finance");
  let signal;
- if(theme==="maritime")signal={
+ if(theme==="crypto_macro")signal={
+  what:`${place}: digital-asset liquidity or policy shifts may affect local FX and funding access.`,
+  why:`Stablecoin redemption, exchange liquidity and crypto-linked flows can transmit into ${country} payment rails and currency demand.`,
+  market:`Monitor BTC/ETH, USDC/USDT peg spreads, exchange depth, ETF flows and ${country} FX basis.`,
+  watch:`Over 24–72h, check stablecoin peg deviations, exchange net flows, ETF subscriptions, FX spreads and central-bank notices.`};
+ else if(theme==="maritime")signal={
   what:`${place}: shipping or chokepoint pressure could alter transit time and cargo availability.`,
   why:`Longer routes can raise freight and war-risk cover, delaying ${assets} and working-capital settlement.`,
   market:`Watch ${assets}, bunker fuel, freight rates and marine-insurance costs for ${country}-linked cargoes.`,
@@ -490,7 +498,7 @@ function publisherOwnedForLicense(licenseId){
  return licenseId==="UK_OGL_V3"||licenseId==="US_GOV_PUBLIC_DOMAIN";
 }
 function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
- const category=CATEGORY_BY_FEED[feed.risk_category];
+  let category=CATEGORY_BY_FEED[feed.risk_category];
  if(!category||!entry.id||!entry.link||!entry.updated)return [];
  let sourceUrl;try{sourceUrl=new URL(entry.link)}catch{return []}
  if(feed.name==="rba_fx_ccby")sourceUrl=new URL("https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml");
@@ -524,6 +532,10 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  const declaredLicenses=[...itemRights.matchAll(/https:\/\/[^\s<>"']+/giu)].map(x=>x[0].replace(/[),.;]+$/u,""));
  if(declaredLicenses.some(url=>url!==rights.rights_evidence.licence_url&&url!==rights.rights_evidence.terms_url))return [];
  const corpus=`${entry.title} ${entry.summary} ${entry.text??""} ${entry.content??""} ${entry.content_text??""}`.toLowerCase();
+ if(["un_news_org_rss","global_voices_original_cc_by_3"].includes(rights.source_id)){
+  if(CRITICAL_MINERAL_SUPPLY_TERMS.test(corpus))category="CRITICAL_MINERALS";
+  else if(MACRO_FX_TERMS.test(corpus))category="MACRO_FX";
+ }
  const eventType=licenseId==="GDELT_FACTS_ONLY"&&gdeltFacts?
   gdeltFacts.event_type:
   CATEGORY_TERMS[category].find(([rx,type])=>rx.test(corpus)&&

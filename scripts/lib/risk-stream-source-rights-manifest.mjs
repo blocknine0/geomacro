@@ -5,8 +5,8 @@ const ROLES=new Set(["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL",
  "OFFICIAL_STATISTICS","MARKET_PRICE","TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]);
 export const RISK_STREAM_CATEGORY_ROLES=Object.freeze({
  GEOPOLITICS:Object.freeze(["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"]),
- MACRO_FX:Object.freeze(["OFFICIAL_STATISTICS","MARKET_PRICE"]),
- CRITICAL_MINERALS:Object.freeze(["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"])
+ MACRO_FX:Object.freeze(["OFFICIAL_STATISTICS","MARKET_PRICE","INDEPENDENT_REGIONAL"]),
+ CRITICAL_MINERALS:Object.freeze(["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY","INDEPENDENT_REGIONAL"])
 });
 const ENTRY_KEYS=["source_id","publisher_root_domain","parent_media_entity",
  "source_role","categories","status","rights_evidence","rights_expire_at"];
