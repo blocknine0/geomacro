@@ -121,24 +121,31 @@ test("Bank of Canada FX JSON pairs with ECB on the same Hot 50 currency identity
   {sourceUrl:bocOriginal.source_url,sourceDomain:boc.publisher_root_domain,rawPayload:bocOriginal.raw_payload}));
 });
 
-test("RBA RDF/RSS exchange-rate items become factual MACRO_FX candidates",async()=>{
+test("RBA RDF/RSS exchange-rate items normalize HTTP item links to the reviewed HTTPS feed URL",async()=>{
  const rights=fullManifest.entries.find(row=>row.source_id==="rba_fx_ccby");
  const url="https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml";
- const xml='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"><item rdf:about="https://www.rba.gov.au/statistics/frequency/exchange-rates.html"><title>US Dollar (USD)</title><link>https://www.rba.gov.au/statistics/frequency/exchange-rates.html</link><description>1.5312 Australian dollars per US dollar.</description><dc:date>2026-11-20T10:00:00Z</dc:date></item></rdf:RDF>';
+ const currencies=["USD","GBP","JPY","CNY","INR","KRW","AUD","CAD","CHF","BRL","MXN",
+  "PLN","SEK","NOK","TRY","ZAR","SGD","MYR","THB","IDR","PHP"];
+ const xml=`<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/">${currencies.map((code,index)=>
+  `<item rdf:about="http://www.rba.gov.au/statistics/frequency/exchange-rates.html?currency=${code}"><title>${code}</title><link>http://www.rba.gov.au/statistics/frequency/exchange-rates.html?currency=${code}</link><description>${1.5+index/100} Australian dollars per ${code}.</description><dc:date>2026-11-20T10:00:00Z</dc:date></item>`).join("")}</rdf:RDF>`;
  const now=Date.parse("2026-11-20T12:00:00Z");
  const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
   fetchImpl:async(actual)=>{assert.equal(actual,url);return {ok:true,text:async()=>xml,
    headers:{get:()=>"application/rdf+xml"}}},rightsManifest:fullManifest,
   feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
    ...feed(rights.source_id),url,risk_category:"macro_economics"}]},sourceRegistry:fullSourceRegistry});
- assert.equal(result.originals.length,1);
+ assert.equal(result.originals.length,21);
  const candidate=result.originals[0];
  assert.equal(candidate.country_iso3,"USA");
+ for(const item of result.originals){
+  assert.equal(item.source_url,url);
+  assert.equal(item.item_license_evidence.item_url,url);
+  assert.doesNotThrow(()=>validateRiskStreamItemLicense(item.item_license_evidence,rights,
+   {sourceUrl:item.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:item.raw_payload}));
+ }
  assert.equal(candidate.event_identity.event_type,"fx_intervention");
  assert.equal(JSON.parse(candidate.raw_payload).schema,"geomacro.rba.fx-rate.v1");
  assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,fullSourceRegistry,now,{rightsManifest:fullManifest}));
- assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
-  {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
 });
 
 test("UN News RSS emits factual records with strategic-corridor enrichment",async()=>{
@@ -154,7 +161,7 @@ test("UN News RSS emits factual records with strategic-corridor enrichment",asyn
  assert.equal(result.originals.length,1);
  const candidate=result.originals[0];
  assert.equal(candidate.country_iso3,"IND");
- assert.match(candidate.derived.what,/Corridor focus: Red Sea\./u);
+ assert.match(candidate.derived.what,/via Red Sea/u);
  assert.equal(JSON.parse(candidate.raw_payload).schema,"geomacro.un-news.factual-record.v1");
  assert.doesNotMatch(candidate.raw_payload,/Sanctions policy update|Officials discuss|headline/iu);
  assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,fullSourceRegistry,now,{rightsManifest:fullManifest}));
@@ -262,12 +269,39 @@ test("strategic corridor mentions enrich derived what without source-text reuse"
  assert.equal(result.originals.length,2);
  const redSea=result.originals.find(row=>row.source_url.endsWith("corridor-item-one"));
  const taiwanStrait=result.originals.find(row=>row.source_url.endsWith("corridor-item-two"));
- assert.match(redSea.derived.what,/Corridor focus: Red Sea\./u);
- assert.match(taiwanStrait.derived.what,/Corridor focus: Taiwan Strait\./u);
+ assert.match(redSea.derived.what,/via Red Sea/u);
+ assert.match(taiwanStrait.derived.what,/via Taiwan Strait/u);
  for(const row of result.originals){
   assert.ok(row.derived.what.length<=360);
   assert.doesNotMatch(row.derived.what,/(?:https?:\/\/|<[^>]+>)/iu);
  }
+});
+
+test("derived signal fields use theme, country, and corridor details without source 5-gram reuse",async()=>{
+ const xml=`<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>shipping-signal</id>
+  <title>Australia tariff review and shipping disruption near Red Sea</title>
+  <updated>2026-11-15T09:30:00Z</updated><link href="https://www.gov.uk/government/news/shipping-signal"/>
+  <summary>Copper cargo vessel queues and freight insurance changes across the route.</summary>
+  </entry></feed>`;
+ const page=`<a rel="license" href="${source.rights_evidence.licence_url}">Open Government Licence v3.0</a>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async(url)=>({ok:true,
+  text:async()=>url===feed().url?xml:page,headers:{get:()=>"application/atom+xml"}}),rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[feed()]},sourceRegistry});
+ assert.equal(result.originals.length,1);
+ const derived=result.originals[0].derived;
+ const corpus="Australia tariff review and shipping disruption near Red Sea Copper cargo vessel queues and freight insurance changes across the route.";
+ const tokens=value=>value.toLowerCase().match(/[\p{L}\p{N}]+/gu)??[];
+ const ngrams=(words,size)=>new Set(Array.from({length:Math.max(0,words.length-size+1)},(_,index)=>words.slice(index,index+size).join(" ")));
+ const sourceGrams=ngrams(tokens(corpus),5);
+ for(const field of ["what","why","market","watch"]){
+  assert.ok(derived[field].length>0&&derived[field].length<=360);
+  assert.doesNotMatch(derived[field],/(?:https?:\/\/|<[^>]+>)/iu);
+  assert.equal([...ngrams(tokens(derived[field]),5)].filter(gram=>sourceGrams.has(gram)).length,0,field);
+ }
+ assert.match(derived.what,/AUS via Red Sea/u);
+ assert.match(derived.why,/freight and war-risk cover/u);
+ assert.match(derived.market,/copper, bunker fuel/u);
+ assert.match(derived.watch,/24–72h/u);
 });
 
 test("critical-mineral entries expand country matching to six Hot 50 countries",async()=>{
@@ -378,6 +412,13 @@ test("country mention terms cover all 50 Hot 50 countries",()=>{
  assert.deepEqual(Object.keys(names).sort(),[...HOT50].sort());
  for(const [iso3,name] of Object.entries(names))
   assert.deepEqual(matchHot50Countries({},name),[iso3],`${name} should map to ${iso3}`);
+});
+
+test("COD, KAZ, and ZMB aliases match their Hot 50 countries",()=>{
+ for(const [country,terms] of Object.entries({COD:["Democratic Republic of the Congo","DR Congo","DRC","Kinshasa","Katanga"],
+  KAZ:["Kazakhstan","Astana","Almaty"],ZMB:["Zambia","Lusaka","Copperbelt"]})){
+  for(const term of terms)assert.deepEqual(matchHot50Countries({},term),[country],`${term} -> ${country}`);
+ }
 });
 
 test("critical-minerals matching includes standard material and supply-chain vocabulary",()=>{
