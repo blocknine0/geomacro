@@ -1,31 +1,33 @@
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const SOURCES=new Set(["PRIVATE_OSINT","TELEGRAM_WATCH","DERIVED_BASELINE"]);
+const MINERAL_SIGNAL=/\b(?:rare earth|ndpr|dysprosium|terbium|lithium|cobalt|nickel|copper|graphite|gallium|germanium|antimony|tungsten|manganese|vanadium|titanium|uranium|potash|phosphate|polysilicon|silicon|zinc|bauxite|alumina|indium|tellurium|bismuth|chromium|molybdenum|niobium|tantalum|zirconium|beryllium|scandium|platinum|palladium|rhodium|pgm|battery supply chain|semiconductor mineral|critical raw material|critical mineral|mining|mine closure|smelter|smelting|refining|refinery|ore|metal)\b/iu;
 const EVENTS=Object.freeze([
- ["CONFLICT",/\b(?:war|armed conflict|invasion|missile strike|attack|clashes)\b/iu],
+ ["CONFLICT",/\b(?:war|armed conflict|conflict|invasion|missile strike|attack|clashes)\b/iu],
  ["SANCTIONS",/\bsanctions?\b/iu],
  ["EXPORT_RESTRICTION",/\b(?:export ban|export control|trade restriction)\b/iu],
- ["CHOKEPOINT_DISRUPTION",/\b(?:chokepoint|strait closure|canal disruption|shipping disruption)\b/iu],
- ["FX_SOVEREIGN_STRESS",/\b(?:fx stress|currency crisis|sovereign stress|debt distress|default)\b/iu],
- ["MINERAL_SUPPLY_SHOCK",/\b(?:critical mineral|rare earth|lithium|cobalt|nickel|graphite|mine closure)\b/iu]
+ ["CHOKEPOINT_DISRUPTION",/\b(?:chokepoints?|strait closure|canal disruption|shipping disruption)\b/iu],
+ ["MACRO_POLICY_STRESS",/\b(?:central bank|monetary policy|inflation|interest rate)\b/iu],
+ ["FX_SOVEREIGN_STRESS",/\b(?:crypto|stablecoin|fx stress|currency crisis|sovereign stress|debt distress|default)\b/iu],
+ ["MINERAL_SUPPLY_SHOCK",MINERAL_SIGNAL]
 ]);
 const LIMITS={text:8000,weight:100,corridors:12};
 const fail=()=>{throw Error("RISK_STREAM_INTERNAL_CORROBORATION_INVALID")};
 
 /** Require a private/watch observation to match the primary event class. */
 export function riskStreamInternalEventMatches(category,primaryText,eventCode){
- const text=String(primaryText??"");
+ const text=String(primaryText??"").replace(/[_-]+/gu," ");
  const rules=category==="GEOPOLITICS"?[
-  [/\b(?:war|armed conflict|invasion|missile strike|attack|clashes)\b/iu,"CONFLICT"],
+  [/\b(?:war|armed conflict|conflict|invasion|missile strike|attack|clashes)\b/iu,"CONFLICT"],
   [/\bsanctions?\b/iu,"SANCTIONS"],
   [/\b(?:export ban|export control|trade restriction)\b/iu,"EXPORT_RESTRICTION"],
-  [/\b(?:chokepoint|strait closure|canal disruption|shipping disruption)\b/iu,"CHOKEPOINT_DISRUPTION"]
+  [/\b(?:chokepoints?|strait closure|canal disruption|shipping disruption)\b/iu,"CHOKEPOINT_DISRUPTION"]
  ]:category==="MACRO_FX"?[
-  [/\b(?:fx stress|currency crisis|sovereign stress|debt distress|default)\b/iu,"FX_SOVEREIGN_STRESS"],
-  [/\b(?:inflation|cpi surge|price shock|interest rate|monetary policy|central bank rate)\b/iu,"MACRO_POLICY_STRESS"]
+  [/\b(?:crypto|cryptocurrency|bitcoin|btc|ethereum|eth|stablecoin|usdc|usdt|cbdc|digital asset|digital currency|defi|tokenization|vasp|crypto exchange|etf flow|fx reserve|fx stress|currency crisis|sovereign debt|sovereign stress|debt distress|bond yield|capital controls|default)\b/iu,"FX_SOVEREIGN_STRESS"],
+  [/\b(?:central bank|inflation|cpi surge|price shock|interest rate|monetary policy|bank rate)\b/iu,"MACRO_POLICY_STRESS"]
  ]:category==="CRITICAL_MINERALS"?[
-  [/\b(?:critical mineral supply shock|rare earth supply shock|mine closure)\b/iu,"MINERAL_SUPPLY_SHOCK"],
+  [MINERAL_SIGNAL,"MINERAL_SUPPLY_SHOCK"],
   [/\b(?:export ban|export control|trade restriction)\b/iu,"EXPORT_RESTRICTION"],
-  [/\b(?:chokepoint|strait closure|canal disruption|shipping disruption)\b/iu,"CHOKEPOINT_DISRUPTION"],
+  [/\b(?:chokepoints?|strait closure|canal disruption|shipping disruption)\b/iu,"CHOKEPOINT_DISRUPTION"],
   [/\b(?:critical mineral|rare earth|lithium|cobalt|nickel|graphite)\b/iu,"MINERAL_SUPPLY_SHOCK"]
  ]:[];
  const expected=rules.find(([pattern])=>pattern.test(text))?.[1];
@@ -38,7 +40,7 @@ export function normalizeRiskStreamInternalCorroboration(input={}){
  const source=input.source_kind,category=input.category,country=input.country_iso3;
  if(!SOURCES.has(source)||!CATEGORIES.has(category)||! /^[A-Z]{3}$/u.test(country??""))fail();
  const raw=typeof input.text==="string"?input.text.slice(0,LIMITS.text):"";
- const event=EVENTS.find(([,pattern])=>pattern.test(raw))?.[0]??"GENERAL_RISK_SIGNAL";
+ const event=EVENTS.find(([,pattern])=>pattern.test(raw.replace(/[_-]+/gu," ")))?.[0]??"GENERAL_RISK_SIGNAL";
  const severity=Number(input.severity_weight);
  const corroboration=Number(input.corroboration_weight);
  const corridors=input.corridors??[];
