@@ -169,6 +169,43 @@ test("UN News RSS emits factual records with strategic-corridor enrichment",asyn
   {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
 });
 
+test("UN News and Global Voices classify mineral and crypto macro records by content",async()=>{
+ const un=fullManifest.entries.find(row=>row.source_id==="un_news_org_rss");
+ const global=fullManifest.entries.find(row=>row.source_id==="global_voices_original_cc_by_3");
+ assert.deepEqual(un.categories.sort(),["CRITICAL_MINERALS","GEOPOLITICS","MACRO_FX"].sort());
+ assert.deepEqual(global.categories.sort(),["CRITICAL_MINERALS","GEOPOLITICS","MACRO_FX"].sort());
+ const unUrl="https://news.un.org/feed/subscribe/en/news/all/rss.xml";
+ const unXml='<rss version="2.0"><channel><item><guid>un-mineral-1</guid><title>Dysprosium refining outlook for Zambia</title><link>https://news.un.org/en/story/2026/11/1</link><description>Rare earth supply and processing update.</description><pubDate>Fri, 20 Nov 2026 09:30:00 GMT</pubDate></item></channel></rss>';
+ const unResult=await collectRiskStreamFeedExtensions({collector:"direct",now:Date.parse("2026-11-20T12:00:00Z"),
+  fetchImpl:async actual=>{assert.equal(actual,unUrl);return {ok:true,text:async()=>unXml,headers:{get:()=>"application/rss+xml"}}},
+  rightsManifest:fullManifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(un.source_id),url:unUrl,risk_category:"conflict"}]},sourceRegistry:fullSourceRegistry});
+ assert.equal(unResult.originals.length,1);
+ const mineral=unResult.originals[0];
+ assert.equal(mineral.category,"CRITICAL_MINERALS");
+ assert.equal(mineral.country_iso3,"ZMB");
+ assert.equal(mineral.event_identity.event_type,"critical_mineral_supply");
+ assert.match(mineral.derived.what,/mining or processing/u);
+ assert.match(mineral.derived.watch,/production guidance/u);
+
+ const globalUrl="https://globalvoices.org/feed/";
+ const globalXml='<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>gv-crypto-1</id><title>Stablecoin and bitcoin liquidity changes in India</title><updated>2026-11-20T09:30:00Z</updated><link href="https://globalvoices.org/story/crypto-1"/><summary>Crypto exchange and ETF flow shifts affect digital asset funding.</summary></entry></feed>';
+ const licensePage=`<a rel="license" href="${global.rights_evidence.licence_url}">Creative Commons Attribution 3.0</a>`;
+ const globalResult=await collectRiskStreamFeedExtensions({collector:"direct",now:Date.parse("2026-11-20T12:00:00Z"),
+  fetchImpl:async actual=>({ok:true,text:async()=>actual===globalUrl?globalXml:licensePage,
+   headers:{get:()=>"application/atom+xml"}}),rightsManifest:fullManifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(global.source_id),url:globalUrl,risk_category:"conflict"}]},sourceRegistry:fullSourceRegistry});
+ assert.equal(globalResult.originals.length,1);
+ const macro=globalResult.originals[0];
+ assert.equal(macro.category,"MACRO_FX");
+ assert.equal(macro.country_iso3,"IND");
+ assert.equal(macro.event_identity.event_type,"fx_intervention");
+ assert.match(macro.derived.what,/digital-asset liquidity/u);
+ assert.match(macro.derived.market,/BTC\/ETH, USDC\/USDT peg spreads/u);
+ assert.match(macro.derived.watch,/stablecoin peg deviations/u);
+});
+
 test("GDELT GeoJSON features map country properties to Hot 50 codes",()=>{
  const body=JSON.stringify({type:"FeatureCollection",features:[
   {type:"Feature",id:"gdelt-feature-1",properties:{id:"gdelt-feature-1",country_name:"China",
@@ -422,10 +459,13 @@ test("COD, KAZ, and ZMB aliases match their Hot 50 countries",()=>{
 });
 
 test("critical-minerals matching includes standard material and supply-chain vocabulary",()=>{
- const terms=["nickel","manganese","titanium","tungsten","gallium","germanium","uranium",
-  "silicon","zinc","aluminum","aluminium","bauxite","platinum","palladium","antimony",
-  "vanadium","mining","mine","smelter","refining","refinery","ore","metal","battery",
-  "supply chain","export control","critical raw"];
+ const terms=["rare earth","ndpr","dysprosium","terbium","lithium","cobalt","nickel","copper",
+  "graphite","gallium","germanium","antimony","tungsten","manganese","vanadium","titanium",
+  "uranium","potash","phosphate","polysilicon","silicon","zinc","bauxite","alumina","indium",
+  "tellurium","bismuth","chromium","molybdenum","niobium","tantalum","zirconium","beryllium",
+  "scandium","platinum","palladium","rhodium","pgm","battery supply chain","semiconductor mineral",
+  "critical raw material","smelter","smelting","refining capacity","mining royalty","aluminum","aluminium",
+  "mining","mine","refining","refinery","ore","metal","battery","supply chain","export control","critical raw"];
  for(const term of terms)assert.equal(CRITICAL_MINERAL_SUPPLY_TERMS.test(term),true,term);
 });
 
