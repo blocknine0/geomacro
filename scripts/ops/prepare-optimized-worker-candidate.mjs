@@ -16,6 +16,8 @@ const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
 const CANDIDATE_GET_ATTEMPTS=4;
 const CANDIDATE_GET_BACKOFF_MS=250;
+const CANDIDATE_VERSION_404_RETRY_ATTEMPTS=6;
+const CANDIDATE_VERSION_404_BACKOFF_MS=[1000,2000,4000,6000,8000];
 const getSleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const providerErrorSuffix=value=>{
  if(Number.isInteger(value)&&value>=0)return String(value);
@@ -42,9 +44,10 @@ function providerFailureCode(response,body,error,parseFailed=false){
 const isTransientStatus=status=>status===429||
  Number.isInteger(status)&&status>=500&&status<=599;
 export async function getCandidateProviderJSON({root,path,token,fetchImpl=fetch,
- sleep=getSleep}={}){
- let lastCode='NETWORK_ERROR';
- for(let attempt=0;attempt<CANDIDATE_GET_ATTEMPTS;attempt++){
+ sleep=getSleep,retry404=false}={}){
+ let lastCode='NETWORK_ERROR',normalRetryAttempt=0,notFoundRetryAttempt=0;
+ const attempts=retry404?CANDIDATE_VERSION_404_RETRY_ATTEMPTS:CANDIDATE_GET_ATTEMPTS;
+ for(let attempt=0;attempt<attempts;attempt++){
   let response,body,parseFailed=false,networkError=null;
   try{
    response=await fetchImpl(root+path,{headers:{Authorization:'Bearer '+token},
@@ -55,10 +58,15 @@ export async function getCandidateProviderJSON({root,path,token,fetchImpl=fetch,
    catch{parseFailed=true;}
   }
   lastCode=providerFailureCode(response,body,networkError,parseFailed);
+  const retryable404=retry404&&response?.status===404;
   const transient=networkError!==null||parseFailed||isTransientStatus(response?.status);
+  if(retryable404&&notFoundRetryAttempt<CANDIDATE_VERSION_404_BACKOFF_MS.length&&
+     attempt<attempts-1){
+   await sleep(CANDIDATE_VERSION_404_BACKOFF_MS[notFoundRetryAttempt++]);continue;
+  }
   if(transient){
-   if(attempt<CANDIDATE_GET_ATTEMPTS-1){
-    await sleep(CANDIDATE_GET_BACKOFF_MS*2**attempt);continue;
+   if(normalRetryAttempt<CANDIDATE_GET_ATTEMPTS-1&&attempt<attempts-1){
+    await sleep(CANDIDATE_GET_BACKOFF_MS*2**normalRetryAttempt++);continue;
    }
    throw unavailable(lastCode);
   }
@@ -232,8 +240,8 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  const head=run('git',['ls-remote','https://github.com/blocknine0/geomacro.git','refs/heads/main'],{encoding:'utf8'}).trim().split(/\s/)[0];
  if(head!==env.GITHUB_SHA)throw Error('CANDIDATE_MAIN_MOVED');
  const root='https://api.cloudflare.com/client/v4/accounts/'+env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/'+NAME;
- const get=path=>getCandidateProviderJSON({root,path,
-  token:env.CLOUDFLARE_API_TOKEN,fetchImpl});
+ const get=(path,options={})=>getCandidateProviderJSON({root,path,
+  token:env.CLOUDFLARE_API_TOKEN,fetchImpl,retry404:options.retry404??false});
  const deployment=await get('/deployments?per_page=1');
  const versions=deployment.deployments?.[0]?.versions;
  if(!Array.isArray(versions)||versions.length!==1||Number(versions[0].percentage)!==100||
@@ -350,7 +358,7 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  try{uploadedId=uploadedVersionIdFromWranglerEvents(
   readFileSync(wranglerOutput,'utf8'));}
  finally{rmSync(wranglerOutput,{force:true});}
- const candidate=await get('/versions/'+uploadedId);
+ const candidate=await get('/versions/'+uploadedId,{retry404:true});
  if(candidate.id!==uploadedId)
   throw Error('CANDIDATE_PROVIDER_VERSION_ID_MISMATCH');
  // Preserve a safe provider receipt even when parity rejects a version.
