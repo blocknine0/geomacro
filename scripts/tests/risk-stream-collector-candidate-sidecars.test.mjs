@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync,sign} from "node:crypto";
-import {collectRiskStreamFeedExtensions} from "../ops/collect-risk-stream-feed-extensions.mjs";
+import {collectRiskStreamFeedExtensions,CRITICAL_MINERAL_SUPPLY_TERMS,HOT50,matchHot50Countries,SOURCE_COUNTRY} from "../ops/collect-risk-stream-feed-extensions.mjs";
 import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
@@ -59,6 +59,43 @@ test("all nine reviewed Lane A sources are wired to matching opt-in feed entries
    url.hostname.endsWith(`.${rights.publisher_root_domain}`),`${id} endpoint must match its reviewed root`);
  }
  assert.equal(feedManifest.feed_count,feedManifest.sources.length);
+});
+
+test("approved non-UK macro and minerals sources have country fallbacks",()=>{
+ assert.deepEqual({
+  ecb_fx_reference_rates:matchHot50Countries({},"","ecb_fx_reference_rates")[0],
+  us_fed_h10_public_domain:matchHot50Countries({},"","us_fed_h10_public_domain")[0],
+  usgs_minerals_public_domain:matchHot50Countries({},"","usgs_minerals_public_domain")[0],
+  geoscience_australia_ccby:matchHot50Countries({},"","geoscience_australia_ccby")[0],
+  eu_jrc_rmis_ccby:matchHot50Countries({},"","eu_jrc_rmis_ccby")[0]
+ },{ecb_fx_reference_rates:"DEU",us_fed_h10_public_domain:"USA",
+  usgs_minerals_public_domain:"USA",geoscience_australia_ccby:"AUS",eu_jrc_rmis_ccby:"BEL"});
+ assert.equal(SOURCE_COUNTRY.ecb_fx_reference_rates,"DEU");
+ assert.equal(SOURCE_COUNTRY.us_fed_h10_public_domain,"USA");
+});
+
+test("country mention terms cover all 50 Hot 50 countries",()=>{
+ const names={USA:"United States",CHN:"China",IND:"India",RUS:"Russia",GBR:"United Kingdom",
+  DEU:"Germany",FRA:"France",JPN:"Japan",KOR:"South Korea",BEL:"Belgium",CAN:"Canada",
+  AUS:"Australia",BRA:"Brazil",MEX:"Mexico",ITA:"Italy",ESP:"Spain",NLD:"Netherlands",
+  CHE:"Switzerland",NOR:"Norway",SWE:"Sweden",POL:"Poland",UKR:"Ukraine",TUR:"Türkiye",
+  SAU:"Saudi Arabia",ARE:"United Arab Emirates",IRN:"Iran",ISR:"Israel",EGY:"Egypt",QAT:"Qatar",
+  OMN:"Oman",IRQ:"Iraq",ZAF:"South Africa",NGA:"Nigeria",COD:"Democratic Republic of the Congo",
+  ZMB:"Zambia",CHL:"Chile",PER:"Peru",ARG:"Argentina",BOL:"Bolivia",IDN:"Indonesia",
+  VNM:"Vietnam",THA:"Thailand",MYS:"Malaysia",SGP:"Singapore",PHL:"Philippines",PAK:"Pakistan",
+  BGD:"Bangladesh",KAZ:"Kazakhstan",MNG:"Mongolia",MMR:"Myanmar"};
+ assert.equal(HOT50.size,50);
+ assert.deepEqual(Object.keys(names).sort(),[...HOT50].sort());
+ for(const [iso3,name] of Object.entries(names))
+  assert.deepEqual(matchHot50Countries({},name),[iso3],`${name} should map to ${iso3}`);
+});
+
+test("critical-minerals matching includes standard material and supply-chain vocabulary",()=>{
+ const terms=["nickel","manganese","titanium","tungsten","gallium","germanium","uranium",
+  "silicon","zinc","aluminum","aluminium","bauxite","platinum","palladium","antimony",
+  "vanadium","mining","mine","smelter","refining","refinery","ore","metal","battery",
+  "supply chain","export control","critical raw"];
+ for(const term of terms)assert.equal(CRITICAL_MINERAL_SUPPLY_TERMS.test(term),true,term);
 });
 
 for(const collector of ["direct","private"]){

@@ -11,6 +11,7 @@ const FEEDS_PATH="config/unified-rss-feed-registry.v1.json";
 const MAX_FEED_BYTES=2_000_000;
 const CATEGORY_BY_FEED={conflict:"GEOPOLITICS",macro_economics:"MACRO_FX",
  commodities:"CRITICAL_MINERALS"};
+export const CRITICAL_MINERAL_SUPPLY_TERMS=/mineral|lithium|cobalt|copper|rare earth|graphite|nickel|manganese|titanium|tungsten|gallium|germanium|uranium|silicon|zinc|aluminum|aluminium|bauxite|platinum|palladium|antimony|vanadium|mining|\bmine\b|smelter|refining|refinery|ore|metal|battery|supply chain|export control|critical raw/iu;
 const CATEGORY_TERMS={
  GEOPOLITICS:[[/sanction|asset freeze|export control/iu,"sanctions_policy"],
   [/ceasefire|hostilities pause/iu,"ceasefire"],
@@ -22,7 +23,7 @@ const CATEGORY_TERMS={
   [/trade|tariff|customs/iu,"trade_disruption"]],
  CRITICAL_MINERALS:[[/export ban|export control/iu,"critical_mineral_export_control"],
   [/production|mine output/iu,"critical_mineral_production"],
-  [/mineral|lithium|cobalt|copper|rare earth|graphite/iu,"critical_mineral_supply"],
+  [CRITICAL_MINERAL_SUPPLY_TERMS,"critical_mineral_supply"],
   [/trade|customs/iu,"trade_disruption"]]
 };
 const EVENT_COPY=Object.freeze({
@@ -37,7 +38,7 @@ const EVENT_COPY=Object.freeze({
  critical_mineral_production:"CRITICAL_MINERAL_PRODUCTION: mine or processing output changes.",
  critical_mineral_supply:"CRITICAL_MINERAL_SUPPLY: material availability or supply-chain terms change.",
 });
-const COUNTRY_TERMS={USA:["united states","u.s.","usa","american"],GBR:["united kingdom","britain","british","uk"],
+export const COUNTRY_TERMS={USA:["united states","united states of america","u.s.","u.s.a.","usa","american"],GBR:["united kingdom","great britain","britain","british","english","uk"],
  CHN:["china","chinese"],IND:["india","indian"],RUS:["russia","russian"],
  UKR:["ukraine","ukrainian"],ISR:["israel","israeli"],PSE:["palestine","palestinian","gaza"],
  IRN:["iran","iranian"],SAU:["saudi arabia","saudi"],ARE:["united arab emirates","uae"],
@@ -49,13 +50,24 @@ const COUNTRY_TERMS={USA:["united states","u.s.","usa","american"],GBR:["united 
  TUR:["turkey","türkiye","turkiye","turkish"],EGY:["egypt","egyptian"],QAT:["qatar","qatari"],OMN:["oman","omani"],
  IRQ:["iraq","iraqi"],NGA:["nigeria","nigerian"],COD:["democratic republic of the congo","dr congo","congo"],ZMB:["zambia","zambian"],
  ARG:["argentina","argentine"],BOL:["bolivia","bolivian"],VNM:["vietnam","vietnamese"],THA:["thailand","thai"],
- MYS:["malaysia","malaysian"],SGP:["singapore","singaporean"],PHL:["philippines","filipino"],PAK:["pakistan","pakistani"],
+ MYS:["malaysia","malaysian"],SGP:["singapore","singaporean"],PHL:["philippines","philippine","filipino"],PAK:["pakistan","pakistani"],
  BGD:["bangladesh","bangladeshi"],KAZ:["kazakhstan","kazakh"],MNG:["mongolia","mongolian"],MMR:["myanmar","burma","burmese"]};
 const normalizeSovereignIso3=value=>value==="ATA"?"AUS":value;
-const HOT50=new Set(["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL","CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE","POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN","IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN","VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]);
-const SOURCE_COUNTRY={uk_fcdo_ogl_official_atom:"GBR",uk_obr_ogl_macro_atom:"GBR",
+export const HOT50=new Set(["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL","CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE","POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN","IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN","VNM","THA","MYS","SGP","PHL","PAK","BGD","KAZ","MNG","MMR"]);
+export const SOURCE_COUNTRY={uk_fcdo_ogl_official_atom:"GBR",uk_obr_ogl_macro_atom:"GBR",
  uk_dbt_ogl_minerals_atom:"GBR",uk_hmt_ogl_official_atom:"GBR",uk_desnz_ogl_minerals_atom:"GBR",
- uk_mod_ogl_security_atom:"GBR",uk_cabinet_ogl_security_atom:"GBR",uk_bist_ogl_minerals_atom:"GBR"};
+ uk_mod_ogl_security_atom:"GBR",uk_cabinet_ogl_security_atom:"GBR",uk_bist_ogl_minerals_atom:"GBR",
+ ecb_fx_reference_rates:"DEU",us_fed_h10_public_domain:"USA",usgs_minerals_public_domain:"USA",
+ geoscience_australia_ccby:"AUS",eu_jrc_rmis_ccby:"BEL"};
+export function matchHot50Countries(entry={},corpus=`${entry.title??""} ${entry.summary??""}`,sourceId=null){
+ const direct=[entry.country_iso3,...(entry.countries??[])].map(value=>String(value??"").toUpperCase());
+ const mentioned=Object.entries(COUNTRY_TERMS).filter(([,names])=>names.some(name=>
+  new RegExp(`(?:^|[^\\p{L}])${name.replaceAll(".","\\.")}(?:$|[^\\p{L}])`,'iu').test(corpus))).map(([iso])=>iso);
+ const countries=[...new Set([...direct,...mentioned].map(normalizeSovereignIso3)
+  .filter(iso=>HOT50.has(iso)&&iso!==SOURCE_COUNTRY[sourceId]))].slice(0,3);
+ if(!countries.length&&SOURCE_COUNTRY[sourceId])countries.push(SOURCE_COUNTRY[sourceId]);
+ return countries;
+}
 const stripMarkup=value=>String(value??"").replace(/<[^>]*>/gu," ").replace(/&(?:amp|lt|gt|quot|apos);/gu,x=>
  ({"&amp;":"&","&lt;":"<","&gt;":">","&quot;":"\"","&apos;":"'"})[x]??" ").replace(/\s+/gu," ").trim();
 async function boundedText(response){
@@ -197,14 +209,9 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
  if(declaredLicenses.some(url=>url!==rights.rights_evidence.licence_url&&url!==rights.rights_evidence.terms_url))return [];
  const corpus=`${entry.title} ${entry.summary}`.toLowerCase();
  const eventType=CATEGORY_TERMS[category].find(([rx,type])=>rx.test(corpus)&&
-  (category!=="CRITICAL_MINERALS"||/mineral|lithium|cobalt|copper|rare earth|graphite/iu.test(corpus)))?.[1];
+  (category!=="CRITICAL_MINERALS"||CRITICAL_MINERAL_SUPPLY_TERMS.test(corpus)))?.[1];
  if(!eventType)return [];
- const direct=[entry.country_iso3,...(entry.countries??[])].map(value=>String(value??"").toUpperCase());
- const mentioned=Object.entries(COUNTRY_TERMS).filter(([,names])=>names.some(name=>
-  new RegExp(`(?:^|[^\\p{L}])${name.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&")}(?:$|[^\\p{L}])`,'iu').test(corpus))).map(([iso])=>iso);
- const countries=[...new Set([...direct,...mentioned].map(normalizeSovereignIso3)
-  .filter(iso=>HOT50.has(iso)&&iso!==SOURCE_COUNTRY[rights.source_id]))].slice(0,3);
- if(!countries.length&&SOURCE_COUNTRY[rights.source_id])countries.push(SOURCE_COUNTRY[rights.source_id]);
+ const countries=matchHot50Countries(entry,corpus,rights.source_id);
  if(!countries.length)return [];
  const published=new Date(entry.updated);
  if(!Number.isFinite(published.getTime()))return [];
