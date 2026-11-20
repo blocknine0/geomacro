@@ -262,7 +262,7 @@ test("full labeled attester refusal code is surfaced without retries",async()=>{
   "/v1/internal/risk-stream/attest"]);
 });
 
-test("D1 readback waits 30 times at two seconds before timing out",async()=>{
+test("D1 readback waits 90 times at two seconds before timing out",async()=>{
  const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
  const sleeps=[],paths=[];let readbackAttempts=0;
  await assert.rejects(emitRiskStreamCandidates({originals:[originals[0]],sourceRegistry,
@@ -287,8 +287,8 @@ test("D1 readback waits 30 times at two seconds before timing out",async()=>{
    return {ok:true,status:200,json:async()=>({ok:true,requested:1,readback_count:0,
     readback_verified:false,observation_ids:[]})};
   }}),/RISK_STREAM_EMITTER_D1_READBACK_TIMEOUT/u);
- assert.equal(readbackAttempts,30);
- assert.equal(paths.filter(path=>path==="/v1/internal/risk-stream/readback").length,30);
- assert.equal(sleeps.length,29);
+ assert.equal(readbackAttempts,90);
+ assert.equal(paths.filter(path=>path==="/v1/internal/risk-stream/readback").length,90);
+ assert.equal(sleeps.length,89);
  assert.ok(sleeps.every(ms=>ms===2000));
 });
