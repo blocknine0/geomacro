@@ -1,5 +1,5 @@
 import { prettyCategory, type IntelEvent } from "@/lib/use-intelligence";
-import { publicEventExplanation } from "@/lib/public-intelligence-explanation";
+import { Link } from "@tanstack/react-router";
 
 export function EventIntelCard({
   event,
@@ -10,7 +10,6 @@ export function EventIntelCard({
   note?: string;
 }) {
   const timestamp = event.publishedAt ?? event.createdAt;
-  const explanation = publicEventExplanation(event);
 
   return (
     <article className="h-full rounded-[var(--radius-card)] border border-border/70 bg-card/40 p-4">
@@ -26,21 +25,7 @@ export function EventIntelCard({
             {event.title}
           </h3>
         </div>
-
-        {event.severity !== null ? (
-          <span className="type-metric shrink-0 text-foreground">
-            {Math.round(event.severity)}
-          </span>
-        ) : null}
       </div>
-
-
-      {explanation && (
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          <span className="font-semibold text-foreground">{explanation.label}:</span>{" "}
-          {explanation.text}
-        </p>
-      )}
 
       {note ? (
         <p className="mt-2 type-meta text-muted-foreground">
@@ -51,6 +36,19 @@ export function EventIntelCard({
       <p className="mt-3 type-timestamp text-muted-foreground">
         {timestamp}
       </p>
+
+      <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
+        <p className="inline-flex rounded-full border border-primary/30 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+          Risk Gate Ready (BASIC · STANDARD · COMPLEX)
+        </p>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          <span className="font-medium text-foreground">Locked intelligence:</span>{" "}
+          Action Posture · 0–100 Score &amp; 7d Delta · Corridors &amp; Affected Assets · 24–72h Watch Triggers
+        </p>
+        <Link to="/risk-gate" className="mt-3 inline-flex text-xs font-semibold text-primary transition hover:underline">
+          Unlock Signed Risk Gate ($0.15–$0.30) →
+        </Link>
+      </div>
     </article>
   );
 }

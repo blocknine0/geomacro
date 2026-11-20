@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
 import {
   getPublicEventDetail,
   type PublicEventDetail,
@@ -103,54 +102,35 @@ export function EventDetailWorkspace({
         <header className="border-b border-border pb-8">
           <div className="flex flex-wrap items-center gap-2">
             {event.category ? <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{prettyCategory(event.category)}</span> : null}
-            {event.severity !== null ? <RiskBadge score={event.severity} showScore /> : null}
-            {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
           </div>
 
           <h1 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">{event.source_title ?? "Untitled intelligence event"}</h1>
+          <p className="mt-4 text-xs text-muted-foreground">Published {formatDate(event.published_at)} · Recorded {formatDate(event.created_at)}</p>
+          <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">
+            A current public alert is available here. No wallet is required to read this page. Signed decision guidance, market transmission analysis and quantified watch levels are available through the Risk Gate API.
+          </p>
         </header>
 
-        <section className="grid gap-4 border-b border-border py-8 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Event risk score" value={formatNumber(event.severity)} />
-          <Metric label="Confidence" value={formatPercent(event.confidence)} />
-          <Metric label="Risk movement" value={formatSigned(event.delta)} />
-          <Metric label="Recorded" value={formatDate(event.created_at)} />
-        </section>
-
-        <section className="border-b border-border py-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Evidence and provenance</p>
-          <div className="mt-4 grid gap-4 rounded-2xl border border-border/70 bg-card/40 p-5 sm:grid-cols-2">
-            <Metric label="Published" value={formatDate(event.published_at)} />
-            <Metric label="Stored event ID" value={event.id} mono />
-          </div>
-          <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            Upstream publisher identities and direct source URLs are retained internally for provenance, audit and licensing controls, but are not exposed on public Geomacro surfaces.
-          </p>
-        </section>
-
-        {event.narrative && event.narrative !== event.summary ? (
-          <section className="border-b border-border py-8">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Structured context</p>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-foreground/90">{event.narrative}</p>
-          </section>
-        ) : null}
-
         <section className="py-8">
-          <div className="rounded-2xl border border-border/70 bg-muted/20 p-5">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="font-medium">Interpret this event as risk intelligence</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Event severity is not a market probability and does not authorize a financial or operational action. Confidence, timestamps and stored identifiers remain visible while upstream source identity stays private. No wallet is required to read this page.
+          <div className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6 sm:p-8">
+            <div className="flex items-start gap-4">
+              <LockKeyhole className="mt-1 h-5 w-5 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Paid Risk Gate Intelligence</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight">Turn this alert into a signed decision brief</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Get the actionable risk score, 7-day movement, affected corridors and assets, market-impact analysis, and 24–72h watch triggers with Ed25519 proof, an agent_decision, and an analyst_brief.
                 </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <Tier name="BASIC" price="$0.15" />
+                  <Tier name="STANDARD" price="$0.20" />
+                  <Tier name="COMPLEX" price="$0.30" />
+                </div>
+                <Button asChild className="mt-6">
+                  <Link to="/risk-gate">Unlock Signed Risk Gate ($0.15–$0.30) →</Link>
+                </Button>
               </div>
             </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild><Link to="/ask-geomacro">Ask Geomacro about current risk</Link></Button>
-            <Button asChild variant="outline"><Link to="/research">Evidence policy</Link></Button>
           </div>
         </section>
       </article>
@@ -158,11 +138,11 @@ export function EventDetailWorkspace({
   );
 }
 
-function Metric({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function Tier({ name, price }: { name: string; price: string }) {
   return (
-    <div className="min-w-0">
-      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className={`mt-1 break-words text-sm text-foreground ${mono ? "font-mono text-xs" : "font-medium"}`}>{value}</p>
+    <div className="rounded-xl border border-border/70 bg-card/70 p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{name}</p>
+      <p className="mt-1 text-lg font-semibold text-foreground">{price}</p>
     </div>
   );
 }
@@ -174,22 +154,6 @@ function prettyCategory(value: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
-}
-
-function formatNumber(value: number | null) {
-  return value === null ? "Unavailable" : value.toFixed(1);
-}
-
-function formatPercent(value: number | null) {
-  if (value === null) return "Unavailable";
-  const normalized = value > 1 ? value : value * 100;
-  return `${Math.round(normalized)}%`;
-}
-
-function formatSigned(value: number | null) {
-  if (value === null) return "Unavailable";
-  if (value === 0) return "No recorded change";
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)} pts`;
 }
 
 function formatDate(value: string | null) {
