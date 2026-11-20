@@ -136,6 +136,10 @@ function standardEntries(xml){
 }
 function htmlLicenseEvidence(page,rights,itemUrl){
  const url=rights.rights_evidence.licence_url;
+ const licenseId=licenseIdFromRights(rights);
+ if(!licenseId)return null;
+ if(licenseId==="GDELT_FACTS_ONLY")return null;
+ if(licenseId==="ECB_REFERENCE_STATISTICS")return null;
  const escaped=url.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&");
  const anchor=new RegExp(`<a\\b(?=[^>]*\\brel=["']license["'])(?=[^>]*\\bhref=["']${escaped}["'])[^>]*>([\\s\\S]*?)<\\/a\\s*>`,'iu').exec(page)
   ??new RegExp(`<a\\b(?=[^>]*\\bhref=["']${escaped}["'])(?=[^>]*\\brel=["']license["'])[^>]*>([\\s\\S]*?)<\\/a\\s*>`,'iu').exec(page);
@@ -150,6 +154,21 @@ function htmlLicenseEvidence(page,rights,itemUrl){
  return {marker,text:`${marker} ${url} ${rights.rights_evidence.terms_url}`,
   item_url:itemUrl};
 }
+function licenseIdFromRights(rights){
+ const evidence=rights?.rights_evidence;
+ if(!evidence||typeof evidence.licence_url!=="string")return null;
+ const url=evidence.licence_url;
+ if(url==="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/")return "UK_OGL_V3";
+ if(url==="https://creativecommons.org/licenses/by/4.0/")return "CC_BY_4.0";
+ if(url==="https://creativecommons.org/licenses/by/3.0/")return "CC_BY_3.0";
+ if(url==="https://www.usa.gov/government-works")return "US_GOV_PUBLIC_DOMAIN";
+ if(url==="https://www.gdeltproject.org/about.html")return "GDELT_FACTS_ONLY";
+ if(url==="https://www.ecb.europa.eu/home/html/disclaimer.en.html")return "ECB_REFERENCE_STATISTICS";
+ return null;
+}
+function publisherOwnedForLicense(licenseId){
+ return licenseId==="UK_OGL_V3"||licenseId==="US_GOV_PUBLIC_DOMAIN";
+}
 function normalizedEntryCandidate(entry,feed,rights,page,feedOrigin="RSS"){
  const category=CATEGORY_BY_FEED[feed.risk_category];
  if(!category||!entry.id||!entry.link||!entry.updated)return null;
@@ -157,6 +176,7 @@ function normalizedEntryCandidate(entry,feed,rights,page,feedOrigin="RSS"){
  if(sourceUrl.protocol!=="https:"||!(sourceUrl.hostname===rights.publisher_root_domain||
   sourceUrl.hostname.endsWith("."+rights.publisher_root_domain)))return null;
  const evidence=htmlLicenseEvidence(page,rights,sourceUrl.href);if(!evidence)return null;
+ const licenseId=licenseIdFromRights(rights);if(!licenseId)return null;
  const itemRights=String(entry.rights_markers??"");
  if(/non[- ]commercial|not for commercial use|all rights reserved|third[- ]party|third party|restricted|no derivatives|\bcc[- ]?by[- ]?nc\b/iu.test(itemRights))return null;
  const declaredLicenses=[...itemRights.matchAll(/https:\/\/[^\s<>"']+/giu)].map(x=>x[0].replace(/[),.;]+$/u,""));
@@ -187,9 +207,9 @@ function normalizedEntryCandidate(entry,feed,rights,page,feedOrigin="RSS"){
   publisher_root_domain:rights.publisher_root_domain,parent_media_entity:rights.parent_media_entity,
   source_url:sourceUrl.href,published_at,event_identity,raw_payload,
   reporting_position:"confirms",
-  item_license_evidence:{license_id:"UK_OGL_V3",license_url:rights.rights_evidence.licence_url,
+  item_license_evidence:{license_id:licenseId,license_url:rights.rights_evidence.licence_url,
    terms_url:rights.rights_evidence.terms_url,item_url:sourceUrl.href,item_license_marker:evidence.marker,
-   publisher_owned_content_only:true,third_party_exceptions:false,non_commercial:false,
+   publisher_owned_content_only:publisherOwnedForLicense(licenseId),third_party_exceptions:false,non_commercial:false,
    restricted_material:false,factual_record_only:true,original_text_republished:false},
   derived:{what:EVENT_COPY[eventType],
    why:`Risk classification: ${eventType.replaceAll("_"," ")} in ${country_iso3}; assess the jurisdiction and affected sector before changing exposure.`,
@@ -254,7 +274,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   if(extensions.length===0)counts.feeds_without_candidate_extension++;
   const standard=standardEntries(body);
   const feedOrigin=/json/iu.test(response.headers?.get?.("content-type")??"")||/^[\s]*[\[{]/u.test(body)?"OFFICIAL_API":"RSS";
-  const built=await Promise.all(standard.slice(0,5).map(async entry=>{
+  const built=await Promise.all(standard.slice(0,25).map(async entry=>{
    counts.standard_entries_seen++;
    let page="";
    try{const pageResponse=await fetchImpl(entry.link,{method:"GET",redirect:"error",
