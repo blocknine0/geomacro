@@ -206,6 +206,37 @@ test("UN News and Global Voices classify mineral and crypto macro records by con
  assert.match(macro.derived.watch,/stablecoin peg deviations/u);
 });
 
+test("Global Voices RSS verifies article CC BY 3.0 notices within the fetch cap and bounds payloads",async()=>{
+ const rights=fullManifest.entries.find(row=>row.source_id==="global_voices_original_cc_by_3");
+ assert.deepEqual(rights.categories.sort(),["CRITICAL_MINERALS","GEOPOLITICS","MACRO_FX"].sort());
+ const feedUrl="https://globalvoices.org/feed/",articleUrls=[];
+ const items=Array.from({length:26},(_,index)=>`<item><guid>${"x".repeat(9000)}-${index}</guid>
+  <title>Rare earth mining supply update in D.R. of Congo</title>
+  <link>https://globalvoices.org/story/rare-earth-${index}</link>
+  <description>Rare earth processing and mining conditions.</description>
+  <pubDate>Fri, 20 Nov 2026 09:30:00 GMT</pubDate></item>`).join("");
+ const xml=`<rss version="2.0"><channel>${items}</channel></rss>`;
+ const page=`<html><a rel="license" href="${rights.rights_evidence.licence_url}">Creative Commons Attribution 3.0</a></html>`;
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now:Date.parse("2026-11-20T12:00:00Z"),
+  fetchImpl:async url=>{
+   if(url===feedUrl)return {ok:true,text:async()=>xml,headers:{get:()=>"application/rss+xml"}};
+   articleUrls.push(url);return {ok:true,text:async()=>page,headers:{get:()=>"text/html"}};
+  },rightsManifest:fullManifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url:feedUrl,risk_category:"conflict"}]},sourceRegistry:fullSourceRegistry});
+ assert.equal(articleUrls.length,25,"article HTML fetches stay within the existing per-feed cap");
+ assert.ok(articleUrls.every(url=>url.startsWith("https://globalvoices.org/story/rare-earth-")));
+ assert.equal(result.originals.length,25);
+ for(const candidate of result.originals){
+  assert.equal(candidate.category,"CRITICAL_MINERALS");
+  assert.equal(candidate.country_iso3,"COD");
+  assert.ok(Buffer.byteLength(candidate.raw_payload,"utf8")<=8000);
+  const payload=JSON.parse(candidate.raw_payload);
+  assert.equal(payload.license_marker,"Creative Commons Attribution 3.0");
+  assert.equal(payload.license_notice_url,rights.rights_evidence.licence_url);
+  assert.ok(candidate.raw_payload.includes("Creative Commons Attribution 3.0"));
+ }
+});
+
 test("GDELT GeoJSON features map country properties to Hot 50 codes",()=>{
  const body=JSON.stringify({type:"FeatureCollection",features:[
   {type:"Feature",id:"gdelt-feature-1",properties:{id:"gdelt-feature-1",country_name:"China",
@@ -377,10 +408,10 @@ function zipOneCsv(name,text){
  end.writeUInt16LE(1,10);end.writeUInt32LE(central.length,12);end.writeUInt32LE(local.length+compressed.length,16);
  return Buffer.concat([local,compressed,central,end]);
 }
-function gdeltTsvRow({id,date,country,event="145",quad="4"}){
+function gdeltTsvRow({id,date,country,event="145",quad="4",sourceUrl="https://example.invalid/article?prose=must-not-enter-payload"}){
  const columns=Array(61).fill("");columns[0]=String(id);columns[1]=date;columns[5]="GOV";
  columns[7]="";columns[15]="";columns[17]="";columns[26]=event;columns[29]=quad;
- columns[30]="-2.5";columns[53]=country;columns[60]="https://example.invalid/article?prose=must-not-enter-payload";
+ columns[30]="-2.5";columns[53]=country;columns[60]=sourceUrl;
  return columns.join("\t");
 }
 
@@ -422,6 +453,37 @@ test("GDELT full-URL lastupdate ZIP emits tab-delimited factual candidates",asyn
  }
 });
 
+test("GDELT source URL slugs route minerals and macro events without changing factual payload schema",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="gdelt_v2_factual_events");
+ assert.deepEqual(rights.categories.sort(),["CRITICAL_MINERALS","GEOPOLITICS","MACRO_FX"].sort());
+ const now=Date.parse("2026-11-20T12:00:00Z"),feedUrl="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
+ const archiveUrl="https://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip";
+ const csv=[
+  gdeltTsvRow({id:1,date:"20261120",country:"CG",sourceUrl:"https://example.invalid/reports/rare-earth-mining-update"}),
+  gdeltTsvRow({id:2,date:"20261120",country:"IN",quad:"1",sourceUrl:"https://example.invalid/news/central-bank-interest-rate"})
+ ].join("\n");
+ const archive=zipOneCsv("20261120103000.export.CSV",csv);
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl:async url=>{
+  if(url===feedUrl)return {ok:true,text:async()=>
+   "152384 0123456789abcdef0123456789abcdef http://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip\n",
+   headers:{get:()=>"text/plain"}};
+  assert.equal(url,archiveUrl);return {ok:true,
+   arrayBuffer:async()=>archive.buffer.slice(archive.byteOffset,archive.byteOffset+archive.byteLength),
+   headers:{get:name=>name==="content-length"?String(archive.length):"application/zip"}};
+ },rightsManifest:manifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+  ...feed(rights.source_id),url:feedUrl,risk_category:"conflict"}]},sourceRegistry});
+ assert.deepEqual(result.originals.map(row=>[row.country_iso3,row.category]),[
+  ["COD","CRITICAL_MINERALS"],["IND","MACRO_FX"]]);
+ for(const candidate of result.originals){
+  const payload=JSON.parse(candidate.raw_payload);
+  assert.equal(payload.schema,"geomacro.gdelt.factual-event.v1");
+  assert.deepEqual(Object.keys(payload).sort(),[
+   "schema","license_notice_url","license_marker","global_event_id","sql_date","actor1_code",
+   "actor2_code","event_code","goldstein_scale","country_iso3","published_at","source_url"
+  ].sort());
+ }
+});
+
 test("approved non-UK macro and minerals sources have country fallbacks",()=>{
  assert.deepEqual({
   ecb_fx_reference_rates:matchHot50Countries({},"","ecb_fx_reference_rates")[0],
@@ -452,7 +514,7 @@ test("country mention terms cover all 50 Hot 50 countries",()=>{
 });
 
 test("COD, KAZ, and ZMB aliases match their Hot 50 countries",()=>{
- for(const [country,terms] of Object.entries({COD:["Democratic Republic of the Congo","DR Congo","DRC","Kinshasa","Katanga"],
+ for(const [country,terms] of Object.entries({COD:["Democratic Republic of the Congo","D.R. of Congo","D.R. Congo","DR Congo","DRC","Kinshasa","Katanga"],
   KAZ:["Kazakhstan","Astana","Almaty"],ZMB:["Zambia","Lusaka","Copperbelt"]})){
   for(const term of terms)assert.deepEqual(matchHot50Countries({},term),[country],`${term} -> ${country}`);
  }

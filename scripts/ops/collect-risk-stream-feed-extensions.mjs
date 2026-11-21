@@ -122,7 +122,7 @@ export const COUNTRY_TERMS={USA:["united states","united states of america","u.s
  FRA:["france","french"],MEX:["mexico","mexican"],ITA:["italy","italian"],ESP:["spain","spanish"],NLD:["netherlands","dutch"],
  CHE:["switzerland","swiss"],NOR:["norway","norwegian"],SWE:["sweden","swedish"],POL:["poland","polish"],
  TUR:["turkey","türkiye","turkiye","turkish"],EGY:["egypt","egyptian"],QAT:["qatar","qatari"],OMN:["oman","omani"],
- IRQ:["iraq","iraqi"],NGA:["nigeria","nigerian"],COD:["democratic republic of the congo","dr congo","drc","kinshasa","katanga","congo"],ZMB:["zambia","zambian","lusaka","copperbelt"],
+ IRQ:["iraq","iraqi"],NGA:["nigeria","nigerian"],COD:["democratic republic of the congo","d.r. of congo","d.r. congo","dr congo","drc","kinshasa","katanga","congo"],ZMB:["zambia","zambian","lusaka","copperbelt"],
  ARG:["argentina","argentine"],BOL:["bolivia","bolivian"],VNM:["vietnam","vietnamese"],THA:["thailand","thai"],
  MYS:["malaysia","malaysian"],SGP:["singapore","singaporean"],PHL:["philippines","philippine","filipino"],PAK:["pakistan","pakistani"],
  BGD:["bangladesh","bangladeshi"],KAZ:["kazakhstan","kazakh","astana","almaty"],MNG:["mongolia","mongolian"],MMR:["myanmar","burma","burmese"]};
@@ -246,7 +246,14 @@ function gdeltEventEntries(csv,archiveUrl,now){
   const [globalEventId,sqlDate]=columns,eventCode=columns[26],quadClass=columns[29],goldsteinScale=columns[30];
   if(!/^\d{1,4}$/u.test(eventCode)||!/^\d$/u.test(quadClass)||
    (goldsteinScale!==""&&!/^-?\d+(?:\.\d+)?$/u.test(goldsteinScale)))continue;
-  const eventType=/^(?:16|17)/u.test(eventCode)?"sanctions_policy":
+  const sourceUrl=columns[60]??"";
+  let sourcePath="";try{sourcePath=new URL(sourceUrl).pathname.toLowerCase()}catch{}
+  const category=/rare-earth|lithium|cobalt|nickel|copper|uranium|graphite|gallium|germanium|antimony|tungsten|mining|mineral|smelter|refining/iu.test(sourcePath)?
+   "CRITICAL_MINERALS":/central-bank|interest-rate|currency|forex|inflation|bond-yield|sovereign-debt|crypto|bitcoin|stablecoin|cbdc/iu.test(sourcePath)?
+   "MACRO_FX":"GEOPOLITICS";
+  const eventType=category==="CRITICAL_MINERALS"?"critical_mineral_supply":
+   category==="MACRO_FX"?"fx_intervention":
+   /^(?:16|17)/u.test(eventCode)?"sanctions_policy":
    ["3","4"].includes(quadClass)?"conflict_escalation":null;
   if(!eventType)continue;
   const updated=`${sqlDate.slice(0,4)}-${sqlDate.slice(4,6)}-${sqlDate.slice(6,8)}T00:00:00.000Z`;
@@ -256,6 +263,7 @@ function gdeltEventEntries(csv,archiveUrl,now){
    GDELT_FIPS_COUNTRY[code]??HOT50_ISO2[code]??hot50Iso3FromValue(code)).filter(code=>code&&HOT50.has(code)))];
   if(!countries.length)continue;
   entries.push({id:globalEventId,link:archiveUrl,updated,title:"GDELT factual event record",summary:"",
+   gdelt_category:category,
    countries,country_iso3:countries[0],gdelt_facts:{global_event_id:globalEventId,sql_date:sqlDate,
     actor1_code:columns[5],actor2_code:columns[15],event_code:eventCode,quad_class:quadClass,
     event_type:eventType,goldstein_scale:goldsteinScale,action_geo_country_code:columns[53]}});
@@ -471,6 +479,7 @@ function htmlLicenseEvidence(page,rights,itemUrl){
  if(!anchor)return null;
  const marker=stripMarkup(anchor[1]);
  if(!marker||marker.length>120)return null;
+ if(licenseId==="CC_BY_3.0"&&!/creative commons attribution 3\.0|cc by 3\.0/iu.test(marker))return null;
  // Fail closed on item-level exclusions or restriction markers. Boilerplate
  // OGL terms are not treated as an item exception; only the actual content
  // page is retained for this bounded check.
@@ -499,6 +508,9 @@ function publisherOwnedForLicense(licenseId){
 }
 function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
   let category=CATEGORY_BY_FEED[feed.risk_category];
+ if(rights.source_id==="gdelt_v2_factual_events"&&
+    ["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].includes(entry.gdelt_category))
+  category=entry.gdelt_category;
  if(!category||!entry.id||!entry.link||!entry.updated)return [];
  let sourceUrl;try{sourceUrl=new URL(entry.link)}catch{return []}
  if(feed.name==="rba_fx_ccby")sourceUrl=new URL("https://www.rba.gov.au/rss/rss-cb-exchange-rates.xml");
@@ -579,6 +591,11 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
    unNews?JSON.stringify({schema:"geomacro.un-news.factual-record.v1",
     license_notice_url:rights.rights_evidence.licence_url,license_marker:evidence.marker,
     record_id:String(entry.id),published_at,country_iso3,category,event_type:eventType,
+    item_url:sourceUrl.href}):
+   rights.source_id==="global_voices_original_cc_by_3"?JSON.stringify({
+    schema:"geomacro.global-voices.factual-record.v1",
+    license_notice_url:rights.rights_evidence.licence_url,license_marker:evidence.marker,
+    record_id:String(entry.id).slice(0,256),published_at,country_iso3,category,event_type:eventType,
     item_url:sourceUrl.href}):
    licenseId==="ECB_REFERENCE_STATISTICS"?JSON.stringify({
    schema:"geomacro.ecb.reference-statistic.v1",license_notice_url:rights.rights_evidence.licence_url,
