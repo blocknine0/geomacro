@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { agenticDemoRequestSchema } from "../lib/agentic-demo-contract";
 import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
+import { paidX402CommercialAccess } from "../lib/risk-gate-commercial-access";
 import {
   assertCoinbasePaymentBinding,
   bazaarExtensionOutcome,
@@ -23,6 +24,12 @@ import {
   verifyCoinbaseX402,
   type CoinbaseSettleResult,
   type CoinbaseX402Config,
+  COINBASE_X402_ARC_MAINNET_NETWORK,
+  COINBASE_X402_MAINNET_NETWORK,
+  COINBASE_X402_POLYGON_MAINNET_NETWORK,
+  COINBASE_X402_TIER_PRICING,
+  type CoinbaseX402MainnetNetwork,
+  type CoinbaseX402Tier,
 } from "../lib/coinbase-x402.server";
 
 const MAX_BODY_BYTES = 8 * 1024;
@@ -63,6 +70,7 @@ function finalPaidResponse(prepared: Record<string, unknown>, settlement: Coinba
     : {};
   return {
     ...prepared,
+    commercial_access: paidX402CommercialAccess(true),
     payment: {
       ...previous,
       required: true,
@@ -97,10 +105,18 @@ export const Route = createFileRoute("/api/x402/risk")({
           return json({ ok: false, service: "Geomacro Coinbase x402 Risk Pre-flight", configured: false, error: error instanceof Error ? error.message : "Invalid x402 configuration", execution_authorized: false }, 503);
         }
         if (!config) return json({ ok: false, service: "Geomacro Coinbase x402 Risk Pre-flight", configured: false, execution_authorized: false }, 503);
+        const paymentOffers = (config.environment === "production"
+          ? [COINBASE_X402_MAINNET_NETWORK, COINBASE_X402_POLYGON_MAINNET_NETWORK, COINBASE_X402_ARC_MAINNET_NETWORK]
+          : [config.network]).flatMap((network) => (Object.keys(COINBASE_X402_TIER_PRICING) as CoinbaseX402Tier[]).map((tier) => {
+          const offer = config.environment === "production"
+            ? getCoinbaseX402Config({ tier, network: network as CoinbaseX402MainnetNetwork })
+            : getCoinbaseX402Config({ tier });
+          return offer ? { tier, network: offer.network, asset: "USDC", asset_contract: offer.asset, pay_to: offer.payTo, price_usdc: offer.priceUsdc, amount_atomic: offer.amountAtomic } : null;
+        }).filter(Boolean));
         return json({
           ok: true,
           service: "Geomacro Coinbase x402 Risk Pre-flight",
-          role: config.environment === "production" ? "legacy_testnet_acceptance_only" : "base_sepolia_acceptance",
+          role: config.environment === "production" ? "mainnet_paid_risk_gate" : "base_sepolia_acceptance_only",
           x402_version: 2,
           endpoint: new URL("/api/x402/risk", request.url).toString(),
           production_endpoint: new URL("/api/v1/intelligence/query", request.url).toString(),
@@ -108,16 +124,19 @@ export const Route = createFileRoute("/api/x402/risk")({
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          // Production is never quoted a legacy flat price here: all
-          // paid amounts derive from an independently verified capability.
-          price_usdc: config.environment === "production" ? null : config.priceUsdc,
-          pricing_model: config.environment === "production"
-            ? "SERVER_VERIFIED_CAPABILITY_AND_VARIANT" : "LEGACY_TESTNET_ONLY",
+          price_usdc: config.priceUsdc,
+          pricing_model: config.environment === "production" ? "FIXED_TIERED_MAINNET_USDC" : "TESTNET_ACCEPTANCE_ONLY",
+          pricing: config.environment === "production" ? COINBASE_X402_TIER_PRICING : { TESTNET: config.priceUsdc },
+          payment_offers: paymentOffers,
+          output_contract: {
+            agent_decision: { audience: "machine", description: "Risk Gate action decision; execution_authorized remains false." },
+            analyst_brief: { audience: "human", description: "Plain-language reasoning and risk context." },
+          },
           pricing_catalog: "/api/v1/pricing",
           facilitator: "Coinbase CDP",
           bazaar_discovery: true,
           current_subject_scope: config.environment === "production"
-            ? { payable_here: false, note: "Production purchases use the governed adaptive intelligence endpoint." }
+            ? { payable_here: true, minimum_countries: 47, categories: ["GEOPOLITICS", "MACRO_FX", "CRITICAL_MINERALS"] }
             : { countries: ["USA", "CHN"], corridors: ["USA>CHN", "CHN>USA"] },
           execution_authorized: false,
         });
@@ -129,27 +148,24 @@ export const Route = createFileRoute("/api/x402/risk")({
           throw error;
         }
 
+        const requestOptions = rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+          ? rawBody as Record<string, unknown>
+          : {};
+        const tier = (requestOptions.tier ?? "BASIC") as CoinbaseX402Tier;
+        const network = (requestOptions.network ?? COINBASE_X402_MAINNET_NETWORK) as CoinbaseX402MainnetNetwork;
+        if (!Object.hasOwn(COINBASE_X402_TIER_PRICING, tier) || ![COINBASE_X402_MAINNET_NETWORK, COINBASE_X402_POLYGON_MAINNET_NETWORK, COINBASE_X402_ARC_MAINNET_NETWORK].includes(network)) {
+          return json({ ok: false, error: { code: "X402_TIER_OR_NETWORK_INVALID", message: "Select BASIC, STANDARD, or COMPLEX and a supported Mainnet network." }, execution_authorized: false }, 400);
+        }
+
         let config: CoinbaseX402Config | null;
         try { config = getCoinbaseX402Config(); } catch (error) {
           return json({ ok: false, error: { code: "COINBASE_X402_CONFIGURATION_INVALID", message: error instanceof Error ? error.message : "Invalid x402 configuration" }, execution_authorized: false }, 503);
         }
         if (!config) return json({ ok: false, error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled." }, execution_authorized: false }, 503);
-
-        // The legacy acceptance resource can never take real mainnet USDC.
-        // Production is exclusively routed through /api/v1/intelligence/query,
-        // where query-specific coverage/licensing/freshness checks run before 402.
         if (config.environment === "production") {
-          return json({
-            ok: false,
-            chargeable: false,
-            payment_required_now: false,
-            error: {
-              code: "LEGACY_X402_PRODUCTION_DISABLED",
-              message: "Use /api/v1/intelligence/query after a successful /api/x402/risk/availability check.",
-            },
-            production_endpoint: new URL("/api/v1/intelligence/query", request.url).toString(),
-            execution_authorized: false,
-          }, 410);
+          try { config = getCoinbaseX402Config({ tier, network }); } catch (error) {
+            return json({ ok: false, error: { code: "COINBASE_X402_CONFIGURATION_INVALID", message: error instanceof Error ? error.message : "Invalid x402 configuration" }, execution_authorized: false }, 503);
+          }
         }
 
         if (!allowPublicDemoRequest(request, { namespace: "coinbase-x402-risk", windowMs: 60_000, maxPerClient: 30, maxGlobal: 300 })) {
@@ -166,20 +182,11 @@ export const Route = createFileRoute("/api/x402/risk")({
           throw error;
         }
 
-        // Strong invariant: a valid business request receives a 402 only if the
-        // exact legacy product can be prepared now. Premium payload is not sent.
-        try { await proveLegacyDeliverable(body); } catch (error) {
-          return json({
-            ok: false,
-            chargeable: false,
-            payment_required_now: false,
-            error: { code: "RISK_RESOURCE_UNAVAILABLE", message: "Requested risk context is not currently deliverable; no payment is requested." },
-            execution_authorized: false,
-          }, 422);
-        }
-
+        // Challenge before any Risk Gate calculation. An unpaid request never
+        // invokes the data-producing preflight and receives no gate fields.
         const paymentHeader = request.headers.get("payment-signature");
         if (!paymentHeader) return paymentRequiredResponse(request, config);
+
         if (!config.apiKeyId || !config.apiKeySecret) return json({ ok: false, error: { code: "CDP_API_CREDENTIALS_MISSING", message: "Coinbase CDP settlement credentials are not configured." }, execution_authorized: false }, 503);
 
         let paymentPayload: Record<string, unknown>;
@@ -191,7 +198,7 @@ export const Route = createFileRoute("/api/x402/risk")({
         }
 
         const paymentFingerprint = coinbasePaymentFingerprint(paymentPayload);
-        const requestFingerprint = coinbaseRequestFingerprint(body);
+        const requestFingerprint = coinbaseRequestFingerprint({ ...body, tier, network: config.network });
         let claim;
         try { claim = await claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint, clientRequestId: body.client_request_id ?? null, config }); } catch (error) {
           console.error("[coinbase-x402] delivery claim failed", error);
@@ -234,6 +241,7 @@ export const Route = createFileRoute("/api/x402/risk")({
                 asset: "USDC",
                 asset_contract: config.asset,
                 network: config.network,
+                tier: config.tier,
                 amount_atomic: config.amountAtomic,
                 amount_usdc: config.priceUsdc,
                 payer: verified.payer ?? null,
