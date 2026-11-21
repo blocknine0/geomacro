@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 13116)
-Total output lines: 784
-
 #!/usr/bin/env node
 import {readFileSync,writeFileSync} from "node:fs";
 import {inflateRawSync} from "node:zlib";
@@ -268,7 +265,211 @@ function gdeltEventEntries(csv,archiveUrl,now){
   entries.push({id:globalEventId,link:archiveUrl,updated,title:"GDELT factual event record",summary:"",
    gdelt_category:category,
    countries,country_iso3:countries[0],gdelt_facts:{global_event_id:globalEventId,sql_date:sqlDate,
-    actor1_code:columns[5],actor2…3116 tokens truncated…s(rights);
+    actor1_code:columns[5],actor2_code:columns[15],event_code:eventCode,quad_class:quadClass,
+    event_type:eventType,goldstein_scale:goldsteinScale,action_geo_country_code:columns[53]}});
+ }
+ return entries;
+}
+const xmlText=value=>String(value).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu,"$1")
+ .replace(/&(?:amp|lt|gt|quot|apos);/gu,entity=>({"&amp;":"&","&lt;":"<","&gt;":">","&quot;":"\"","&apos;":"'"})[entity]);
+
+/** Extract only an explicitly publisher-supplied GeoMacro candidate extension. */
+export function extractRiskStreamFeedExtensions(xml){
+ if(typeof xml!=="string"||xml.length>2_000_000)fail("FEED_SIZE_INVALID");
+ const rows=[];
+ const pattern=/<((?:[A-Za-z_][\w.-]*:)?geomacro_risk_stream_candidate)\b[^>]*>([\s\S]*?)<\/\1\s*>/giu;
+ for(const match of xml.matchAll(pattern)){
+  const raw=xmlText(match[2]).trim();
+  let value;try{value=JSON.parse(raw)}catch{fail("JSON_INVALID")}
+  if(!value||typeof value!=="object"||Array.isArray(value))fail("CANDIDATE_INVALID");
+  rows.push(value);
+ }
+ return rows;
+}
+
+function fedH10Entries(xml,now){
+ const current=now instanceof Date?now.getTime():typeof now==="number"?now:Date.parse(now);
+ if(typeof xml!=="string"||!Number.isFinite(current))return [];
+ const attribute=(text,name)=>text.match(new RegExp(`(?:^|\\s)${name}=["']([^"']+)["']`,'iu'))?.[1]??null;
+ const valueById=(text,id)=>{
+  for(const match of text.matchAll(/<(?:[\w.-]+:)?Value\b([^>]*)\/?\s*>/giu))
+   if(attribute(match[1],"id")?.toUpperCase()===id)return attribute(match[1],"value");
+  return null;
+ };
+ const textValue=(text,name)=>text.match(new RegExp(`<(?:[\\w.-]+:)?${name}\\b[^>]*>([^<]+)<\\/(?:[\\w.-]+:)?${name}\\s*>`,'iu'))?.[1]?.trim()??null;
+ const tagAttribute=(text,name,attr)=>{
+  const tag=text.match(new RegExp(`<(?:[\\w.-]+:)?${name}\\b([^>]*)\\/?\\s*>`,'iu'));
+  return tag?attribute(tag[1],attr):null;
+ };
+ const entries=[];
+ for(const seriesMatch of xml.matchAll(/<(?:[\w.-]+:)?Series\b([^>]*)>([\s\S]*?)<\/(?:[\w.-]+:)?Series\s*>/giu)){
+  const seriesAttrs=seriesMatch[1],series=seriesMatch[2];
+  const currency=(attribute(seriesAttrs,"CURRENCY")??valueById(series,"CURRENCY")??textValue(series,"CURRENCY")??"").toUpperCase();
+  const country_iso3=HOT50_CURRENCY_COUNTRY[currency];
+  if(!country_iso3)continue;
+  for(const obsMatch of series.matchAll(/<(?:[\w.-]+:)?Obs\b([^>]*)>([\s\S]*?)<\/(?:[\w.-]+:)?Obs\s*>/giu)){
+   const obsAttrs=obsMatch[1],obs=obsMatch[2];
+   const timePeriod=attribute(obsAttrs,"TIME_PERIOD")??valueById(obs,"TIME_PERIOD")??
+    tagAttribute(obs,"ObsDimension","value")??textValue(obs,"TIME_PERIOD");
+   if(!/^\d{4}-\d{2}-\d{2}$/u.test(timePeriod??""))continue;
+   const periodStart=Date.parse(`${timePeriod}T00:00:00.000Z`);
+   const requestedTime=Date.parse(`${timePeriod}T16:00:00.000Z`);
+   if(!Number.isFinite(periodStart)||periodStart>current||!Number.isFinite(requestedTime))continue;
+   const publishedMs=Math.min(requestedTime,current);
+   if(current-publishedMs>72*60*60*1000)continue;
+   const rawValue=attribute(obsAttrs,"OBS_VALUE")??valueById(obs,"OBS_VALUE")??
+    tagAttribute(obs,"ObsValue","value")??textValue(obs,"ObsValue")??textValue(obs,"OBS_VALUE");
+   const value=Number(rawValue);
+   if(rawValue===null||rawValue===""||!Number.isFinite(value))continue;
+   const updated=new Date(publishedMs).toISOString();
+   entries.push({id:`fed-h10-${timePeriod}-${currency}`,link:FED_H10_ENDPOINT,updated,
+    title:`Federal Reserve H.10 exchange rate for ${currency}`,
+    summary:"Daily foreign exchange rate observation.",country_iso3,
+    reference_statistic:{value:String(value),reference_currency:"USD",counter_currency:currency}});
+  }
+ }
+ return entries;
+}
+
+export function standardEntries(xml,now=Date.now()){
+ if(typeof xml==="string"&&/<(?:[\w.-]+:)?Series\b/iu.test(xml)&&
+  /<(?:[\w.-]+:)?Obs\b/iu.test(xml)){
+  const entries=fedH10Entries(xml,now);
+  if(entries.length)return entries;
+ }
+ if(typeof xml==="string"&&/<Cube\b[^>]*\btime=["']\d{4}-\d{2}-\d{2}["']/iu.test(xml)){
+  const day=xml.match(/<Cube\b[^>]*\btime=["'](\d{4}-\d{2}-\d{2})["']/iu)?.[1];
+  if(!day)return [];
+  const rows=[];
+  for(const match of xml.matchAll(/<Cube\b([^>]*)\/?\s*>/giu)){
+   const attrs=match[1],currency=attrs.match(/\bcurrency=["']([A-Z]{3})["']/iu)?.[1],
+    rate=attrs.match(/\brate=["']([0-9]+(?:\.[0-9]+)?)["']/iu)?.[1];
+   if(!currency||!rate||!ECB_CURRENCY_COUNTRY[currency])continue;
+   rows.push({id:`ecb-euro-reference-${day}-${currency}`,
+    link:"https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
+    updated:`${day}T00:00:00.000Z`,title:`ECB euro exchange rate for ${currency}`,
+    summary:"Dated ECB euro reference currency rate.",country_iso3:ECB_CURRENCY_COUNTRY[currency],
+    reference_statistic:{value:rate,reference_currency:"EUR",counter_currency:currency}});
+  }
+  return rows;
+ }
+ if(typeof xml==="string"&&/^[\s]*[\[{]/u.test(xml)){
+  try{
+   const value=JSON.parse(xml);
+   let items=Array.isArray(value)?value:value?.items??value?.entries??value?.data??value?.features??[];
+   if(Array.isArray(value)&&value.length===2&&Array.isArray(value[1]))items=value[1];
+   if(Array.isArray(items))return items.map(item=>{
+    const fields=item?.fields??item?.properties??item??{},date=fields.date;
+    const countryRows=Array.isArray(fields.country)?fields.country:Array.isArray(fields.countries)?fields.countries:
+     fields.country?[fields.country]:[];
+    const countries=[...countryRows.map(row=>hot50Iso3FromValue(typeof row==="string"?row:
+     row?.iso3??row?.iso3Code??row?.countryiso3code??row?.iso2??row?.country_code??row?.code??row?.name??row?.value)),
+     fields.country_name,fields.countryName,fields.admin0,fields.adm0name,fields.location_country]
+      .map(value=>hot50Iso3FromValue(value)).filter(Boolean);
+    const rawCountryCode=fields.countryiso3code??fields.country_iso3??fields.iso3??fields.ISO_A3??
+     fields.ADM0_A3??fields.country_code??fields.countryCode;
+    const countryName=[fields.country_name,fields.countryName,fields.admin0,fields.adm0name,
+     fields.location_country,typeof fields.country==="string"?fields.country:null].filter(Boolean).join(" ");
+    const countryIso3=hot50Iso3FromValue(rawCountryCode)??hot50Iso3FromValue(countryName)??null;
+    let link=String(fields.href??fields.url??fields.external_url??fields.link??fields.url_alias??
+     item?.href??item?.url??item?.link??"");
+    if(link.startsWith("/"))link="https://reliefweb.int"+link;
+    return {id:String(fields.id??fields.uuid??fields.guid??item?.id??item?.guid??""),
+     link,
+     updated:String(fields.date_modified??fields.date_published??fields.updated??fields.published??
+      fields.timestamp??fields.datetime??date?.created??date?.published??date?.original??
+      date?.updated??""),
+     title:stripMarkup(fields.title??fields.name??""),
+     summary:stripMarkup(fields.summary??fields.content_text??fields.description??fields.name??""),
+     rights_markers:[fields.rights,fields.license,fields.license_url,fields.copyright,
+      ...(Array.isArray(fields.tags)?fields.tags:[])].filter(Boolean).join(" "),
+     countries,country_iso3:countryIso3};
+   });
+  }catch{return []}
+ }
+ const rows=[];
+ for(const match of xml.matchAll(/<(?:[\w.-]+:)?entry\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?entry\s*>/giu)){
+  const block=match[1],value=name=>{
+   const rx=new RegExp(`<(?:(?:[\\w.-]+):)?${name}\\b[^>]*>([\\s\\S]*?)<\\/(?:(?:[\\w.-]+):)?${name}\\s*>`,'iu');
+   return stripMarkup(block.match(rx)?.[1]??"");
+  };
+  const links=[...block.matchAll(/<(?:(?:[\w.-]+):)?link\b([^>]*)\/?\s*>/giu)].map(m=>m[1]);
+  const link=links.map(attrs=>({href:attrs.match(/\bhref=["']([^"']+)["']/iu)?.[1],
+   rel:attrs.match(/\brel=["']([^"']+)["']/iu)?.[1]})).find(x=>x.href&&(!x.rel||x.rel==="alternate"));
+  const licenseLinks=links.map(attrs=>({href:attrs.match(/\bhref=["']([^"']+)["']/iu)?.[1],
+   rel:attrs.match(/\brel=["']([^"']+)["']/iu)?.[1]})).filter(x=>x.href&&x.rel==="license");
+  rows.push({id:value("id")||link?.href,link:link?.href,updated:value("updated")||value("published"),
+   title:value("title"),summary:value("summary")||value("description"),
+   rights_markers:[value("rights"),value("copyright"),...licenseLinks.map(x=>x.href)].filter(Boolean).join(" ")});
+ }
+ if(rows.length)return rows;
+ for(const match of xml.matchAll(/<(?:[\w.-]+:)?item\b([^>]*)>([\s\S]*?)<\/(?:[\w.-]+:)?item\s*>/giu)){
+  const attrs=match[1],block=match[2],value=name=>{
+   const rx=new RegExp(`<(?:(?:[\\w.-]+):)?${name}\\b[^>]*>([\\s\\S]*?)<\\/(?:(?:[\\w.-]+):)?${name}\\s*>`,'iu');
+   return stripMarkup(block.match(rx)?.[1]??"");
+  };
+  const attr=(name)=>attrs.match(new RegExp(`(?:^|\\s)(?:[\\w.-]+:)?${name}=["']([^"']+)["']`,'iu'))?.[1]??"";
+  const licenseLinks=[...block.matchAll(/<(?:(?:[\w.-]+):)?link\b([^>]*)\/?\s*>/giu)].map(m=>m[1])
+   .filter(linkAttrs=>/\brel=["']license["']/iu.test(linkAttrs)).map(linkAttrs=>linkAttrs.match(/\bhref=["']([^"']+)["']/iu)?.[1]).filter(Boolean);
+  const link=value("link")||attr("about");
+  rows.push({id:value("guid")||attr("about")||link,link,updated:value("pubDate")||value("date")||value("issued"),
+   title:value("title"),summary:value("description"),
+   rights_markers:[value("rights"),value("copyright"),value("license"),...licenseLinks].filter(Boolean).join(" "),
+   country_iso3:HOT50_CURRENCY_COUNTRY[value("targetCurrency").toUpperCase()]??null,
+   reference_statistic:{value:value("value"),reference_currency:value("baseCurrency"),
+    counter_currency:value("targetCurrency")}});
+ }
+ return rows;
+}
+
+function bankOfCanadaEntries(body,now){
+ let payload;try{payload=JSON.parse(body)}catch{return []}
+ if(!Array.isArray(payload?.observations))return [];
+ const eligible=payload.observations.filter(row=>/^\d{4}-\d{2}-\d{2}$/u.test(row?.d??"")&&
+  Date.parse(`${row.d}T00:00:00.000Z`)<=now).sort((a,b)=>b.d.localeCompare(a.d));
+ const observation=eligible[0];if(!observation)return [];
+ const day=observation.d,publishedMs=Math.min(Date.parse(`${day}T16:00:00.000Z`),now);
+ if(now-publishedMs>72*60*60*1000)return [];
+ const entries=[];
+ for(const [key,raw] of Object.entries(observation)){
+  const currency=key.match(/^FX([A-Z]{3})CAD$/u)?.[1];
+  if(!currency||!ECB_CURRENCY_COUNTRY[currency])continue;
+  const value=Number(typeof raw==="object"?raw?.v:raw);
+  if(!Number.isFinite(value))continue;
+  entries.push({id:`boc-fx-${day}-${currency}`,link:BOC_FX_ENDPOINT,updated:new Date(publishedMs).toISOString(),
+   title:`Bank of Canada exchange rate ${currency}`,summary:"Daily foreign exchange rate observation.",
+   country_iso3:ECB_CURRENCY_COUNTRY[currency],reference_statistic:{value:String(value),
+    reference_currency:"CAD",counter_currency:currency}});
+ }
+ return entries;
+}
+
+function rbaFxEntries(xml,now){
+ const rows=standardEntries(xml,now),currencies=Object.keys(ECB_CURRENCY_COUNTRY);
+ const aliases={USD:/\b(?:US|U\.S\.|United States) dollar\b/iu,GBP:/\b(?:UK|British|pound sterling)\b/iu,
+  JPY:/\bJapanese yen\b/iu,CNY:/\b(?:Chinese|renminbi)\b/iu,INR:/\bIndian rupee\b/iu,
+  KRW:/\bSouth Korean won\b/iu,AUD:/\bAustralian dollar\b/iu,CAD:/\bCanadian dollar\b/iu,
+  CHF:/\bSwiss franc\b/iu,BRL:/\bBrazilian real\b/iu,MXN:/\bMexican peso\b/iu,
+  PLN:/\bPolish zloty\b/iu,SEK:/\bSwedish krona\b/iu,NOK:/\bNorwegian krone\b/iu,
+  TRY:/\bTurkish lira\b/iu,ZAR:/\bSouth African rand\b/iu,SGD:/\bSingapore dollar\b/iu,
+  MYR:/\bMalaysian ringgit\b/iu,THB:/\bThai baht\b/iu,IDR:/\bIndonesian rupiah\b/iu,
+  PHP:/\bPhilippine peso\b/iu};
+ return rows.flatMap(row=>{
+  const text=`${row.title??""} ${row.summary??""} ${row.link??""}`;
+  const codeMatch=text.match(/\b([A-Z]{3})\b/gu)?.find(code=>currencies.includes(code));
+  const currency=codeMatch??Object.entries(aliases).find(([,pattern])=>pattern.test(text))?.[0];
+  const rawRate=text.match(/(?:^|[^\d])([0-9]+(?:\.[0-9]+)?)(?:[^\d]|$)/u)?.[1];
+  const value=Number(rawRate),published=Date.parse(row.updated??"");
+  if(!currency||!Number.isFinite(value)||!Number.isFinite(published)||published>now||now-published>72*3600000)return [];
+  return [{...row,id:row.id||`rba-fx-${row.updated}-${currency}`,updated:new Date(published).toISOString(),
+   title:`Reserve Bank of Australia exchange rate ${currency}`,summary:"Daily foreign exchange rate observation.",
+   country_iso3:ECB_CURRENCY_COUNTRY[currency],reference_statistic:{value:String(value),
+    reference_currency:"AUD",counter_currency:currency}}];
+ });
+}
+function htmlLicenseEvidence(page,rights,itemUrl){
+ const url=rights.rights_evidence.licence_url;
+ const licenseId=licenseIdFromRights(rights);
  if(!licenseId)return null;
  if(licenseId==="GDELT_FACTS_ONLY")return null;
  if(licenseId==="ECB_REFERENCE_STATISTICS")return null;
