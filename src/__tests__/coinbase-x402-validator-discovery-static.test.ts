@@ -53,10 +53,22 @@ describe('Coinbase x402 validator discovery ordering', () => {
     expect(source).toContain('output_contract:');
     expect(source).toContain('agent_decision:');
     expect(source).toContain('analyst_brief:');
+    expect(source).toContain('price_usdc: config.environment === "production" ? null : config.priceUsdc');
+    expect(source).toContain('production_endpoint: "https://geomacro.live/api/v1/intelligence/query"');
     expect(x402).toContain('BASIC: { priceUsdc: "0.15", amountAtomic: "150000" }');
     expect(x402).toContain('STANDARD: { priceUsdc: "0.20", amountAtomic: "200000" }');
     expect(x402).toContain('COMPLEX: { priceUsdc: "0.30", amountAtomic: "300000" }');
     expect(x402).toContain('0x95ba71d21c41bda8bba9533f96d25f793e4137b5');
+  });
+
+  it('keeps the legacy Risk Gate POST disabled for production', () => {
+    const disabled = source.indexOf('code: "LEGACY_X402_PRODUCTION_DISABLED"');
+    const productionGuard = source.indexOf('if (config.environment === "production")');
+    const preflight = source.indexOf('proveLegacyDeliverable(body)');
+    expect(productionGuard).toBeGreaterThan(-1);
+    expect(disabled).toBeGreaterThan(productionGuard);
+    expect(preflight).toBeGreaterThan(disabled);
+    expect(source).toContain('return json({ ok: false, error: "X402_UNCONFIGURED" }, 503)');
   });
 
   it('returns a data-free 402 before running the Risk Gate preflight', () => {
