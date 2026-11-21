@@ -99,7 +99,8 @@ const PUBLIC_RISK_STREAM_TEASER_FIELDS=new Set(["id","category","title","what_ch
   "why_it_matters","topic","geography","development_type","published_at","date_precision",
   "observed_release_count","sources_credited","status","same_event_corrob_verified","severity"]);
 const PUBLIC_TEASER_PUBLISHER_TEXT=/\b(?:Reuters|Associated Press|AP News|Bloomberg|Financial Times|The Guardian|BBC News|Al Jazeera|CNBC|CNN|The New York Times|New York Times|Wall Street Journal|Nikkei|The Hindu|France-Presse|AFP|publisher|according to|reported by|published by|source(?:d)? by|risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64)\b|\b(?:risk )?score\s*[:=]\s*\d+\b|(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\b)/iu;
-function safeSignal(value: unknown, now: number, allowHistorical = false): value is StatelessIntelligenceSignal {
+function safeSignal(value: unknown, now: number, allowHistorical = false,
+  minProseLength = 30): value is StatelessIntelligenceSignal {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
   if (!isSafeDerivedNewsReadbackSignal(s) ||
@@ -114,8 +115,8 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
       typeof s.topic!=="string" || s.topic.length>120 ||
       !(s.geography===null || typeof s.geography==="string"&&s.geography.length<=70) ||
       typeof s.development_type!=="string" || s.development_type.length>80 ||
-      typeof s.what_changed !== "string" || s.what_changed.length < 30 || s.what_changed.length>650 ||
-      typeof s.why_it_matters !== "string" || s.why_it_matters.length < 30 || s.why_it_matters.length>700 ||
+      typeof s.what_changed !== "string" || s.what_changed.length < minProseLength || s.what_changed.length>650 ||
+      typeof s.why_it_matters !== "string" || s.why_it_matters.length < minProseLength || s.why_it_matters.length>700 ||
       !((s.status==="official_release_observed_unscored" &&
           (Object.keys(s).length===SIGNAL_FIELDS.size-4 ||
            Object.keys(s).length===SIGNAL_FIELDS.size-3&&
@@ -232,7 +233,7 @@ export async function fetchRiskStreamPublicTeasers(
     /^[a-f0-9]{64}$/u.test(String(value.id??""))&&
     /^[A-Z]{3}$/u.test(String(value.country_iso3??""))&&
     value.geography===value.country_iso3;
-  if(!safeSignal(value,now)||(!strictShape&&!readerAdapterShape)||
+  if(!safeSignal(value,now,false,25)||(!strictShape&&!readerAdapterShape)||
      value.status!=="official_release_observed_unscored"||
      value.sources_credited.length!==0||
      Date.parse(value.published_at)<now-24*3_600_000||
