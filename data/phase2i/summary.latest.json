@@ -5,10 +5,10 @@
   "registered_sources": 453,
   "new_http_requests": 18,
   "statuses": {
-    "WORKING": 184,
-    "NO_NEW_EVENT": 27,
-    "SOURCE_UNAVAILABLE": 10,
-    "UNSUPPORTED_FORMAT": 18,
+    "WORKING": 178,
+    "NO_NEW_EVENT": 33,
+    "SOURCE_UNAVAILABLE": 7,
+    "UNSUPPORTED_FORMAT": 21,
     "RIGHTS_PENDING": 0,
     "QUOTA_HELD": 0,
     "NOT_YET_VERIFIED": 346
