@@ -191,22 +191,23 @@ async function boundedD1(action,{tries=4,sleeper=sleep,random=Math.random}={}){
  fail("D1_RETRY_EXHAUSTED");
 }
 function originalSources(group,policy){
- const candidates=[...group].sort((a,b)=>a.published_at.localeCompare(b.published_at));
+ const candidates=[...group];
+ // Same-country/category corroboration is valid even when event entities differ.
  const independent=(sources)=>new Set(sources.map(x=>x.source_id)).size===sources.length&&
   new Set(sources.map(x=>x.publisher_root_domain)).size===sources.length&&
   new Set(sources.map(x=>x.parent_media_entity)).size===sources.length&&
-  Date.parse(sources.at(-1).published_at)-Date.parse(sources[0].published_at)<=HOURS48&&
-  sources.slice(1).every(x=>sources[0].entities.some(entity=>x.entities.includes(entity)));
+  Math.max(...sources.map(x=>Date.parse(x.published_at)))-
+   Math.min(...sources.map(x=>Date.parse(x.published_at)))<=HOURS48&&
+  sources.slice(1).every(x=>x.country_iso3===sources[0].country_iso3&&
+   x.category===sources[0].category);
  const verified=candidates.filter(x=>x.original_verified===1);
  for(let i=0;i<verified.length;i++){
   const a=verified[i];
   for(let j=i+1;j<verified.length;j++){
    const b=verified[j];
-   if(Date.parse(b.published_at)-Date.parse(a.published_at)>HOURS48)break;
    if(!independent([a,b]))continue;
    for(let k=j+1;k<verified.length;k++){
     const c=verified[k];
-    if(Date.parse(c.published_at)-Date.parse(a.published_at)>HOURS48)break;
     if(independent([a,b,c]))return [a,b,c];
    }
   }
@@ -215,7 +216,6 @@ function originalSources(group,policy){
   const a=candidates[i];if(a.original_verified!==1)continue;
   for(let j=i+1;j<candidates.length;j++){
    const b=candidates[j];
-   if(Date.parse(b.published_at)-Date.parse(a.published_at)>HOURS48)break;
    if(b.original_verified!==1||!independent([a,b]))continue;
    return [a,b];
   }
@@ -348,8 +348,9 @@ async function appendCanonical(db,rows,archive,now,options){
 }
 async function loadCorroborated(db,items,now,options){
  const fingerprints=[...new Set(items.map(x=>x.event_fingerprint))];
- const r=await boundedD1(()=>db.prepare(
-  "SELECT e.observation_id,e.country_iso3,e.category,e.event_fingerprint,e.source_id,"+
+ const pairs=[...new Map(items.map(x=>[x.country_iso3+"|"+x.category,
+  {country_iso3:x.country_iso3,category:x.category}])).values()];
+ const select="SELECT e.observation_id,e.country_iso3,e.category,e.event_fingerprint,e.source_id,"+
   "e.publisher_root_domain,e.parent_media_entity,e.source_role,e.published_at,e.entities_json,"+
   "e.derived_json,e.original_page_sha256,e.original_verified,e.private_r2_object_key "+
   "FROM risk_stream_evidence e JOIN risk_stream_sources s "+
@@ -357,21 +358,56 @@ async function loadCorroborated(db,items,now,options){
   "AND s.publisher_root_domain=e.publisher_root_domain "+
   "AND s.parent_media_entity=e.parent_media_entity "+
   "AND s.source_role=e.source_role "+
-  "AND (s.rights_expire_at IS NULL OR s.rights_expire_at>?) "+
+  "AND (s.rights_expire_at IS NULL OR s.rights_expire_at>?) ";
+ const r=await boundedD1(()=>db.prepare(select+
   "WHERE e.event_fingerprint IN (SELECT value FROM json_each(?)) "+
   "AND e.published_at>=? ORDER BY e.event_fingerprint,e.published_at LIMIT 501")
   .bind(new Date(now).toISOString(),JSON.stringify(fingerprints),
     new Date(now-HOURS72).toISOString()).all(),options);
  if(!Array.isArray(r?.results)||r.results.length>500)fail("CORROBORATION_READBACK_LIMIT");
  const grouped=new Map();
- for(const x of r.results){
+ const parseRow=(x)=>{
   let entities,derived;
   try{entities=JSON.parse(x.entities_json);derived=JSON.parse(x.derived_json)}
   catch{fail("CORROBORATION_CANONICAL_JSON_INVALID")}
-  const row={...x,entities,derived};
+  return {...x,entities,derived};
+ };
+ const append=(x)=>{
+  const row=parseRow(x);
   const k=x.country_iso3+"|"+x.category+"|"+x.event_fingerprint;
   if(!grouped.has(k))grouped.set(k,[]);
-  grouped.get(k).push(row);
+  if(!grouped.get(k).some(existing=>existing.observation_id===row.observation_id))
+   grouped.get(k).push(row);
+  return row;
+ };
+ for(const x of r.results)append(x);
+ const related=await boundedD1(()=>db.prepare(select+
+  "WHERE EXISTS (SELECT 1 FROM json_each(?) pair "+
+  "WHERE json_extract(pair.value,'$.country_iso3')=e.country_iso3 "+
+  "AND json_extract(pair.value,'$.category')=e.category) "+
+  "AND e.original_verified=1 AND e.published_at>=? AND e.published_at<=? "+
+  "ORDER BY e.published_at LIMIT 500")
+  .bind(new Date(now).toISOString(),JSON.stringify(pairs),
+   new Date(now-HOURS48).toISOString(),new Date(now).toISOString()).all(),options);
+ if(!Array.isArray(related?.results)||related.results.length>500)
+  fail("CORROBORATION_READBACK_LIMIT");
+ const relatedByPair=new Map();
+ for(const x of related.results){
+  const row=parseRow(x),key=x.country_iso3+"|"+x.category;
+  if(!relatedByPair.has(key))relatedByPair.set(key,[]);
+  relatedByPair.get(key).push(row);
+ }
+ for(const [key,group] of grouped){
+  if((originalSources(group)?.length??0)>=3)continue;
+  const [country,category,fingerprint]=key.split("|");
+  const existing=new Set(group.map(x=>x.observation_id));
+  for(const row of relatedByPair.get(country+"|"+category)??[]){
+   if(row.event_fingerprint===fingerprint||existing.has(row.observation_id))continue;
+   const before=originalSources(group)?.length??0;
+   const after=originalSources([...group,row])?.length??0;
+   if(after>before){group.push(row);existing.add(row.observation_id)}
+   if(after>=3)break;
+  }
  }
  return grouped;
 }
@@ -471,7 +507,8 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
   [/\b(?:SECONDARY SANCTIONS|SANCTIONS ENFORCEMENT)\b/u,"SANCTIONS",75],
   [/\b(?:COUP|MARTIAL LAW|REGIME INSTABILITY)\b/u,"POLICY_SECURITY_CHANGE",73],
   [/\b(?:PORT|RAIL|DOCKWORKER) STRIKE\b/u,"PORT_RAIL_STRIKE",64],
-  [/\b(?:AIRSPACE|SHIPPING|PORT) CLOSURE\b/u,"AIRSPACE_SHIPPING_CLOSURE",70]
+  [/\b(?:AIRSPACE|SHIPPING|PORT) CLOSURE\b/u,"AIRSPACE_SHIPPING_CLOSURE",70],
+  [/./u,"GEOPOLITICAL_RISK_SIGNAL",55]
  ]:category==="MACRO_FX"?[
   [/\b(?:OPEN MARKET OPERATION|OMO|REPO|REVERSE REPO|STANDING FACILITY|FX RESERVE|SOVEREIGN WEALTH FUND)\b/u,"CENTRAL_BANK_LIQUIDITY_OPERATION",62],
   [/\b(?:CET1|TIER 1 CAPITAL|LCR|NSFR|DEPOSIT FLIGHT|DEPOSIT OUTFLOW|NII|NIM|NPL RATIO|BANK STRESS TEST)\b/u,"BANK_CAPITAL_LIQUIDITY_STRESS",70],
@@ -492,7 +529,8 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
   [/\b(?:PMI|PURCHASING MANAGERS|GDP SHOCK|CPI SURPRISE)\b/u,"MACRO_POLICY_RELEASE",58],
   [/\b(?:BANK LIQUIDITY|BANK DEPOSIT OUTFLOW|BANKING STRESS)\b/u,"BANKING_PAYMENT_RESTRICTION",68],
   [/\b(?:SWIFT RESTRICTION|PAYMENT RAIL|PAYMENT SYSTEM RESTRICTION)\b/u,"BANKING_PAYMENT_RESTRICTION",68],
-  [/\b(?:OIL|LNG|GRAIN) (?:SUPPLY|PRICE) SHOCK\b/u,"MACRO_POLICY_RELEASE",58]
+  [/\b(?:OIL|LNG|GRAIN) (?:SUPPLY|PRICE) SHOCK\b/u,"MACRO_POLICY_RELEASE",58],
+  [/./u,"MACRO_FX_SIGNAL",55]
  ]:[
   [/\b(?:LME|COMEX|CME|SHFE|INE|ICE|DCE|SGX|MCX|LBMA) (?:WAREHOUSE|EXCHANGE|INVENTORY|STOCK|WARRANT)\b/u,"EXCHANGE_INVENTORY_SHOCK",60],
   [/\b(?:CANCELLED WARRANT|WAREHOUSE STOCK|EXCHANGE INVENTORY DRAW)\b/u,"EXCHANGE_INVENTORY_SHOCK",68],
@@ -509,7 +547,8 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
   [/\b(?:MINE STRIKE|SMELTER OUTAGE|SMELTER SHUTDOWN|MINE CLOSURE)\b/u,"MINERAL_PROCESSING_DISRUPTION",76],
   [/\b(?:ROYALTY HIKE|NATIONALIZATION|NATIONALISATION|STRATEGIC STOCKPILING)\b/u,"MINERAL_STOCKPILING",70],
   [/\b(?:PROCESSING CHOKEPOINT|REFINING CAPACITY|BATTERY SUPPLY CHAIN|SEMICONDUCTOR MINERAL)\b/u,"MINERAL_PROCESSING_DISRUPTION",72],
-  [/\b(?:MINERAL TRADE|CRITICAL MINERAL|RARE EARTH|LITHIUM|COBALT|NICKEL|GRAPHITE|COPPER|GALLIUM|GERMANIUM|ANTIMONY|TUNGSTEN|MANGANESE|VANADIUM|TITANIUM|URANIUM|POTASH|PHOSPHATE|NDPR|DYSPROSIUM|TERBIUM)\b/u,"MINERAL_TRADE",52]
+  [/\b(?:MINERAL TRADE|CRITICAL MINERAL|RARE EARTH|LITHIUM|COBALT|NICKEL|GRAPHITE|COPPER|GALLIUM|GERMANIUM|ANTIMONY|TUNGSTEN|MANGANESE|VANADIUM|TITANIUM|URANIUM|POTASH|PHOSPHATE|NDPR|DYSPROSIUM|TERBIUM)\b/u,"MINERAL_TRADE",52],
+  [/./u,"CRITICAL_MINERAL_SIGNAL",55]
  ];
  const eventRule=scoreRules.find(([pattern])=>pattern.test(eventText));
  if(!eventRule)return null;
@@ -625,7 +664,9 @@ async function signGro(pair,env,now,requiredRoles=POLICIES[pair[0].category]){
  const signature=new Uint8Array(await crypto.subtle.sign("Ed25519",key,encode(canonical)));
  if(!await crypto.subtle.verify("Ed25519",verifyKey,signature,encode(canonical)))
   fail("SIGNER_PUBLIC_PRIVATE_MISMATCH");
- return {id:await sha(JSON.stringify(ids)),payload,canonical,signature_b64:
+ const id=await sha(pair.some(x=>x.event_fingerprint!==a.event_fingerprint)?
+  JSON.stringify([ids,a.event_fingerprint]):JSON.stringify(ids));
+ return {id,payload,canonical,signature_b64:
   btoa(String.fromCharCode(...signature)),hash:await sha(canonical)};
 }
 async function persistSignedGro(db,gro,options){
