@@ -13,8 +13,43 @@ const workflow = readFileSync(
   ".github/workflows/coinbase-x402-base-sepolia.yml",
   "utf8",
 );
+const route = readFileSync("src/routes/api.x402.risk.ts", "utf8");
+const config = readFileSync("src/lib/coinbase-x402.server.ts", "utf8");
+const access = readFileSync("src/lib/risk-gate-commercial-access.ts", "utf8");
 
 describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
+  it("pins production discovery and payment to reviewed Mainnet USDC tiers", () => {
+    expect(config).toContain('"eip155:8453"');
+    expect(config).toContain('"eip155:137"');
+    expect(config).toContain('"eip155:5042"');
+    expect(config).toContain('BASIC: { priceUsdc: "0.15", amountAtomic: "150000" }');
+    expect(config).toContain('STANDARD: { priceUsdc: "0.20", amountAtomic: "200000" }');
+    expect(config).toContain('COMPLEX: { priceUsdc: "0.30", amountAtomic: "300000" }');
+    expect(config).toContain('"0x95ba71d21c41bda8bba9533f96d25f793e4137b5"');
+    expect(route).toContain("minimum_countries: 47");
+    expect(route).toContain("FIXED_TIERED_MAINNET_USDC");
+  });
+
+  it("keeps Risk Gate delivery behind verified payment and successful settlement", () => {
+    const challenge = route.indexOf('if (!paymentHeader) return paymentRequiredResponse(request, config)');
+    const verify = route.indexOf('verifyCoinbaseX402(paymentPayload, config)');
+    const build = route.indexOf('proveLegacyDeliverable(body)', verify);
+    const settle = route.indexOf('settleCoinbaseX402(paymentPayload, config)');
+    const finalResponse = route.indexOf('finalPaidResponse(prepared, settlement, config)');
+    expect(challenge).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(challenge);
+    expect(build).toBeGreaterThan(verify);
+    expect(settle).toBeGreaterThan(build);
+    expect(finalResponse).toBeGreaterThan(settle);
+    expect(route).toContain('commercial_access: paidX402CommercialAccess(true)');
+    expect(access).toContain('production_entitlement:\n      paymentVerified');
+    expect(access).toContain('paymentVerified = false');
+    expect(access).toContain('tier: "private_pilot"');
+    expect(access).toContain('Three-day live testing only: private, non-production, zero-charge access.');
+    expect(access).toContain('tier:\n      "design_partner_pilot"');
+    expect(access).toContain('Three-day live testing only: non-production, zero-charge access');
+  });
+
   it("pins the public Geomacro resource to Base Sepolia USDC", () => {
     expect(script).toContain('const RESOURCE_URL = "https://geomacro.live/api/x402/risk"');
     expect(script).toContain('const EXPECTED_NETWORK = "eip155:84532"');
