@@ -80,10 +80,10 @@ test("dual-attested originals produce signed eligible_derived_score objects in a
   assert.equal(payload.eligible_derived_score.category,item.category);
   assert.equal(payload.eligible_derived_score.value_0_100,item.value);
   assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
-   ["basic_focused","standard","complex_full"]);
+   ["basic_focused","standard"]);
   assert.equal(payload.eligible_derived_score.raw_source_redacted,true);
   assert.equal(payload.eligible_derived_score.agent_decision.risk_score_0_100,item.value);
-  assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX");
+  assert.equal(payload.eligible_derived_score.agent_decision.tier,"STANDARD");
   assert.equal(payload.eligible_derived_score.licensed_source_text_included,false);
   assert.equal(payload.eligible_derived_score.analyst_brief.risk_mechanism.length>20,true);
   assert.doesNotMatch(JSON.stringify(payload.eligible_derived_score),/https?:\/\/|headline|publisher|channel/iu);
@@ -121,7 +121,7 @@ test("one independently dual-attested primary plus redacted Private OSINT featur
  assert.doesNotMatch(JSON.stringify(payload),/private title|publisher omitted|https?:\/\/|headline/iu);
 });
 
-test("two independent rights-approved originals qualify Standard and Complex without mandatory role-pair matching",async()=>{
+test("two independent originals without a corridor qualify Standard only",async()=>{
  const c=ctx(),now=Date.now();
  c.db.sources.get("region").source_role="GOVERNMENT_WIRE";
  const a=candidate(c,1901,"gov",now),b=candidate(c,1901,"region",now+1000,"GEOPOLITICS",0,"GOVERNMENT_WIRE");
@@ -130,7 +130,41 @@ test("two independent rights-approved originals qualify Standard and Complex wit
  const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
  assert.equal(payload.source_originals.length,2);
  assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+  ["basic_focused","standard"]);
+});
+test("three independent verified originals qualify Complex",async()=>{
+ const c=ctx(),now=Date.now();
+ const a=candidate(c,1902,"gov",now),b=candidate(c,1902,"region",now+1000),
+  third=candidate(c,1902,"market3",now+2000,"GEOPOLITICS",0,"MARKET_PRICE");
+ const out=await processRiskStreamBatch(c.env,[a,b,third],{
+  now:now+3000,sleeper:async()=>{},random:()=>0
+ });
+ assert.equal(out.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.equal(payload.source_originals.length,3);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
   ["basic_focused","standard","complex_full"]);
+ assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX");
+});
+test("two independent verified originals with a strategic corridor qualify Complex",async()=>{
+ const c=ctx(),now=Date.now(),a=candidate(c,1903,"gov",now),
+  b=candidate(c,1903,"region",now+1000);
+ for(const item of [a,b]){
+  item.derived.what="New sanctions disrupt shipping through the Red Sea";
+  const claims=riskStreamOriginalClaims(item);
+  item.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
+  item.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
+ }
+ const out=await processRiskStreamBatch(c.env,[a,b],{
+  now:now+2000,sleeper:async()=>{},random:()=>0
+ });
+ assert.equal(out.corroborated_and_signed,1);
+ const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
+ assert.equal(payload.source_originals.length,2);
+ assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+  ["basic_focused","standard","complex_full"]);
+ assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX");
+ assert.deepEqual(payload.eligible_derived_score.agent_decision.strategic_corridors,["RED_SEA"]);
 });
 class FakeDB {
  constructor(){
@@ -143,6 +177,9 @@ class FakeDB {
     commercial_rights_approved:1,enabled:1,rights_expire_at:null}],
    ["region",{source_id:"region",publisher_root_domain:"regional.example",
     parent_media_entity:"regional_newspaper",source_role:"INDEPENDENT_REGIONAL",
+    commercial_rights_approved:1,enabled:1,rights_expire_at:null}],
+   ["market3",{source_id:"market3",publisher_root_domain:"market3.example",
+    parent_media_entity:"market3_publisher",source_role:"MARKET_PRICE",
     commercial_rights_approved:1,enabled:1,rights_expire_at:null}]
   ]);
   this.policies=new Map([
@@ -329,6 +366,9 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
   MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
   CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]};
  const roles=categoryRoles[category]??categoryRoles.GEOPOLITICS;
+ const publisher=source==="gov"?{root:"official.example",entity:"government_official"}:
+  source==="region"?{root:"regional.example",entity:"regional_newspaper"}:
+   {root:source+".example",entity:source+"_publisher"};
  const what=category==="MACRO_FX"?
   "The central bank announced an interest rate policy change":
   category==="CRITICAL_MINERALS"?
@@ -345,9 +385,9 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
   country_iso3:"USA",category,feed_origin:original?"OFFICIAL_API":"RSS",
   event_key:"EVENT_"+String(i).padStart(6,"0"),entities,
   event_fingerprint:digest(JSON.stringify(["USA",category,"EVENT_"+String(i).padStart(6,"0"),entities])),
-  source_id:source,source_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
-  publisher_root_domain:original?"official.example":"regional.example",
-  parent_media_entity:original?"government_official":"regional_newspaper",
+  source_id:source,source_url:"https://"+publisher.root+"/events/"+i,
+  publisher_root_domain:publisher.root,
+  parent_media_entity:publisher.entity,
   source_role:roleOverride??roles[original?0:1],
   published_at:new Date(now-30000+clockOffsetMs).toISOString(),
   original_page_sha256:digest(raw),derived,raw_payload:raw,proof:null,
@@ -359,7 +399,7 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
    item_license_evidence:{license_id:"UK_OGL_V3",
     license_url:"https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     terms_url:"https://www.gov.uk/help/terms-conditions",
-    item_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
+    item_url:"https://"+publisher.root+"/events/"+i,
     item_license_marker:"Open Government Licence v3",
     publisher_owned_content_only:true,third_party_exceptions:false,
     non_commercial:false,restricted_material:false,factual_record_only:true,
