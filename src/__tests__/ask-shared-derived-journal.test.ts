@@ -108,14 +108,14 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
      status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
    }));
    const fetchImpl=vi.fn(async(input:RequestInfo|URL)=>{
-     const url=String(input);
-     if(url===GEOMACRO_DERIVED_JOURNAL_URL)return new Response(JSON.stringify({
+     const url=typeof input==="string"?input:input instanceof URL?input.toString():input.url;
+     if(url.startsWith(GEOMACRO_DERIVED_JOURNAL_URL))return new Response(JSON.stringify({
        ok:true,schema:"geomacro.website-derived-news-feed.v1",
        checked_at:new Date(liveNow).toISOString(),original_release_delay_minutes:0,
        retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
        page_offset:0,page_size:250,has_more:false,next_offset:null,signals:[],
      }),{status:200,headers:{"Content-Type":"application/json"}});
-     if(url===GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL)return new Response(JSON.stringify({
+     if(url.startsWith(GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL))return new Response(JSON.stringify({
        ok:true,schema:"geomacro.risk-stream-public-teasers.v1",
        checked_at:new Date(liveNow).toISOString(),retention_hours:24,limit:120,
        score_free:true,source_redacted:true,signals:teasers,
