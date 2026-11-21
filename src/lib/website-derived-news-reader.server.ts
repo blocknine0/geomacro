@@ -17,7 +17,8 @@ const CACHE_MS=60_000;
 let sharedCache:{expiresAt:number;value:WebsiteDerivedNewsResult}|null=null;
 let sharedFlight:Promise<WebsiteDerivedNewsResult>|null=null;
 
-/** Exact shared embargo/privacy checks; no provider, B2, Supabase or paid call. */
+/** Merge the derived journal and score-free signed-GRO teaser projection. The
+ * client validates both feeds and keeps the existing privacy and age checks. */
 export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Date.now()):Promise<WebsiteDerivedNewsResult>{
     if(!Number.isFinite(now))throw Error("DERIVED_NEWS_FEED_CLOCK_INVALID");
     const cacheable=fetchImpl===fetch;

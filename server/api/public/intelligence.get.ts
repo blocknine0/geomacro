@@ -31,6 +31,8 @@ export default defineEventHandler(async (event) => {
     let derived_signals=[] as Awaited<ReturnType<typeof readWebsiteDerivedNews>>["signals"];
     let derived_checked_at:string|null=null;
     let derived_read_status="unavailable";
+    // This shared reader merges validated derived-news rows with the
+    // source-redacted, score-free signed-GRO teaser feed.
     try{
       const derived=await readWebsiteDerivedNews();
       derived_signals=derived.signals;derived_checked_at=derived.checked_at;

@@ -74,6 +74,8 @@ export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 export const GEOMACRO_DERIVED_BUNDLE_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle";
+export const GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/risk-stream/public-teasers";
 /** Owner-only direct D1 origin. Never substitute a public R2/cache snapshot for
  * per-ID publication acceptance, and never use this URL in browser callsites. */
 const GEOMACRO_CANONICAL_D1_BUNDLE_URL =
@@ -93,6 +95,7 @@ const SIGNAL_FIELDS = new Set(["id","category","title","what_changed","why_it_ma
   "topic","geography","development_type","published_at","date_precision",
   "observed_release_count","sources_credited","status","same_event_corrob_verified","severity",
   "country_iso3","corridor","event_direction","event_action"]);
+const PUBLIC_TEASER_PUBLISHER_TEXT=/\b(?:Reuters|Associated Press|AP News|Bloomberg|Financial Times|The Guardian|BBC News|Al Jazeera|CNBC|CNN|The New York Times|New York Times|Wall Street Journal|Nikkei|The Hindu|France-Presse|AFP|publisher|according to|reported by|published by|source(?:d)? by|risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64)\b|\b(?:risk )?score\s*[:=]\s*\d+\b|(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\b)/iu;
 function safeSignal(value: unknown, now: number, allowHistorical = false): value is StatelessIntelligenceSignal {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
@@ -100,7 +103,9 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
       Object.keys(s).some(key=>!SIGNAL_FIELDS.has(key)) ||
       !["geopolitics", "macro", "rare_earth"].includes(String(s.category)) ||
       typeof s.id !== "string" ||
-      !/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id) ||
+      !(/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id) ||
+        /^[a-f0-9]{64}$/u.test(s.id)&&s.status==="official_release_observed_unscored"&&
+        /^[A-Z]{3}$/u.test(String(s.country_iso3??""))) ||
       typeof s.title !== "string" || s.title.length>240 ||
       !(s.status==="osint_feed_observed_unverified" ? s.title.startsWith("GeoMacro ") : s.title.startsWith("Geomacro finds ")) ||
       typeof s.topic!=="string" || s.topic.length>120 ||
@@ -109,7 +114,9 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
       typeof s.what_changed !== "string" || s.what_changed.length < 30 || s.what_changed.length>650 ||
       typeof s.why_it_matters !== "string" || s.why_it_matters.length < 30 || s.why_it_matters.length>700 ||
       !((s.status==="official_release_observed_unscored" &&
-          Object.keys(s).length===SIGNAL_FIELDS.size-4 &&
+          (Object.keys(s).length===SIGNAL_FIELDS.size-4 ||
+           Object.keys(s).length===SIGNAL_FIELDS.size-3&&
+           /^[A-Z]{3}$/u.test(String(s.country_iso3??""))) &&
           !String(s.topic).endsWith(" publisher candidate") &&
           s.development_type!=="unverified OSINT feed observation" &&
           Array.isArray(s.sources_credited) &&
@@ -158,6 +165,8 @@ function safeSignal(value: unknown, now: number, allowHistorical = false): value
     ? JSON.stringify({...s, sources_credited:[]}) : raw;
   if (embargoEnd > now || raw.length > 5_000 ||
       /https?:\/\/|www\./iu.test(proseOnly) ||
+      (s.status==="official_release_observed_unscored"&&
+       /^[a-f0-9]{64}$/u.test(s.id)&&PUBLIC_TEASER_PUBLISHER_TEXT.test(proseOnly)) ||
       (s.status==="osint_feed_observed_unverified" &&
         !isSourceNeutralOsintSignal(s) &&
         !(s.sources_credited.length===1&&
@@ -175,7 +184,7 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
       (value.original_release_delay_minutes!==0&&value.original_release_delay_minutes!==15) ||
       value.retention_days !== 3 || value.retention_hours !== 72 ||
       value.delivery_scope !== "free_website_only" ||
-      !Array.isArray(value.signals) || value.signals.length > 475) {
+      !Array.isArray(value.signals) || value.signals.length > 720) {
     throw Error("DERIVED_NEWS_PUBLIC_DOCUMENT_INVALID");
   }
   // A malformed object cannot be permitted to smuggle source metadata to UI.
@@ -183,6 +192,38 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
     (s as Record<string,unknown>).status==="osint_feed_observed_unverified"
       ? projectSourceNeutralOsintSignal(s) as StatelessIntelligenceSignal
       : s as StatelessIntelligenceSignal);
+}
+
+/** Public Control Plane projection: only short lived, score-free GRO teasers. */
+export async function fetchRiskStreamPublicTeasers(
+ fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]>{
+ const response=await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL,{
+  method:"GET",headers:{Accept:"application/json"},
+ },8_000);
+ if(!response.ok||Number(response.headers.get("content-length")??0)>512_000)
+  throw Error("RISK_STREAM_PUBLIC_TEASERS_UNAVAILABLE");
+ const body=await response.text();
+ if(body.length>512_000)throw Error("RISK_STREAM_PUBLIC_TEASERS_OVERSIZE");
+ const doc=JSON.parse(body) as Record<string,unknown>;
+ const checked=Date.parse(String(doc.checked_at??""));
+ if(doc.ok!==true||doc.schema!=="geomacro.risk-stream-public-teasers.v1"||
+    doc.retention_hours!==24||doc.limit!==120||doc.score_free!==true||
+    doc.source_redacted!==true||!Number.isFinite(checked)||checked>now+60_000||
+    now-checked>120_000||!Array.isArray(doc.signals)||doc.signals.length>120)
+  throw Error("RISK_STREAM_PUBLIC_TEASERS_CONTRACT_INVALID");
+ const signals:StatelessIntelligenceSignal[]=[];
+ for(const value of doc.signals){
+  if(!safeSignal(value,now)||!(/^[a-f0-9]{64}$/u.test(value.id))||
+     value.status!=="official_release_observed_unscored"||
+     value.sources_credited.length!==0||!value.country_iso3||
+     value.geography!==value.country_iso3||
+     Date.parse(value.published_at)<now-24*3_600_000||
+     PUBLIC_TEASER_PUBLISHER_TEXT.test(JSON.stringify(value)))
+    throw Error("RISK_STREAM_PUBLIC_TEASER_INVALID");
+  signals.push(value);
+ }
+ return signals;
 }
 
 export async function fetchEdgeLatestDerivedNews(
@@ -362,7 +403,7 @@ async function fetchAllDerivedNewsLegacy(
  * propagation when the bundled route is still absent; hard D1 quota failures
  * are never retried or downgraded to three expensive scans.
  */
-export async function fetchAllDerivedNews(
+async function fetchBaseDerivedNews(
   fetchImpl:typeof fetch=fetch,now=Date.now(),
   options:{fresh?:boolean;canonicalOriginToken?:string}={},
 ):Promise<StatelessIntelligenceSignal[]> {
@@ -433,6 +474,25 @@ export async function fetchAllDerivedNews(
     seen.add(row.id);collected.push(row);
   }
   return collected;
+}
+
+/** Merge the existing derived journal with the independent, redacted GRO view. */
+export async function fetchAllDerivedNews(
+ fetchImpl:typeof fetch=fetch,now=Date.now(),
+ options:{fresh?:boolean;canonicalOriginToken?:string}={},
+):Promise<StatelessIntelligenceSignal[]>{
+ if(options.canonicalOriginToken!==undefined)
+  return fetchBaseDerivedNews(fetchImpl,now,options);
+ const [journal,teasers]=await Promise.allSettled([
+  fetchBaseDerivedNews(fetchImpl,now,options),fetchRiskStreamPublicTeasers(fetchImpl,now),
+ ]);
+ if(journal.status!=="fulfilled"&&teasers.status!=="fulfilled")
+  throw Error("DERIVED_NEWS_AND_RISK_STREAM_PUBLIC_READS_UNAVAILABLE");
+ const merged=new Map<string,StatelessIntelligenceSignal>();
+ if(journal.status==="fulfilled")for(const signal of journal.value)merged.set(signal.id,signal);
+ if(teasers.status==="fulfilled")for(const signal of teasers.value)merged.set(signal.id,signal);
+ return [...merged.values()].sort((a,b)=>
+  b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 }
 
 
