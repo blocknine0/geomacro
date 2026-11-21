@@ -192,20 +192,35 @@ async function boundedD1(action,{tries=4,sleeper=sleep,random=Math.random}={}){
 }
 function originalSources(group,policy){
  const candidates=[...group].sort((a,b)=>a.published_at.localeCompare(b.published_at));
+ const independent=(sources)=>new Set(sources.map(x=>x.source_id)).size===sources.length&&
+  new Set(sources.map(x=>x.publisher_root_domain)).size===sources.length&&
+  new Set(sources.map(x=>x.parent_media_entity)).size===sources.length&&
+  Date.parse(sources.at(-1).published_at)-Date.parse(sources[0].published_at)<=HOURS48&&
+  sources.slice(1).every(x=>sources[0].entities.some(entity=>x.entities.includes(entity)));
+ const verified=candidates.filter(x=>x.original_verified===1);
+ for(let i=0;i<verified.length;i++){
+  const a=verified[i];
+  for(let j=i+1;j<verified.length;j++){
+   const b=verified[j];
+   if(Date.parse(b.published_at)-Date.parse(a.published_at)>HOURS48)break;
+   if(!independent([a,b]))continue;
+   for(let k=j+1;k<verified.length;k++){
+    const c=verified[k];
+    if(Date.parse(c.published_at)-Date.parse(a.published_at)>HOURS48)break;
+    if(independent([a,b,c]))return [a,b,c];
+   }
+  }
+ }
  for(let i=0;i<candidates.length;i++){
   const a=candidates[i];if(a.original_verified!==1)continue;
   for(let j=i+1;j<candidates.length;j++){
    const b=candidates[j];
    if(Date.parse(b.published_at)-Date.parse(a.published_at)>HOURS48)break;
-   if(b.original_verified!==1||a.source_id===b.source_id||
-      a.publisher_root_domain===b.publisher_root_domain||
-      a.parent_media_entity===b.parent_media_entity||
-      !a.entities.some(x=>b.entities.includes(x)))continue;
+   if(b.original_verified!==1||!independent([a,b]))continue;
    return [a,b];
   }
  }
- return candidates.find(x=>x.original_verified===1)?
-  [candidates.find(x=>x.original_verified===1)]:null;
+ return verified[0]?[verified[0]]:null;
 }
 export async function inspectRiskStreamCandidates(items,now=Date.now()){
  if(!Array.isArray(items)||items.length<1||items.length>10)fail("QUEUE_BATCH_INVALID");
@@ -419,6 +434,21 @@ async function categoryPolicies(db,items){
  for(const e of items)if(!policies.has(e.category))fail("CATEGORY_NOT_ACTIVATED");
  return policies;
 }
+const corridorRules=[
+ [/\b(?:RED SEA|BAB EL MANDEB|BAB-EL-MANDEB)\b/u,"RED_SEA"],
+ [/\bMALACCA\b/u,"MALACCA"],[/\bHORMUZ\b/u,"HORMUZ"],
+ [/\bPANAMA(?: CANAL)?\b/u,"PANAMA"],[/\bSUEZ(?: CANAL)?\b/u,"SUEZ"],
+ [/\bTAIWAN STRAIT\b/u,"TAIWAN_STRAIT"],[/\bSOUTH CHINA SEA\b/u,"SOUTH_CHINA_SEA"],
+ [/\bBLACK SEA\b/u,"BLACK_SEA"],[/\bBOSPORUS\b/u,"BOSPORUS"],
+ [/\bBALTIC SEA\b/u,"BALTIC_SEA"],
+ [/\b(?:ARCTIC|NORTHERN SEA ROUTE)\b/u,"ARCTIC_NORTHERN_SEA_ROUTE"],
+ [/\bMOZAMBIQUE CHANNEL\b/u,"MOZAMBIQUE_CHANNEL"],
+ [/\bCAPE OF GOOD HOPE\b/u,"CAPE_OF_GOOD_HOPE"],[/\bGIUK GAP\b/u,"GIUK_GAP"]
+];
+function detectStrategicCorridors(eventText){
+ return corridorRules.filter(([pattern])=>pattern.test(eventText))
+  .map(([,id])=>id).slice(0,12);
+}
 export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
  eligibleTiers=["basic_focused"],internalCorroboration=null,confidence=0.65
 }={}){
@@ -487,19 +517,7 @@ export function deriveRiskStreamEligibleScore(category,countryIso3,what,{
   eligibleTiers.includes("complex_full");
  const tier=eligibleTiers.includes("complex_full")?"COMPLEX":
   standardReady?"STANDARD":"BASIC";
- const corridorRules=[
-  [/\b(?:RED SEA|BAB EL MANDEB|BAB-EL-MANDEB)\b/u,"RED_SEA"],
-  [/\bMALACCA\b/u,"MALACCA"],[/\bHORMUZ\b/u,"HORMUZ"],
-  [/\bPANAMA(?: CANAL)?\b/u,"PANAMA"],[/\bSUEZ(?: CANAL)?\b/u,"SUEZ"],
-  [/\bTAIWAN STRAIT\b/u,"TAIWAN_STRAIT"],[/\bSOUTH CHINA SEA\b/u,"SOUTH_CHINA_SEA"],
-  [/\bBLACK SEA\b/u,"BLACK_SEA"],[/\bBOSPORUS\b/u,"BOSPORUS"],
-  [/\bBALTIC SEA\b/u,"BALTIC_SEA"],
-  [/\b(?:ARCTIC|NORTHERN SEA ROUTE)\b/u,"ARCTIC_NORTHERN_SEA_ROUTE"],
-  [/\bMOZAMBIQUE CHANNEL\b/u,"MOZAMBIQUE_CHANNEL"],
-  [/\bCAPE OF GOOD HOPE\b/u,"CAPE_OF_GOOD_HOPE"],[/\bGIUK GAP\b/u,"GIUK_GAP"]
- ];
- const strategicCorridors=corridorRules.filter(([pattern])=>pattern.test(eventText))
-  .map(([,id])=>id).slice(0,12);
+ const strategicCorridors=detectStrategicCorridors(eventText);
  const assetRules=[
   [/\b(?:CET1|TIER 1 CAPITAL|CAPITAL RATIO|BASEL III|BASEL IV)\b/u,"bank_capital"],
   [/\b(?:LCR|NSFR|DEPOSIT FLIGHT|DEPOSIT OUTFLOW|BANK LIQUIDITY|OMO|REPO|REVERSE REPO)\b/u,"bank_liquidity"],
@@ -570,10 +588,13 @@ async function signGro(pair,env,now,requiredRoles=POLICIES[pair[0].category]){
  // originalSources() already proves the observations are independent, current,
  // rights-approved records. Tier readiness depends on that evidence, not on
  // which of two valid publisher roles happens to be present in this event.
- const independentPair=Boolean(b);
+ const independentPair=pair.length>=2;
+ const strategicCorridors=detectStrategicCorridors(
+  pair.map(x=>x.derived?.what).join(" ").toUpperCase());
  const tierEligibility=["basic_focused",
   ...(independentPair||context.signal_count>0?["standard"]:[]),
-  ...(independentPair?["complex_full"]:[])];
+  ...(pair.length>=3||(independentPair&&(strategicCorridors.length>0||
+    context.signal_count>0||context.categories.length>1))?["complex_full"]:[])];
  const score=deriveRiskStreamEligibleScore(a.category,a.country_iso3,
   pair.map(x=>x.derived?.what).join(" "),{
    eligibleTiers:tierEligibility,internalCorroboration:context.signal_count?context:null,
