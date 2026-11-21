@@ -560,8 +560,9 @@ jobs:
       cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
-      (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') &&
+      github.event_name == 'workflow_dispatch' &&
       needs.quota-admission.outputs.critical == 'true' &&
+      needs.quota-admission.outputs.research == 'true' &&
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
