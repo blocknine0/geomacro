@@ -91,6 +91,19 @@ test("facts attester refuses a modified payload and stale or future originals",a
  }
 });
 
+test("facts attester accepts independent regional candidates for macro and critical minerals",async()=>{
+ const env={FACTS_ATTESTER_BEARER_TOKEN:token,FACTS_ATTESTER_PKCS8_B64:factsPrivate};
+ for(const category of ["MACRO_FX","CRITICAL_MINERALS"]){
+  const candidate=fixture();candidate.category=category;
+  candidate.source_role="INDEPENDENT_REGIONAL";
+  candidate.event_fingerprint=createHash("sha256").update(JSON.stringify([
+   candidate.country_iso3,candidate.category,candidate.event_key,candidate.entities])).digest("hex");
+  const response=await attestFacts(request(candidate),env,now);
+  assert.equal(response.status,200,category);
+  assert.equal((await result(response)).ok,true,category);
+ }
+});
+
 test("rights attester returns specific source registry refusal reasons with HTTP 403",async()=>{
  const candidate=fixture();
  const cases=[
