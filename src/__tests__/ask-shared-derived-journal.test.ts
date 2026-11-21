@@ -122,6 +122,7 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
      }),{status:200,headers:{"Content-Type":"application/json"}});
      throw Error("unexpected public URL");
    }) as unknown as typeof fetch;
+   const dateNow=vi.spyOn(Date,"now").mockReturnValue(liveNow);
    vi.stubGlobal("fetch",fetchImpl);
    try{
    const website=await readWebsiteDerivedNews(undefined,liveNow);
@@ -148,6 +149,6 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    }
    const api=readFileSync("server/api/public/intelligence.get.ts","utf8");
    expect(api).toContain("readWebsiteDerivedNews()");
-   }finally{vi.unstubAllGlobals()}
+   }finally{vi.unstubAllGlobals();dateNow.mockRestore()}
  });
 });
