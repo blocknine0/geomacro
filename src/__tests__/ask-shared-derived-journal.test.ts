@@ -96,15 +96,14 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
      "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
      "VNM","THA","MYS","SGP","PHL","PAK","BGD"] as const;
    const categories=["geopolitics","macro","rare_earth"] as const;
-   const topics=["foreign policy","global FX, trade and industrial conditions",
-     "strategic mineral and rare-earth inputs"] as const;
+   const topics=["foreign policy","macroeconomics","critical minerals"] as const;
    const teasers=countries.map((country,i)=>({
-     id:i.toString(16).padStart(64,"0"),category:categories[i%3],
+     id:`${categories[i%3]}-${(i+1).toString(16).padStart(8,"0")}`,
      title:`Geomacro finds an official event signal for ${country}`,
      what_changed:"A signed event record describes a recent country-level policy or supply development.",
      why_it_matters:"Risk mechanism: policy and operating assumptions may change. Downstream effects: review exposed activity.",
-     topic:topics[i%3],geography:country,country_iso3:country,
-     development_type:"signed event observation",published_at:liveAt,date_precision:"exact",
+     topic:topics[i%3],geography:country,
+     development_type:"official update",published_at:liveAt,date_precision:"exact",
      observed_release_count:1,sources_credited:[],
      status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
    }));
@@ -127,17 +126,18 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    try{
    const website=await readWebsiteDerivedNews(undefined,liveNow);
    expect(website.signals).toHaveLength(47);
-   expect(new Set(website.signals.map(s=>s.country_iso3)).size).toBe(47);
+   expect(new Set(website.signals.map(s=>s.geography)).size).toBe(47);
+   expect(website.signals.every(s=>/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id))).toBe(true);
    expect(website.signals.every(s=>s.sources_credited.length===0)).toBe(true);
    const ask=await collectSharedOfficialNews(categories,{now:liveNow,
      readLive:async()=>({signals:[]}),
    });
    expect(ask.signals).toHaveLength(47);
-   expect(new Set(ask.signals.map(s=>s.country_iso3)).size).toBe(47);
+   expect(new Set(ask.signals.map(s=>s.geography)).size).toBe(47);
    expect(ask.signals.every(s=>s.sources_credited.length===0)).toBe(true);
    for(const signal of [...website.signals,...ask.signals]){
      expect(Object.keys(signal).sort()).toEqual([
-       "category","country_iso3","date_precision","development_type","geography","id",
+       "category","date_precision","development_type","geography","id",
        "observed_release_count","published_at","same_event_corrob_verified","severity",
        "sources_credited","status","title","topic","what_changed","why_it_matters",
      ]);
