@@ -148,8 +148,8 @@ const RISK_STREAM_PUBLIC_CATEGORY=Object.freeze({
 });
 const RISK_STREAM_PUBLIC_TOPIC=Object.freeze({
   GEOPOLITICS:"foreign policy",
-  MACRO_FX:"macroeconomics",
-  CRITICAL_MINERALS:"critical minerals",
+  MACRO_FX:"monetary policy",
+  CRITICAL_MINERALS:"rare-earth supply",
 });
 const RISK_STREAM_PUBLIC_PUBLISHER_TEXT=/\b(?:Reuters|Associated Press|AP News|Bloomberg|Financial Times|The Guardian|BBC News|Al Jazeera|CNBC|CNN|The New York Times|New York Times|Wall Street Journal|Nikkei|The Hindu|France-Presse|AFP|publisher|according to|reported by|published by|source(?:d)? by|risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64)\b|\b(?:risk )?score\s*[:=]\s*\d+\b|(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\b)/iu;
 function sourceRedactedRiskStreamText(value,max){
@@ -174,14 +174,18 @@ function projectRiskStreamPublicTeaser(row,now){
   if(payload?.schema!=="geomacro.event-stream-gro.v1"||
      payload?.subject?.type!=="COUNTRY"||payload.subject.id!==row.country_iso3||
      payload.category!==row.category)return null;
-  let what=sourceRedactedRiskStreamText(payload.what_happened,650);
-  if(what&&what.length<30)what=(what+" Official update recorded.").slice(0,650);
+  const what=sourceRedactedRiskStreamText(payload.what_happened,650)??
+    `Official update recorded for ${row.country_iso3}.`;
   const brief=payload?.eligible_derived_score?.analyst_brief;
   const mechanism=sourceRedactedRiskStreamText(brief?.risk_mechanism,360);
   const downstream=sourceRedactedRiskStreamText(brief?.downstream_effects,360);
-  if(!what||!mechanism||!downstream)return null;
-  const why="Risk mechanism: "+mechanism+" Downstream effects: "+downstream;
-  if(why.length>700||RISK_STREAM_PUBLIC_PUBLISHER_TEXT.test(why))return null;
+  const whyText=mechanism&&downstream?
+    "Risk mechanism: "+mechanism+" Downstream effects: "+downstream:
+    `This official update may affect public policy and market conditions in ${row.country_iso3}.`;
+  const why=whyText.length>700?whyText.slice(0,697).trimEnd()+"...":whyText;
+  if(what.length<25||why.length<25||/[<>]/u.test(what+why)||
+     /(?:https?:\/\/|www\.)/iu.test(what+why)||
+     RISK_STREAM_PUBLIC_PUBLISHER_TEXT.test(what+why))return null;
   return {
     id,category,title:("Geomacro finds an official event signal for "+row.country_iso3).slice(0,240),
     what_changed:what,why_it_matters:why,topic:RISK_STREAM_PUBLIC_TOPIC[row.category],
