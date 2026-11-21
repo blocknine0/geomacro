@@ -37,7 +37,9 @@ test("signed eligible scores are transparent event-class heuristics across all t
   assert.equal(value.independent_accuracy_certified,false);
   assert.equal(value.licensed_source_text_included,false);
  }
- assert.equal(deriveRiskStreamEligibleScore("GEOPOLITICS","USA","A generic test event"),null);
+ const fallback=deriveRiskStreamEligibleScore("GEOPOLITICS","USA","A generic test event");
+ assert.equal(fallback.event_class,"GEOPOLITICAL_RISK_SIGNAL");
+ assert.equal(fallback.value_0_100,55);
  assert.equal(deriveRiskStreamEligibleScore("UNMAPPED","USA","Sanctions"),null);
 });
 test("dual-audience summaries specify the trigger, corridor, and priority assets",()=>{
@@ -166,6 +168,108 @@ test("two independent verified originals with a strategic corridor qualify Compl
  assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX");
  assert.deepEqual(payload.eligible_derived_score.agent_decision.strategic_corridors,["RED_SEA"]);
 });
+test("different event keys corroborate by country and category within 48 hours",async()=>{
+ for(const category of ["GEOPOLITICS","CRITICAL_MINERALS"]){
+  const roles=category==="GEOPOLITICS"?
+   ["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"]:
+   ["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"];
+  const setRoles=c=>{
+   c.db.sources.get("gov").source_role=roles[0];
+   c.db.sources.get("region").source_role=roles[1];
+  };
+  const two=ctx(),t=Date.now();setRoles(two);
+  const twoItems=[candidate(two,2401,"gov",t,category),
+   candidate(two,2402,"region",t+60_000,category)];
+  const twoResult=await processRiskStreamBatch(two.env,twoItems,{
+   now:t+90_000,sleeper:async()=>{},random:()=>0
+  });
+  assert.equal(twoResult.corroborated_and_signed,2,category);
+  for(const row of two.db.gros.values()){
+   const payload=JSON.parse(row.payload_json);
+   assert.equal(payload.source_originals.length,2,category);
+   assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+    ["basic_focused","standard"],category);
+  }
+
+  const three=ctx(),t3=Date.now();setRoles(three);
+  three.db.sources.get("market3").source_role="MARKET_PRICE";
+  const threeItems=[candidate(three,2501,"gov",t3,category),
+   candidate(three,2502,"region",t3+60_000,category),
+   candidate(three,2503,"market3",t3+120_000,category,0,"MARKET_PRICE")];
+  const threeResult=await processRiskStreamBatch(three.env,threeItems,{
+   now:t3+150_000,sleeper:async()=>{},random:()=>0
+  });
+  assert.equal(threeResult.corroborated_and_signed,3,category);
+  for(const row of three.db.gros.values()){
+   const payload=JSON.parse(row.payload_json);
+   assert.equal(payload.source_originals.length,3,category);
+   assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+    ["basic_focused","standard","complex_full"],category);
+  }
+
+  const corridor=ctx(),tc=Date.now();setRoles(corridor);
+  const corridorItems=[candidate(corridor,2601,"gov",tc,category),
+   candidate(corridor,2602,"region",tc+60_000,category)];
+  for(const item of corridorItems){
+   item.derived.what=category==="GEOPOLITICS"?
+    "Sanctions disrupt shipping through the Red Sea":
+    "Critical mineral shipments face disruption through the Red Sea";
+   const claims=riskStreamOriginalClaims(item);
+   item.proof.facts_signature_b64=prove(claims,corridor.facts,"geomacro.machine-original-facts.v1");
+   item.proof.rights_signature_b64=prove(claims,corridor.rights,"geomacro.machine-commercial-rights.v1");
+  }
+  const corridorResult=await processRiskStreamBatch(corridor.env,corridorItems,{
+   now:tc+90_000,sleeper:async()=>{},random:()=>0
+  });
+  assert.equal(corridorResult.corroborated_and_signed,2,category);
+  for(const row of corridor.db.gros.values()){
+   const payload=JSON.parse(row.payload_json);
+   assert.equal(payload.source_originals.length,2,category);
+   assert.deepEqual(payload.eligible_derived_score.eligible_tiers,
+    ["basic_focused","standard","complex_full"],category);
+   assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX",category);
+  }
+ }
+});
+test("unclassified attested events receive fallback scores for all categories and tiers",async()=>{
+ const categories=[
+  ["GEOPOLITICS",["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],"GEOPOLITICAL_RISK_SIGNAL"],
+  ["MACRO_FX",["OFFICIAL_STATISTICS","MARKET_PRICE"],"MACRO_FX_SIGNAL"],
+  ["CRITICAL_MINERALS",["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"],"CRITICAL_MINERAL_SIGNAL"]
+ ];
+ const tiers=[
+  [["gov"],"BASIC",["basic_focused"]],
+  [["gov","region"],"STANDARD",["basic_focused","standard"]],
+  [["gov","region","market3"],"COMPLEX",["basic_focused","standard","complex_full"]]
+ ];
+ for(const [category,roles,eventClass] of categories)for(const [index,[sources,tier,eligible]] of tiers.entries()){
+  const c=ctx(),now=Date.now()+index*1000;
+  c.db.sources.get("gov").source_role=roles[0];
+  c.db.sources.get("region").source_role=roles[1];
+  c.db.sources.get("market3").source_role="MARKET_PRICE";
+  const items=sources.map((source,offset)=>{
+   const item=candidate(c,2700+index*10+offset,source,now+offset*60_000,category,
+    0,source==="market3"?"MARKET_PRICE":null);
+   item.derived.what="An otherwise unclassified update was reported.";
+   const claims=riskStreamOriginalClaims(item);
+   item.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
+   item.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
+   return item;
+  });
+  const result=await processRiskStreamBatch(c.env,items,{
+   now:now+5*60_000,sleeper:async()=>{},random:()=>0
+  });
+  assert.equal(result.corroborated_and_signed,items.length,category+" "+tier);
+  for(const row of c.db.gros.values()){
+   const payload=JSON.parse(row.payload_json),score=payload.eligible_derived_score;
+   assert.ok(score,category+" "+tier);
+   assert.equal(score.event_class,eventClass,category+" "+tier);
+   assert.equal(score.value_0_100,55,category+" "+tier);
+   assert.deepEqual(score.eligible_tiers,eligible,category+" "+tier);
+   assert.equal(score.agent_decision.tier,tier,category+" "+tier);
+  }
+ }
+});
 class FakeDB {
  constructor(){
   this.evidence=new Map();this.gros=new Map();this.outbox=new Map();
@@ -208,6 +312,14 @@ class FakeDB {
     if(sql.includes("WHERE observation_id IN"))
      return {results:JSON.parse(this.args[0]).map(id=>db.evidence.get(id)).filter(Boolean)};
     if(sql.includes("JOIN risk_stream_sources")){
+     if(sql.includes("json_extract(pair.value")){
+      const pairs=new Set(JSON.parse(this.args[1]).map(x=>x.country_iso3+"|"+x.category));
+      return {results:[...db.evidence.values()].filter(x=>
+       pairs.has(x.country_iso3+"|"+x.category)&&x.published_at>=this.args[2]&&
+       x.published_at<=this.args[3]&&x.original_verified===1&&
+       db.sources.get(x.source_id)?.commercial_rights_approved===1)
+       .sort((a,b)=>a.published_at.localeCompare(b.published_at)).slice(0,500)};
+     }
      const fps=new Set(JSON.parse(this.args[1]));
      return {results:[...db.evidence.values()].filter(x=>
       fps.has(x.event_fingerprint)&&x.published_at>=this.args[2]&&
@@ -617,7 +729,7 @@ test("distinct original wording corroborates the same attested event key without
  assert.equal(result.corroborated_and_signed,1);
  assert.equal(c.db.gros.size,1);
 });
-test("matching entities but different attested event keys stay separate Basic observations",async()=>{
+test("independent originals with different attested event keys corroborate into Standard",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,502,"gov",now),b=candidate(c,502,"region",now);
  b.event_key="EVENT_DIFFERENT_0502";
@@ -632,7 +744,12 @@ test("matching entities but different attested event keys stay separate Basic ob
  });
  assert.equal(result.corroborated_and_signed,2);
  assert.equal(c.db.gros.size,2);
- assert.ok([...c.db.gros.values()].every(row=>JSON.parse(row.payload_json).source_originals.length===1));
+ assert.ok([...c.db.gros.values()].every(row=>{
+  const payload=JSON.parse(row.payload_json);
+  return payload.source_originals.length===2&&
+   JSON.stringify(payload.eligible_derived_score.eligible_tiers)===
+    JSON.stringify(["basic_focused","standard"]);
+ }));
 });
 
 test("bounded secondary news index never contributes source evidence while one original yields Basic",async()=>{
