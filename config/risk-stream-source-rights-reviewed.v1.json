@@ -207,7 +207,9 @@
       "parent_media_entity": "gdelt_project",
       "source_role": "INDEPENDENT_REGIONAL",
       "categories": [
-        "GEOPOLITICS"
+        "GEOPOLITICS",
+        "MACRO_FX",
+        "CRITICAL_MINERALS"
       ],
       "status": "APPROVED",
       "rights_evidence": {
