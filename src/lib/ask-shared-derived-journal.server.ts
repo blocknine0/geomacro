@@ -5,7 +5,7 @@
  * A D1 outage, missing category or unattributed/older row falls back to
  * that category's existing first-party live reader. No paid proof or score.
  */
-import {fetchAllDerivedNews} from "./public-derived-news-client";
+import {fetchAllDerivedNews,fetchRiskStreamPublicTeasers} from "./public-derived-news-client";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 import type {StatelessCategory} from "./stateless-intelligence-model";
@@ -57,7 +57,16 @@ const defaultLive:ReadLive=async(category)=>{
  const m=await import("./stateless-public-intelligence.server");
  return m.readStatelessWebsiteIntelligence(category);
 };
-const defaultJournal:ReadJournal=()=>fetchAllDerivedNews();
+const defaultJournal:ReadJournal=async()=>{
+ const [journal,teasers]=await Promise.all([
+   fetchAllDerivedNews(),fetchRiskStreamPublicTeasers(),
+ ]);
+ const merged=new Map<string,StatelessIntelligenceSignal>();
+ for(const signal of journal)merged.set(signal.id,signal);
+ for(const signal of teasers)merged.set(signal.id,signal);
+ return [...merged.values()].sort((a,b)=>
+   b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+};
 export async function collectSharedOfficialNews(
  categories:readonly StatelessCategory[],
  {now=Date.now(),readJournal=defaultJournal,readLive=defaultLive}:{

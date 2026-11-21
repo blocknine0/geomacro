@@ -198,6 +198,7 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
 export async function fetchRiskStreamPublicTeasers(
  fetchImpl:typeof fetch=fetch,now=Date.now(),
 ):Promise<StatelessIntelligenceSignal[]>{
+ try{
  const response=await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL,{
   method:"GET",headers:{Accept:"application/json"},
  },8_000);
@@ -224,6 +225,7 @@ export async function fetchRiskStreamPublicTeasers(
   signals.push(value);
  }
  return signals;
+ }catch{return []}
 }
 
 export async function fetchEdgeLatestDerivedNews(
@@ -403,7 +405,7 @@ async function fetchAllDerivedNewsLegacy(
  * propagation when the bundled route is still absent; hard D1 quota failures
  * are never retried or downgraded to three expensive scans.
  */
-async function fetchBaseDerivedNews(
+export async function fetchAllDerivedNews(
   fetchImpl:typeof fetch=fetch,now=Date.now(),
   options:{fresh?:boolean;canonicalOriginToken?:string}={},
 ):Promise<StatelessIntelligenceSignal[]> {
@@ -475,26 +477,6 @@ async function fetchBaseDerivedNews(
   }
   return collected;
 }
-
-/** Merge the existing derived journal with the independent, redacted GRO view. */
-export async function fetchAllDerivedNews(
- fetchImpl:typeof fetch=fetch,now=Date.now(),
- options:{fresh?:boolean;canonicalOriginToken?:string}={},
-):Promise<StatelessIntelligenceSignal[]>{
- if(options.canonicalOriginToken!==undefined)
-  return fetchBaseDerivedNews(fetchImpl,now,options);
- const [journal,teasers]=await Promise.allSettled([
-  fetchBaseDerivedNews(fetchImpl,now,options),fetchRiskStreamPublicTeasers(fetchImpl,now),
- ]);
- if(journal.status!=="fulfilled"&&teasers.status!=="fulfilled")
-  throw Error("DERIVED_NEWS_AND_RISK_STREAM_PUBLIC_READS_UNAVAILABLE");
- const merged=new Map<string,StatelessIntelligenceSignal>();
- if(journal.status==="fulfilled")for(const signal of journal.value)merged.set(signal.id,signal);
- if(teasers.status==="fulfilled")for(const signal of teasers.value)merged.set(signal.id,signal);
- return [...merged.values()].sort((a,b)=>
-  b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
-}
-
 
 /**
  * P2 direct canonical 60s three-category D1 feed. The source's original clock
