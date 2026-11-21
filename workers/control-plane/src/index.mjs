@@ -148,14 +148,14 @@ const RISK_STREAM_PUBLIC_CATEGORY=Object.freeze({
 });
 const RISK_STREAM_PUBLIC_TOPIC=Object.freeze({
   GEOPOLITICS:"foreign policy",
-  MACRO_FX:"global FX, trade and industrial conditions",
-  CRITICAL_MINERALS:"strategic mineral and rare-earth inputs",
+  MACRO_FX:"monetary policy",
+  CRITICAL_MINERALS:"rare-earth supply",
 });
 const RISK_STREAM_PUBLIC_PUBLISHER_TEXT=/\b(?:Reuters|Associated Press|AP News|Bloomberg|Financial Times|The Guardian|BBC News|Al Jazeera|CNBC|CNN|The New York Times|New York Times|Wall Street Journal|Nikkei|The Hindu|France-Presse|AFP|publisher|according to|reported by|published by|source(?:d)? by|risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64)\b|\b(?:risk )?score\s*[:=]\s*\d+\b|(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\b)/iu;
 function sourceRedactedRiskStreamText(value,max){
   if(typeof value!=="string")return null;
   const text=value.replace(/\s+/gu," ").trim();
-  if(text.length<24||text.length>max||/[<>]/u.test(text)||
+  if(text.length<25||text.length>max||/[<>]/u.test(text)||
      RISK_STREAM_PUBLIC_PUBLISHER_TEXT.test(text))return null;
   return text;
 }
@@ -165,6 +165,8 @@ function projectRiskStreamPublicTeaser(row,now){
   const category=Object.hasOwn(RISK_STREAM_PUBLIC_CATEGORY,row.category)?
     RISK_STREAM_PUBLIC_CATEGORY[row.category]:null;
   if(!category)return null;
+  const id=`${category}-${String(row.gro_id).toLowerCase().replace(/[^0-9a-f]/g,"").slice(0,8)}`;
+  if(!/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(id))return null;
   const published=Date.parse(row.created_at??"");
   if(!Number.isFinite(published)||published>now||published<now-24*60*60_000)return null;
   let payload;
@@ -172,18 +174,23 @@ function projectRiskStreamPublicTeaser(row,now){
   if(payload?.schema!=="geomacro.event-stream-gro.v1"||
      payload?.subject?.type!=="COUNTRY"||payload.subject.id!==row.country_iso3||
      payload.category!==row.category)return null;
-  const what=sourceRedactedRiskStreamText(payload.what_happened,650);
+  const what=sourceRedactedRiskStreamText(payload.what_happened,650)??
+    `Official update recorded for ${row.country_iso3}.`;
   const brief=payload?.eligible_derived_score?.analyst_brief;
   const mechanism=sourceRedactedRiskStreamText(brief?.risk_mechanism,360);
   const downstream=sourceRedactedRiskStreamText(brief?.downstream_effects,360);
-  if(!what||!mechanism||!downstream)return null;
-  const why="Risk mechanism: "+mechanism+" Downstream effects: "+downstream;
-  if(why.length>700||RISK_STREAM_PUBLIC_PUBLISHER_TEXT.test(why))return null;
+  const whyText=mechanism&&downstream?
+    "Risk mechanism: "+mechanism+" Downstream effects: "+downstream:
+    `This official update may affect public policy and market conditions in ${row.country_iso3}.`;
+  const why=whyText.length>700?whyText.slice(0,697).trimEnd()+"...":whyText;
+  if(what.length<25||why.length<25||/[<>]/u.test(what+why)||
+     /(?:https?:\/\/|www\.)/iu.test(what+why)||
+     RISK_STREAM_PUBLIC_PUBLISHER_TEXT.test(what+why))return null;
   return {
-    id:row.gro_id,category,title:"Geomacro finds an official event signal for "+row.country_iso3,
+    id,category,title:("Geomacro finds an official event signal for "+row.country_iso3).slice(0,240),
     what_changed:what,why_it_matters:why,topic:RISK_STREAM_PUBLIC_TOPIC[row.category],
-    geography:row.country_iso3,country_iso3:row.country_iso3,
-    development_type:"signed event observation",published_at:new Date(published).toISOString(),
+    geography:row.country_iso3,
+    development_type:"official update",published_at:new Date(published).toISOString(),
     date_precision:"exact",observed_release_count:1,sources_credited:[],
     status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
   };
@@ -198,7 +205,12 @@ async function readRiskStreamPublicTeasers(env,now=Date.now()){
       .bind(new Date(now-24*60*60_000).toISOString(),new Date(now).toISOString()).all();
     if(!Array.isArray(results)||results.length>120)
       throw Error("RISK_STREAM_PUBLIC_TEASER_READ_LIMIT");
-    const signals=results.map(row=>projectRiskStreamPublicTeaser(row,now)).filter(Boolean);
+    const byId=new Map();
+    for(const row of results){
+      const signal=projectRiskStreamPublicTeaser(row,now);
+      if(signal&&!byId.has(signal.id))byId.set(signal.id,signal);
+    }
+    const signals=[...byId.values()];
     return Response.json({ok:true,schema:"geomacro.risk-stream-public-teasers.v1",
       checked_at:new Date(now).toISOString(),retention_hours:24,limit:120,
       score_free:true,source_redacted:true,signals},{headers:{

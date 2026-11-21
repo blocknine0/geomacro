@@ -89,55 +89,60 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    expect(helper).not.toContain("settleCoinbaseX402");
  });
  it("routes 47 score-free public D1 GRO teasers through Website Intelligence and Ask",async()=>{
-   const liveNow=Date.now(),liveAt=new Date(liveNow-75*60_000).toISOString();
+   const liveNow=Date.now()+120_000,liveAt=new Date(liveNow-75*60_000).toISOString();
    const countries=["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
      "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
      "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
      "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
      "VNM","THA","MYS","SGP","PHL","PAK","BGD"] as const;
    const categories=["geopolitics","macro","rare_earth"] as const;
-   const topics=["foreign policy","global FX, trade and industrial conditions",
-     "strategic mineral and rare-earth inputs"] as const;
+   const topics=["foreign policy","monetary policy","rare-earth supply"] as const;
    const teasers=countries.map((country,i)=>({
-     id:i.toString(16).padStart(64,"0"),category:categories[i%3],
+     id:`${categories[i%3]}-${(i+1).toString(16).padStart(8,"0")}`,
+     category:categories[i%3],
      title:`Geomacro finds an official event signal for ${country}`,
      what_changed:"A signed event record describes a recent country-level policy or supply development.",
      why_it_matters:"Risk mechanism: policy and operating assumptions may change. Downstream effects: review exposed activity.",
-     topic:topics[i%3],geography:country,country_iso3:country,
-     development_type:"signed event observation",published_at:liveAt,date_precision:"exact",
+     topic:topics[i%3],geography:country,
+     development_type:"official update",published_at:liveAt,date_precision:"exact",
      observed_release_count:1,sources_credited:[],
      status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
    }));
    const fetchImpl=vi.fn(async(input:RequestInfo|URL)=>{
-     const url=String(input);
-     if(url===GEOMACRO_DERIVED_JOURNAL_URL)return new Response(JSON.stringify({
+     const url=typeof input==="string"?input:input instanceof URL?input.toString():input.url;
+     if(url.startsWith(GEOMACRO_DERIVED_JOURNAL_URL))return new Response(JSON.stringify({
        ok:true,schema:"geomacro.website-derived-news-feed.v1",
        checked_at:new Date(liveNow).toISOString(),original_release_delay_minutes:0,
        retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
        page_offset:0,page_size:250,has_more:false,next_offset:null,signals:[],
      }),{status:200,headers:{"Content-Type":"application/json"}});
-     if(url===GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL)return new Response(JSON.stringify({
+     if(url.startsWith(GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL))return new Response(JSON.stringify({
        ok:true,schema:"geomacro.risk-stream-public-teasers.v1",
        checked_at:new Date(liveNow).toISOString(),retention_hours:24,limit:120,
        score_free:true,source_redacted:true,signals:teasers,
      }),{status:200,headers:{"Content-Type":"application/json"}});
      throw Error("unexpected public URL");
    }) as unknown as typeof fetch;
+   const dateNow=vi.spyOn(Date,"now").mockReturnValue(liveNow);
    vi.stubGlobal("fetch",fetchImpl);
    try{
    const website=await readWebsiteDerivedNews(undefined,liveNow);
    expect(website.signals).toHaveLength(47);
-   expect(new Set(website.signals.map(s=>s.country_iso3)).size).toBe(47);
+   expect(new Set(website.signals.map(s=>s.geography)).size).toBe(47);
+   expect(website.signals.every(s=>/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id))).toBe(true);
+   expect(website.signals.every(s=>s.title.startsWith("Geomacro finds ")&&s.title.length>=24&&s.title.length<=240)).toBe(true);
+   expect(website.signals.every(s=>s.what_changed.length>=25&&s.why_it_matters.length>=25&&
+     !/(?:https?:\/\/|www\.|[<>])/iu.test(s.what_changed+s.why_it_matters))).toBe(true);
    expect(website.signals.every(s=>s.sources_credited.length===0)).toBe(true);
    const ask=await collectSharedOfficialNews(categories,{now:liveNow,
      readLive:async()=>({signals:[]}),
    });
    expect(ask.signals).toHaveLength(47);
-   expect(new Set(ask.signals.map(s=>s.country_iso3)).size).toBe(47);
+   expect(new Set(ask.signals.map(s=>s.geography)).size).toBe(47);
    expect(ask.signals.every(s=>s.sources_credited.length===0)).toBe(true);
    for(const signal of [...website.signals,...ask.signals]){
      expect(Object.keys(signal).sort()).toEqual([
-       "category","country_iso3","date_precision","development_type","geography","id",
+       "category","date_precision","development_type","geography","id",
        "observed_release_count","published_at","same_event_corrob_verified","severity",
        "sources_credited","status","title","topic","what_changed","why_it_matters",
      ]);
@@ -145,6 +150,6 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    }
    const api=readFileSync("server/api/public/intelligence.get.ts","utf8");
    expect(api).toContain("readWebsiteDerivedNews()");
-   }finally{vi.unstubAllGlobals()}
+   }finally{vi.unstubAllGlobals();dateNow.mockRestore()}
  });
 });

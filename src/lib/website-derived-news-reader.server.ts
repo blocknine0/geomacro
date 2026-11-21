@@ -33,9 +33,16 @@ export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Da
         fetchAllDerivedNews(fetchImpl,now,{fresh:true}),
         fetchImpl===fetch?fetchRiskStreamPublicTeasers(fetchImpl,now):Promise.resolve([]),
       ]);
+      // Validate teasers in isolation before merging. A malformed optional
+      // projection must never make the established journal fail validation.
+      const checkedTeasers=checkedDerivedNews({ok:true,
+        schema:"geomacro.website-derived-news-feed.v1",
+        checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,
+        retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+        signals:teasers},now);
       const merged=new Map<string,StatelessIntelligenceSignal>();
       for(const signal of journal)merged.set(signal.id,signal);
-      for(const signal of teasers)merged.set(signal.id,signal);
+      for(const signal of checkedTeasers)merged.set(signal.id,signal);
       const signals=[...merged.values()].sort((a,b)=>
         b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
       const data:WebsiteDerivedNewsResult={ok:true,
