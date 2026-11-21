@@ -2,7 +2,15 @@ import {riskStreamOriginalClaims} from "../../control-plane/src/risk-stream-pipe
 import {validateRiskStreamItemLicense} from "../../control-plane/src/risk-stream-item-license-guard.mjs";
 import {isRiskStreamInternalCorroboration}
  from "../../control-plane/src/risk-stream-internal-corroboration.mjs";
-import {APPROVED_ROLE_PAIRS} from "../../control-plane/src/risk-stream-approved-role-pairs.mjs";
+import {APPROVED_ROLE_PAIRS as SHARED_APPROVED_ROLE_PAIRS}
+ from "../../control-plane/src/risk-stream-approved-role-pairs.mjs";
+
+const APPROVED_ROLE_PAIRS=Object.freeze({
+ ...SHARED_APPROVED_ROLE_PAIRS,
+ MACRO_FX:Object.freeze([...SHARED_APPROVED_ROLE_PAIRS.MACRO_FX,"INDEPENDENT_REGIONAL"]),
+ CRITICAL_MINERALS:Object.freeze([
+  ...SHARED_APPROVED_ROLE_PAIRS.CRITICAL_MINERALS,"INDEPENDENT_REGIONAL"])
+});
 
 const MAX_BODY=32*1024;
 const text=new TextEncoder();
