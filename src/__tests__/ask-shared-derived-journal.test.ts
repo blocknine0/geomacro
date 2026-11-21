@@ -99,6 +99,7 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    const topics=["foreign policy","monetary policy","rare-earth supply"] as const;
    const teasers=countries.map((country,i)=>({
      id:`${categories[i%3]}-${(i+1).toString(16).padStart(8,"0")}`,
+     category:categories[i%3],
      title:`Geomacro finds an official event signal for ${country}`,
      what_changed:"A signed event record describes a recent country-level policy or supply development.",
      why_it_matters:"Risk mechanism: policy and operating assumptions may change. Downstream effects: review exposed activity.",
