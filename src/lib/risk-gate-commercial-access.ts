@@ -48,7 +48,7 @@ export function designPartnerPilotCommercialAccess():
     production_entitlement:
       false,
     notice:
-      "Limited Design Partner pilot access under Geomacro's free-quota operating envelope.",
+      "Three-day live testing only: non-production, zero-charge access under Geomacro's free-quota operating envelope. Commercial use requires explicit go-live authorization.",
     upgrade: {
       available: true,
       contact:
@@ -59,7 +59,22 @@ export function designPartnerPilotCommercialAccess():
   };
 }
 
-export function paidX402CommercialAccess():
+export function privatePilotCommercialAccess(): RiskGateCommercialAccess {
+  return {
+    schema_version: RISK_GATE_COMMERCIAL_ACCESS_VERSION,
+    tier: "private_pilot",
+    quota_class: "limited_free_quota",
+    production_entitlement: false,
+    notice: "Three-day live testing only: private, non-production, zero-charge access. Commercial use requires explicit go-live authorization.",
+    upgrade: {
+      available: true,
+      contact: GEOMACRO_COMMERCIAL_CONTACT,
+      message: "Commercial access is unavailable until live testing completes and Geomacro explicitly authorizes commercial go-live.",
+    },
+  };
+}
+
+export function paidX402CommercialAccess(paymentVerified = false):
   RiskGateCommercialAccess {
   return {
     schema_version:
@@ -67,11 +82,13 @@ export function paidX402CommercialAccess():
     tier:
       "paid_x402",
     quota_class:
-      "commercial",
+      paymentVerified ? "commercial" : "limited_free_quota",
     production_entitlement:
-      true,
+      paymentVerified,
     notice:
-      "Commercial access is governed by the active Geomacro x402 product and customer terms.",
+      paymentVerified
+        ? "Verified x402 payment grants the purchased commercial entitlement under the active Geomacro product and customer terms."
+        : "Production entitlement is withheld until x402 payment verification and settlement succeed.",
     upgrade: {
       available: true,
       contact:

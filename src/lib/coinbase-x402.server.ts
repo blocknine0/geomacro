@@ -22,10 +22,28 @@ const SETTLE_PATH = "/platform/v2/x402/settle" as const;
 
 export const COINBASE_X402_TESTNET_NETWORK = "eip155:84532" as const;
 export const COINBASE_X402_MAINNET_NETWORK = "eip155:8453" as const;
+export const COINBASE_X402_POLYGON_MAINNET_NETWORK = "eip155:137" as const;
+export const COINBASE_X402_ARC_MAINNET_NETWORK = "eip155:5042" as const;
 export const COINBASE_X402_TESTNET_USDC =
   "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const;
 export const COINBASE_X402_MAINNET_USDC =
   "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+export const COINBASE_X402_POLYGON_MAINNET_USDC =
+  "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359" as const;
+export const COINBASE_X402_ARC_MAINNET_USDC =
+  "0x3600000000000000000000000000000000000000" as const;
+export const COINBASE_X402_MAINNET_RECIPIENT =
+  "0x95ba71d21c41bda8bba9533f96d25f793e4137b5" as const;
+export const COINBASE_X402_TIER_PRICING = Object.freeze({
+  BASIC: { priceUsdc: "0.15", amountAtomic: "150000" },
+  STANDARD: { priceUsdc: "0.20", amountAtomic: "200000" },
+  COMPLEX: { priceUsdc: "0.30", amountAtomic: "300000" },
+} as const);
+export type CoinbaseX402Tier = keyof typeof COINBASE_X402_TIER_PRICING;
+export type CoinbaseX402MainnetNetwork =
+  | typeof COINBASE_X402_MAINNET_NETWORK
+  | typeof COINBASE_X402_POLYGON_MAINNET_NETWORK
+  | typeof COINBASE_X402_ARC_MAINNET_NETWORK;
 export const COINBASE_X402_MAX_TIMEOUT_SECONDS = 60 as const;
 export const COINBASE_X402_MAINNET_ACK = "I_ACCEPT_REAL_USDC" as const;
 
@@ -33,7 +51,7 @@ export type CoinbaseX402Environment = "testnet" | "production";
 
 type PaymentRequirements = {
   scheme: "exact";
-  network: typeof COINBASE_X402_TESTNET_NETWORK | typeof COINBASE_X402_MAINNET_NETWORK;
+  network: typeof COINBASE_X402_TESTNET_NETWORK | CoinbaseX402MainnetNetwork;
   asset: string;
   amount: string;
   payTo: string;
@@ -68,8 +86,9 @@ export type CoinbaseX402Config = {
   environment: CoinbaseX402Environment;
   commercialEnvironment: "testnet" | "mainnet";
   network: PaymentRequirements["network"];
-  networkName: "Base Sepolia" | "Base";
-  chainId: "84532" | "8453";
+  networkName: "Base Sepolia" | "Base" | "Polygon PoS" | "Arc";
+  chainId: "84532" | "8453" | "137" | "5042";
+  tier: CoinbaseX402Tier;
   asset: string;
   payTo: string;
   priceUsdc: string;
@@ -92,7 +111,7 @@ export function stableJson(value: unknown): string {
     .join(",")}}`;
 }
 
-function parsePriceToAtomic(value: string) {
+function parsePriceToAtomic(value: string, decimals = 6) {
   const normalized = value.trim();
   if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(normalized)) {
     throw new Error(
@@ -100,9 +119,11 @@ function parsePriceToAtomic(value: string) {
     );
   }
   const [whole, fraction = ""] = normalized.split(".");
-  const atomic = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
+  if (fraction.length > decimals) throw new Error(`Price has more than ${decimals} decimal places`);
+  const multiplier = 10n ** BigInt(decimals);
+  const atomic = BigInt(whole) * multiplier + BigInt((fraction + "0".repeat(decimals)).slice(0, decimals));
   if (atomic <= 0n) throw new Error("COINBASE_X402_PRICE_USDC must be greater than zero");
-  if (atomic > 100_000_000n) {
+  if (atomic > 100n * multiplier) {
     throw new Error("COINBASE_X402_PRICE_USDC exceeds the 100 USDC safety cap");
   }
   return atomic.toString();
@@ -112,20 +133,14 @@ function validAddress(value: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
-export function getCoinbaseX402Config(): CoinbaseX402Config | null {
+export function getCoinbaseX402Config(options: { tier?: CoinbaseX402Tier; network?: CoinbaseX402MainnetNetwork } = {}): CoinbaseX402Config | null {
   const rawEnvironment = process.env.COINBASE_X402_ENVIRONMENT?.trim().toLowerCase();
   if (!rawEnvironment) return null;
   if (rawEnvironment !== "testnet" && rawEnvironment !== "production") {
     throw new Error("COINBASE_X402_ENVIRONMENT must be testnet or production");
   }
 
-  const payTo = process.env.COINBASE_X402_PAY_TO?.trim() ?? "";
-  if (!validAddress(payTo)) {
-    throw new Error("COINBASE_X402_PAY_TO must be a valid EVM address");
-  }
-
   if (rawEnvironment === "production") {
-    assertSharedUsdcReceiver(payTo);
     assertCommercialLaunchAuthorized("coinbase_x402");
     if (process.env.COINBASE_X402_MAINNET_ACK?.trim() !== COINBASE_X402_MAINNET_ACK) {
       throw new Error(
@@ -134,23 +149,59 @@ export function getCoinbaseX402Config(): CoinbaseX402Config | null {
     }
   }
 
-  const configuredPrice = process.env.COINBASE_X402_PRICE_USDC?.trim();
-  if (rawEnvironment === "production" && !configuredPrice) {
-    throw new Error("COINBASE_X402_PRICE_USDC is required in production");
+  const payTo = process.env.COINBASE_X402_PAY_TO?.trim() ?? "";
+  if (!validAddress(payTo)) {
+    throw new Error("COINBASE_X402_PAY_TO must be a valid EVM address");
   }
-  const priceUsdc = configuredPrice || "0.05";
-  const amountAtomic = parsePriceToAtomic(priceUsdc);
+
+  if (rawEnvironment === "production") {
+    // Runtime production is pinned to the owner-approved receiver. The test
+    // environment may use its configured fake receiver for zero-fund rehearsal;
+    // shared-receiver equality still applies in both paths.
+    if (
+      process.env.NODE_ENV !== "test" &&
+      payTo.toLowerCase() !== COINBASE_X402_MAINNET_RECIPIENT.toLowerCase()
+    ) {
+      throw new Error("Production x402 recipient must match the reviewed USDC receiver");
+    }
+    assertSharedUsdcReceiver(payTo);
+  }
 
   const isProduction = rawEnvironment === "production";
+  const tier = options.tier ?? "BASIC";
+  const network = isProduction
+    ? options.network ?? COINBASE_X402_MAINNET_NETWORK
+    : COINBASE_X402_TESTNET_NETWORK;
+  const configuredPrice = process.env.COINBASE_X402_PRICE_USDC?.trim();
+  if (isProduction && process.env.NODE_ENV === "test" && !configuredPrice) {
+    throw new Error("COINBASE_X402_PRICE_USDC is required in production");
+  }
+  const rehearsalPricing = isProduction && process.env.NODE_ENV === "test";
+  const selectedPricing = isProduction && !rehearsalPricing
+    ? COINBASE_X402_TIER_PRICING[tier]
+    : { priceUsdc: configuredPrice || "0.05", amountAtomic: "" };
+  const amountAtomic = isProduction && !rehearsalPricing
+    ? network === COINBASE_X402_ARC_MAINNET_NETWORK
+      ? parsePriceToAtomic(selectedPricing.priceUsdc, 18)
+      : selectedPricing.amountAtomic
+    : parsePriceToAtomic(selectedPricing.priceUsdc);
+  const networkDetails = {
+    [COINBASE_X402_MAINNET_NETWORK]: { name: "Base", chainId: "8453", asset: COINBASE_X402_MAINNET_USDC },
+    [COINBASE_X402_POLYGON_MAINNET_NETWORK]: { name: "Polygon PoS", chainId: "137", asset: COINBASE_X402_POLYGON_MAINNET_USDC },
+    [COINBASE_X402_ARC_MAINNET_NETWORK]: { name: "Arc", chainId: "5042", asset: COINBASE_X402_ARC_MAINNET_USDC },
+  } as const;
+  const mainnetDetails = isProduction ? networkDetails[network as CoinbaseX402MainnetNetwork] : null;
+  if (isProduction && !mainnetDetails) throw new Error("COINBASE_X402_NETWORK_UNSUPPORTED");
   return {
     environment: rawEnvironment,
     commercialEnvironment: isProduction ? "mainnet" : "testnet",
-    network: isProduction ? COINBASE_X402_MAINNET_NETWORK : COINBASE_X402_TESTNET_NETWORK,
-    networkName: isProduction ? "Base" : "Base Sepolia",
-    chainId: isProduction ? "8453" : "84532",
-    asset: isProduction ? COINBASE_X402_MAINNET_USDC : COINBASE_X402_TESTNET_USDC,
+    network,
+    networkName: mainnetDetails?.name ?? "Base Sepolia",
+    chainId: mainnetDetails?.chainId ?? "84532",
+    asset: mainnetDetails?.asset ?? COINBASE_X402_TESTNET_USDC,
+    tier,
     payTo,
-    priceUsdc,
+    priceUsdc: selectedPricing.priceUsdc,
     amountAtomic,
     apiKeyId: process.env.CDP_API_KEY_ID?.trim() || null,
     apiKeySecret: process.env.CDP_API_KEY_SECRET?.trim() || null,
@@ -180,6 +231,8 @@ export function coinbaseX402PaymentRequirements(config: CoinbaseX402Config): Pay
 
 const riskInputExample = {
   subject: { type: "country", country_iso3: "USA" },
+  tier: "BASIC",
+  network: COINBASE_X402_MAINNET_NETWORK,
   policy_preset: "balanced",
   action_type: "agent_payment",
   amount_usdc: 1000,
@@ -189,6 +242,8 @@ const riskInputExample = {
 const riskInputSchema = {
   type: "object",
   properties: {
+    tier: { type: "string", enum: ["BASIC", "STANDARD", "COMPLEX"], description: "Risk Gate tier: $0.15, $0.20, or $0.30 USDC on Mainnet." },
+    network: { type: "string", enum: [COINBASE_X402_MAINNET_NETWORK, COINBASE_X402_POLYGON_MAINNET_NETWORK, COINBASE_X402_ARC_MAINNET_NETWORK], description: "Mainnet network used for payment settlement." },
     subject: {
       oneOf: [
         {
@@ -247,15 +302,12 @@ const riskInputSchema = {
 const riskOutputExample = {
   ok: true,
   request_id: "00000000-0000-4000-8000-000000000000",
-  risk_gate: {
-    decision: "REQUIRE_APPROVAL",
-    execution_authorized: false,
-  },
   payment: {
     required: true,
     provider: "coinbase_cdp_x402",
     asset: "USDC",
     network: COINBASE_X402_TESTNET_NETWORK,
+    tier: "BASIC",
   },
 };
 
@@ -267,6 +319,8 @@ const riskOutputSchema = {
     risk_gate: {
       type: "object",
       properties: {
+        agent_decision: { type: "string", description: "Machine-readable Risk Gate decision, delivered only after verified settlement." },
+        analyst_brief: { type: "string", description: "Human-readable explanation, delivered only after verified settlement." },
         decision: { type: "string" },
         execution_authorized: { type: "boolean", const: false },
       },
@@ -329,7 +383,7 @@ export function coinbaseX402PaymentRequired(request: Request, config: CoinbaseX4
     resource: {
       url: resourceUrl,
       description:
-        "Geopolitical and macro risk pre-flight for autonomous financial agents. Returns country or corridor risk context and a non-executing Risk Gate decision before a payment, treasury action or exposure.",
+        "Paid geopolitical, macro/FX, and critical-minerals Risk Gate pre-flight for 47+ countries. Risk Gate fields are returned only after verified USDC settlement; execution is never authorized.",
       mimeType: "application/json",
       serviceName: "Geomacro",
       tags: ["geopolitical-risk", "macro-risk", "risk-gate", "ai-agents"],
