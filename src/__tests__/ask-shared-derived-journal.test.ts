@@ -89,14 +89,14 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    expect(helper).not.toContain("settleCoinbaseX402");
  });
  it("routes 47 score-free public D1 GRO teasers through Website Intelligence and Ask",async()=>{
-   const liveNow=Date.now(),liveAt=new Date(liveNow-75*60_000).toISOString();
+   const liveNow=Date.now()+120_000,liveAt=new Date(liveNow-75*60_000).toISOString();
    const countries=["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
      "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
      "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
      "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
      "VNM","THA","MYS","SGP","PHL","PAK","BGD"] as const;
    const categories=["geopolitics","macro","rare_earth"] as const;
-   const topics=["foreign policy","macroeconomics","critical minerals"] as const;
+   const topics=["foreign policy","monetary policy","rare-earth supply"] as const;
    const teasers=countries.map((country,i)=>({
      id:`${categories[i%3]}-${(i+1).toString(16).padStart(8,"0")}`,
      title:`Geomacro finds an official event signal for ${country}`,
@@ -128,6 +128,9 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    expect(website.signals).toHaveLength(47);
    expect(new Set(website.signals.map(s=>s.geography)).size).toBe(47);
    expect(website.signals.every(s=>/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s.id))).toBe(true);
+   expect(website.signals.every(s=>s.title.startsWith("Geomacro finds ")&&s.title.length>=24&&s.title.length<=240)).toBe(true);
+   expect(website.signals.every(s=>s.what_changed.length>=25&&s.why_it_matters.length>=25&&
+     !/(?:https?:\/\/|www\.|[<>])/iu.test(s.what_changed+s.why_it_matters))).toBe(true);
    expect(website.signals.every(s=>s.sources_credited.length===0)).toBe(true);
    const ask=await collectSharedOfficialNews(categories,{now:liveNow,
      readLive:async()=>({signals:[]}),
