@@ -95,6 +95,9 @@ const SIGNAL_FIELDS = new Set(["id","category","title","what_changed","why_it_ma
   "topic","geography","development_type","published_at","date_precision",
   "observed_release_count","sources_credited","status","same_event_corrob_verified","severity",
   "country_iso3","corridor","event_direction","event_action"]);
+const PUBLIC_RISK_STREAM_TEASER_FIELDS=new Set(["id","category","title","what_changed",
+  "why_it_matters","topic","geography","development_type","published_at","date_precision",
+  "observed_release_count","sources_credited","status","same_event_corrob_verified","severity"]);
 const PUBLIC_TEASER_PUBLISHER_TEXT=/\b(?:Reuters|Associated Press|AP News|Bloomberg|Financial Times|The Guardian|BBC News|Al Jazeera|CNBC|CNN|The New York Times|New York Times|Wall Street Journal|Nikkei|The Hindu|France-Presse|AFP|publisher|according to|reported by|published by|source(?:d)? by|risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64)\b|\b(?:risk )?score\s*[:=]\s*\d+\b|(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\b)/iu;
 function safeSignal(value: unknown, now: number, allowHistorical = false): value is StatelessIntelligenceSignal {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -215,10 +218,23 @@ export async function fetchRiskStreamPublicTeasers(
   throw Error("RISK_STREAM_PUBLIC_TEASERS_CONTRACT_INVALID");
  const signals:StatelessIntelligenceSignal[]=[];
  for(const value of doc.signals){
-  if(!safeSignal(value,now)||!(/^[a-f0-9]{64}$/u.test(value.id))||
+  const strictShape=!!value&&typeof value==="object"&&
+    Object.keys(value).length===PUBLIC_RISK_STREAM_TEASER_FIELDS.size&&
+    Object.keys(value).every(key=>PUBLIC_RISK_STREAM_TEASER_FIELDS.has(key))&&
+    /^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(String(value.id??""))&&
+    typeof value.geography==="string"&&value.geography.length>0;
+  // The website reader's in-memory compatibility adapter temporarily adds
+  // country_iso3 and expands the short ID. Accept that adapter shape while
+  // allowing the Control Plane's strict public shape directly.
+  const readerAdapterShape=!!value&&typeof value==="object"&&
+    Object.keys(value).length===PUBLIC_RISK_STREAM_TEASER_FIELDS.size+1&&
+    Object.keys(value).every(key=>key==="country_iso3"||PUBLIC_RISK_STREAM_TEASER_FIELDS.has(key))&&
+    /^[a-f0-9]{64}$/u.test(String(value.id??""))&&
+    /^[A-Z]{3}$/u.test(String(value.country_iso3??""))&&
+    value.geography===value.country_iso3;
+  if(!safeSignal(value,now)||(!strictShape&&!readerAdapterShape)||
      value.status!=="official_release_observed_unscored"||
-     value.sources_credited.length!==0||!value.country_iso3||
-     value.geography!==value.country_iso3||
+     value.sources_credited.length!==0||
      Date.parse(value.published_at)<now-24*3_600_000||
      PUBLIC_TEASER_PUBLISHER_TEXT.test(JSON.stringify(value)))
     throw Error("RISK_STREAM_PUBLIC_TEASER_INVALID");
