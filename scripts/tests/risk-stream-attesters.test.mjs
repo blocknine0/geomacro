@@ -104,6 +104,17 @@ test("facts attester accepts independent regional candidates for macro and criti
  }
 });
 
+test("rights attester accepts independent regional candidates for macro and critical minerals",async()=>{
+ for(const category of ["MACRO_FX","CRITICAL_MINERALS"]){
+  const candidate=fixture();candidate.category=category;
+  candidate.source_role="INDEPENDENT_REGIONAL";
+  const registry={...registryRow,source_role:"INDEPENDENT_REGIONAL"};
+  const response=await attestRights(request(candidate),rightsEnv(registry),now);
+  assert.equal(response.status,200,category);
+  assert.equal((await result(response)).ok,true,category);
+ }
+});
+
 test("rights attester returns specific source registry refusal reasons with HTTP 403",async()=>{
  const candidate=fixture();
  const cases=[
