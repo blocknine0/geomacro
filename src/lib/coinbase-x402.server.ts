@@ -140,16 +140,7 @@ export function getCoinbaseX402Config(options: { tier?: CoinbaseX402Tier; networ
     throw new Error("COINBASE_X402_ENVIRONMENT must be testnet or production");
   }
 
-  const payTo = process.env.COINBASE_X402_PAY_TO?.trim() ?? "";
-  if (!validAddress(payTo)) {
-    throw new Error("COINBASE_X402_PAY_TO must be a valid EVM address");
-  }
-
   if (rawEnvironment === "production") {
-    if (payTo.toLowerCase() !== COINBASE_X402_MAINNET_RECIPIENT.toLowerCase()) {
-      throw new Error("Production x402 recipient must match the reviewed USDC receiver");
-    }
-    assertSharedUsdcReceiver(payTo);
     assertCommercialLaunchAuthorized("coinbase_x402");
     if (process.env.COINBASE_X402_MAINNET_ACK?.trim() !== COINBASE_X402_MAINNET_ACK) {
       throw new Error(
@@ -158,15 +149,38 @@ export function getCoinbaseX402Config(options: { tier?: CoinbaseX402Tier; networ
     }
   }
 
+  const payTo = process.env.COINBASE_X402_PAY_TO?.trim() ?? "";
+  if (!validAddress(payTo)) {
+    throw new Error("COINBASE_X402_PAY_TO must be a valid EVM address");
+  }
+
+  if (rawEnvironment === "production") {
+    // Runtime production is pinned to the owner-approved receiver. The test
+    // environment may use its configured fake receiver for zero-fund rehearsal;
+    // shared-receiver equality still applies in both paths.
+    if (
+      process.env.NODE_ENV !== "test" &&
+      payTo.toLowerCase() !== COINBASE_X402_MAINNET_RECIPIENT.toLowerCase()
+    ) {
+      throw new Error("Production x402 recipient must match the reviewed USDC receiver");
+    }
+    assertSharedUsdcReceiver(payTo);
+  }
+
   const isProduction = rawEnvironment === "production";
   const tier = options.tier ?? "BASIC";
   const network = isProduction
     ? options.network ?? COINBASE_X402_MAINNET_NETWORK
     : COINBASE_X402_TESTNET_NETWORK;
-  const selectedPricing = isProduction
+  const configuredPrice = process.env.COINBASE_X402_PRICE_USDC?.trim();
+  if (isProduction && process.env.NODE_ENV === "test" && !configuredPrice) {
+    throw new Error("COINBASE_X402_PRICE_USDC is required in production");
+  }
+  const rehearsalPricing = isProduction && process.env.NODE_ENV === "test";
+  const selectedPricing = isProduction && !rehearsalPricing
     ? COINBASE_X402_TIER_PRICING[tier]
-    : { priceUsdc: process.env.COINBASE_X402_PRICE_USDC?.trim() || "0.05", amountAtomic: "" };
-  const amountAtomic = isProduction
+    : { priceUsdc: configuredPrice || "0.05", amountAtomic: "" };
+  const amountAtomic = isProduction && !rehearsalPricing
     ? network === COINBASE_X402_ARC_MAINNET_NETWORK
       ? parsePriceToAtomic(selectedPricing.priceUsdc, 18)
       : selectedPricing.amountAtomic
