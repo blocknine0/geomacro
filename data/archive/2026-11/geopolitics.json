@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-21T08:13:46.348Z",
+  "updated_at": "2026-11-21T16:18:29.343Z",
   "signals": [
+    {
+      "id": "geopolitics-af284028",
+      "category": "geopolitics",
+      "title": "Geomacro finds Defence Secretary: met President Zelensky and Minister Khmara in Kyiv as UK deepens industrial support for Ukraine · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Defence Secretary met President Zelensky and Minister Khmara in Kyiv as UK deepens industrial support for Ukraine. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-21T15:50:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b52e71f1",
       "category": "geopolitics",
