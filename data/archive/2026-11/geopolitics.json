@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-20T19:13:00.723Z",
+  "updated_at": "2026-11-21T00:54:18.629Z",
   "signals": [
     {
       "id": "geopolitics-b52e71f1",
@@ -19,6 +19,40 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-8305d33e",
+      "category": "geopolitics",
+      "title": "Geomacro finds General Assembly President: told Rohingya refugees after genocide ruling",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "General Assembly President told Rohingya refugees after genocide ruling.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-20T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-850397cd",
+      "category": "geopolitics",
+      "title": "Geomacro finds West Bank olive harvest begins amid reported settler attacks · Palestinian territories",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "The release reports settler attacks during the start of the olive harvest in the West Bank. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-20T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
