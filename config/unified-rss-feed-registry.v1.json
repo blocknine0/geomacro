@@ -171,7 +171,7 @@
     },
     {
       "name": "uk_desnz_ogl_minerals_atom",
-      "url": "https://www.gov.uk/search/news-and-communications.atom?keywords=rare+earth",
+      "url": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "commodities",
@@ -214,7 +214,7 @@
     },
     {
       "name": "uk_bist_ogl_minerals_atom",
-      "url": "https://www.gov.uk/search/news-and-communications.atom?keywords=lithium+cobalt+copper",
+      "url": "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
       "source_type": "verified_media",
       "credibility_score": 0.955,
       "risk_category": "commodities",

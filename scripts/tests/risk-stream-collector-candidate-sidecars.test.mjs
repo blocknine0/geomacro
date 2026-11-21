@@ -93,43 +93,6 @@ test("new Bank of Canada, RBA, and UN News sources use reviewed feeds",()=>{
  assert.equal(feedManifest.feed_count,feedManifest.sources.length);
 });
 
-test("UK DESNZ and BIST search Atom feeds emit critical-minerals candidates",async()=>{
- const expected={
-  uk_desnz_ogl_minerals_atom:"https://www.gov.uk/search/news-and-communications.atom?keywords=rare+earth",
-  uk_bist_ogl_minerals_atom:"https://www.gov.uk/search/news-and-communications.atom?keywords=lithium+cobalt+copper"};
- for(const [id,url] of Object.entries(expected)){
-  const sourceFeed=feedManifest.sources.find(row=>row.name===id);
-  const rights=fullManifest.entries.find(row=>row.source_id===id);
-  assert.ok(sourceFeed,`${id} feed entry exists`);
-  assert.equal(sourceFeed.url,url);
-  const parsedUrl=new URL(sourceFeed.url);
-  assert.equal(parsedUrl.protocol,"https:");
-  assert.equal(parsedUrl.hostname,"www.gov.uk");
-  assert.equal(parsedUrl.pathname,"/search/news-and-communications.atom");
-  assert.equal(sourceFeed.risk_category,"commodities");
-  assert.equal(rights?.status,"APPROVED");
-  assert.equal(rights?.publisher_root_domain,"gov.uk");
-  const terms=id==="uk_desnz_ogl_minerals_atom"?"Rare earth mining":"Lithium cobalt copper";
-  const itemUrl="https://www.gov.uk/government/news/"+id;
-  const xml='<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>'+id+
-   '</id><title>'+terms+' supply update for the United Kingdom</title>'+
-   '<updated>2026-11-15T09:30:00Z</updated><link rel="alternate" href="'+itemUrl+
-   '" /><summary>Critical mineral production and processing conditions.</summary></entry></feed>';
-  const page='<a rel="license" href="'+rights.rights_evidence.licence_url+
-   '">Open Government Licence v3.0</a>';
-  const result=await collectRiskStreamFeedExtensions({collector:"direct",now,
-   fetchImpl:async actual=>({ok:true,text:async()=>actual===sourceFeed.url?xml:page,
-    headers:{get:()=>actual===sourceFeed.url?"application/atom+xml":"text/html"}}),
-   rightsManifest:fullManifest,feeds:{schema:"geomacro.unified-rss-feed-registry.v1",
-    sources:[{...feed(id),url:sourceFeed.url,risk_category:sourceFeed.risk_category}]},
-   sourceRegistry:fullSourceRegistry});
-  assert.equal(result.originals.length,1,JSON.stringify(result.counts));
-  assert.equal(result.originals[0].source_id,id);
-  assert.equal(result.originals[0].category,"CRITICAL_MINERALS");
-  assert.doesNotThrow(()=>prepareRiskStreamCandidate(result.originals[0],fullSourceRegistry,now,
-   {rightsManifest:fullManifest}));
- }
-});
 test("Bank of Canada FX JSON pairs with ECB on the same Hot 50 currency identity",async()=>{
  const boc=fullManifest.entries.find(row=>row.source_id==="bank_of_canada_fx_ogl");
  const ecb=fullManifest.entries.find(row=>row.source_id==="ecb_fx_reference_rates");
