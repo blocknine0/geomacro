@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 15802)
-Total output lines: 886
-
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
@@ -405,7 +402,53 @@ function zipOneCsv(name,text){
  local.writeUInt32LE(plain.length,22);local.writeUInt16LE(filename.length,26);filename.copy(local,30);
  const central=Buffer.alloc(46+filename.length);central.writeUInt32LE(0x02014b50,0);
  central.writeUInt16LE(20,4);central.writeUInt16LE(20,6);central.writeUInt16LE(8,10);
- central.writeUInt32LE(crc,16);cen…802 tokens truncated…  assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
+ central.writeUInt32LE(crc,16);central.writeUInt32LE(compressed.length,20);
+ central.writeUInt32LE(plain.length,24);central.writeUInt16LE(filename.length,28);filename.copy(central,46);
+ const end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50,0);end.writeUInt16LE(1,8);
+ end.writeUInt16LE(1,10);end.writeUInt32LE(central.length,12);end.writeUInt32LE(local.length+compressed.length,16);
+ return Buffer.concat([local,compressed,central,end]);
+}
+function gdeltTsvRow({id,date,country,event="145",quad="4",sourceUrl="https://example.invalid/article?prose=must-not-enter-payload"}){
+ const columns=Array(61).fill("");columns[0]=String(id);columns[1]=date;columns[5]="GOV";
+ columns[7]="";columns[15]="";columns[17]="";columns[26]=event;columns[29]=quad;
+ columns[30]="-2.5";columns[53]=country;columns[60]=sourceUrl;
+ return columns.join("\t");
+}
+
+test("GDELT full-URL lastupdate ZIP emits tab-delimited factual candidates",async()=>{
+ const rights=manifest.entries.find(row=>row.source_id==="gdelt_v2_factual_events");
+ const now=Date.parse("2026-11-20T12:00:00Z"),feedUrl="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
+ const archiveUrl="https://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip";
+ const countryCodes=["US","CN","IN","RU","GB","DE","FR","JP","KR","BE","CA","AU","BR","MX",
+  "IT","ES","NL","SZ","NO","SE","PL","UA","TR","SA","AE","IR","IL","EG","QA","OM","IQ",
+  "SF","NG","CG","ZM","CL","PE","AR","BO","ID","VN","TH","MY","SG","PH","PK","BD","KZ","MN","MM"];
+ const csv=Array.from({length:510},(_,index)=>gdeltTsvRow({id:1000000000+index,date:"20261120",
+  country:countryCodes[index%countryCodes.length]})).join("\n");
+ const archive=zipOneCsv("20261120103000.export.CSV",csv);
+ const fetchImpl=async(url)=>{
+  if(url===feedUrl)return {ok:true,text:async()=>
+   "152384 0123456789abcdef0123456789abcdef http://data.gdeltproject.org/gdeltv2/20261120103000.export.CSV.zip\n",
+   headers:{get:()=>"text/plain"}};
+  assert.equal(url,archiveUrl);
+  return {ok:true,arrayBuffer:async()=>archive.buffer.slice(archive.byteOffset,archive.byteOffset+archive.byteLength),
+   headers:{get:(name)=>name==="content-length"?String(archive.length):"application/zip"}};
+ };
+ const result=await collectRiskStreamFeedExtensions({collector:"direct",now,fetchImpl,rightsManifest:manifest,
+  feeds:{schema:"geomacro.unified-rss-feed-registry.v1",sources:[{
+   ...feed(rights.source_id),url:feedUrl,risk_category:"conflict"}]},sourceRegistry});
+ assert.equal(result.originals.length,500);
+ assert.equal(new Set(result.originals.map(row=>row.country_iso3)).size,50);
+ assert.equal(new Set(result.originals.map(row=>JSON.parse(row.raw_payload).global_event_id)).size,500);
+ for(const candidate of result.originals){
+  assert.equal(candidate.category,"GEOPOLITICS");
+  const payload=JSON.parse(candidate.raw_payload);
+  assert.equal(payload.schema,"geomacro.gdelt.factual-event.v1");
+  assert.equal(payload.country_iso3,candidate.country_iso3);
+  assert.equal(payload.event_code,"145");
+  assert.equal(payload.quad_class,undefined);
+  assert.doesNotMatch(candidate.raw_payload,/must-not-enter-payload|example\.invalid/u);
+  assert.doesNotThrow(()=>prepareRiskStreamCandidate(candidate,sourceRegistry,now,{rightsManifest:manifest}));
+  assert.doesNotThrow(()=>validateRiskStreamItemLicense(candidate.item_license_evidence,rights,
    {sourceUrl:candidate.source_url,sourceDomain:rights.publisher_root_domain,rawPayload:candidate.raw_payload}));
  }
 });
