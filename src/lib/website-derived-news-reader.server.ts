@@ -1,4 +1,4 @@
-import {checkedDerivedNews,fetchAllDerivedNews} from "./public-derived-news-client";
+import {checkedDerivedNews,fetchAllDerivedNews,fetchRiskStreamPublicTeasers} from "./public-derived-news-client";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 
 export type WebsiteDerivedNewsResult = {
@@ -17,7 +17,8 @@ const CACHE_MS=60_000;
 let sharedCache:{expiresAt:number;value:WebsiteDerivedNewsResult}|null=null;
 let sharedFlight:Promise<WebsiteDerivedNewsResult>|null=null;
 
-/** Exact shared embargo/privacy checks; no provider, B2, Supabase or paid call. */
+/** Merge the derived journal and score-free signed-GRO teaser projection. The
+ * client validates both feeds and keeps the existing privacy and age checks. */
 export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Date.now()):Promise<WebsiteDerivedNewsResult>{
     if(!Number.isFinite(now))throw Error("DERIVED_NEWS_FEED_CLOCK_INVALID");
     const cacheable=fetchImpl===fetch;
@@ -25,12 +26,18 @@ export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Da
       return structuredClone(sharedCache.value);
     if(cacheable&&sharedFlight)return structuredClone(await sharedFlight);
     const work=(async()=>{
-      // The bundle and journal views share the Worker's public edge cache and
-      // retain all three categories, including explicitly unverified OSINT.
-      // This endpoint is the existing bounded D1 projection read. Revalidate
-      // its one cached Worker bundle on the same request so a 15-minute edge
-      // snapshot cannot hide newly admitted Private OSINT observations.
-      const signals=await fetchAllDerivedNews(fetchImpl,now,{fresh:true});
+      // Keep the established derived-news read unchanged. The extra teaser
+      // read is best-effort and only runs for the default live reader, so
+      // injected journal readers retain their one-request contract.
+      const [journal,teasers]=await Promise.all([
+        fetchAllDerivedNews(fetchImpl,now,{fresh:true}),
+        fetchImpl===fetch?fetchRiskStreamPublicTeasers(fetchImpl,now):Promise.resolve([]),
+      ]);
+      const merged=new Map<string,StatelessIntelligenceSignal>();
+      for(const signal of journal)merged.set(signal.id,signal);
+      for(const signal of teasers)merged.set(signal.id,signal);
+      const signals=[...merged.values()].sort((a,b)=>
+        b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
       const data:WebsiteDerivedNewsResult={ok:true,
         schema:"geomacro.website-derived-news-feed.v1",
         checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,

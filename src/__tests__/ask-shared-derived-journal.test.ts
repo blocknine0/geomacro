@@ -1,6 +1,8 @@
 import {describe,it,expect,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {collectSharedOfficialNews} from "../lib/ask-shared-derived-journal.server";
+import {GEOMACRO_DERIVED_JOURNAL_URL,GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL} from "../lib/public-derived-news-client";
+import {readWebsiteDerivedNews} from "../lib/website-derived-news-reader.server";
 import type {StatelessIntelligenceSignal,StatelessCategory} from "../lib/stateless-intelligence-model";
 const now=Date.parse("2026-10-19T11:00:00.000Z");
 const at=new Date(now-75*60_000).toISOString();
@@ -85,5 +87,64 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    const helper=readFileSync("src/lib/ask-shared-derived-journal.server.ts","utf8");
    expect(helper).toContain("sources_credited.length===0");
    expect(helper).not.toContain("settleCoinbaseX402");
+ });
+ it("routes 47 score-free public D1 GRO teasers through Website Intelligence and Ask",async()=>{
+   const liveNow=Date.now(),liveAt=new Date(liveNow-75*60_000).toISOString();
+   const countries=["USA","CHN","IND","RUS","GBR","DEU","FRA","JPN","KOR","BEL",
+     "CAN","AUS","BRA","MEX","ITA","ESP","NLD","CHE","NOR","SWE",
+     "POL","UKR","TUR","SAU","ARE","IRN","ISR","EGY","QAT","OMN",
+     "IRQ","ZAF","NGA","COD","ZMB","CHL","PER","ARG","BOL","IDN",
+     "VNM","THA","MYS","SGP","PHL","PAK","BGD"] as const;
+   const categories=["geopolitics","macro","rare_earth"] as const;
+   const topics=["foreign policy","global FX, trade and industrial conditions",
+     "strategic mineral and rare-earth inputs"] as const;
+   const teasers=countries.map((country,i)=>({
+     id:i.toString(16).padStart(64,"0"),category:categories[i%3],
+     title:`Geomacro finds an official event signal for ${country}`,
+     what_changed:"A signed event record describes a recent country-level policy or supply development.",
+     why_it_matters:"Risk mechanism: policy and operating assumptions may change. Downstream effects: review exposed activity.",
+     topic:topics[i%3],geography:country,country_iso3:country,
+     development_type:"signed event observation",published_at:liveAt,date_precision:"exact",
+     observed_release_count:1,sources_credited:[],
+     status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
+   }));
+   const fetchImpl=vi.fn(async(input:RequestInfo|URL)=>{
+     const url=String(input);
+     if(url===GEOMACRO_DERIVED_JOURNAL_URL)return new Response(JSON.stringify({
+       ok:true,schema:"geomacro.website-derived-news-feed.v1",
+       checked_at:new Date(liveNow).toISOString(),original_release_delay_minutes:0,
+       retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+       page_offset:0,page_size:250,has_more:false,next_offset:null,signals:[],
+     }),{status:200,headers:{"Content-Type":"application/json"}});
+     if(url===GEOMACRO_RISK_STREAM_PUBLIC_TEASERS_URL)return new Response(JSON.stringify({
+       ok:true,schema:"geomacro.risk-stream-public-teasers.v1",
+       checked_at:new Date(liveNow).toISOString(),retention_hours:24,limit:120,
+       score_free:true,source_redacted:true,signals:teasers,
+     }),{status:200,headers:{"Content-Type":"application/json"}});
+     throw Error("unexpected public URL");
+   }) as unknown as typeof fetch;
+   vi.stubGlobal("fetch",fetchImpl);
+   try{
+   const website=await readWebsiteDerivedNews(undefined,liveNow);
+   expect(website.signals).toHaveLength(47);
+   expect(new Set(website.signals.map(s=>s.country_iso3)).size).toBe(47);
+   expect(website.signals.every(s=>s.sources_credited.length===0)).toBe(true);
+   const ask=await collectSharedOfficialNews(categories,{now:liveNow,
+     readLive:async()=>({signals:[]}),
+   });
+   expect(ask.signals).toHaveLength(47);
+   expect(new Set(ask.signals.map(s=>s.country_iso3)).size).toBe(47);
+   expect(ask.signals.every(s=>s.sources_credited.length===0)).toBe(true);
+   for(const signal of [...website.signals,...ask.signals]){
+     expect(Object.keys(signal).sort()).toEqual([
+       "category","country_iso3","date_precision","development_type","geography","id",
+       "observed_release_count","published_at","same_event_corrob_verified","severity",
+       "sources_credited","status","title","topic","what_changed","why_it_matters",
+     ]);
+     expect(JSON.stringify(signal)).not.toMatch(/risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64|https?:\/\/|www\./iu);
+   }
+   const api=readFileSync("server/api/public/intelligence.get.ts","utf8");
+   expect(api).toContain("readWebsiteDerivedNews()");
+   }finally{vi.unstubAllGlobals()}
  });
 });
