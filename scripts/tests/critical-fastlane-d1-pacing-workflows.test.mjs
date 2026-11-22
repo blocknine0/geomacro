@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {intakeIsDue} from "../lib/budgeted-news-intake.mjs";
 
 const workflow=name=>readFileSync(new URL("../../.github/workflows/"+name,import.meta.url),"utf8");
+test("20-minute source intake interval is accepted",()=>{
+ assert.doesNotThrow(()=>intakeIsDue(null,20,Date.now()));
+});
 test("five minute producer reuses its own runner for quota admission and gates subsequent signer and review",()=>{
  const s=workflow("five-minute-original-news-fastlane.yml");
  const producer=s.slice(s.indexOf("  original-five-minute-derived-news:"));
