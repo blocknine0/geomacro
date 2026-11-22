@@ -13,6 +13,7 @@ import {
   deriveWebAcceptanceOutcomes,
   diagnoseWebStagingHealth,
   inspectB2QuotaAuthorizationProof,
+  summarizeVerifiedBaselineProbe,
   PAGE_PATHS,
 } from "./verify-web-production-staging.mjs";
 import { productionWebsite } from "../../workers/web-production/entry.mjs";
@@ -170,6 +171,55 @@ test("health diagnostics preserve real 503 statuses and leave missing B2 quota p
   assert.equal(result.b2.read_availability.http_status, 503);
   assert.equal(result.b2.quota_authorized_access.status, "NOT_PROVEN");
   assert.equal(result.b2.quota_authorized_access.gate, "B2_QUOTA_AUTHORIZATION_PROOF_NOT_AVAILABLE");
+});
+
+test("verified-baseline diagnostics distinguish query rejection from real 503 without exposing evidence", () => {
+  const invalid = summarizeVerifiedBaselineProbe({
+    status: 400,
+    body: { ok: false, error: "HEALTH_PROFILE_INVALID", secret: "must-not-be-logged" },
+  });
+  assert.equal(invalid.profile_response, "QUERY_REJECTED");
+  assert.equal(invalid.profile_http_status, 400);
+  assert.equal(invalid.verified_baseline_products.intelligence, null);
+  assert.ok(!JSON.stringify(invalid).includes("must-not-be-logged"));
+
+  const unavailable = summarizeVerifiedBaselineProbe({
+    status: 503,
+    body: {
+      schema: "geomacro.product-scoped-verified-baseline-health.v1",
+      ok: false, status: "NO_VERIFIED_BASELINE",
+      verified_baseline_products: { intelligence: false, global_risk: false, risk_indices: false },
+      current_signed_live_products: { intelligence: false, global_risk: false, risk_indices: false },
+    },
+  });
+  assert.equal(unavailable.profile_response, "VERIFIED_BASELINE_SCHEMA");
+  assert.equal(unavailable.profile_http_status, 503);
+  assert.deepEqual(unavailable.verified_baseline_products,
+    { intelligence: false, global_risk: false, risk_indices: false });
+
+  const unknown = summarizeVerifiedBaselineProbe({ status: 503, body: { ok: false } });
+  assert.equal(unknown.profile_response, "UNRECOGNIZED_RESPONSE");
+  assert.equal(unknown.verified_baseline_products.intelligence, null);
+
+  const health = diagnoseWebStagingHealth({
+    legacy: { status: 503, body: { ok: false } },
+    publicHealth: { status: 503, body: { ok: false } },
+    liveStructured: { status: 503, body: { ok: false } },
+    baseline: {
+      status: 200,
+      body: {
+        schema: "geomacro.product-scoped-verified-baseline-health.v1",
+        ok: true, verified_baseline_product_count: 1,
+        verified_baseline_products: { intelligence: true, global_risk: false, risk_indices: false },
+        current_signed_live_products: { intelligence: false, global_risk: false, risk_indices: false },
+      },
+    },
+  });
+  assert.equal(health.b2.read_availability.status, "PASS");
+  assert.deepEqual(health.b2.read_availability.evidence_diagnostics.verified_baseline_products,
+    { intelligence: true, global_risk: false, risk_indices: false });
+  assert.equal(health.b2.quota_authorized_access.status, "NOT_PROVEN");
+  assert.equal(health.signed_product_readiness.status, "BLOCKED");
 });
 
 test("fresh independently returned D1 GET reservation proves only quota authorization", () => {
