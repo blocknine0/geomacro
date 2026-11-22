@@ -9,9 +9,9 @@ import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs
 const NOW=new Date("2026-11-02T12:00:00.000Z");
 const rss=(title,url)=>'<rss><channel><item><title>'+title+'</title><pubDate>Mon, 02 Nov 2026 11:45:00 GMT</pubDate><link>'+url+'</link></item></channel></rss>';
 
-test("additional WTO and USGS feeds preserve the original 37-entry registry",()=>{
+test("additional WTO and USGS feeds preserve the expanded 39-entry registry",()=>{
  assert.equal(assertDirectCorridorSupplementalNativeFeeds(),true);
- assert.equal(DIRECT_GLOBAL_CORRIDOR_SOURCES.length,37);
+ assert.equal(DIRECT_GLOBAL_CORRIDOR_SOURCES.length,39);
  assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,4);
  assert.deepEqual(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.map(x=>x.original_registry_source_id),
   ["wto_tariffs","usgs_mcs","usgs_mcs","rbi_releases"]);
