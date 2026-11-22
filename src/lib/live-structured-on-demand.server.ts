@@ -27,6 +27,9 @@ const REVIEWED:Record<Category,Readonly<Record<string,{credit:string;rights:stri
   },
   "critical-minerals":{
     usgs_mcs_dataset_catalog:{credit:"U.S. Geological Survey",rights:"USGS_PRODUCED_PUBLIC_DOMAIN"},
+    bgs_world_mineral_statistics_period:{credit:"British Geological Survey (Open Government Licence v3)",rights:"BGS_OGL_V3"},
+    world_bank_mineral_rents_reference_period:{credit:"World Bank WDI (CC BY 4.0)",rights:"WDI_SOURCE_2_CC_BY_4_0"},
+    critical_minerals_federal_award:{credit:"USASpending.gov (U.S. Federal Public Domain)",rights:"US_FEDERAL_PUBLIC_DOMAIN"},
   },
 };
 const categories=new Set<string>(OPEN_CONTEXT_CATEGORIES);

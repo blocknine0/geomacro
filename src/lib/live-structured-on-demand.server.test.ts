@@ -36,22 +36,36 @@ describe("stateless live structured open-data output",()=>{
    {category:"all"},{question:"a"},{category:"macro-fx",pay:true},null,[],{question:"<script>"}])
    expect(parseLiveStructuredRequest(invalid)).toBeNull();
  });
- it("filters uncertain source rights; never signs, bills or stores",async()=>{
+ it("accepts reviewed Critical Minerals observations without signing, billing or storing",async()=>{
   const reader=vi.fn(async()=>snapshot("critical-minerals",[
    signal("bgs_world_mineral_statistics_period","2025","reference_year"),
-   signal("usgs_mcs_dataset_catalog","2026","dataset_edition"),
+   signal("world_bank_mineral_rents_reference_period","2024","reference_year"),
    signal("critical_minerals_federal_award","2026-10-14","award_obligation_day"),
+   signal("usgs_mcs_dataset_catalog","2026","dataset_edition"),
+   signal("unreviewed_test_fixture","2026","dataset_edition"),
   ]) as CategorySnapshot);
   const out=await liveStructuredData({category:"critical-minerals"},{now,categoryReader:reader});
   expect(out.statusCode).toBe(200);
   const body=out.body as any;
-  expect(body.observations).toHaveLength(1);
-  expect(body.observations[0].kind).toBe("usgs_mcs_dataset_catalog");
-  expect(body.observations[0].original_event_time_verified).toBe(false);
+  expect(body.observations.map((item:any)=>item.kind)).toEqual([
+   "bgs_world_mineral_statistics_period","world_bank_mineral_rents_reference_period",
+   "critical_minerals_federal_award","usgs_mcs_dataset_catalog",
+  ]);
+  expect(body.observations).toEqual(expect.arrayContaining([
+   expect.objectContaining({kind:"bgs_world_mineral_statistics_period",
+    attribution:"British Geological Survey (Open Government Licence v3)",source_rights_scope:"BGS_OGL_V3",
+    original_event_time_verified:false}),
+   expect.objectContaining({kind:"world_bank_mineral_rents_reference_period",
+    attribution:"World Bank WDI (CC BY 4.0)",source_rights_scope:"WDI_SOURCE_2_CC_BY_4_0",
+    original_event_time_verified:false}),
+   expect.objectContaining({kind:"critical_minerals_federal_award",
+    attribution:"USASpending.gov (U.S. Federal Public Domain)",source_rights_scope:"US_FEDERAL_PUBLIC_DOMAIN",
+    original_event_time_verified:false}),
+  ]));
+  expect(JSON.stringify(body)).not.toContain("unreviewed_test_fixture");
   expect(body.signed_gro_required).toBe(false);
   expect(body.chargeable).toBe(false);
   expect(body.durable_storage_written).toBe(false);
-  expect(JSON.stringify(body)).not.toContain("bgs_world_mineral");
  });
  it("never equates historical source period with fetch time",async()=>{
   const reader=async()=>snapshot("macro-fx",[
@@ -64,7 +78,7 @@ describe("stateless live structured open-data output",()=>{
  });
  it("returns no-charge 422 if all source types lack reviewed use rights",async()=>{
   const reader=async()=>snapshot("critical-minerals",[
-    signal("bgs_world_mineral_statistics_period","2025","reference_year"),
+    signal("unreviewed_test_fixture","2025","reference_year"),
   ]) as CategorySnapshot;
   const out=await liveStructuredData({category:"critical-minerals"},{now,categoryReader:reader});
   expect(out.statusCode).toBe(422);
@@ -72,7 +86,7 @@ describe("stateless live structured open-data output",()=>{
   expect((out.body as any).chargeable).toBe(false);
   expect((out.body as any).source_families_attempted).toBe(1);
   expect((out.body as any).source_families_readable).toBe(1);
-  expect(JSON.stringify(out.body)).not.toContain("bgs_world_mineral_statistics_period");
+  expect(JSON.stringify(out.body)).not.toContain("unreviewed_test_fixture");
  });
  it("rejects impossible source counts instead of exposing raw provider metadata",async()=>{
   const reader=async()=>({
