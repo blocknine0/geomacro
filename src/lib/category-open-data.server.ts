@@ -87,6 +87,16 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "uk_dbt_ogl_minerals_atom", category: "critical-minerals",
     url: "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
     maxBytes: 100_000, timeoutMs: 12_000, method: "GET", format: "xml" },
+  // Two independent, first-party USGS Publications Warehouse views of the
+  // SAME 2026 report edition. The accepted extractor proves only catalog
+  // existence, NEVER a live supply event, production volume, or paid rights.
+  // Both routes are bounded; a bot challenge / malformed response fails closed.
+  { id: "usgs_mcs_pubs", category: "critical-minerals",
+    url: "https://pubs.usgs.gov/pubs-services/publication/?reportNumber=mcs2026&page_size=2",
+    maxBytes: 190_000, timeoutMs: 12_000, method: "GET" },
+  { id: "usgs_mcs_publication", category: "critical-minerals",
+    url: "https://www.usgs.gov/publications/mineral-commodity-summaries-2026",
+    maxBytes: 384_000, timeoutMs: 12_000, method: "GET", format: "html" },
   { id: "usaspending", category: "critical-minerals",
     url: "https://api.usaspending.gov/api/v2/search/spending_by_award/",
     maxBytes: 180_000, timeoutMs: 12_000, method: "POST",
