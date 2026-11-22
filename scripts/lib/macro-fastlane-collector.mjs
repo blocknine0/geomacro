@@ -4,6 +4,7 @@ import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,n
 import {MACRO_CALENDARS,parseMacroCalendar} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
+const normalizeLastModified=value=>{if(typeof value!=='string'||value.length>200)return null;const ms=Date.parse(value);return Number.isFinite(ms)?new Date(ms).toUTCString():null;};
 const tag=(s,name)=>new RegExp('<(?:atom:)?'+name+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?'+name+'>','i').exec(s)?.[1]??'';
 const relevant=t=>macroPreciousTopic(t)||GLOBAL_MACRO_TOPIC_PATTERN.test(t)||/\b(?:monetary|interest rates?|policy rates?|federal funds|FOMC|repo|inflation|consumer price|producer price|employment|payroll|foreign exchange|currency|exchange rate|financial stability|liquidity|balance of payments|reserve assets?|gold reserves?|manufacturing|industrial demand|solar demand|positioning|commitments of traders)\b/i.test(t);
 export function parseMacroFeed(xml,spec,now){
@@ -70,7 +71,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
      }catch{/* a failed original never becomes a verified article */}
     }
    }else rows=parseMacroFeed(data.text,spec,now);
-   candidates.push(...rows);cursors[spec.id]={etag:data.etag,last_modified:data.lastModified??null,retry_after:0,checked_at:now};
+   candidates.push(...rows);cursors[spec.id]={etag:data.etag,last_modified:normalizeLastModified(data.lastModified),retry_after:0,checked_at:now};
    checks.push({id:spec.id,state:'OK',candidates:rows.length});
   }catch(e){
    const reason=/^(?:ACCESS_DENIED|RATE_LIMITED|HTTP_\d+|OVERSIZE|REDIRECT|FEED_SHAPE_INVALID)$/.test(e?.message)?e.message:'UNAVAILABLE';
