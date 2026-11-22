@@ -18,6 +18,7 @@ const financialAlternative=feed('fed_press_official_radar','https://www.federalr
 const googleMacro=feed('google_macro_metals','https://news.google.com/rss/search?q='+encodeURIComponent('(forex OR \"central bank\" OR gold OR silver) (rates OR demand OR supply OR intervention OR reserves) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
 const mineralNative=/(?:\b(?:litio|cobalto|cobre|n[ií]quel|grafito|tierras raras|minerales cr[ií]ticos|minera[cç][aã]o|min[eé]raux critiques|seltene erden)\b|关键矿产|稀土|锂|钴|희토류|리튬|редкозем)/iu;
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
+const normalizeLastModified=value=>{if(typeof value!=='string'||value.length>200)return null;const ms=Date.parse(value);return Number.isFinite(ms)?new Date(ms).toUTCString():null;};
 const tag=(s,t)=>new RegExp('<(?:[a-z]+:)?'+t+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[a-z]+:)?'+t+'>','i').exec(s)?.[1]??'';
 export function parseSectorFeed(xml,spec,now){
  if(typeof xml!=='string'||new TextEncoder().encode(xml).byteLength>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(xml)||!/<(?:rss|feed)(?:\s|>)/i.test(xml))throw Error('SECTOR_FEED_INVALID');
@@ -57,7 +58,7 @@ export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=
     requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag,lastModified:old?.last_modified,maxBytes:1024*1024});
     if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return {healthy:true,recent:false};}
     const rows=parseSectorFeed(data.text,spec,now);signals.push(...rows);
-    cursors[spec.id]={etag:data.etag,last_modified:data.lastModified??null,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
+    cursors[spec.id]={etag:data.etag,last_modified:normalizeLastModified(data.lastModified),retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
     return {healthy:true,recent:rows.some(s=>now-Date.parse(s.published_at)<=60*60000)};
    }catch(e){
     const message=String(e?.message??'');

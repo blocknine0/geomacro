@@ -238,6 +238,12 @@ if(journalVerified){
   console.log(JSON.stringify({schema:'geomacro.source-intake-deferred-records.v1',rows:pending.length-publishPending.length,feed_etags_advanced:false}));
  }
  try{
+  // State timestamps and the lease are evaluated against the server's PUT
+  // time, not this job's start time. Keep both inside the validator window.
+  const statePutAt=Date.now();
+  macro.state.checked_at=new Date(statePutAt).toISOString();
+  macro.state.quota_lease_until=new Date(statePutAt+12*60000).toISOString();
+  if(macro.state.fx_reference&&statePutAt-Date.parse(macro.state.fx_reference.reference_date+'T00:00:00Z')>8*86400000)macro.state.fx_reference=null;
   const verified=await persistMacroFastlaneState({
    fetchImpl:globalThis.fetch,url:macroStateUrl,token,state:macro.state,
   });
@@ -247,7 +253,7 @@ if(journalVerified){
   // bearer. A failed PUT/readback never advances the intake success clock.
   failure=true;
   const code=String((error as Error)?.message??'MACRO_STATE_UNKNOWN');
-  console.error('::error::MACRO_BUNDLE_STATE_WRITE_FAILED:'+ (/^[A-Z0-9_]{5,110}$/.test(code)?code:'MACRO_STATE_UNKNOWN'));
+  console.error('::error::MACRO_BUNDLE_STATE_WRITE_FAILED:'+ (/^[A-Za-z0-9_.\[\]-]{5,160}$/.test(code)?code:'MACRO_STATE_UNKNOWN'));
  }
  // The existing Predge continuity monitor reads these authenticated source
  // checkpoints. Refresh only after actual publication and complete readback.
