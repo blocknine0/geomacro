@@ -176,11 +176,19 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
        source_rights_scope:rights[item.observation_type].rights,
        score:null,
     }));
-  if(!observations.length)return {statusCode:422,body:{
-    ...denied(at,snapshot.status==="ALL_SOURCES_UNAVAILABLE"?
-       "SOURCE_FETCH_UNAVAILABLE":"NO_REVIEWED_OPEN_DATA_OBSERVATION"),
-    category:input.category,
-  }};
+  if(!observations.length){
+    // Only bounded source family COUNTS from the same already-completed fetch.
+    // No source IDs, response bodies, URLs or additional network requests.
+    const sourceCount=(x:unknown)=>Number.isSafeInteger(x)&&
+      Number(x)>=0&&Number(x)<=16?Number(x):null;
+    return {statusCode:422,body:{
+      ...denied(at,snapshot.status==="ALL_SOURCES_UNAVAILABLE"?
+         "SOURCE_FETCH_UNAVAILABLE":"NO_REVIEWED_OPEN_DATA_OBSERVATION"),
+      category:input.category,
+      source_families_attempted:sourceCount(snapshot.source_families_attempted),
+      source_families_readable:sourceCount(snapshot.source_families_readable),
+    }};
+  }
   return {statusCode:200,body:{
     schema:"geomacro.live-structured.v1",status:"LIVE_SOURCE_FETCHED",
     category:input.category,country_iso3:null,
