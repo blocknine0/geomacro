@@ -6,10 +6,10 @@ import {RISK_GATE_SOURCE_RULES_VERSION,riskGateSuppliedSourceRegistry,
  RISK_GATE_SUPPLIED_MINERAL_SOURCE_IDS,CAMEO_RISK_GATE_DECISIONS,
  mapVerifiedCameoToRiskGate,strongestVerifiedCameoRiskGateDecision}
  from "./risk-gate-supplied-source-rules.mjs";
-test("all 37 existing direct source IDs and endpoints are registered for Risk Gate",()=>{
+test("all 75 direct source IDs and endpoints are registered for Risk Gate",()=>{
  const reg=riskGateSuppliedSourceRegistry();
  const byId=new Map(reg.map(s=>[s.source_id,s]));
- assert.equal(reg.length,37);
+ assert.equal(reg.length,75);
  assert.deepEqual(reg.map(s=>s.source_id),DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>s.id));
  for(const original of DIRECT_GLOBAL_CORRIDOR_SOURCES){
    const got=byId.get(original.id);
@@ -21,7 +21,7 @@ test("all 37 existing direct source IDs and endpoints are registered for Risk Ga
                    ...RISK_GATE_SUPPLIED_MINERAL_SOURCE_IDS])assert.ok(byId.has(id));
  const census=riskGateSuppliedSourceCensus();
  assert.equal(census.schema,RISK_GATE_SOURCE_RULES_VERSION);
- assert.equal(census.registered_sources,37);
+ assert.equal(census.registered_sources,75);
  assert.equal(census.source_link_occurrences,39);
  assert.equal(census.automatically_applied_decisions,0);
  assert.equal(census.numerical_maritime_thresholds_provided,false);
