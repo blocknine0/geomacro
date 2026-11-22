@@ -70,6 +70,20 @@ describe("stateless live structured open-data output",()=>{
   expect(out.statusCode).toBe(422);
   expect((out.body as any).observations).toEqual([]);
   expect((out.body as any).chargeable).toBe(false);
+  expect((out.body as any).source_families_attempted).toBe(1);
+  expect((out.body as any).source_families_readable).toBe(1);
+  expect(JSON.stringify(out.body)).not.toContain("bgs_world_mineral_statistics_period");
+ });
+ it("rejects impossible source counts instead of exposing raw provider metadata",async()=>{
+  const reader=async()=>({
+    ...snapshot("critical-minerals",[]),source_families_attempted:999,
+    source_families_readable:999,upstream_url:"https://private-source.invalid",
+  }) as unknown as CategorySnapshot;
+  const out=await liveStructuredData({category:"critical-minerals"},{now,categoryReader:reader});
+  expect(out.statusCode).toBe(422);
+  expect((out.body as any).source_families_attempted).toBeNull();
+  expect((out.body as any).source_families_readable).toBeNull();
+  expect(JSON.stringify(out.body)).not.toContain("private-source");
  });
  it("official numeric pathway does not sign, bill or persist observations",async()=>{
   const answer={
