@@ -37,7 +37,7 @@ console.log(JSON.stringify(workerPolicy));
 const runAt=Date.now();
 const intakeInterval=Number(process.env.GEOMACRO_SOURCE_INTAKE_INTERVAL_MINUTES??5);
 const intakeMaxRows=Number(process.env.GEOMACRO_SOURCE_INTAKE_MAX_NEW_ROWS??50);
-if(![5,10,15,30,60].includes(intakeInterval)||![3,5,10,25,50].includes(intakeMaxRows))throw Error('SOURCE_INTAKE_BUDGET_INVALID');
+if(![5,10,15,20,30,60].includes(intakeInterval)||![3,5,10,25,50].includes(intakeMaxRows))throw Error('SOURCE_INTAKE_BUDGET_INVALID');
 const macroStateUrl=controlPlaneOrigin+"/v1/internal/macro-fastlane";
 let previousMacroState={};
 try{
