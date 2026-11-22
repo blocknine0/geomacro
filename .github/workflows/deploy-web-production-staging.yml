@@ -72,10 +72,20 @@ jobs:
           echo 'WEB_STAGING_B2_READ_CREDENTIAL_PAIR_PRESENT'
 
       - name: Verify Cloudflare worker is isolated and has no unknown bindings before deployment
+        id: staging-bindings
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node scripts/ops/verify-web-production-bindings.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(node scripts/ops/verify-web-production-bindings.mjs)"
+          printf '%s\n' "$report"
+          if [[ "$report" == *'FINGERPRINT_PEPPER_PRESENT=true'* ]]; then
+            echo 'fingerprint_pepper_present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'fingerprint_pepper_present=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Deploy app and install server-only B2 read secrets
         env:
@@ -83,6 +93,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          FINGERPRINT_PEPPER_PRESENT: ${{ steps.staging-bindings.outputs.fingerprint_pepper_present }}
         shell: bash
         run: |
           set -euo pipefail
@@ -91,6 +102,13 @@ jobs:
           npx -y wrangler@4.136.3 deploy --config .output/server/production-wrangler.json
           printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y wrangler@4.136.3 secret put B2_ARCHIVE_READ_KEY_ID --config .output/server/production-wrangler.json >/dev/null
           printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y wrangler@4.136.3 secret put B2_ARCHIVE_READ_APPLICATION_KEY --config .output/server/production-wrangler.json >/dev/null
+          if [[ "$FINGERPRINT_PEPPER_PRESENT" != true ]]; then
+            node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))' |
+              npx -y wrangler@4.136.3 secret put GEOMACRO_SECURITY_FINGERPRINT_PEPPER --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_STAGING_FINGERPRINT_PEPPER_PROVISIONED'
+          else
+            echo 'WEB_STAGING_FINGERPRINT_PEPPER_RETAINED'
+          fi
           echo 'WEB_STAGING_DEPLOYED_WITH_SERVER_ONLY_B2_READ_SECRETS'
 
       - name: Reject stale SHA and verify isolated Cloudflare bindings after deployment
@@ -100,6 +118,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
           WEB_STAGING_REQUIRE_WORKER: 'true'
+          WEB_STAGING_REQUIRE_FINGERPRINT_PEPPER: 'true'
         run: |
           set -euo pipefail
           test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_STAGING_SUPERSEDED_AFTER_DEPLOY'; exit 2; }

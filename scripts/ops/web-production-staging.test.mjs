@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { prepareWebProduction } from "./prepare-web-production.mjs";
+import { allowedStagingBinding, hasUnexpectedWorkerRoute } from "./verify-web-production-bindings.mjs";
+import { diagnoseWebStagingHealth } from "./verify-web-production-staging.mjs";
 import { productionWebsite } from "../../workers/web-production/entry.mjs";
 
 test("production-capable build config is workers.dev-only with no private bindings or routes", t => {
@@ -82,6 +84,39 @@ test("production-health URL aliases the existing deep-health check without fabri
   assert.equal(seen.search, "?deep=1");
   assert.equal(response.status, 503);
   assert.equal((await response.json()).ok, false);
+});
+
+test("staging accepts only the designated fingerprint secret and detects Worker routes", () => {
+  assert.equal(allowedStagingBinding({ type: "secret_text", name: "GEOMACRO_SECURITY_FINGERPRINT_PEPPER" }), true);
+  assert.equal(allowedStagingBinding({ type: "secret_text", name: "CONTROL_PLANE_TOKEN" }), false);
+  assert.equal(hasUnexpectedWorkerRoute([{ pattern: "*.example.test/*", script: "other-worker" }]), false);
+  assert.equal(hasUnexpectedWorkerRoute([{ pattern: "geomacro.live/*", script: "geomacro-web-production-staging" }]), true);
+  assert.equal(hasUnexpectedWorkerRoute(null), true);
+});
+
+test("health diagnostics preserve real 503 statuses and fail closed on missing B2 quota proof", () => {
+  const result = diagnoseWebStagingHealth({
+    legacy: { status: 503, body: { ok: false } },
+    publicHealth: { status: 503, body: { ok: false } },
+    liveStructured: { status: 503, body: { ok: false } },
+    baseline: { status: 503, body: { ok: false } },
+  });
+  assert.equal(result.signed_product_readiness.status, "BLOCKED");
+  assert.equal(result.signed_product_readiness.legacy_http_status, 503);
+  assert.equal(result.signed_product_readiness.public_http_status, 503);
+  assert.equal(result.three_category_source_health.http_status, 503);
+  assert.equal(result.b2.read_availability.http_status, 503);
+  assert.equal(result.b2.quota_authorized_access.status, "BLOCKED");
+  assert.equal(result.b2.quota_authorized_access.gate, "B2_QUOTA_AUTHORIZATION_PROOF_UNAVAILABLE");
+});
+
+test("staging deployment provisions its own pepper once and verifies it after deployment", () => {
+  const workflow = readFileSync(new URL("../../.github/workflows/deploy-web-production-staging.yml", import.meta.url), "utf8");
+  assert.match(workflow, /randomBytes\(32\)\.toString\("base64url"\)/u);
+  assert.match(workflow, /secret put GEOMACRO_SECURITY_FINGERPRINT_PEPPER/u);
+  assert.match(workflow, /fingerprint_pepper_present=true/u);
+  assert.match(workflow, /WEB_STAGING_REQUIRE_FINGERPRINT_PEPPER: 'true'/u);
+  assert.doesNotMatch(workflow, /geomacro-web-candidate-isolated.*(?:secret|pepper)/iu);
 });
 
 test("www canonical redirect is reversible by routing and retains query parameters", async () => {
