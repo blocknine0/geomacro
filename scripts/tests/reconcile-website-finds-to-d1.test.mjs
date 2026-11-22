@@ -5,6 +5,8 @@ import {reconcileWebsiteFindsToCanonicalD1}
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {isPermanentArchiveSignal}
  from "../ops/publish-permanent-derived-news-archive.mjs";
+import {DERIVED_NEWS_TOPIC_POLICY_REVISION}
+ from "../lib/derived-news-readback-policy.mjs";
 
 const NOW=new Date("2026-10-29T01:40:00.000Z");
 const AT=NOW.toISOString();
@@ -20,7 +22,7 @@ const story={
  same_event_corrob_verified:false,severity:null,
 };
 const health={ok:true,store:"d1",schema_version:33,
- derived_news_topic_policy_revision:3,deployed_source_sha:"a".repeat(40)};
+ derived_news_topic_policy_revision:DERIVED_NEWS_TOPIC_POLICY_REVISION,deployed_source_sha:"a".repeat(40)};
 const latest=(signals=[story],checkedAt=AT)=>({
  ok:true,schema:"geomacro.website-derived-news-feed.v1",
  checked_at:checkedAt,original_release_delay_minutes:0,
