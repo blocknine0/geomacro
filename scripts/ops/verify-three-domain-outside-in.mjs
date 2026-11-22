@@ -103,8 +103,28 @@ export function verifyThreeDomainLivePublication({
    decoded.includes(escDecode(escDecode(s.title))));
   if(requirePositive&&active.length===0)
    fail("THREE_CATEGORY_NO_CURRENT_ORIGINAL_"+category);
-  if(matching.length!==active.length)
+  if(matching.length!==active.length){
+   // Counts-only diagnostics: classify real original-ID/date/precision/status
+   // drift without disclosing source IDs, article text, URL, or D1 row payload.
+   // This does not waive an actual mismatched canonical readback.
+   const missing=active.filter(s=>!journalIds.has(s.id));
+   const shared=active.filter(s=>journalIds.has(s.id));
+   console.error(JSON.stringify({
+    schema:"geomacro.public-journal-static-parity-diagnostic.v1",
+    category,
+    static_active_rows:active.length,
+    canonical_public_journal_rows:domain.journal.length,
+    matching_rows:matching.length,
+    missing_original_ids:missing.length,
+    category_conflicts:shared.filter(s=>journalIds.get(s.id).category!==s.category).length,
+    original_date_conflicts:shared.filter(s=>journalIds.get(s.id).published_at!==s.published_at).length,
+    precision_conflicts:shared.filter(s=>journalIds.get(s.id).date_precision!==s.date_precision).length,
+    status_conflicts:shared.filter(s=>journalIds.get(s.id).status!==s.status).length,
+    original_ids_logged:0,private_source_data_logged:false,
+    extra_d1_reads:0,paid_access_authorized:false,
+   }));
    fail("D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_"+category);
+  }
   if(rendered.length!==active.length)
    fail("WEBSITE_EXACT_RENDER_MISMATCH_"+category);
   // The 475-row public "latest" is a deliberately deduplicated/ranked
