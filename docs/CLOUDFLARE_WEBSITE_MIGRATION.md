@@ -18,7 +18,7 @@ The staging marker is never proof of signed evidence, product readiness, or prod
 
 The existing `production` environment must provide these secrets:
 
-- `CLOUDFLARE_API_TOKEN`: scoped to the existing account for Workers script deployments and secret writes.
+- `CLOUDFLARE_API_TOKEN`: scoped for Worker script read/deploy and secret writes, plus account `Zone Read` and `Workers Routes Read` to verify every zone's existing route assignments. No DNS, route, or custom-domain write permission is needed by this staging workflow.
 - `CLOUDFLARE_ACCOUNT_ID`: the existing Cloudflare account ID.
 - `B2_ARCHIVE_READ_KEY_ID` and `B2_ARCHIVE_READ_APPLICATION_KEY`: the existing bucket-scoped read-only key pair.
 
