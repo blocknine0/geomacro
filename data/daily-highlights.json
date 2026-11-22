@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-22T01:41:30.486Z",
+  "generated_at": "2026-11-22T08:51:29.115Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -63,6 +63,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-99fdc331",
+      "category": "macro",
+      "title": "Geomacro finds SEC reported allegations of fake crypto trading platforms involving eight entities",
+      "why_it_matters": "An original regulator release concerning digital assets can affect custody, financial-market access or settlement oversight. It verifies the issuer announcement, not allegations, independent corroboration, BTC/ETH prices or price impact.",
+      "what_changed": "The SEC published an official release alleging that eight entities operated fake crypto-asset trading platforms to defraud investors. The allegations are attributed to the regulator and are not an independent judicial finding.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "digital-asset policy and market structure",
+      "published_at": "2026-11-19T14:39:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "U.S. Securities and Exchange Commission"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
