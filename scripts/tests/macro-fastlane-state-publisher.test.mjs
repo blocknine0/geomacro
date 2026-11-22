@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {persistMacroFastlaneState,MACRO_STATE_MAX_BYTES} from '../lib/macro-fastlane-state-publisher.mjs';
+import {collectMacroFastlane} from '../lib/macro-fastlane-collector.mjs';
+import {collectCriticalMineralsFastlane} from '../lib/critical-minerals-fastlane.mjs';
+import {MINERALS_SOURCE_IDS} from '../lib/critical-minerals-registry.mjs';
 const now='2026-11-18T10:00:00.000Z';
 const state=()=>({schema:'geomacro.macro-fastlane-state.v1',checked_at:now,
  source_checks:[{id:'fed_press',state:'OK',candidates:1}],
@@ -52,4 +55,23 @@ test('normalizes upstream Last-Modified headers to the server cursor format',asy
   assert.match(source,/const normalizeLastModified=value=>\{if\(typeof value!=='string'\|\|value\.length>200\)return null;const ms=Date\.parse\(value\);return Number\.isFinite\(ms\)\?new Date\(ms\)\.toUTCString\(\):null;\}/);
   assert.match(source,/last_modified:normalizeLastModified\(data\.lastModified\)/);
  }
+});
+test('collectors prune retired macro and mineral cursor and source-check IDs',async()=>{
+ const now=Date.parse('2026-11-22T14:00:00.000Z');
+ const validCursor={etag:null,last_modified:null,retry_after:0,checked_at:now};
+ const macro=await collectMacroFastlane({now,fetchImpl:async()=>{throw Error('NETWORK_NOT_EXPECTED');},
+  state:{cursors:{retired_macro_source:validCursor,fed_press:validCursor},source_checks:[
+   {id:'retired_macro_source',state:'OK',candidates:1},{id:'fed_press',state:'OK',candidates:1},
+  ]},sourceIds:[],prices:false,calendars:false});
+ assert.deepEqual(Object.keys(macro.state.cursors),['fed_press']);
+ assert.deepEqual(macro.state.source_checks.map(check=>check.id),['fed_press']);
+
+ let fetchCalls=0;
+ const minerals=await collectCriticalMineralsFastlane({now,
+  fetchImpl:async()=>{fetchCalls++;return new Response(null,{status:503});},
+  state:{mineral_cursors:{mining_global:validCursor}},
+ });
+ assert.ok(fetchCalls>0);
+ assert.equal(Object.hasOwn(minerals.cursors,'mining_global'),false);
+ assert.ok(Object.keys(minerals.cursors).every(id=>MINERALS_SOURCE_IDS.includes(id)));
 });
