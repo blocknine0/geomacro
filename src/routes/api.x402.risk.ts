@@ -27,6 +27,7 @@ import {
   COINBASE_X402_ARC_MAINNET_NETWORK,
   COINBASE_X402_MAINNET_NETWORK,
   COINBASE_X402_POLYGON_MAINNET_NETWORK,
+  COINBASE_X402_TIER_PRICING,
   type CoinbaseX402MainnetNetwork,
   type CoinbaseX402Tier,
 } from "../lib/coinbase-x402.server";
