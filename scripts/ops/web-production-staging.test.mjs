@@ -5,7 +5,11 @@ import { join } from "node:path";
 import test from "node:test";
 import { prepareWebProduction } from "./prepare-web-production.mjs";
 import { allowedStagingBinding, hasUnexpectedWorkerRoute } from "./verify-web-production-bindings.mjs";
-import { diagnoseWebStagingHealth } from "./verify-web-production-staging.mjs";
+import {
+  deriveWebAcceptanceOutcomes,
+  diagnoseWebStagingHealth,
+  inspectB2QuotaAuthorizationProof,
+} from "./verify-web-production-staging.mjs";
 import { productionWebsite } from "../../workers/web-production/entry.mjs";
 
 test("production-capable build config is workers.dev-only with no private bindings or routes", t => {
@@ -94,7 +98,7 @@ test("staging accepts only the designated fingerprint secret and detects Worker 
   assert.equal(hasUnexpectedWorkerRoute(null), true);
 });
 
-test("health diagnostics preserve real 503 statuses and fail closed on missing B2 quota proof", () => {
+test("health diagnostics preserve real 503 statuses and leave missing B2 quota proof not proven", () => {
   const result = diagnoseWebStagingHealth({
     legacy: { status: 503, body: { ok: false } },
     publicHealth: { status: 503, body: { ok: false } },
@@ -106,8 +110,104 @@ test("health diagnostics preserve real 503 statuses and fail closed on missing B
   assert.equal(result.signed_product_readiness.public_http_status, 503);
   assert.equal(result.three_category_source_health.http_status, 503);
   assert.equal(result.b2.read_availability.http_status, 503);
-  assert.equal(result.b2.quota_authorized_access.status, "BLOCKED");
-  assert.equal(result.b2.quota_authorized_access.gate, "B2_QUOTA_AUTHORIZATION_PROOF_UNAVAILABLE");
+  assert.equal(result.b2.quota_authorized_access.status, "NOT_PROVEN");
+  assert.equal(result.b2.quota_authorized_access.gate, "B2_QUOTA_AUTHORIZATION_PROOF_NOT_AVAILABLE");
+});
+
+test("fresh independently returned D1 GET reservation proves only quota authorization", () => {
+  const now = Date.parse("2026-11-23T12:00:00.000Z");
+  const valid = {
+    workflow_id: "private_archive_read",
+    checked_at: new Date(now).toISOString(),
+    reservation: {
+      ok: true,
+      schema: "geomacro.b2-account-request-reservation.v1",
+      reserved: true,
+      kind: "GET",
+      day_utc: new Date(now).toISOString().slice(0, 10),
+      b2_operation_performed: false,
+      chargeable: false,
+    },
+  };
+  assert.deepEqual(inspectB2QuotaAuthorizationProof(valid, { now }), {
+    status: "PASS", gate: "FRESH_PRIVATE_ARCHIVE_GET_RESERVATION_VERIFIED",
+  });
+  assert.equal(inspectB2QuotaAuthorizationProof({
+    ...valid, reservation: { ...valid.reservation, reserved: false },
+  }, { now }).status, "NOT_PROVEN");
+  const health = diagnoseWebStagingHealth({
+    legacy: { status: 503, body: { ok: false } },
+    publicHealth: { status: 503, body: { ok: false } },
+    liveStructured: { status: 503, body: { ok: false } },
+    baseline: {
+      status: 200,
+      body: {
+        schema: "geomacro.product-scoped-verified-baseline-health.v1",
+        ok: true,
+        verified_baseline_product_count: 1,
+        b2_quota_authorization_proof: valid,
+      },
+    },
+    now,
+  });
+  assert.equal(health.b2.quota_authorized_access.status, "PASS");
+  assert.equal(health.signed_product_readiness.status, "BLOCKED");
+});
+
+test("a readable B2 baseline never substitutes for an independent quota ticket", () => {
+  const result = diagnoseWebStagingHealth({
+    legacy: { status: 503, body: { ok: false } },
+    publicHealth: { status: 503, body: { ok: false } },
+    liveStructured: { status: 503, body: { ok: false } },
+    baseline: {
+      status: 200,
+      body: {
+        schema: "geomacro.product-scoped-verified-baseline-health.v1",
+        ok: true,
+        verified_baseline_product_count: 1,
+      },
+    },
+  });
+  assert.equal(result.b2.read_availability.status, "PASS");
+  assert.equal(result.b2.quota_authorized_access.status, "NOT_PROVEN");
+  assert.equal(result.b2.quota_authorized_access.gate, "B2_QUOTA_AUTHORIZATION_PROOF_NOT_AVAILABLE");
+});
+
+test("staging functionality failures block staging acceptance", () => {
+  const result = deriveWebAcceptanceOutcomes({
+    exactShaVerified: true,
+    isolatedWorkerVerified: true,
+    website: true,
+    requiredPublicApis: true,
+    askPost: false,
+    health: {},
+  });
+  assert.equal(result.staging_deployment_acceptance.status, "BLOCKED");
+  assert.ok(result.staging_deployment_acceptance.blockers.includes("ASK_POST_FLOW_FAILED"));
+});
+
+test("isolated staging can pass while 503 health, missing quota proof, and cutover gates remain blocked", () => {
+  const health = diagnoseWebStagingHealth({
+    legacy: { status: 503, body: { ok: false } },
+    publicHealth: { status: 503, body: { ok: false } },
+    liveStructured: { status: 503, body: { ok: false } },
+    baseline: { status: 503, body: { ok: false } },
+  });
+  const result = deriveWebAcceptanceOutcomes({
+    exactShaVerified: true,
+    isolatedWorkerVerified: true,
+    website: true,
+    requiredPublicApis: true,
+    askPost: true,
+    health,
+  });
+  assert.equal(result.staging_deployment_acceptance.status, "PASS");
+  assert.equal(result.production_cutover_readiness.status, "BLOCKED");
+  assert.ok(result.production_cutover_readiness.blockers.includes("SIGNED_PRODUCT_READINESS_NOT_ACCEPTED"));
+  assert.ok(result.production_cutover_readiness.blockers.includes("B2_QUOTA_AUTHORIZATION_PROOF_NOT_AVAILABLE"));
+  assert.ok(result.production_cutover_readiness.blockers.includes("AUTHENTICATED_CUSTOMER_FLOW_NOT_VERIFIED"));
+  assert.ok(result.production_cutover_readiness.blockers.includes("PRODUCTION_DOMAIN_DNS_TLS_AND_ROUTE_ACCEPTANCE_NOT_VERIFIED"));
+  assert.equal(health.signed_product_readiness.legacy_http_status, 503);
 });
 
 test("staging deployment provisions its own pepper once and verifies it after deployment", () => {
@@ -117,6 +217,13 @@ test("staging deployment provisions its own pepper once and verifies it after de
   assert.match(workflow, /fingerprint_pepper_present=true/u);
   assert.match(workflow, /WEB_STAGING_REQUIRE_FINGERPRINT_PEPPER: 'true'/u);
   assert.doesNotMatch(workflow, /geomacro-web-candidate-isolated.*(?:secret|pepper)/iu);
+});
+
+test("workflow passes verified isolation into the two-outcome acceptance report", () => {
+  const workflow = readFileSync(new URL("../../.github/workflows/deploy-web-production-staging.yml", import.meta.url), "utf8");
+  assert.match(workflow, /id: isolation[\s\S]*?echo 'verified=true' >> "\$GITHUB_OUTPUT"/u);
+  assert.match(workflow, /WEB_STAGING_ISOLATION_VERIFIED: \$\{\{ steps\.isolation\.outputs\.verified \}\}/u);
+  assert.match(workflow, /Verify staging deployment acceptance and report production cutover readiness independently/u);
 });
 
 test("www canonical redirect is reversible by routing and retains query parameters", async () => {

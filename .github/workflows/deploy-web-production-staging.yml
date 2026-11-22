@@ -112,6 +112,7 @@ jobs:
           echo 'WEB_STAGING_DEPLOYED_WITH_SERVER_ONLY_B2_READ_SECRETS'
 
       - name: Reject stale SHA and verify isolated Cloudflare bindings after deployment
+        id: isolation
         env:
           GH_TOKEN: ${{ github.token }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -123,10 +124,12 @@ jobs:
           set -euo pipefail
           test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_STAGING_SUPERSEDED_AFTER_DEPLOY'; exit 2; }
           node scripts/ops/verify-web-production-bindings.mjs
+          echo 'verified=true' >> "$GITHUB_OUTPUT"
 
-      - name: Verify exact live build, SSR, routes, source health, auth, and Ask POST
+      - name: Verify staging deployment acceptance and report production cutover readiness independently
         env:
           EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+          WEB_STAGING_ISOLATION_VERIFIED: ${{ steps.isolation.outputs.verified }}
         run: node scripts/ops/verify-web-production-staging.mjs
 
       - name: Render desktop and mobile routes in Chromium
