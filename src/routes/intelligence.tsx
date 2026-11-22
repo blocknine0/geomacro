@@ -69,7 +69,7 @@ export const Route = createFileRoute("/intelligence")({
       entry.value.healthy_feed_count > 0 ? entry.value : null);
     const journalCandidates = [
       ...(history.status === "fulfilled" && Array.isArray(history.value) ? history.value : []),
-      ...(liveTeasers.status === "fulfilled" && Array.isArray(liveTeasers.value) ? liveTeasers.value : []),
+      ...(Array.isArray(liveTeasers) ? liveTeasers : []),
     ].sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
     const seenJournalIds = new Set<string>();
     const journal = journalCandidates.filter((signal) => {
