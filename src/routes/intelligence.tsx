@@ -16,7 +16,7 @@ import {
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchDirectDerivedNews, fetchRiskStreamPublicTeasers } from "@/lib/public-derived-news-client";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/intelligence")({
     // The three category checks are independent: one timeout must never hide
     // another category's valid original-dated releases.
     const domains = ["geopolitics", "macro", "rare_earth"] as const;
-    const [geopolitics, macro, minerals, history] = await Promise.allSettled([
+    const [geopolitics, macro, minerals, history, liveTeasers] = await Promise.allSettled([
       ...domains.map(category => withPublicRuntimeTimeout(
         getStatelessIntelligence({ data: { category } }),
         8_000,
@@ -60,11 +60,23 @@ export const Route = createFileRoute("/intelligence")({
         9_000,
         "Derived Intelligence journal read timed out.",
       ),
+      fetchRiskStreamPublicTeasers(),
     ]);
     const accepted = [geopolitics, macro, minerals].map((entry, i) =>
       entry.status === "fulfilled" && !Array.isArray(entry.value) &&
        entry.value.category === domains[i] &&
       entry.value.healthy_feed_count > 0 ? entry.value : null);
+    const journalCandidates = [
+      ...(history.status === "fulfilled" && Array.isArray(history.value) ? history.value : []),
+      ...(liveTeasers.status === "fulfilled" && Array.isArray(liveTeasers.value) ? liveTeasers.value : []),
+    ].sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+    const seenJournalIds = new Set<string>();
+    const journal = journalCandidates.filter((signal) => {
+      if (seenJournalIds.has(signal.id)) return false;
+      seenJournalIds.add(signal.id);
+      return true;
+    });
+
     return {
       rows: [],
       now,
@@ -77,8 +89,7 @@ export const Route = createFileRoute("/intelligence")({
       // fetchDirectDerivedNews() already returns checked Signal[] directly,
       // NOT {signals}. A successful journal is combined with actual live
       // issuer answers; neither supplies a canonical signed risk score.
-      journal: history.status === "fulfilled" && Array.isArray(history.value)
-        ? history.value : [],
+      journal,
     };
   },
   head: () => ({
