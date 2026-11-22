@@ -32,6 +32,50 @@ export const PROVIDER_ENDPOINTS: Readonly<Record<NoCardX402Provider,string>> = O
   xpay_x402: "https://facilitator.xpay.sh",
   dexter_x402: "https://x402.dexter.cash",
 });
+export const NO_CARD_X402_TIER_PRICING=Object.freeze({
+  BASIC:Object.freeze({price_usdc:"0.15",amount_atomic:"150000"}),
+  STANDARD:Object.freeze({price_usdc:"0.20",amount_atomic:"200000"}),
+  COMPLEX:Object.freeze({price_usdc:"0.30",amount_atomic:"300000"}),
+} as const);
+const SHARED_MAINNET_RECEIVER="0x95ba71d21c41bda8bba9533f96d25f793e4137b5" as const;
+export const NO_CARD_X402_OPTIONAL_SECONDARY=Object.freeze({
+  id:"coinbase_cdp",name:"Coinbase CDP",optional:true,required:false,
+} as const);
+/** Public rail map only. This metadata does not install settlement callbacks
+ * or remove the production approvals enforced by the no-card purchase path. */
+export const NO_CARD_X402_MAINNET_FACILITATORS=Object.freeze([
+  Object.freeze({name:"Base",network:"eip155:8453",
+    native_usdc_contract:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    recipient:SHARED_MAINNET_RECEIVER,
+    primary_facilitators:Object.freeze([
+      Object.freeze({id:"xpay_x402",endpoint:PROVIDER_ENDPOINTS.xpay_x402,
+        key_required:false,primary:true}),
+      Object.freeze({id:"circle_batch",settlement_asset:"native_usdc",
+        native_usdc_contract:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        key_required:false,primary:true}),
+    ]),optional_facilitators:Object.freeze([NO_CARD_X402_OPTIONAL_SECONDARY]),
+    pricing:NO_CARD_X402_TIER_PRICING}),
+  Object.freeze({name:"Polygon PoS",network:"eip155:137",
+    native_usdc_contract:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    recipient:SHARED_MAINNET_RECEIVER,
+    primary_facilitators:Object.freeze([
+      Object.freeze({id:"dexter_x402",endpoint:PROVIDER_ENDPOINTS.dexter_x402,
+        key_required:false,primary:true}),
+      Object.freeze({id:"circle_batch",settlement_asset:"native_usdc",
+        native_usdc_contract:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+        key_required:false,primary:true}),
+    ]),optional_facilitators:Object.freeze([NO_CARD_X402_OPTIONAL_SECONDARY]),
+    pricing:NO_CARD_X402_TIER_PRICING}),
+  Object.freeze({name:"Arc",network:"eip155:5042",
+    native_usdc_contract:"0x3600000000000000000000000000000000000000",
+    recipient:SHARED_MAINNET_RECEIVER,
+    primary_facilitators:Object.freeze([
+      Object.freeze({id:"circle_batch",settlement_asset:"native_usdc",
+        native_usdc_contract:"0x3600000000000000000000000000000000000000",
+        key_required:false,primary:true}),
+    ]),optional_facilitators:Object.freeze([NO_CARD_X402_OPTIONAL_SECONDARY]),
+    pricing:NO_CARD_X402_TIER_PRICING}),
+] as const);
 const HEX_TX = /^0x[a-fA-F0-9]{64}$/u;
 const SHA = /^[a-f0-9]{64}$/u;
 const VALID_NETWORKS:Readonly<Record<NoCardX402Provider,readonly string[]>> = {
