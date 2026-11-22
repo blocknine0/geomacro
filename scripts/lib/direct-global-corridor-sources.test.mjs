@@ -31,12 +31,12 @@ test("all original 38 Markdown links plus official ASEAN customs follow-up are p
  assert.ok(input.references.some(x=>x.supplied_url.startsWith("http://data.gdeltproject.org/")));
  assert.ok(input.references.some(x=>x.supplied_url.startsWith("https://www.google.com/search?q=")));
 });
-test("all 75 registry entries remain in separate corridor lane, not D1 website news",()=>{
+test("all 77 registry entries remain in separate corridor lane, not D1 website news",()=>{
  const sources=directGlobalCorridorRouteSources();
  assert.equal(assertDirectCorridorWebsiteSeparation(),true);
- assert.equal(sources.length,75);
+ assert.equal(sources.length,77);
  assert.deepEqual(directGlobalCorridorNewsFeeds(),[]);
- assert.equal(new Set(sources.map(x=>x.id)).size,75);
+ assert.equal(new Set(sources.map(x=>x.id)).size,77);
  assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),39);
  assert.ok(sources.every(x=>x.channel==="CORRIDOR_ONLY"&&
    x.website_intelligence_enabled===false&&x.commercial_eligible===false));
@@ -47,12 +47,31 @@ test("all 75 registry entries remain in separate corridor lane, not D1 website n
    assert.ok(!existing.some(x=>x.id==="direct_"+id));
  }
  const receipt=directGlobalCorridorSourceCensus();
- assert.equal(receipt.registered,75);
+ assert.equal(receipt.registered,77);
  assert.equal(receipt.source_link_occurrences,39);
  assert.equal(receipt.linked_unique_sources,37);
  assert.equal(receipt.website_intelligence_sourced_feeds,0);
  assert.equal(receipt.production_readbacks_proven,false);
  assert.equal(receipt.paid_publication_authorized,false);
+});
+test("Rare Earth publisher endpoints remain inventory-only until adapter and rights review",()=>{
+ const sources=new Map(directGlobalCorridorRouteSources().map(source=>[source.id,source]));
+ assert.deepEqual(sources.get("rareearthexchanges_rss"),{
+   ...sources.get("rareearthexchanges_rss"),
+   name:"Rare Earth Exchanges RSS",url:"https://rareearthexchanges.com/feed/",
+   format:"rss",categories:["rare_earth"],corridors:["global"],
+   state:"EXISTING_ADAPTER_UNVERIFIED",source_references:[],
+   channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+   risk_gate_verified:false,commercial_eligible:false,
+ });
+ assert.deepEqual(sources.get("mining_com_rare_earth"),{
+   ...sources.get("mining_com_rare_earth"),
+   name:"MINING.com Rare Earth Archive",url:"https://www.mining.com/commodity/rare-earth/",
+   format:"portal",categories:["rare_earth"],corridors:["global"],
+   state:"PORTAL_ENDPOINT_REQUIRED",source_references:[],
+   channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+   risk_gate_verified:false,commercial_eligible:false,
+ });
 });
 test("Zambia and missing-country central-bank portals use the existing unactivated portal schema",()=>{
  const byId=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(source=>[source.id,source]));

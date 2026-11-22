@@ -21,11 +21,11 @@ const customObservers={
    website_intelligence_writes:0,commercial_rights_verified:false
  })
 };
-test("all 75 corridor inventory entries are corridor-only",()=>{
+test("all 77 corridor inventory entries are corridor-only",()=>{
  assert.equal(assertDirectCorridorWebsiteSeparation(),true);
- assert.equal(CORRIDOR_ONLY_SOURCE_IDS.length,75);
+ assert.equal(CORRIDOR_ONLY_SOURCE_IDS.length,77);
  const sources=directGlobalCorridorRouteSources();
- assert.equal(sources.length,75);
+ assert.equal(sources.length,77);
  assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),39);
  assert.ok(sources.every(x=>x.channel==="CORRIDOR_ONLY"&&
    x.website_intelligence_enabled===false&&x.commercial_eligible===false));
@@ -40,8 +40,8 @@ test("all entries are included in independent receipts without website or paid w
  };
  const result=await collectDirectCorridorSourceIntake({now:DATE,fetchImpl,...customObservers});
  assert.equal(result.schema,"geomacro.direct-corridor-source-intake.v2");
- assert.equal(result.source_count,75);
- assert.equal(result.source_checks.length,75);
+ assert.equal(result.source_count,77);
+ assert.equal(result.source_checks.length,77);
  assert.equal(result.source_link_occurrences,39);
  assert.equal(result.unique_linked_sources,37);
  assert.equal(result.total_index_metadata_candidates,3);

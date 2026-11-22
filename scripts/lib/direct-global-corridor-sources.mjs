@@ -458,6 +458,24 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
     "state": "PORTAL_ENDPOINT_REQUIRED"
   },
   {
+    "id": "rareearthexchanges_rss",
+    "name": "Rare Earth Exchanges RSS",
+    "url": "https://rareearthexchanges.com/feed/",
+    "format": "rss",
+    "categories": ["rare_earth"],
+    "corridors": ["global"],
+    "state": "EXISTING_ADAPTER_UNVERIFIED"
+  },
+  {
+    "id": "mining_com_rare_earth",
+    "name": "MINING.com Rare Earth Archive",
+    "url": "https://www.mining.com/commodity/rare-earth/",
+    "format": "portal",
+    "categories": ["rare_earth"],
+    "corridors": ["global"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
     "id": "zmb_boz_public_notices",
     "name": "Bank of Zambia Public Notices",
     "url": "https://www.boz.zm/news/public-notices",
@@ -859,6 +877,7 @@ const ALLOWED_STATES=new Set(["EXISTING_ADAPTER_UNVERIFIED","EXISTING_DIRECT_FEE
 const ALLOWED_FORMATS=new Set(["rss","api","dataset","portal","reference","invalid"]);
 const ALLOWED_CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const INVENTORY_ONLY_SOURCE_IDS=new Set([
+  "rareearthexchanges_rss","mining_com_rare_earth",
   "zmb_boz_public_notices",
   "fra_banque_france_news","ita_bancaditalia_news","esp_bde_news",
   "nld_dnb_news","bel_nbb_news","nor_norges_bank_news","swe_riksbank_press",
@@ -872,7 +891,7 @@ const INVENTORY_ONLY_SOURCE_IDS=new Set([
   "bol_bcb_home","nga_cbn_home","cod_bcc_home"
 ]);
 export function assertDirectGlobalCorridorRegistry(registry=DIRECT_GLOBAL_CORRIDOR_SOURCES){
-  if(!Array.isArray(registry)||registry.length!==75)throw Error("DIRECT_GLOBAL_CORRIDOR_REGISTRY_COUNT_INVALID");
+  if(!Array.isArray(registry)||registry.length!==77)throw Error("DIRECT_GLOBAL_CORRIDOR_REGISTRY_COUNT_INVALID");
   const ids=new Set(),urls=new Set();
   for(const item of registry){
     if(!/^[a-z0-9_]+$/u.test(item.id)||ids.has(item.id)||
@@ -938,7 +957,7 @@ export function suppliedGlobalCorridorDirectory(){
       "https://asean.org/our-communities/economic-community/asean-customs/"||
     known.get("asean_customs")?.url!==
       "https://asean.org/our-communities/economic-community/asean-customs/"||
-    known.has("asean_customs_missing")||known.size!==75)
+    known.has("asean_customs_missing")||known.size!==77)
    throw Error("DIRECT_CORRIDOR_DOCUMENT_MAPPING_INCOMPLETE");
  return Object.freeze(record);
 }
@@ -961,7 +980,7 @@ export function directGlobalCorridorRouteSources(){
 export function directGlobalCorridorNewsFeeds(){return Object.freeze([]);}
 export function assertDirectCorridorWebsiteSeparation(){
  const sources=directGlobalCorridorRouteSources();
- if(sources.length!==75||INVENTORY_ONLY_SOURCE_IDS.size!==38||
+ if(sources.length!==77||INVENTORY_ONLY_SOURCE_IDS.size!==40||
     sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
      s.website_intelligence_enabled!==false||
      ((s.source_references.length===0)!==INVENTORY_ONLY_SOURCE_IDS.has(s.id)))||
