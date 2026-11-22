@@ -39,6 +39,8 @@ jobs:
           node --check scripts/ops/verify-web-production-staging.mjs
           node --check scripts/ops/verify-web-production-bindings.mjs
           node --check scripts/ops/verify-web-production-browser.mjs
+          node --check scripts/ops/audit-cloudflare-production-domain.mjs
+          node --test scripts/ops/audit-cloudflare-production-domain.test.mjs
           node --check workers/web-production/entry.mjs
           node --test scripts/ops/web-production-staging.test.mjs
 
