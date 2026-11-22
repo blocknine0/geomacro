@@ -57,6 +57,29 @@ export function inspectB2QuotaAuthorizationProof(proof, { now = Date.now() } = {
   });
 }
 
+/**
+ * Read back only bounded categorical evidence flags already returned by the
+ * existing verified-baseline GET. Never log raw source data, credentials, or
+ * infer that a readable baseline is a quota reservation or signed publication.
+ */
+export function summarizeVerifiedBaselineProbe({ status, body }) {
+  const schemaAccepted = body?.schema === "geomacro.product-scoped-verified-baseline-health.v1";
+  const productKeys = ["intelligence", "global_risk", "risk_indices"];
+  const flags = field => Object.fromEntries(productKeys.map(key => [
+    key, schemaAccepted && typeof body?.[field]?.[key] === "boolean"
+      ? body[field][key] : null,
+  ]));
+  return {
+    profile_http_status: status,
+    profile_response: status === 400 && body?.error === "HEALTH_PROFILE_INVALID"
+      ? "QUERY_REJECTED"
+      : status === 0 ? "NETWORK_UNAVAILABLE"
+        : schemaAccepted ? "VERIFIED_BASELINE_SCHEMA" : "UNRECOGNIZED_RESPONSE",
+    verified_baseline_products: flags("verified_baseline_products"),
+    current_signed_live_products: flags("current_signed_live_products"),
+  };
+}
+
 export function diagnoseWebStagingHealth({ legacy, publicHealth, liveStructured, baseline, now = Date.now() }) {
   const source = inspectWebCandidateThreeCategoryHealth(liveStructured.status, liveStructured.body, { now });
   const baselineBody = baseline.body;
@@ -80,6 +103,7 @@ export function diagnoseWebStagingHealth({ legacy, publicHealth, liveStructured,
         status: b2ReadAvailable ? "PASS" : "BLOCKED",
         http_status: baseline.status,
         verified_baseline_product_count: baselineCount,
+        evidence_diagnostics: summarizeVerifiedBaselineProbe(baseline),
         gate: b2ReadAvailable ? "VERIFIED_BASELINE_READABLE" : "VERIFIED_BASELINE_READ_UNAVAILABLE",
       },
       quota_authorized_access: {
