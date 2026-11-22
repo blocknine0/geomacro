@@ -2,8 +2,25 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-22T09:19:41.166Z",
+  "updated_at": "2026-11-22T17:04:40.923Z",
   "signals": [
+    {
+      "id": "geopolitics-8405d4d1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Now: supported in Herat, western Afghanistan, the 28-year-old trained midwife is unemployed · Iran",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Now supported in Herat, western Afghanistan, the 28-year-old trained midwife is unemployed. Country or region mentioned: Iran.",
+      "geography": "Iran",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-22T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-af284028",
       "category": "geopolitics",
