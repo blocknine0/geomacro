@@ -1,0 +1,150 @@
+name: Deploy Production-Capable Website to Cloudflare Staging
+
+on:
+  # Every canonical main update is eligible, including changes outside the app.
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-web-production-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy-and-accept:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+
+      - name: Require exact-head Product CI and CodeQL security success before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          for attempt in $(seq 1 60); do
+            test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_STAGING_SUPERSEDED_MAIN'; exit 2; }
+            product="$(gh api "repos/blocknine0/geomacro/actions/workflows/product-ci.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=20" --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .head_branch == "main")][0].conclusion // "pending"')"
+            codeql="$(gh api "repos/blocknine0/geomacro/actions/workflows/codeql-security.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=20" --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .head_branch == "main")][0].conclusion // "pending"')"
+            if [[ "$product" == success && "$codeql" == success ]]; then
+              echo 'WEB_STAGING_EXACT_SHA_CI_AND_CODEQL_PASS'
+              exit 0
+            fi
+            if [[ "$product" != pending && "$product" != success ]]; then echo 'WEB_STAGING_PRODUCT_CI_FAILED'; exit 2; fi
+            if [[ "$codeql" != pending && "$codeql" != success ]]; then echo 'WEB_STAGING_CODEQL_FAILED'; exit 2; fi
+            if [[ "$attempt" -lt 60 ]]; then sleep 30; fi
+          done
+          echo 'WEB_STAGING_EXACT_SHA_CHECKS_NOT_COMPLETE'
+          exit 2
+
+      - name: Build and prepare production-capable Workers app with Supabase in standby
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+          node scripts/ops/prepare-web-production.mjs
+
+      - name: Confirm approved server-only B2 read credentials are available
+        env:
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo 'WEB_STAGING_B2_READ_KEY_ID_SECRET_REQUIRED'; exit 2; }
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo 'WEB_STAGING_B2_READ_APPLICATION_KEY_SECRET_REQUIRED'; exit 2; }
+          echo 'WEB_STAGING_B2_READ_CREDENTIAL_PAIR_PRESENT'
+
+      - name: Verify Cloudflare worker is isolated and has no unknown bindings before deployment
+        id: staging-bindings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(node scripts/ops/verify-web-production-bindings.mjs)"
+          printf '%s\n' "$report"
+          if [[ "$report" == *'FINGERPRINT_PEPPER_PRESENT=true'* ]]; then
+            echo 'fingerprint_pepper_present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'fingerprint_pepper_present=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy app and install server-only B2 read secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          FINGERPRINT_PEPPER_PRESENT: ${{ steps.staging-bindings.outputs.fingerprint_pepper_present }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]]
+          npx -y wrangler@4.136.3 deploy --config .output/server/production-wrangler.json
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y wrangler@4.136.3 secret put B2_ARCHIVE_READ_KEY_ID --config .output/server/production-wrangler.json >/dev/null
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y wrangler@4.136.3 secret put B2_ARCHIVE_READ_APPLICATION_KEY --config .output/server/production-wrangler.json >/dev/null
+          if [[ "$FINGERPRINT_PEPPER_PRESENT" != true ]]; then
+            node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))' |
+              npx -y wrangler@4.136.3 secret put GEOMACRO_SECURITY_FINGERPRINT_PEPPER --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_STAGING_FINGERPRINT_PEPPER_PROVISIONED'
+          else
+            echo 'WEB_STAGING_FINGERPRINT_PEPPER_RETAINED'
+          fi
+          echo 'WEB_STAGING_DEPLOYED_WITH_SERVER_ONLY_B2_READ_SECRETS'
+
+      - name: Reject stale SHA and verify isolated Cloudflare bindings after deployment
+        id: isolation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+          WEB_STAGING_REQUIRE_WORKER: 'true'
+          WEB_STAGING_REQUIRE_FINGERPRINT_PEPPER: 'true'
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_STAGING_SUPERSEDED_AFTER_DEPLOY'; exit 2; }
+          node scripts/ops/verify-web-production-bindings.mjs
+          echo 'verified=true' >> "$GITHUB_OUTPUT"
+
+      - name: Verify staging deployment acceptance and report production cutover readiness independently
+        env:
+          EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+          WEB_STAGING_ISOLATION_VERIFIED: ${{ steps.isolation.outputs.verified }}
+        run: node scripts/ops/verify-web-production-staging.mjs
+
+      - name: Render desktop and mobile routes in Chromium
+        env:
+          GEOMACRO_WEB_STAGING_URL: https://geomacro-web-production-staging.daspallab202391.workers.dev
+          PLAYWRIGHT_PACKAGE_ROOT: /tmp/geomacro-playwright
+        run: |
+          mkdir -p /tmp/geomacro-playwright
+          npm --prefix /tmp/geomacro-playwright install --no-save --no-package-lock playwright@1.56.1
+          npx --prefix /tmp/geomacro-playwright playwright install --with-deps chromium
+          node scripts/ops/verify-web-production-browser.mjs
+
+      - name: Final exact-head check after all live acceptance probes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_STAGING_SUPERSEDED_DURING_ACCEPTANCE'; exit 2; }

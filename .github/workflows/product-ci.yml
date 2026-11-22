@@ -33,6 +33,15 @@ jobs:
       - name: Verify permanent workflow inventory and frozen Predge definitions
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
+      - name: Verify production-capable website Worker isolation and request forwarding
+        run: |
+          node --check scripts/ops/prepare-web-production.mjs
+          node --check scripts/ops/verify-web-production-staging.mjs
+          node --check scripts/ops/verify-web-production-bindings.mjs
+          node --check scripts/ops/verify-web-production-browser.mjs
+          node --check workers/web-production/entry.mjs
+          node --test scripts/ops/web-production-staging.test.mjs
+
       - name: Setup Node 24 for D1-backed runtime contracts
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
