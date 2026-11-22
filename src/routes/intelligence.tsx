@@ -49,7 +49,8 @@ export const Route = createFileRoute("/intelligence")({
     // The three category checks are independent: one timeout must never hide
     // another category's valid original-dated releases.
     const domains = ["geopolitics", "macro", "rare_earth"] as const;
-    const [geopolitics, macro, minerals, history, liveTeasers] = await Promise.allSettled([
+    const liveTeasersPromise = fetchRiskStreamPublicTeasers().catch(() => []);
+    const [geopolitics, macro, minerals, history] = await Promise.allSettled([
       ...domains.map(category => withPublicRuntimeTimeout(
         getStatelessIntelligence({ data: { category } }),
         8_000,
@@ -60,8 +61,8 @@ export const Route = createFileRoute("/intelligence")({
         9_000,
         "Derived Intelligence journal read timed out.",
       ),
-      fetchRiskStreamPublicTeasers(),
     ]);
+    const liveTeasers = await liveTeasersPromise;
     const accepted = [geopolitics, macro, minerals].map((entry, i) =>
       entry.status === "fulfilled" && !Array.isArray(entry.value) &&
        entry.value.category === domains[i] &&
