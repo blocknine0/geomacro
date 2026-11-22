@@ -57,6 +57,16 @@ const METRIC=/\b(?:consumer price|producer price|CPI|GDP|gross domestic product|
 export function newsEventFacts(title:string,description='',sourceId=''):NewsEventFacts|null {
  if(typeof title!=='string'||title.length>500||unsafe(title)||
   typeof description!=='string'||description.length>1500||unsafe(description))return null;
+ // This first-party SEC headline is an agency statement about *alleged*
+ // conduct, never independent verification that the accusation is true.
+ // Pin both issuer ID and the concrete phrase; do not generalize a headline
+ // about a scam into a verified market failure or any BTC/ETH price change.
+ if(sourceId==="sec_crypto_press"&&
+    /^SEC:\s+Eight Entities Used Fake Crypto Asset Trading Platforms to Steal More Than \$37 Million From U\.S\. Investors$/iu.test(title))
+  return {
+   headline:"SEC reported allegations of fake crypto trading platforms involving eight entities",
+   change:"The SEC published an official release alleging that eight entities operated fake crypto-asset trading platforms to defraud investors. The allegations are attributed to the regulator and are not an independent judicial finding.",
+  };
  const texts=[title,...description.split(/(?<=[.!?])\s+(?=[\p{Lu}])/u).slice(0,3)];
  const agency=statsAgency(sourceId);
  for(const raw of texts){

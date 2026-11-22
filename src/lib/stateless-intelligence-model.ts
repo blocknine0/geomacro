@@ -1,4 +1,4 @@
-import {macroPreciousTopic} from "../../scripts/lib/macro-fx-metals.mjs";
+import {macroPreciousTopic,macroDigitalAssetTopic} from "../../scripts/lib/macro-fx-metals.mjs";
 import {newsEventFacts} from "./news-event-facts";
 import {releaseNewsObservation,actorActionNewsObservation} from "./release-news-observation";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
@@ -172,6 +172,9 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    if (source.id === "sec_crypto_press" &&
+        (link.search || !/^\/newsroom\/press-releases\/20\d{2}-\d{1,4}-[a-z0-9-]+$/u.test(link.pathname))) return null;
+
     if (source.id.startsWith("nz_beehive_") &&
         (link.search || !/^\/(?:release|speech)\/[a-z0-9][a-z0-9-]{4,180}$/u.test(link.pathname)))
       return null;
@@ -305,7 +308,7 @@ export function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
   if(category === "rare_earth" && macroPreciousTopic(title) && !/rare[- ]earth|critical minerals?|lithium|cobalt|neodymium|dysprosium/i.test(title)) return null;
-  return (category === "macro" ? macroPreciousTopic(title) : null) ?? selectOfficialTopic(title, category) ??
+  return (category === "macro" ? macroDigitalAssetTopic(title) ?? macroPreciousTopic(title) : null) ?? selectOfficialTopic(title, category) ??
     (category === "macro" && sourceId === "wto_trade_original_rss" &&
       WTO_ORIGINAL_TRADE_POLICY_TOPIC.test.test(title) ? WTO_ORIGINAL_TRADE_POLICY_TOPIC : null) ??
     (category === "macro" && sourceId === "eia_press_macro" &&
@@ -348,6 +351,9 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     const title = source.statcanOriginalPage
       ? visiblePublisherText(rawTitle)
       : rawTitle;
+    // The SEC general press feed is not itself digital-asset evidence.
+    // In this lane only literal crypto-market subjects qualify.
+    if (source.id === "sec_crypto_press" && !macroDigitalAssetTopic(title)) continue;
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
         (!topicForOriginal(title, source.category, source.id, source.statcanOriginalPage === true) &&
          !(source.id==="nrcan_releases" && source.canadaOriginalPage===true &&
@@ -405,6 +411,8 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
     { test: /\bmilitary\b/i, label: "military policy" },
   ],
   macro: [
+    { test: /\b(?:crypto(?:[- ]assets?)?|cryptocurrenc(?:y|ies)|digital[- ]assets?|bitcoin|ethereum|stablecoins?|CBDCs?|tokeni[sz](?:ed|ation) (?:securities|assets?|deposits?))\b/iu,
+      label: "digital-asset policy and market structure" },
     { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?)\b/i,
       label: "prudential banking regulation" },
     { test: /\b(?:trade mission|free trade|trade deal|trade agreement|JETCO)\b/i, label: "international trade" },

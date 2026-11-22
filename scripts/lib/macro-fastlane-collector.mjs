@@ -1,6 +1,6 @@
 import {GLOBAL_MACRO_TOPIC_PATTERN} from "../../src/lib/global-macro-news-policy.ts";
 import {ECB_DAILY_FX_URL,parseEcbDailyFxReference} from "./ecb-fx-reference.mjs";
-import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,normalizeXausMetalQuotes,macroPreciousTopic} from './macro-fx-metals.mjs';
+import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,normalizeXausMetalQuotes,macroPreciousTopic,macroDigitalAssetTopic} from './macro-fx-metals.mjs';
 import {MACRO_CALENDARS,parseMacroCalendar} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
@@ -17,7 +17,10 @@ export function parseMacroFeed(xml,spec,now){
   const title=clean(tag(item,'title'));
   const cmeNews=spec.id==='cme_news'&&/\b(?:CME Group|CME|futures?|markets?|FX|trading)\b/i.test(title)&&
     /\b(?:ADV|volume|FX|futures?|options?|rates?|trading|metals?|clearing|exchange|commodities|market|treasury)\b/i.test(title);
-  if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)||cmeNews))continue;
+  // A general SEC release is not crypto news merely because the issuer
+  // maintains the feed; require a literal digital-asset subject.
+  if(spec.crypto_only===true&&!macroDigitalAssetTopic(title))continue;
+  if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)||macroDigitalAssetTopic(title)||cmeNews))continue;
   const rawLink=isAtom?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
   const articleUrl=pinnedMacroArticle(rawLink,spec);if(!articleUrl||seen.has(articleUrl))continue;
   const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,isAtom?'published':'pubDate'));
@@ -34,7 +37,8 @@ export function macroIndexLeads(html,spec){
   const articleUrl=pinnedMacroArticle(link,spec),name=clean(title);
   const issuerTopic=spec.id==='cftc_news'&&/\b(?:CFTC|commodity|futures|swaps?|traders?|derivatives?|market|clearing|FX|forex|positioning)\b/i.test(name)||
    spec.id==='cme_news'&&/\b(?:CME|futures|rates?|clearing|FX|forex|metals?|derivatives?|treasur(?:y|ies))\b/i.test(name);
-  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)||issuerTopic))continue;
+   const cryptoRegulator=spec.id==='cftc_news'&&macroDigitalAssetTopic(name);
+  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)||issuerTopic||cryptoRegulator))continue;
   seen.add(articleUrl);leads.push({articleUrl,title:name});if(leads.length===2)break;
  }
  return leads;

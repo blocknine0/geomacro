@@ -19,6 +19,11 @@ const gov: StatelessSourceSpec = {
   allowedHosts: ["www.gov.uk"], credit: "Contains public sector information licensed under the Open Government Licence v3.0.",
   govContentApi: true,
 };
+const secCrypto: StatelessSourceSpec = {
+  id: "sec_crypto_press", category: "macro", media: "rss",
+  url: "https://www.sec.gov/news/pressreleases.rss",
+  allowedHosts: ["www.sec.gov"], credit: "U.S. Securities and Exchange Commission",
+};
 const mineral: StatelessSourceSpec = {
   id: "usgs_minerals", category: "rare_earth", media: "rss",
   url: "https://www.usgs.gov/news/minerals/feed",
@@ -69,6 +74,35 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(JSON.stringify(signals)).not.toContain("federalreserve.gov/");
     const early = parseFirstPartyFeed(xml.replace("14:00:00", "16:00:01"), fed, NOW);
     expect(deriveStatelessSignals(early.dated, NOW)).toHaveLength(0);
+  });
+
+  it("publishes only first-party SEC crypto news under Macro without validating allegations or inventing prices", () => {
+    const now=Date.parse("2026-11-22T08:00:00Z");
+    const title="SEC: Eight Entities Used Fake Crypto Asset Trading Platforms to Steal More Than $37 Million From U.S. Investors";
+    const link="https://www.sec.gov/newsroom/press-releases/2026-115-sec-eight-entities-used-fake-crypto-asset-trading-platforms-steal-more-37-million-us-investors";
+    const make=(headline:string,url:string,clock?:string)=>
+      `<rss><channel><item><title>${headline}</title><link>${url}</link>${clock===undefined?"":"<pubDate>"+clock+"</pubDate>"}</item></channel></rss>`;
+    const original=make(title,link,"Thu, 19 Nov 2026 14:00:00 GMT");
+    const parsed=parseFirstPartyFeed(original,secCrypto,now);
+    expect(parsed.dated).toHaveLength(1);
+    const rows=deriveStatelessSignals(parsed.dated,now);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      category:"macro",topic:"digital-asset policy and market structure",
+      status:"official_release_observed_unscored",severity:null,
+      same_event_corrob_verified:false,
+      sources_credited:["U.S. Securities and Exchange Commission"],
+    });
+    expect(rows[0].title).toContain("SEC reported allegations");
+    expect(rows[0].what_changed).toContain("alleging");
+    expect(JSON.stringify(rows)).not.toContain(link);
+    expect(JSON.stringify(rows)).not.toContain(title);
+    expect(JSON.stringify(rows)).not.toContain("BTC/USD");
+    expect(parseFirstPartyFeed(make("SEC Issues Proposal to Restructure the Consolidated Audit Trail",link,"Thu, 19 Nov 2026 14:00:00 GMT"),secCrypto,now).dated).toEqual([]);
+    expect(parseFirstPartyFeed(make(title,link.replace("www.sec.gov/","www.sec.gov.evil.test/"),"Thu, 19 Nov 2026 14:00:00 GMT"),secCrypto,now).dated).toEqual([]);
+    expect(parseFirstPartyFeed(make(title,link),secCrypto,now).dated).toEqual([]);
+    expect(parseFirstPartyFeed(make(title,link,"Mon, 23 Nov 2026 14:00:00 GMT"),secCrypto,now).dated).toEqual([]);
+    expect(parseFirstPartyFeed(make(title,link+"?redirect=evil","Thu, 19 Nov 2026 14:00:00 GMT"),secCrypto,now).dated).toEqual([]);
   });
 
   it("recognizes canonical ECB statistical originals and rejects altered or off-host paths", () => {
