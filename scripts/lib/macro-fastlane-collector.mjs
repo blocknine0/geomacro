@@ -47,7 +47,10 @@ export function macroIndexLeads(html,spec){
 export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state={},reusedCandidates=[],reusedIds=[],sourceIds=null,release=false,prices=true,calendars=true,quoteClock=()=>now}={}){
  const sources=sourceIds?MACRO_NEWS_SOURCES.filter(s=>sourceIds.includes(s.id)):planMacroSources(now,{release,reusedIds});
  if(sources.length>9)throw Error('MACRO_SOURCE_BUDGET_EXCEEDED');
- const candidates=[...reusedCandidates.filter(x=>x.category==='macro')],checks=[],cursors={...state.cursors};let requests=0;
+ const validMacroIds=new Set(MACRO_NEWS_SOURCES.map(source=>source.id));
+ const candidates=[...reusedCandidates.filter(x=>x.category==='macro')],checks=[],cursors=Object.fromEntries(
+  Object.entries(state.cursors??{}).filter(([id])=>validMacroIds.has(id))
+ );let requests=0;
  const get=async(url,options={})=>{requests++;return boundedMacroGet(url,{fetchImpl,...options});};
  // Serialize the three BLS feeds: the issuer throttles parallel reads.
  const read=async spec=>{
@@ -124,7 +127,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
  const quoteNow=quoteClock();
  const history=[...(state.quotes??[]),...quotes].filter(q=>Date.parse(q.observed_at)>=quoteNow-90*60000&&Date.parse(q.observed_at)<=quoteNow);
  const uniqueQuotes=[...new Map(history.map(q=>[q.instrument+'|'+q.observed_at,q])).values()].slice(-40);
- const sourceChecks=[...new Map([...(state.source_checks??[]),...checks].map(c=>[c.id,c])).values()];
+ const sourceChecks=[...new Map([...(Array.isArray(state.source_checks)?state.source_checks:[]).filter(c=>c&&validMacroIds.has(c.id)),...checks].map(c=>[c.id,c])).values()];
  return {candidates,polledChecks:checks,state:{mineral_cursors:state.mineral_cursors??{},mineral_checks:state.mineral_checks??[],...(state.mineral_regions?.length?{mineral_regions:state.mineral_regions}:{}),schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),cursors,events,quotes:uniqueQuotes,fx_reference:fxReference,fx_checked_at:fxCheckedAt,
   calendar_checked_at:calendarChecks.length?now:state.calendar_checked_at??0,calendar_checks:calendarChecks.length?calendarChecks:state.calendar_checks??[],source_checks:sourceChecks,price_checks:priceChecks,
   quota_lease_until:new Date(now+12*60000).toISOString()},receipt:{schema:'geomacro.macro-fastlane-run.v1',category:'macro',lanes:['forex','precious_metals'],source_checks:sourceChecks,price_checks:priceChecks,calendar_checks:calendarChecks,ecb_reference_available:fxReference!==null,upstream_requests:requests,shared_originals:reusedCandidates.length,raw_content_persisted:false,real_time_price_latency_verified:false,github_cron_sla_verified:false}};
