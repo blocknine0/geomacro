@@ -78,8 +78,9 @@ export async function probeLiveStructuredDeepHealth(options:Options={}){
        observation_reference_periods_are_not_current_event_clocks:true,
      }];
    }),
- ) as Record<(typeof LIVE_STRUCTURED_HEALTH_CATEGORIES)[number],{
+ ) as unknown as Record<(typeof LIVE_STRUCTURED_HEALTH_CATEGORIES)[number],{
    status:string;source_fetch_accepted:boolean;eligible_observations:number;
+   source_families_attempted:number|null;source_families_readable:number|null;
    event_occurrence_clock_observations:number;signed_gro_required:false;
    observation_reference_periods_are_not_current_event_clocks:boolean;
  }>;
