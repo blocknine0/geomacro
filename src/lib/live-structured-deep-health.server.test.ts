@@ -45,12 +45,18 @@ describe("independent stateless live product deep health",()=>{
  });
  it("fails HTTP 503 if one of three is missing rather than returning healthy",async()=>{
   const probe=async ({category}:{category:Category})=>
-   category==="critical-minerals"?{statusCode:422,body:{status:"NO_ELIGIBLE_OBSERVATION"}}:
+   category==="critical-minerals"?{statusCode:422,body:{status:"NO_ELIGIBLE_OBSERVATION",
+    source_families_attempted:7,source_families_readable:2,
+    source_names:["PRIVATE SOURCE OMIT"],original_url:"https://private.invalid"}}:
     response(category);
   const result=await probeLiveStructuredDeepHealth({probe,now});
   expect(result.statusCode).toBe(503);
   expect(result.body.categories["critical-minerals"].source_fetch_accepted).toBe(false);
   expect(result.body.categories["critical-minerals"].eligible_observations).toBe(0);
+  expect(result.body.categories["critical-minerals"].source_families_attempted).toBe(7);
+  expect(result.body.categories["critical-minerals"].source_families_readable).toBe(2);
+  expect(JSON.stringify(result.body)).not.toContain("PRIVATE SOURCE OMIT");
+  expect(JSON.stringify(result.body)).not.toContain("private.invalid");
  });
  it("rejects stale retrieval clocks, false signed claims, and chargeable responses",async()=>{
   for(const mutation of [

@@ -37,6 +37,13 @@ export function inspectWebCandidateThreeCategoryHealth(
   return [category,{
    accepted:valid,
    eligible_count:valid?observations:0,
+   // Coarse count-only diagnostics from the same request; 503 stays 503.
+   source_families_attempted:!valid&&Number.isSafeInteger(x?.source_families_attempted)&&
+    x.source_families_attempted>=0&&x.source_families_attempted<=16
+      ?x.source_families_attempted:null,
+   source_families_readable:!valid&&Number.isSafeInteger(x?.source_families_readable)&&
+    x.source_families_readable>=0&&x.source_families_readable<=16
+      ?x.source_families_readable:null,
    gate:!headersValid?"SCOPED_RESPONSE_CONTRACT_OR_CLOCK_INVALID":
     !shape?"CATEGORY_STATUS_ABSENT_OR_INVALID":
     !fetched?"SOURCE_FETCH_OR_REVIEWED_OBSERVATIONS_UNAVAILABLE":

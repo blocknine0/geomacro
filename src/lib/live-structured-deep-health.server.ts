@@ -61,13 +61,26 @@ export async function probeLiveStructuredDeepHealth(options:Options={}){
        status:safe?"SOURCE_OBSERVATIONS_AVAILABLE":"NO_ELIGIBLE_LIVE_SOURCE_OBSERVATIONS",
        source_fetch_accepted:safe,
        eligible_observations:safe?obs.length:0,
+       // Only read precomputed bounded counters from a failing category.
+       // Neither provider identity nor upstream network response is exposed.
+       source_families_attempted:out?.statusCode===422&&
+         Number.isSafeInteger(body?.source_families_attempted)&&
+         Number(body?.source_families_attempted)>=0&&
+         Number(body?.source_families_attempted)<=16
+           ?Number(body?.source_families_attempted):null,
+       source_families_readable:out?.statusCode===422&&
+         Number.isSafeInteger(body?.source_families_readable)&&
+         Number(body?.source_families_readable)>=0&&
+         Number(body?.source_families_readable)<=16
+           ?Number(body?.source_families_readable):null,
        event_occurrence_clock_observations:eventCount,
        signed_gro_required:false,
        observation_reference_periods_are_not_current_event_clocks:true,
      }];
    }),
- ) as Record<(typeof LIVE_STRUCTURED_HEALTH_CATEGORIES)[number],{
+ ) as unknown as Record<(typeof LIVE_STRUCTURED_HEALTH_CATEGORIES)[number],{
    status:string;source_fetch_accepted:boolean;eligible_observations:number;
+   source_families_attempted:number|null;source_families_readable:number|null;
    event_occurrence_clock_observations:number;signed_gro_required:false;
    observation_reference_periods_are_not_current_event_clocks:boolean;
  }>;

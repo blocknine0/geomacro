@@ -24,12 +24,18 @@ test("one missing mineral provider remains failed and identifies only the catego
  const b=full();b.categories["critical-minerals"].source_fetch_accepted=false;
  b.categories["critical-minerals"].status="NO_ELIGIBLE_LIVE_SOURCE_OBSERVATIONS";
  b.categories["critical-minerals"].eligible_observations=0;b.ok=false;
+ b.categories["critical-minerals"].source_families_attempted=7;
+ b.categories["critical-minerals"].source_families_readable=2;
+ b.categories["critical-minerals"].upstream_url="https://private.invalid";
  b.source_readiness_verified=false;
  const report=verify(503,b,{now});
  assert.equal(report.ready,false);
  assert.equal(report.categories["critical-minerals"].gate,
    "SOURCE_FETCH_OR_REVIEWED_OBSERVATIONS_UNAVAILABLE");
  assert.equal(report.categories.geopolitics.accepted,true);
+ assert.equal(report.categories["critical-minerals"].source_families_attempted,7);
+ assert.equal(report.categories["critical-minerals"].source_families_readable,2);
+ assert.ok(!JSON.stringify(report).includes("private.invalid"));
  assert.ok(!JSON.stringify(report).includes("sciencebase"));
 });
 test("false HTTP 200 with unavailable category never passes",()=>{
