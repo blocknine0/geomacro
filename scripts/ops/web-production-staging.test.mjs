@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { prepareWebProduction } from "./prepare-web-production.mjs";
-import { allowedStagingBinding, hasUnexpectedWorkerRoute } from "./verify-web-production-bindings.mjs";
+import {
+  allowedStagingBinding,
+  hasUnexpectedWorkerRoute,
+  verifyWorkerBindings,
+} from "./verify-web-production-bindings.mjs";
 import {
   deriveWebAcceptanceOutcomes,
   diagnoseWebStagingHealth,
@@ -96,6 +100,54 @@ test("staging accepts only the designated fingerprint secret and detects Worker 
   assert.equal(hasUnexpectedWorkerRoute([{ pattern: "*.example.test/*", script: "other-worker" }]), false);
   assert.equal(hasUnexpectedWorkerRoute([{ pattern: "geomacro.live/*", script: "geomacro-web-production-staging" }]), true);
   assert.equal(hasUnexpectedWorkerRoute(null), true);
+});
+
+test("binding verification accepts bare route arrays and rejects unexpected or malformed routes", async () => {
+  const zoneId = "a".repeat(32);
+  const env = {
+    CLOUDFLARE_ACCOUNT_ID: "b".repeat(32),
+    CLOUDFLARE_API_TOKEN: "synthetic-cloudflare-token-not-a-secret",
+  };
+  const fetchWithRoutes = routeResponse => async input => {
+    const url = String(input);
+    if (url.endsWith("/workers/scripts/geomacro-web-production-staging/settings")) {
+      return Response.json({ success: true, result: { bindings: [
+        { type: "assets", name: "ASSETS" },
+        { type: "plain_text", name: "GEOMACRO_SUPABASE_RUNTIME_MODE", text: "standby" },
+      ] } });
+    }
+    if (url.endsWith("/workers/scripts/geomacro-web-production-staging/subdomain")) {
+      return Response.json({ success: true, result: { enabled: true, previews_enabled: false } });
+    }
+    if (url.includes("/workers/domains?service=")) {
+      return Response.json({ success: true, result: [] });
+    }
+    if (url.includes("/zones?account.id=")) {
+      return Response.json({ success: true, result: [{ id: zoneId }], result_info: { total_pages: 1 } });
+    }
+    if (url.includes(`/zones/${zoneId}/workers/routes?`)) {
+      return Response.json(routeResponse);
+    }
+    throw Error("UNEXPECTED_CLOUDFLARE_TEST_REQUEST");
+  };
+
+  const report = await verifyWorkerBindings({
+    env,
+    fetchImpl: fetchWithRoutes({ success: true, result: [] }),
+  });
+  assert.match(report, /NO_WORKER_ROUTES;ZONES_CHECKED=1;ROUTES_CHECKED=0/u);
+
+  await assert.rejects(verifyWorkerBindings({
+    env,
+    fetchImpl: fetchWithRoutes({ success: true, result: [
+      { pattern: "example.test/*", script: "geomacro-web-production-staging" },
+    ] }),
+  }), /WEB_STAGING_WORKER_ROUTE_ALREADY_ATTACHED/u);
+
+  await assert.rejects(verifyWorkerBindings({
+    env,
+    fetchImpl: fetchWithRoutes({ success: true, result: { id: "not-an-array" } }),
+  }), /WEB_STAGING_WORKER_ROUTE_INVENTORY_INVALID/u);
 });
 
 test("health diagnostics preserve real 503 statuses and leave missing B2 quota proof not proven", () => {
