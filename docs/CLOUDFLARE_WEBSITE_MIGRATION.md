@@ -21,7 +21,8 @@ The existing `production` environment must provide these secrets:
 - `CLOUDFLARE_API_TOKEN`: scoped to the existing account for Workers script deployments and secret writes.
 - `CLOUDFLARE_ACCOUNT_ID`: the existing Cloudflare account ID.
 - `B2_ARCHIVE_READ_KEY_ID` and `B2_ARCHIVE_READ_APPLICATION_KEY`: the existing bucket-scoped read-only key pair.
-- `GEOMACRO_SECURITY_FINGERPRINT_PEPPER`: provisioned as a staging-only Cloudflare secret on first deployment and verified by binding name after every deployment.
+
+`GEOMACRO_SECURITY_FINGERPRINT_PEPPER` is generated and installed by the workflow as a Cloudflare Worker secret; it is not a GitHub Actions input secret.
 
 The deployment fails closed if a required secret is absent, if the staging Worker has an unknown binding, if a custom route/domain is attached, if the exact `main` SHA changes during release, if any required CI check fails, or if live health/runtime acceptance fails. The job never prints credential values. An environment reviewer rule requiring manual approval would prevent fully automatic deployment; it must be checked in GitHub before claiming automatic deployment readiness.
 
