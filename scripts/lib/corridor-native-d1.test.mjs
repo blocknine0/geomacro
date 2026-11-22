@@ -130,7 +130,7 @@ test("scheduled publisher requires real D1 PUT and GET readback, not a 200 alone
  const bearer=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
  const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
   channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
-  source_count:37,native_news_sources_polled:10,
+  source_count:77,native_news_sources_polled:10,
   news_candidates:[candidate()],candidate_count:1,
   website_intelligence_enabled:false,commercial_rights_verified:false};
  let requests=0;
@@ -146,6 +146,7 @@ test("scheduled publisher requires real D1 PUT and GET readback, not a 200 alone
  assert.equal(response.authenticated_d1_put_readback,true);
  assert.equal(response.authenticated_d1_get_readback,true);
  assert.equal(response.d1_candidate_records_verified,1);
+ assert.equal(response.source_count,77);
  assert.equal(response.provider_calls,2);
  assert.equal(requests,2);
  assert.equal(response.website_intelligence_writes,0);
@@ -163,7 +164,7 @@ test("native D1 publisher retries rollout 503 once, but never bypasses verified 
  const db=new MockD1(),root="R".repeat(64);
  const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
   channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
-  source_count:37,native_news_sources_polled:10,news_candidates:[candidate()],
+  source_count:77,native_news_sources_polled:10,news_candidates:[candidate()],
   candidate_count:1,website_intelligence_enabled:false,
   commercial_rights_verified:false};
  let count=0;
@@ -182,7 +183,7 @@ test("native D1 publisher retries rollout 503 once, but never bypasses verified 
 test("401 auth rejection is final, not retried as a rollout outage",async()=>{
  const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
   channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
-  source_count:37,native_news_sources_polled:10,news_candidates:[candidate()],
+  source_count:77,native_news_sources_polled:10,news_candidates:[candidate()],
   candidate_count:1,website_intelligence_enabled:false,
   commercial_rights_verified:false};
  let requests=0;
@@ -204,7 +205,7 @@ test("large native candidate snapshots are partitioned into 10-item D1 batches",
  }));
  const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
   channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
-  source_count:37,native_news_sources_polled:10,news_candidates:candidates,
+  source_count:77,native_news_sources_polled:10,news_candidates:candidates,
   candidate_count:30,website_intelligence_enabled:false,
   commercial_rights_verified:false};
  const chunks=[];

@@ -106,7 +106,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   // We only poll the private D1 AFTER original D1 ingest and readback; the
   // source receipt is a required proof that main completed source discovery.
   const source=JSON.parse(readFileSync("artifacts/direct-corridor-intake/receipt.json","utf8"));
-  if(source.channel!=="CORRIDOR_ONLY"||source.source_count!==37)
+  if(source.channel!=="CORRIDOR_ONLY"||source.source_count!==77)
    throw Error("RG_STRATEGIC_SOURCE_RECEIPT_INVALID");
   const result=await publishContinuousStrategicCorridors({
    rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN

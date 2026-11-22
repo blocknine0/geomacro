@@ -11,7 +11,7 @@ export async function publishPrivateCorridorNews({
  receipt,rootToken,fetchImpl=fetch,now=new Date(),endpoint=ENDPOINT
 }={}){
  if(!receipt||receipt.schema!=="geomacro.corridor-native-news-candidates.v1"||
-   receipt.channel!=="CORRIDOR_ONLY"||receipt.source_count!==37||
+   receipt.channel!=="CORRIDOR_ONLY"||receipt.source_count!==77||
    receipt.native_news_sources_polled!==10||
    !Array.isArray(receipt.news_candidates)||receipt.news_candidates.length>160||
    receipt.candidate_count!==receipt.news_candidates.length||
@@ -94,7 +94,7 @@ export async function publishPrivateCorridorNews({
    throw Error("CORRIDOR_PRIVATE_D1_GET_INVALID");
  return {schema:"geomacro.corridor-native-news-production-acceptance.v1",
    channel:"CORRIDOR_ONLY",checked_at:now.toISOString(),
-   native_news_sources_polled:10,source_count:37,link_references:39,
+   native_news_sources_polled:10,source_count:77,link_references:39,
    native_news_candidates_observed:records.length,
    d1_candidate_records_verified:verified,
    authenticated_d1_put_readback:true,authenticated_d1_get_readback:true,
