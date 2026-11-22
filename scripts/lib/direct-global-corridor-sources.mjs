@@ -471,6 +471,32 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
     "state": "TRANSPORT_BLOCKED"
   },
   {
+    "id": "rareearthexchanges_rss",
+    "name": "Rare Earth Exchanges RSS",
+    "url": "https://rareearthexchanges.com/feed/",
+    "format": "rss",
+    "categories": [
+      "rare_earth"
+    ],
+    "corridors": [
+      "global"
+    ],
+    "state": "EXISTING_ADAPTER_UNVERIFIED"
+  },
+  {
+    "id": "mining_com_rare_earth",
+    "name": "MINING.com Rare Earth Archive",
+    "url": "https://www.mining.com/commodity/rare-earth/",
+    "format": "portal",
+    "categories": [
+      "rare_earth"
+    ],
+    "corridors": [
+      "global"
+    ],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
     "id": "cryptocompare_news",
     "name": "CryptoCompare / CCData News API",
     "url": "https://min-api.cryptocompare.com/data/v2/news/?lang=EN",
@@ -516,8 +542,9 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
 const ALLOWED_STATES=new Set(["EXISTING_ADAPTER_UNVERIFIED","EXISTING_DIRECT_FEED","POLL_DIRECT_FEED","PORTAL_ENDPOINT_REQUIRED","CREDENTIAL_REQUIRED","REFERENCE_ONLY","TRANSPORT_BLOCKED","REJECTED_REMOVED_LINK"]);
 const ALLOWED_FORMATS=new Set(["rss","api","dataset","portal","reference","invalid"]);
 const ALLOWED_CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
+const INVENTORY_ONLY_SOURCE_IDS=new Set(["rareearthexchanges_rss","mining_com_rare_earth"]);
 export function assertDirectGlobalCorridorRegistry(registry=DIRECT_GLOBAL_CORRIDOR_SOURCES){
-  if(!Array.isArray(registry)||registry.length!==37)throw Error("DIRECT_GLOBAL_CORRIDOR_REGISTRY_COUNT_INVALID");
+  if(!Array.isArray(registry)||registry.length!==39)throw Error("DIRECT_GLOBAL_CORRIDOR_REGISTRY_COUNT_INVALID");
   const ids=new Set(),urls=new Set();
   for(const item of registry){
     if(!/^[a-z0-9_]+$/u.test(item.id)||ids.has(item.id)||
@@ -583,7 +610,7 @@ export function suppliedGlobalCorridorDirectory(){
       "https://asean.org/our-communities/economic-community/asean-customs/"||
     known.get("asean_customs")?.url!==
       "https://asean.org/our-communities/economic-community/asean-customs/"||
-    known.has("asean_customs_missing")||known.size!==37)
+    known.has("asean_customs_missing")||known.size!==39)
    throw Error("DIRECT_CORRIDOR_DOCUMENT_MAPPING_INCOMPLETE");
  return Object.freeze(record);
 }
@@ -606,8 +633,9 @@ export function directGlobalCorridorRouteSources(){
 export function directGlobalCorridorNewsFeeds(){return Object.freeze([]);}
 export function assertDirectCorridorWebsiteSeparation(){
  const sources=directGlobalCorridorRouteSources();
- if(sources.length!==37||sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
-     s.website_intelligence_enabled!==false||s.source_references.length===0)||
+ if(sources.length!==39||sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
+     s.website_intelligence_enabled!==false||
+     (s.source_references.length===0&&!INVENTORY_ONLY_SOURCE_IDS.has(s.id)))||
     directGlobalCorridorNewsFeeds().length!==0)
    throw Error("DIRECT_CORRIDOR_SOURCE_LEAKED_TO_WEBSITE_INTELLIGENCE");
  return true;

@@ -1,6 +1,6 @@
 /**
  * Exact operator-supplied GeoMacro Risk Gate source/CAMEO mapping, 2026-11-02.
- * Reuses the pinned 37-source global/corridor registry; no shadow provider URLs.
+ * Reuses the pinned global/corridor registry; no shadow provider URLs.
  * Never treats source availability, portal probes, article counts or GDELT batch
  * indices as events. No access to PREDGE, checkout, live GRO or website publishing.
  */
@@ -23,18 +23,19 @@ export const RISK_GATE_SUPPLIED_MARITIME_SOURCE_IDS=Object.freeze([
  "panama_canal","recaap_isc","imb_piracy"
 ]);
 export const RISK_GATE_SUPPLIED_MINERAL_SOURCE_IDS=Object.freeze([
- "usgs_mcs","iea_minerals","mining_com"
+ "usgs_mcs","iea_minerals","mining_com",
+ "rareearthexchanges_rss","mining_com_rare_earth"
 ]);
 const rank={CONTINUE:0,REDUCE_LIMIT:1,REQUIRE_APPROVAL:2,PAUSE:3};
 
 /**
- * Source membership is registration, not risk-event certification. All 37
+ * Source membership is registration, not risk-event certification. All
  * original source IDs and their direct URLs are inherited from the live
  * corridor-only directory. No duplicate source inventory is maintained.
  */
 export function riskGateSuppliedSourceRegistry(){
  const sources=directGlobalCorridorRouteSources();
- if(sources.length!==37||new Set(sources.map(s=>s.id)).size!==37||
+ if(sources.length!==39||new Set(sources.map(s=>s.id)).size!==39||
     sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
       s.website_intelligence_enabled!==false||s.risk_gate_verified!==false))
    throw Error("RISK_GATE_SUPPLIED_SOURCE_REGISTRY_DRIFT");
