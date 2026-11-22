@@ -60,10 +60,13 @@ test("optional Website dedup has actions:read and never bypasses original ingest
  assert.match(y,/workflow_dispatch/u);
  // Never trigger D1 recovery on unrelated main pushes. The only new
  // activation is a reviewed change to the recovery workflow itself.
- const activationBlock=y.split("  push:\\n")[1]?.split("  schedule:")[0];
- assert.match(activationBlock??"",/branches:\\s*\\[main\\]/u);
- assert.ok(activationBlock?.includes('      - ".github/workflows/website-finds-canonical-d1-reconcile.yml"'));
- assert.equal(activationBlock?.includes("scripts/"),false);
+ const triggerStart=y.indexOf("  push:");
+ const triggerEnd=y.indexOf("  schedule:",triggerStart);
+ assert.ok(triggerStart>=0&&triggerEnd>triggerStart);
+ const activationBlock=y.slice(triggerStart,triggerEnd);
+ assert.ok(activationBlock.includes("branches: [main]"));
+ assert.ok(activationBlock.includes('      - ".github/workflows/website-finds-canonical-d1-reconcile.yml"'));
+ assert.equal(activationBlock.includes("scripts/"),false);
  assert.match(y,/needs: quota-admission/u);
  assert.match(y,/D1_CRITICAL_ADMITTED/u);
  assert.match(y,/GEOMACRO_COMMERCE_LEDGER_TOKEN/u);
