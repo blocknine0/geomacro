@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {persistMacroFastlaneState,MACRO_STATE_MAX_BYTES} from '../lib/macro-fastlane-state-publisher.mjs';
 const now='2026-11-18T10:00:00.000Z';
 const state=()=>({schema:'geomacro.macro-fastlane-state.v1',checked_at:now,
@@ -41,4 +42,14 @@ test('fail closed on exhausted 503, bad auth, unsafe URL and oversize',async()=>
  assert.equal(count,3);
  await assert.rejects(persistMacroFastlaneState({...options,url:'http://localhost/v1/internal/macro-fastlane',state:state()}),/MACRO_STATE_REQUEST_INVALID/);
  await assert.rejects(persistMacroFastlaneState({...options,state:{...state(),payload:'a'.repeat(MACRO_STATE_MAX_BYTES)}}),/MACRO_STATE_PAYLOAD_TOO_LARGE/);
+});
+test('normalizes upstream Last-Modified headers to the server cursor format',async()=>{
+ const upstreamLastModified='Sat, 21 Nov 2026 08:00:00 +0000';
+ const expected='Sat, 21 Nov 2026 08:00:00 GMT';
+ assert.equal(new Date(Date.parse(upstreamLastModified)).toUTCString(),expected);
+ for(const file of ['../lib/macro-fastlane-collector.mjs','../lib/critical-minerals-fastlane.mjs']){
+  const source=readFileSync(new URL(file,import.meta.url),'utf8');
+  assert.match(source,/const normalizeLastModified=value=>\{if\(typeof value!=='string'\|\|value\.length>200\)return null;const ms=Date\.parse\(value\);return Number\.isFinite\(ms\)\?new Date\(ms\)\.toUTCString\(\):null;\}/);
+  assert.match(source,/last_modified:normalizeLastModified\(data\.lastModified\)/);
+ }
 });
