@@ -17,6 +17,7 @@ import {
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { fetchDirectDerivedNews, fetchRiskStreamPublicTeasers } from "@/lib/public-derived-news-client";
+import type { StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
@@ -29,6 +30,20 @@ const TITLE = "Geomacro Finds | Latest Intelligence";
 const DESCRIPTION = "Geomacro Finds: on-demand geopolitical, Macro/FX and critical-minerals developments, updated as eligible official releases arrive without an added publication delay. No scores or persistent source storage.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
+
+function mergeJournalWithTeasers(
+  base: StatelessIntelligenceSignal[],
+  teasers: StatelessIntelligenceSignal[],
+): StatelessIntelligenceSignal[] {
+  const seen = new Set<string>();
+  return [...base, ...teasers]
+    .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))
+    .filter((signal) => {
+      if (seen.has(signal.id)) return false;
+      seen.add(signal.id);
+      return true;
+    });
+}
 
 export const Route = createFileRoute("/intelligence")({
   validateSearch: intelligenceCategorySearch,
@@ -67,17 +82,6 @@ export const Route = createFileRoute("/intelligence")({
       entry.status === "fulfilled" && !Array.isArray(entry.value) &&
        entry.value.category === domains[i] &&
       entry.value.healthy_feed_count > 0 ? entry.value : null);
-    const journalCandidates = [
-      ...(history.status === "fulfilled" && Array.isArray(history.value) ? history.value : []),
-      ...(Array.isArray(liveTeasers) ? liveTeasers : []),
-    ].sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
-    const seenJournalIds = new Set<string>();
-    const journal = journalCandidates.filter((signal) => {
-      if (seenJournalIds.has(signal.id)) return false;
-      seenJournalIds.add(signal.id);
-      return true;
-    });
-
     return {
       rows: [],
       now,
@@ -90,7 +94,8 @@ export const Route = createFileRoute("/intelligence")({
       // fetchDirectDerivedNews() already returns checked Signal[] directly,
       // NOT {signals}. A successful journal is combined with actual live
       // issuer answers; neither supplies a canonical signed risk score.
-      journal,
+      // Preserve the established fallback semantics: `? history.value : []`.
+      journal: history.status === "fulfilled" && Array.isArray(history.value) ? mergeJournalWithTeasers(history.value, liveTeasers) : mergeJournalWithTeasers([], liveTeasers),
     };
   },
   head: () => ({
