@@ -107,7 +107,7 @@ export const Route = createFileRoute("/api/x402/risk")({
         let discoveryConfig: CoinbaseX402Config | null = null;
         try { discoveryConfig = getCoinbaseX402Config(); } catch { /* Keyless rails do not depend on CDP configuration. */ }
         const isTestnet=discoveryConfig?.environment === "testnet";
-        return json({
+        const discoveryResponse={
           ok: true,
           service: "Geomacro x402 Risk Pre-flight",
           coinbase_cdp_configured: discoveryConfig !== null,
@@ -142,7 +142,15 @@ export const Route = createFileRoute("/api/x402/risk")({
             ? { payable_here: false, minimum_countries: 47, categories: ["GEOPOLITICS", "MACRO_FX", "CRITICAL_MINERALS"], note: "Production purchases use the governed adaptive intelligence endpoint." }
             : { countries: ["USA", "CHN"], corridors: ["USA>CHN", "CHN>USA"] },
           execution_authorized: false,
-        });
+        };
+        if (discoveryConfig) {
+          const config=discoveryConfig;
+          return json({
+            ...discoveryResponse,
+            price_usdc: config.environment === "production" ? null : config.priceUsdc,
+          });
+        }
+        return json({ ...discoveryResponse, price_usdc: null });
       },
       POST: async ({ request }) => {
         let rawBody: unknown;
