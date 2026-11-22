@@ -4,7 +4,7 @@ import {boundedMacroGet,macroPreciousTopic} from './macro-fx-metals.mjs';
 import {MINERAL_RELEASE_TOPIC} from './global-official-release-feeds.mjs';
 import {unverifiedWebsiteSignalFromOsint} from './private-osint-website-bridge.mjs';
 import {actorActionNewsObservation} from '../../src/lib/release-news-observation.ts';
-import {sectorFeed as feed,MINERALS_MESH} from "./critical-minerals-registry.mjs";
+import {sectorFeed as feed,MINERALS_MESH,MINERALS_SOURCE_IDS} from "./critical-minerals-registry.mjs";
 export {MINERALS_MESH,MINERALS_SOURCE_IDS} from "./critical-minerals-registry.mjs";
 // Share the already-observed Africa regional publisher's same URL as a
 // worldwide discovery-only fallback when Mining Technology blocks direct fetch.
@@ -48,7 +48,9 @@ export function parseSectorFeed(xml,spec,now){
  return result;
 }
 export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=fetch,reusedCandidates=[],state={},macroNeedsFallback=false}={}){
- const cache=new Map(),checks=[],signals=[],cursors={...(state.mineral_cursors??{})};let requests=0;
+ const cache=new Map(),checks=[],signals=[],cursors=Object.fromEntries(
+  Object.entries(state.mineral_cursors??{}).filter(([id])=>MINERALS_SOURCE_IDS.includes(id))
+ );let requests=0;
  const read=spec=>{
   if(cache.has(spec.url))return cache.get(spec.url);
   const promise=(async()=>{
