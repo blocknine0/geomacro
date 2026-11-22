@@ -5,7 +5,7 @@ import {reconcileWebsiteFindsToCanonicalD1}
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {isPermanentArchiveSignal}
  from "../ops/publish-permanent-derived-news-archive.mjs";
-import {DERIVED_NEWS_TOPIC_POLICY_REVISION}
+import {DERIVED_NEWS_TOPIC_POLICY_REVISION,projectSourceNeutralOsintSignal}
  from "../lib/derived-news-readback-policy.mjs";
 
 const NOW=new Date("2026-10-29T01:40:00.000Z");
@@ -193,11 +193,15 @@ test("expired row malformed even at snapshot creation fails closed without D1 wr
  }
 });
 test("unverified OSINT status remains unverified on canonical replay",async()=>{
- const unverified={...story,id:"macro-aabbccdd",
+ const unverified=projectSourceNeutralOsintSignal({
+   ...story,id:"macro-aabbccdd",
    development_type:"unverified OSINT feed observation",
-   status:"osint_feed_observed_unverified",geography:null,
+   status:"osint_feed_observed_unverified",geography:"India",
+   country_iso3:"IND",corridor:null,event_direction:"uncertain",
+   event_action:"Reported Indicator Update",
    sources_credited:["Monitored feed: example.org"],
-   published_at:"2026-10-29T01:20:00.000Z"};
+   published_at:"2026-10-29T01:20:00.000Z"});
+ assert.ok(unverified,"a reviewed source-neutral projection is required");
  assert.equal(isPermanentArchiveSignal(unverified,NOW.getTime(),{allowHistorical:false}),true);
  assert.equal(verifyDerivedStory(unverified,NOW.getTime()),true);
  const f=fake({website:[unverified]});
