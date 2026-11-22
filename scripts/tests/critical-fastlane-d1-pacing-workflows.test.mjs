@@ -8,6 +8,11 @@ test("five minute producer reuses its own runner for quota admission and gates s
  const producer=s.slice(s.indexOf("  original-five-minute-derived-news:"));
  const downstream=s.slice(s.indexOf("  continue-private-source-review:"),s.indexOf("  fastlane-contract:"));
  assert.match(producer,/id: budget/);
+ const budgetStep=producer.slice(producer.indexOf("      - name: Observe paced D1 Free account headroom"),producer.indexOf("      - name: Report held source slot"));
+ assert.match(budgetStep,/CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/);
+ assert.match(budgetStep,/CLOUDFLARE_BILLING_READ_TOKEN: \$\{\{ secrets\.CLOUDFLARE_BILLING_READ_TOKEN \}\}/);
+ assert.match(budgetStep,/CLOUDFLARE_ACCOUNT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/);
+ assert.doesNotMatch(budgetStep,/secrets\.PREDGE_PAID_RISK_GATE_TOKEN/);
  assert.match(producer,/run: node scripts\/ops\/plan-d1-bundled-work\.mjs/);
  assert.match(producer,/quota_admitted: \$\{\{ steps\.budget\.outputs\.critical == 'true' && steps\.intake-clock\.outputs\.due == 'true'/);
  assert.match(producer,/if: steps\.budget\.outputs\.source_intake == 'true'/);
