@@ -5,7 +5,7 @@ const BASE = process.env.GEOMACRO_WEB_STAGING_URL ??
   "https://geomacro-web-production-staging.daspallab202391.workers.dev";
 const EXPECTED_SHA = process.env.EXPECTED_CANONICAL_MAIN_SHA;
 const timeout = 30_000;
-const PAGE_PATHS = ["/", "/intelligence", "/ask-geomacro", "/data-api",
+export const PAGE_PATHS = ["/", "/intelligence", "/ask-geomacro", "/risk-gate",
   "/institutional", "/contact", "/pricing", "/auth"];
 
 async function request(path, options = {}) {

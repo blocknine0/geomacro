@@ -13,6 +13,7 @@ import {
   deriveWebAcceptanceOutcomes,
   diagnoseWebStagingHealth,
   inspectB2QuotaAuthorizationProof,
+  PAGE_PATHS,
 } from "./verify-web-production-staging.mjs";
 import { productionWebsite } from "../../workers/web-production/entry.mjs";
 
@@ -45,6 +46,11 @@ test("production-capable build config is workers.dev-only with no private bindin
   assert.equal(marker.canonical_main_sha, "a".repeat(40));
   assert.equal(marker.production_activation_performed, false);
   assert.equal(result.payment_authorized, false);
+});
+
+test("staging SSR paths include public Risk Gate and omit the redirecting data API route", () => {
+  assert.ok(PAGE_PATHS.includes("/risk-gate"));
+  assert.ok(!PAGE_PATHS.includes("/data-api"));
 });
 
 test("deployment entry forwards authorized POSTs to the app and preserves response status", async () => {
