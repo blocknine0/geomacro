@@ -15,7 +15,7 @@ const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not s
 // Credits preserved from the D1 derived-news schema. The desk renders the
 // mandatory credits on each card. The source-neutral homepage Find adapter
 // separately refuses ANY credited card, so it cannot silently strip attribution.
-const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|UN News|United Nations|United Nations Office at Geneva|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\bCC BY\b|Creative Commons Attribution/iu;
+const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|UN News|United Nations|United Nations Office at Geneva|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|U\.S\. Securities and Exchange Commission|Commodity Futures Trading Commission|\bCC BY\b|Creative Commons Attribution/iu;
 const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed|released|releases|maintained|maintains|kept|holds|held|left|leaves|forecast|forecasts|projected|projects|revised|revises|estimated|estimates|recorded|records|sets|announces|approves|urges|warns|reports|says|said|told|issued|launches|supports|calls for|condemns|concludes|released|was approved|warn|urge|announce|approve|report|support|condemn|sign|raise|lower|reduce|increase|appeal|call for|launch|impose|propose)\b/iu;
 const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified|inflation|gdp|prices?|employment|unemployment|interest rates?|consumer|economic data|finance)\b/iu;
 
@@ -301,6 +301,11 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
    return {rule:/$/u,
     impact:"the reported transport-infrastructure initiative concerns freight capacity, connectivity and possible trade throughput.",
     limit:"Approval or plans are not evidence of completed works, increased cargo handling or measured economic growth."};
+  }
+  if(/\b(?:crypto(?:[- ]assets?)?|cryptocurrenc(?:y|ies)|digital[- ]assets?|bitcoin|ethereum|stablecoins?|CBDCs?|tokeni[sz](?:ed|ation) (?:securities|assets?|deposits?))\b/iu.test(event)){
+    return {rule:/$/u,
+     impact:"the regulator's digital-asset announcement may affect custody, financial-market access, investor safeguards or settlement oversight.",
+     limit:"The publication verifies the regulator's statement, not litigation allegations, enacted rules, asset prices or any resulting market move."};
   }
   if(/\b(?:gold.backed|bullion reserves?|token offerings?|tokenized gold|tokenised gold|stablecoins?|digital tokens?)\b/iu.test(event)){
    return {rule:/$/u,

@@ -119,6 +119,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "bis_press", category: "macro", media: "rss",
     url: "https://www.bis.org/doclist/all_pressrels.rss",
     allowedHosts: ["www.bis.org"], credit: "Bank for International Settlements" },
+  // SEC's pinned first-party general release feed is restricted in the
+  // model to explicitly crypto/digital-asset headlines; native RSS pubDate
+  // and exact issuer article host are mandatory. No raw content or price feed.
+  { id: "sec_crypto_press", category: "macro", media: "rss",
+    url: "https://www.sec.gov/news/pressreleases.rss",
+    allowedHosts: ["www.sec.gov"], credit: "U.S. Securities and Exchange Commission" },
   // BLS names these .rss endpoints but serves Atom XML with original
   // <published> and <link href> metadata (verified on exact GitHub runner).
   // Never substitute <updated>, fetch time, or a current headline as clock.

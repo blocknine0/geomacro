@@ -4,6 +4,7 @@ export const MACRO_TOPICS=Object.freeze({
  gold:{name:'gold fundamentals and positioning',implication:'Gold demand, central-bank purchases, mine supply and futures positioning can affect bullion exposure. Observed prices and causal market effects require separate evidence.'},
  silver:{name:'silver industrial demand and supply',implication:'Silver industrial and solar demand, mining supply and futures positioning can affect precious-metals exposure. No price direction is inferred from a news release.'},
  bullion:{name:'precious metals market structure',implication:'Gold and silver benchmarks, exchange notices and positioning inform market structure. A benchmark or delayed quote is not a real-time spot price.'},
+ digital_assets:{name:'digital-asset policy and market structure',implication:'An original regulator release concerning digital assets can affect custody, financial-market access or settlement oversight. It verifies the issuer announcement, not allegations, independent corroboration, BTC/ETH prices or price impact.'},
 });
 export function macroPreciousTopic(title){
  if(typeof title!=='string')return null;
@@ -12,9 +13,32 @@ export function macroPreciousTopic(title){
  if(/\b(?:bullion|precious metals?|COMEX|LBMA)\b/i.test(title))return MACRO_TOPICS.bullion;
  return null;
 }
+/** Only explicit asset/market terminology can admit a crypto-regulatory
+ * ORIGINAL into the Macro lane. Never use 'token', 'mining', or 'exchange'
+ * alone: those are ambiguous outside digital-asset context. */
+export function macroDigitalAssetTopic(title){
+ if(typeof title!=='string'||title.length>300)return null;
+ return /\b(?:cryptocurrenc(?:y|ies)|crypto(?:[- ](?:assets?|currenc(?:y|ies)|markets?|trading|exchanges?))?|digital[- ]assets?|bitcoin|ethereum|stablecoins?|central[- ]bank digital currenc(?:y|ies)|CBDCs?|tokeni[sz](?:ed|ation) (?:securities|assets?|deposits?)|blockchain[- ]based (?:securities|settlement))\b/iu.test(title)
+   ?MACRO_TOPICS.digital_assets:null;
+}
 export function macroEventContext(signal){
  if(signal?.category!=='macro')return null;
  const text=signal.topic+' '+signal.title+' '+signal.what_changed;
+ // Classify from bounded native topic/title; the full publication synopsis
+ // can exceed the individual-headline validator's 300-char safety ceiling.
+ const crypto=macroDigitalAssetTopic(signal.topic)||macroDigitalAssetTopic(signal.title);
+ if(crypto){
+   // Related symbols are literal references, NOT a quote or a reaction.
+   const related_instruments=[
+     ...( /\b(?:bitcoin|\bBTC\b)\b/iu.test(text)?['BTC/USD']:[]),
+     ...( /\b(?:ethereum|\bether\b|\bETH\b)\b/iu.test(text)?['ETH/USD']:[]),
+     ...( /\bUSDC\b/iu.test(text)?['USDC/USD']:[]),
+     ...( /\bUSDT\b/iu.test(text)?['USDT/USD']:[]),
+   ];
+   return {event_id:signal.id,parent_category:'macro',lanes:['digital_assets'],
+     related_instruments,consensus:null,surprise_vs_consensus:null,
+     price_reaction:null,causal_price_impact_verified:false};
+ }
  const metals=macroPreciousTopic(text);
  const broad=/monetary|inflation|employment|payroll|economic statistics|yields|foreign.exchange|currency/i.test(text);
  const instruments=metals?.name===MACRO_TOPICS.silver.name?['XAG/USD']:
@@ -39,6 +63,9 @@ export const MACRO_NEWS_SOURCES=Object.freeze([
  s('wgc_research','https://www.gold.org/goldhub/gold-focus','www.gold.org',/^\/goldhub\/(?:gold-focus\/20\d{2}\/\d{2}\/[a-z0-9-]+|research\/[a-z0-9/-]+)$/u,{media:'html',credit:'World Gold Council',periodic:true}),
  s('lbma_news','https://www.lbma.org.uk/articles','www.lbma.org.uk',/^\/articles\/[a-z0-9-]+$/u,{media:'html',credit:'LBMA',periodic:true}),
  s('cftc_news','https://www.cftc.gov/PressRoom/PressReleases','www.cftc.gov',/^\/PressRoom\/PressReleases\/[0-9-]+$/u,{media:'html',credit:'Commodity Futures Trading Commission',periodic:true}),
+ // SEC publishes an official all-press RSS; ONLY crypto-specific entries
+ // are admitted from this feed. No price data or commercial rights inferred.
+ s('sec_crypto_press','https://www.sec.gov/news/pressreleases.rss','www.sec.gov',/^\/newsroom\/press-releases\/20\d{2}-\d{1,4}-[a-z0-9-]+$/u,{credit:'U.S. Securities and Exchange Commission',crypto_only:true,periodic:true}),
  s('cme_news','https://feeds.feedburner.com/mediaroom/CMsF','investor.cmegroup.com',/^\/(?:(?:index\.php\/)?news-releases\/news-release-details\/[a-z0-9-]+|media-room\/press-releases\/20\d{2}\/\d{1,2}\/\d{1,2}\/[a-z0-9_-]+\.html|20\d{2}-\d{2}-\d{2}-[A-Za-z0-9,-]+)$/u,{credit:'CME Group',periodic:true,extraHosts:['www.cmegroup.com','cmegroup.mediaroom.com']}),
  s('silver_institute','https://silverinstitute.org/feed/','silverinstitute.org',/^\/[a-z0-9]+(?:-[a-z0-9]+){2,}\/$/u,{credit:'The Silver Institute',periodic:true}),
 ]);

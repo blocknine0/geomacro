@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MACRO_NEWS_SOURCES,planMacroSources,normalizeMetalQuote,normalizeXausMetalQuotes,measuredPriceReaction,macroPreciousTopic,macroEventContext} from '../lib/macro-fx-metals.mjs';
+import {MACRO_NEWS_SOURCES,planMacroSources,normalizeMetalQuote,normalizeXausMetalQuotes,measuredPriceReaction,macroPreciousTopic,macroDigitalAssetTopic,macroEventContext} from '../lib/macro-fx-metals.mjs';
 import {parseMacroCalendar,zonedRelease,releaseWindowEvents} from '../lib/macro-release-calendar.mjs';
 import {collectMacroFastlane,parseMacroFeed} from '../lib/macro-fastlane-collector.mjs';
 import {MINERALS_MESH,MINERALS_SOURCE_IDS,collectCriticalMineralsFastlane,parseSectorFeed} from '../lib/critical-minerals-fastlane.mjs';
@@ -58,6 +58,53 @@ test('Macro lanes cover all pinned issuers and never double-fetch shared Fed/ECB
  const seen=new Set();for(let n=0;n<3;n++)for(const s of planMacroSources(now+n*300000,{reusedIds:['fed_press','ecb_press']})){assert.ok(!['fed_press','ecb_press'].includes(s.id));seen.add(s.id);}
  for(const s of MACRO_NEWS_SOURCES.filter(s=>!s.shared))assert.ok(seen.has(s.id),s.id);
  assert.equal(new Set(MACRO_NEWS_SOURCES.map(s=>s.url)).size,MACRO_NEWS_SOURCES.length);
+});
+test('SEC first-party digital-asset releases are Macro-only and explicitly no market-price facts',async()=>{
+ const spec=MACRO_NEWS_SOURCES.find(s=>s.id==='sec_crypto_press');
+ assert.ok(spec);assert.equal(spec.crypto_only,true);
+ assert.equal(spec.media,'rss');
+ assert.equal(spec.url,'https://www.sec.gov/news/pressreleases.rss');
+ assert.equal(spec.credit,'U.S. Securities and Exchange Commission');
+ const article='https://www.sec.gov/newsroom/press-releases/2026-90-sec-announces-crypto-asset-custody-policy';
+ const title='SEC Announces Updated Crypto Asset Custody Policy';
+ const rows=parseMacroFeed(rss(title,article),spec,now);
+ assert.equal(rows.length,1);assert.equal(rows[0].category,'macro');
+ assert.equal(rows[0].sourceId,'sec_crypto_press');
+ const derived=deriveStatelessSignals(rows,now);
+ assert.equal(derived.length,1);
+ assert.equal(derived[0].topic,'digital-asset policy and market structure');
+ assert.equal(derived[0].status,'official_release_observed_unscored');
+ assert.equal(derived[0].same_event_corrob_verified,false);
+ assert.equal(derived[0].severity,null);
+ assert.equal(derived[0].sources_credited[0],spec.credit);
+ // Assert an invariant over all output fields, not a URL substring
+ // comparison: no publisher URL or URL-shaped data may reach the public card.
+ assert.doesNotMatch(JSON.stringify(derived),/https?:\/\/|www\./iu);
+ assert.equal(parseMacroFeed(rss('SEC Updates Corporate Audit Trail Filing Instructions',article),spec,now).length,0);
+ assert.equal(parseMacroFeed(rss(title,article.replace('www.sec.gov/','www.sec.gov.fake.test/')),spec,now).length,0);
+ assert.equal(parseMacroFeed(rss(title,article,new Date(now+60_000).toISOString()),spec,now).length,0);
+ assert.equal(parseMacroFeed(rss(title,article,'2026-10-27'),spec,now).length,0);
+ assert.ok(macroDigitalAssetTopic('SEC sets rules for stablecoin custody'));
+ assert.equal(macroDigitalAssetTopic('SEC reports traditional commodities trading'),null);
+ const info=macroEventContext({...derived[0],title:'Geomacro finds SEC published Bitcoin and Ethereum custody policy'});
+ assert.deepEqual(info.lanes,['digital_assets']);
+ assert.deepEqual(info.related_instruments,['BTC/USD','ETH/USD']);
+ assert.equal(info.price_reaction,null);
+ assert.equal(info.causal_price_impact_verified,false);
+});
+test('existing CFTC official HTML supports crypto enforcement only with real dated article',async()=>{
+ const {macroIndexLeads}=await import('../lib/macro-fastlane-collector.mjs');
+ const cftc=MACRO_NEWS_SOURCES.find(s=>s.id==='cftc_news');
+ const doc='<a href="/PressRoom/PressReleases/9320-26">CFTC reports crypto asset market fraud enforcement</a>';
+ assert.equal(macroIndexLeads(doc,cftc).length,1);
+ assert.equal(macroIndexLeads(doc.replace('href="/','href="https://www.cftc.gov.evil.test/'),cftc).length,0);
+ const out=await collectMacroFastlane({now,state:freshState(),sourceIds:['sec_crypto_press'],prices:false,calendars:false,
+   fetchImpl:async(url)=>new Response(rss('SEC Announces Crypto Asset Custody Policy',
+     'https://www.sec.gov/newsroom/press-releases/2026-90-sec-announces-crypto-asset-custody-policy'),{headers:{'content-type':'application/rss+xml'}})});
+ assert.equal(out.candidates.length,1);
+ assert.equal(out.polledChecks[0].state,'OK');
+ assert.equal(out.receipt.category,'macro');
+ assert.equal(out.receipt.raw_content_persisted,false);
 });
 test('six-region fastlane state accepts every registered mineral check including HTTP 403/404 and reports exact bad field',async()=>{
  const fastlane=await collectMacroFastlane({now,state:freshState(),sourceIds:[],prices:false,calendars:false});

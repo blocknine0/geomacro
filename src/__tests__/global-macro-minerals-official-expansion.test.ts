@@ -26,7 +26,8 @@ describe("Official Macro/FX and critical-minerals global source expansion",()=>{
       const at=Date.parse("2026-10-17T13:00:00Z");
       const macro=await readStatelessWebsiteIntelligence("macro",at);
       const minerals=await readStatelessWebsiteIntelligence("rare_earth",at);
-      expect(macro.feed_count).toBe(25);
+      expect(macro.feed_count).toBe(26);
+       expect(called).toContain("https://www.sec.gov/news/pressreleases.rss");
       expect(minerals.feed_count).toBe(26); // Expanded Critical Minerals official/discovery lanes plus the first-party DOE fallback.
       expect(macro.healthy_feed_count).toBe(1);
       expect(minerals.healthy_feed_count).toBe(2);
