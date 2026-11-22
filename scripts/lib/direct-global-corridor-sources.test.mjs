@@ -31,12 +31,12 @@ test("all original 38 Markdown links plus official ASEAN customs follow-up are p
  assert.ok(input.references.some(x=>x.supplied_url.startsWith("http://data.gdeltproject.org/")));
  assert.ok(input.references.some(x=>x.supplied_url.startsWith("https://www.google.com/search?q=")));
 });
-test("39 registries remain in separate corridor lane, not D1 website news",()=>{
+test("all 77 registry entries remain in separate corridor lane, not D1 website news",()=>{
  const sources=directGlobalCorridorRouteSources();
  assert.equal(assertDirectCorridorWebsiteSeparation(),true);
- assert.equal(sources.length,39);
+ assert.equal(sources.length,77);
  assert.deepEqual(directGlobalCorridorNewsFeeds(),[]);
- assert.equal(new Set(sources.map(x=>x.id)).size,39);
+ assert.equal(new Set(sources.map(x=>x.id)).size,77);
  assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),39);
  assert.ok(sources.every(x=>x.channel==="CORRIDOR_ONLY"&&
    x.website_intelligence_enabled===false&&x.commercial_eligible===false));
@@ -47,14 +47,14 @@ test("39 registries remain in separate corridor lane, not D1 website news",()=>{
    assert.ok(!existing.some(x=>x.id==="direct_"+id));
  }
  const receipt=directGlobalCorridorSourceCensus();
- assert.equal(receipt.registered,39);
+ assert.equal(receipt.registered,77);
  assert.equal(receipt.source_link_occurrences,39);
  assert.equal(receipt.linked_unique_sources,37);
  assert.equal(receipt.website_intelligence_sourced_feeds,0);
  assert.equal(receipt.production_readbacks_proven,false);
  assert.equal(receipt.paid_publication_authorized,false);
 });
-test("new Rare Earth publisher endpoints stay inventory-only until adapter and rights review",()=>{
+test("Rare Earth publisher endpoints remain inventory-only until adapter and rights review",()=>{
  const sources=new Map(directGlobalCorridorRouteSources().map(source=>[source.id,source]));
  assert.deepEqual(sources.get("rareearthexchanges_rss"),{
    ...sources.get("rareearthexchanges_rss"),
@@ -72,6 +72,58 @@ test("new Rare Earth publisher endpoints stay inventory-only until adapter and r
    channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
    risk_gate_verified:false,commercial_eligible:false,
  });
+});
+test("Zambia and missing-country central-bank portals use the existing unactivated portal schema",()=>{
+ const byId=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(source=>[source.id,source]));
+ const expected=[
+  ["zmb_boz_public_notices","https://www.boz.zm/news/public-notices","geopolitics","africa"],
+  ["fra_banque_france_news","https://www.banque-france.fr/fr/actualites-et-evenements","macro","europe"],
+  ["ita_bancaditalia_news","https://www.bancaditalia.it/media/notizie/","macro","europe"],
+  ["esp_bde_news","https://www.bde.es/wbe/es/noticias-eventos/","macro","europe"],
+  ["nld_dnb_news","https://www.dnb.nl/en/news/","macro","europe"],
+  ["bel_nbb_news","https://www.nbb.be/en/news","macro","europe"],
+  ["nor_norges_bank_news","https://www.norges-bank.no/en/news-events/","macro","europe"],
+  ["swe_riksbank_press","https://www.riksbank.se/en-gb/press-and-published/","macro","europe"],
+  ["pol_nbp_news","https://nbp.pl/en/","macro","europe"],
+  ["tur_tcmb_announcements","https://www.tcmb.gov.tr/wps/wcm/connect/EN/TCMB+EN/Main+Menu/Announcements","macro","europe"],
+  ["jpn_boj_home","https://www.boj.or.jp/en/","macro","apac"],
+  ["kor_bok_home","https://www.bok.or.kr/eng/","macro","apac"],
+  ["aus_rba_media_releases","https://www.rba.gov.au/media-releases/","macro","apac"],
+  ["sgp_mas_news","https://www.mas.gov.sg/news","macro","apac"],
+  ["idn_bi_home","https://www.bi.go.id/en/","macro","apac"],
+  ["mys_bnm_home","https://www.bnm.gov.my/","macro","apac"],
+  ["phl_bsp_home","https://www.bsp.gov.ph/","macro","apac"],
+  ["tha_bot_home","https://www.bot.or.th/en/home.html","macro","apac"],
+  ["vnm_sbv_home","https://www.sbv.gov.vn/","macro","apac"],
+  ["bgd_bangladesh_bank_home","https://www.bb.org.bd/","macro","apac"],
+  ["pak_sbp_home","https://www.sbp.org.pk/","macro","apac"],
+  ["kaz_national_bank_home","https://www.nationalbank.kz/en","macro","apac"],
+  ["mng_mongolbank_home","https://www.mongolbank.mn/en","macro","apac"],
+  ["mmr_central_bank_myanmar_home","https://www.cbm.gov.mm/","macro","apac"],
+  ["sau_sama_home","https://www.sama.gov.sa/en-us/","macro","mena"],
+  ["are_central_bank_uae_home","https://www.centralbank.ae/en","macro","mena"],
+  ["qat_qcb_home","https://www.qcb.gov.qa/en","macro","mena"],
+  ["omn_cbo_home","https://cbo.gov.om/","macro","mena"],
+  ["egy_cbe_home","https://www.cbe.org.eg/en","macro","mena"],
+  ["isr_boi_home","https://www.boi.org.il/en/","macro","mena"],
+  ["irq_cbi_news","https://cbi.iq/news","macro","mena"],
+  ["mex_banxico_home","https://www.banxico.org.mx/","macro","latam"],
+  ["arg_bcra_home","https://www.bcra.gob.ar/","macro","latam"],
+  ["chl_bcentral_home","https://www.bcentral.cl/en","macro","latam"],
+  ["per_bcrp_home","https://www.bcrp.gob.pe/","macro","latam"],
+  ["bol_bcb_home","https://www.bcb.gob.bo/","macro","latam"],
+  ["nga_cbn_home","https://www.cbn.gov.ng/","macro","africa"],
+  ["cod_bcc_home","https://www.bcc.cd/","macro","africa"],
+ ];
+ for(const [id,url,category,corridor] of expected){
+  assert.deepEqual(byId.get(id),{id,name:byId.get(id)?.name,url,format:"portal",
+    categories:[category],corridors:[corridor],state:"PORTAL_ENDPOINT_REQUIRED"});
+ }
+ assert.equal(expected.length,38);
+ assert.equal(byId.has("gbr_boe_news"),false);
+ assert.equal(byId.get("boe_news").url,"https://www.bankofengland.co.uk/rss/news");
+ assert.equal(byId.has("bra_bcb_home"),false);
+ assert.equal(byId.get("bcb_brazil").url,"https://www.bcb.gov.br/en");
 });
 test("source directory does not infer direct event extraction from documentation",()=>{
  const map=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(x=>[x.id,x]));

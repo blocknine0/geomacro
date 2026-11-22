@@ -458,6 +458,366 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
     "state": "PORTAL_ENDPOINT_REQUIRED"
   },
   {
+    "id": "rareearthexchanges_rss",
+    "name": "Rare Earth Exchanges RSS",
+    "url": "https://rareearthexchanges.com/feed/",
+    "format": "rss",
+    "categories": ["rare_earth"],
+    "corridors": ["global"],
+    "state": "EXISTING_ADAPTER_UNVERIFIED"
+  },
+  {
+    "id": "mining_com_rare_earth",
+    "name": "MINING.com Rare Earth Archive",
+    "url": "https://www.mining.com/commodity/rare-earth/",
+    "format": "portal",
+    "categories": ["rare_earth"],
+    "corridors": ["global"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "zmb_boz_public_notices",
+    "name": "Bank of Zambia Public Notices",
+    "url": "https://www.boz.zm/news/public-notices",
+    "format": "portal",
+    "categories": ["geopolitics"],
+    "corridors": ["africa"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "fra_banque_france_news",
+    "name": "Banque de France News",
+    "url": "https://www.banque-france.fr/fr/actualites-et-evenements",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "ita_bancaditalia_news",
+    "name": "Banca d'Italia News",
+    "url": "https://www.bancaditalia.it/media/notizie/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "esp_bde_news",
+    "name": "Banco de España News and Events",
+    "url": "https://www.bde.es/wbe/es/noticias-eventos/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "nld_dnb_news",
+    "name": "De Nederlandsche Bank News",
+    "url": "https://www.dnb.nl/en/news/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "bel_nbb_news",
+    "name": "National Bank of Belgium News",
+    "url": "https://www.nbb.be/en/news",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "nor_norges_bank_news",
+    "name": "Norges Bank News and Events",
+    "url": "https://www.norges-bank.no/en/news-events/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "swe_riksbank_press",
+    "name": "Sveriges Riksbank Press and Publications",
+    "url": "https://www.riksbank.se/en-gb/press-and-published/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "pol_nbp_news",
+    "name": "Narodowy Bank Polski",
+    "url": "https://nbp.pl/en/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "tur_tcmb_announcements",
+    "name": "Central Bank of the Republic of Türkiye Announcements",
+    "url": "https://www.tcmb.gov.tr/wps/wcm/connect/EN/TCMB+EN/Main+Menu/Announcements",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["europe"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "jpn_boj_home",
+    "name": "Bank of Japan",
+    "url": "https://www.boj.or.jp/en/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "kor_bok_home",
+    "name": "Bank of Korea",
+    "url": "https://www.bok.or.kr/eng/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "aus_rba_media_releases",
+    "name": "Reserve Bank of Australia Media Releases",
+    "url": "https://www.rba.gov.au/media-releases/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "sgp_mas_news",
+    "name": "Monetary Authority of Singapore News",
+    "url": "https://www.mas.gov.sg/news",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "idn_bi_home",
+    "name": "Bank Indonesia",
+    "url": "https://www.bi.go.id/en/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "mys_bnm_home",
+    "name": "Bank Negara Malaysia",
+    "url": "https://www.bnm.gov.my/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "phl_bsp_home",
+    "name": "Bangko Sentral ng Pilipinas",
+    "url": "https://www.bsp.gov.ph/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "tha_bot_home",
+    "name": "Bank of Thailand",
+    "url": "https://www.bot.or.th/en/home.html",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "vnm_sbv_home",
+    "name": "State Bank of Vietnam",
+    "url": "https://www.sbv.gov.vn/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "bgd_bangladesh_bank_home",
+    "name": "Bangladesh Bank",
+    "url": "https://www.bb.org.bd/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "pak_sbp_home",
+    "name": "State Bank of Pakistan",
+    "url": "https://www.sbp.org.pk/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "kaz_national_bank_home",
+    "name": "National Bank of Kazakhstan",
+    "url": "https://www.nationalbank.kz/en",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "mng_mongolbank_home",
+    "name": "Bank of Mongolia",
+    "url": "https://www.mongolbank.mn/en",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "mmr_central_bank_myanmar_home",
+    "name": "Central Bank of Myanmar",
+    "url": "https://www.cbm.gov.mm/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["apac"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "sau_sama_home",
+    "name": "Saudi Central Bank",
+    "url": "https://www.sama.gov.sa/en-us/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "are_central_bank_uae_home",
+    "name": "Central Bank of the UAE",
+    "url": "https://www.centralbank.ae/en",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "qat_qcb_home",
+    "name": "Qatar Central Bank",
+    "url": "https://www.qcb.gov.qa/en",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "omn_cbo_home",
+    "name": "Central Bank of Oman",
+    "url": "https://cbo.gov.om/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "egy_cbe_home",
+    "name": "Central Bank of Egypt",
+    "url": "https://www.cbe.org.eg/en",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "isr_boi_home",
+    "name": "Bank of Israel",
+    "url": "https://www.boi.org.il/en/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "irq_cbi_news",
+    "name": "Central Bank of Iraq News",
+    "url": "https://cbi.iq/news",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["mena"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "mex_banxico_home",
+    "name": "Banco de México",
+    "url": "https://www.banxico.org.mx/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["latam"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "arg_bcra_home",
+    "name": "Banco Central de la República Argentina",
+    "url": "https://www.bcra.gob.ar/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["latam"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "chl_bcentral_home",
+    "name": "Central Bank of Chile",
+    "url": "https://www.bcentral.cl/en",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["latam"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "per_bcrp_home",
+    "name": "Central Reserve Bank of Peru",
+    "url": "https://www.bcrp.gob.pe/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["latam"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "bol_bcb_home",
+    "name": "Central Bank of Bolivia",
+    "url": "https://www.bcb.gob.bo/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["latam"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "nga_cbn_home",
+    "name": "Central Bank of Nigeria",
+    "url": "https://www.cbn.gov.ng/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["africa"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
+    "id": "cod_bcc_home",
+    "name": "Central Bank of the Congo",
+    "url": "https://www.bcc.cd/",
+    "format": "portal",
+    "categories": ["macro"],
+    "corridors": ["africa"],
+    "state": "PORTAL_ENDPOINT_REQUIRED"
+  },
+  {
     "id": "mining_com",
     "name": "MINING.com RSS",
     "url": "https://www.mining.com/feed/",
@@ -469,32 +829,6 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
       "global"
     ],
     "state": "TRANSPORT_BLOCKED"
-  },
-  {
-    "id": "rareearthexchanges_rss",
-    "name": "Rare Earth Exchanges RSS",
-    "url": "https://rareearthexchanges.com/feed/",
-    "format": "rss",
-    "categories": [
-      "rare_earth"
-    ],
-    "corridors": [
-      "global"
-    ],
-    "state": "EXISTING_ADAPTER_UNVERIFIED"
-  },
-  {
-    "id": "mining_com_rare_earth",
-    "name": "MINING.com Rare Earth Archive",
-    "url": "https://www.mining.com/commodity/rare-earth/",
-    "format": "portal",
-    "categories": [
-      "rare_earth"
-    ],
-    "corridors": [
-      "global"
-    ],
-    "state": "PORTAL_ENDPOINT_REQUIRED"
   },
   {
     "id": "cryptocompare_news",
@@ -542,9 +876,22 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
 const ALLOWED_STATES=new Set(["EXISTING_ADAPTER_UNVERIFIED","EXISTING_DIRECT_FEED","POLL_DIRECT_FEED","PORTAL_ENDPOINT_REQUIRED","CREDENTIAL_REQUIRED","REFERENCE_ONLY","TRANSPORT_BLOCKED","REJECTED_REMOVED_LINK"]);
 const ALLOWED_FORMATS=new Set(["rss","api","dataset","portal","reference","invalid"]);
 const ALLOWED_CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
-const INVENTORY_ONLY_SOURCE_IDS=new Set(["rareearthexchanges_rss","mining_com_rare_earth"]);
+const INVENTORY_ONLY_SOURCE_IDS=new Set([
+  "rareearthexchanges_rss","mining_com_rare_earth",
+  "zmb_boz_public_notices",
+  "fra_banque_france_news","ita_bancaditalia_news","esp_bde_news",
+  "nld_dnb_news","bel_nbb_news","nor_norges_bank_news","swe_riksbank_press",
+  "pol_nbp_news","tur_tcmb_announcements","jpn_boj_home","kor_bok_home",
+  "aus_rba_media_releases","sgp_mas_news","idn_bi_home","mys_bnm_home",
+  "phl_bsp_home","tha_bot_home","vnm_sbv_home","bgd_bangladesh_bank_home",
+  "pak_sbp_home","kaz_national_bank_home","mng_mongolbank_home",
+  "mmr_central_bank_myanmar_home","sau_sama_home","are_central_bank_uae_home",
+  "qat_qcb_home","omn_cbo_home","egy_cbe_home","isr_boi_home","irq_cbi_news",
+  "mex_banxico_home","arg_bcra_home","chl_bcentral_home","per_bcrp_home",
+  "bol_bcb_home","nga_cbn_home","cod_bcc_home"
+]);
 export function assertDirectGlobalCorridorRegistry(registry=DIRECT_GLOBAL_CORRIDOR_SOURCES){
-  if(!Array.isArray(registry)||registry.length!==39)throw Error("DIRECT_GLOBAL_CORRIDOR_REGISTRY_COUNT_INVALID");
+  if(!Array.isArray(registry)||registry.length!==77)throw Error("DIRECT_GLOBAL_CORRIDOR_REGISTRY_COUNT_INVALID");
   const ids=new Set(),urls=new Set();
   for(const item of registry){
     if(!/^[a-z0-9_]+$/u.test(item.id)||ids.has(item.id)||
@@ -568,8 +915,8 @@ export function assertDirectGlobalCorridorRegistry(registry=DIRECT_GLOBAL_CORRID
   }
   return true;
 }
-// Every entry in the uploaded 2026-11-02 Markdown document is a CORRIDOR
-// source reference, including regional macro, minerals and digital-assets.
+// The uploaded 2026-11-02 Markdown document covers 37 source IDs. Additional
+// operator-supplied inventory records are not fabricated document references.
 // References are NOT evidence of live data, licenses or verified risk scores.
 export function suppliedGlobalCorridorDirectory(){
  const record=JSON.parse(readFileSync(new URL("../../config/global-corridor-supplied-links.v1.json",import.meta.url),"utf8"));
@@ -610,7 +957,7 @@ export function suppliedGlobalCorridorDirectory(){
       "https://asean.org/our-communities/economic-community/asean-customs/"||
     known.get("asean_customs")?.url!==
       "https://asean.org/our-communities/economic-community/asean-customs/"||
-    known.has("asean_customs_missing")||known.size!==39)
+    known.has("asean_customs_missing")||known.size!==77)
    throw Error("DIRECT_CORRIDOR_DOCUMENT_MAPPING_INCOMPLETE");
  return Object.freeze(record);
 }
@@ -633,9 +980,10 @@ export function directGlobalCorridorRouteSources(){
 export function directGlobalCorridorNewsFeeds(){return Object.freeze([]);}
 export function assertDirectCorridorWebsiteSeparation(){
  const sources=directGlobalCorridorRouteSources();
- if(sources.length!==39||sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
+ if(sources.length!==77||INVENTORY_ONLY_SOURCE_IDS.size!==40||
+    sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
      s.website_intelligence_enabled!==false||
-     (s.source_references.length===0&&!INVENTORY_ONLY_SOURCE_IDS.has(s.id)))||
+     ((s.source_references.length===0)!==INVENTORY_ONLY_SOURCE_IDS.has(s.id)))||
     directGlobalCorridorNewsFeeds().length!==0)
    throw Error("DIRECT_CORRIDOR_SOURCE_LEAKED_TO_WEBSITE_INTELLIGENCE");
  return true;
