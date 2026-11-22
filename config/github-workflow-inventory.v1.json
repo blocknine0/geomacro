@@ -138,6 +138,7 @@
     "deploy-risk-stream-attesters-reviewer.yml",
     "deploy-telegram-signal-supabase.yml",
     "deploy-web-candidate.yml",
+    "deploy-web-production-staging.yml",
     "derive-risk-object-public-key.yml",
     "derived-risk-gate-discovery-20m.yml",
     "derived-risk-gate-review-tests.yml",
@@ -483,6 +484,7 @@
     "deploy-intelligence-edge.yml",
     "deploy-permanent-public-finds-archive.yml",
     "deploy-telegram-signal-supabase.yml",
+    "deploy-web-production-staging.yml",
     "five-minute-original-news-fastlane.yml",
     "geomacro-protected-hot50-worker-rollout.yml",
     "global-country-raw-source-mesh.yml",
@@ -564,7 +566,8 @@
     "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)",
     "phase2h-private-r2-b2-quota-backup.yml": "Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)",
     "apply-predge-addendum-v2-migration-0131.yml": "Apply Predge Addendum v2 D1 migration 0131 (single file)",
-    "country-source-gap-audit.yml": "Country Source Gap Audit"
+    "country-source-gap-audit.yml": "Country Source Gap Audit",
+    "deploy-web-production-staging.yml": "Deploy Production-Capable Website to Cloudflare Staging"
   },
   "lockedTriggerStrings": {
     "owner-issue-dispatch-gateway.yml": [
@@ -742,6 +745,12 @@
     "country-source-gap-audit.yml": [
       "cron: \"15 6 * * 1\"",
       "workflow_dispatch:"
+    ],
+    "deploy-web-production-staging.yml": [
+      "branches: [main]",
+      "CLOUDFLARE_API_TOKEN",
+      "B2_ARCHIVE_READ_KEY_ID",
+      "EXACT_SHA_CI_AND_CODEQL_PASS"
     ]
   },
   "predgeBlobSha1": {
