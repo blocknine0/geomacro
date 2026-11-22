@@ -143,8 +143,8 @@ export const Route = createFileRoute("/api/x402/risk")({
             : { countries: ["USA", "CHN"], corridors: ["USA>CHN", "CHN>USA"] },
           execution_authorized: false,
         };
-        if (discoveryConfig) {
-          const config=discoveryConfig;
+        const config=discoveryConfig;
+        if (config) {
           return json({
             ...discoveryResponse,
             price_usdc: config.environment === "production" ? null : config.priceUsdc,
