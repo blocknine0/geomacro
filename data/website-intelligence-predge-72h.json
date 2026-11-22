@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-22T22:26:48.113Z",
+  "checked_at": "2026-11-22T22:28:52.401Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 47,
+  "item_count": 48,
   "counts": {
     "geopolitics": 19,
     "macro": 13,
-    "rare_earth": 15
+    "rare_earth": 16
   },
-  "source_native_ids_sha256": "9b8f568a53bb66cf67911bfc7af095b7ac5a757e5840e2b8932a38c2cd726eb6",
+  "source_native_ids_sha256": "c3a5a7c3aa0cf0c5a422eb40b354050857712ab6d798e352c8d60a3647a33165",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -64,6 +64,27 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-0e30b2a5",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Copper Supply & Processing — Cyprus (CYP)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported review or discussion by mineral processors and refining operators, affecting Copper Supply & Processing in Cyprus; direction is uncertain (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: uncertain Copper Supply & Processing pressure in Cyprus → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: LME copper benchmark and regional concentrate premiums. Action Posture: REQUIRE_APPROVAL.",
+      "topic": "Copper Supply & Processing",
+      "geography": "Cyprus",
+      "country_iso3": "CYP",
+      "corridor": null,
+      "event_direction": "uncertain",
+      "event_action": "Reported Review or Discussion",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-22T11:29:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
