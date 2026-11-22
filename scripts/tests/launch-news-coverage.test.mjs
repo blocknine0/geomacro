@@ -38,7 +38,18 @@ test('runtime catches wars, corridor, systemic and mineral shocks without routin
   assert.equal(PRIVATE_OSINT_TOPICS.rare_earth.test(title),false);
  assert.equal(PRIVATE_OSINT_TOPICS.macro.test('Gold medal awarded to a champion'),false);
 });
-test('crypto news routes to global Macro private OSINT and 195-country discovery',()=>{\n for(const title of [\n  'Regulator proposes safeguards for cryptocurrency custody',\n  'Central bank reviews stablecoin reserve requirements',\n  'Regulator updates rules for 加密货币 trading',\n ])assert.equal(PRIVATE_OSINT_TOPICS.macro.test(title),true,title);\n const sec=privateOsintGlobalSources().find(source=>source.id==='private_mesh_sec');\n assert.ok(sec);assert.equal(sec.continent,'global');assert.ok(sec.categories.includes('macro'));\n assert.ok(COUNTRY_MACRO_DISCOVERY_TERMS.includes('bitcoin'));\n assert.ok(COUNTRY_MACRO_DISCOVERY_TERMS.includes('"digital assets"'));\n});\ntest('global watches replace five existing slots and retain 195-country/512 endpoint budget',()=>{
+test('crypto news routes to global Macro private OSINT and 195-country discovery',()=>{
+ for(const title of [
+  'Regulator proposes safeguards for cryptocurrency custody',
+  'Central bank reviews stablecoin reserve requirements',
+  'Regulator updates rules for 加密货币 trading',
+ ])assert.equal(PRIVATE_OSINT_TOPICS.macro.test(title),true,title);
+ const sec=privateOsintGlobalSources().find(source=>source.id==='private_mesh_sec');
+ assert.ok(sec);assert.equal(sec.continent,'global');assert.ok(sec.categories.includes('macro'));
+ assert.ok(COUNTRY_MACRO_DISCOVERY_TERMS.includes('bitcoin'));
+ assert.ok(COUNTRY_MACRO_DISCOVERY_TERMS.includes('"digital assets"'));
+});
+test('global watches replace five existing slots and retain 195-country/512 endpoint budget',()=>{
  const base=privateOsintGlobalSources(),at=new Date('2026-10-28T07:00:00Z');
  const result=privateOsintRuntimeSources(at,base,undefined,{includeLocalGapLane:true});
  const eligible=privateLocalPublisherCandidates().filter(s=>!isRetiredPrivateOsintSource(s));
