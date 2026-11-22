@@ -6,6 +6,12 @@ name: Website Finds to Canonical D1 Reconciliation (No Funds)
 # NOT modified or dispatched here. Only public-derived original-source cards.
 on:
   workflow_dispatch: {}
+  # A reviewed edit to THIS recovery workflow initiates one protected
+  # quota-gated reconciliation on main; no every-commit D1 writer is added.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/website-finds-canonical-d1-reconcile.yml"
   schedule:
     # Daily at 01:40 UTC / 07:10 IST, after 00:10 UTC D1 reset recovery.
     - cron: "40 1 * * *"
