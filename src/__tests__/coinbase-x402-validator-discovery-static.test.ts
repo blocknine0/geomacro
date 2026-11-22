@@ -7,6 +7,8 @@ const source = fs.readFileSync(
   'utf8',
 );
 const x402 = fs.readFileSync(path.resolve('src/lib/coinbase-x402.server.ts'), 'utf8');
+const noCard = fs.readFileSync(path.resolve('src/lib/no-card-x402-payment-adapter.server.ts'), 'utf8');
+const networks = fs.readFileSync(path.resolve('src/routes/api.v1.payments.networks.ts'), 'utf8');
 
 describe('Coinbase x402 validator discovery ordering', () => {
   it('returns x402 discovery requirements for an unpaid schema-invalid probe', () => {
@@ -53,12 +55,35 @@ describe('Coinbase x402 validator discovery ordering', () => {
     expect(source).toContain('output_contract:');
     expect(source).toContain('agent_decision:');
     expect(source).toContain('analyst_brief:');
-    expect(source).toContain('price_usdc: config.environment === "production" ? null : config.priceUsdc');
+    expect(source).toContain('price_usdc: isTestnet ? discoveryConfig?.priceUsdc ?? null : null');
+    expect(source).toContain(': NO_CARD_X402_TIER_PRICING');
     expect(source).toContain('production_endpoint: "https://geomacro.live/api/v1/intelligence/query"');
+    expect(source).toContain('NO_CARD_X402_MAINNET_FACILITATORS.map');
+    expect(source).toContain('facilitator_policy:{primary:"free_keyless",coinbase_cdp:{optional:true,required:false}}');
+    expect(source).toContain('optional_facilitator: { id:"coinbase_cdp",name:"Coinbase CDP",optional:true,required:false }');
     expect(x402).toContain('BASIC: { priceUsdc: "0.15", amountAtomic: "150000" }');
     expect(x402).toContain('STANDARD: { priceUsdc: "0.20", amountAtomic: "200000" }');
     expect(x402).toContain('COMPLEX: { priceUsdc: "0.30", amountAtomic: "300000" }');
     expect(x402).toContain('0x95ba71d21c41bda8bba9533f96d25f793e4137b5');
+  });
+
+  it('advertises free keyless network rails before optional Coinbase CDP', () => {
+    expect(noCard).toContain('export const NO_CARD_X402_MAINNET_FACILITATORS');
+    expect(noCard).toContain('id:"xpay_x402",endpoint:PROVIDER_ENDPOINTS.xpay_x402');
+    expect(noCard).toContain('id:"dexter_x402",endpoint:PROVIDER_ENDPOINTS.dexter_x402');
+    expect(noCard).toContain('https://facilitator.xpay.sh');
+    expect(noCard).toContain('https://x402.dexter.cash');
+    expect(noCard).toContain('id:"circle_batch"');
+    expect(noCard).toContain('optional:true,required:false');
+    expect(noCard).toContain('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913');
+    expect(noCard).toContain('0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359');
+    expect(noCard).toContain('0x3600000000000000000000000000000000000000');
+    expect(noCard).toContain('BASIC:Object.freeze({price_usdc:"0.15",amount_atomic:"150000"})');
+    expect(noCard).toContain('STANDARD:Object.freeze({price_usdc:"0.20",amount_atomic:"200000"})');
+    expect(noCard).toContain('COMPLEX:Object.freeze({price_usdc:"0.30",amount_atomic:"300000"})');
+    expect(networks).toContain('NO_CARD_X402_MAINNET_FACILITATORS.find');
+    expect(networks).toContain('primary_facilitators:paymentRails.primary_facilitators');
+    expect(networks).toContain('optional_facilitators:paymentRails.optional_facilitators');
   });
 
   it('keeps the legacy Risk Gate POST disabled for production', () => {

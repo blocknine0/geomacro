@@ -31,6 +31,10 @@ import {
   type CoinbaseX402MainnetNetwork,
   type CoinbaseX402Tier,
 } from "../lib/coinbase-x402.server";
+import {
+  NO_CARD_X402_MAINNET_FACILITATORS,
+  NO_CARD_X402_TIER_PRICING,
+} from "../lib/no-card-x402-payment-adapter.server";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const corsHeaders = {
@@ -100,43 +104,53 @@ export const Route = createFileRoute("/api/x402/risk")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       GET: async ({ request }) => {
-        let config: CoinbaseX402Config | null;
-        try { config = getCoinbaseX402Config(); } catch (error) {
-          return json({ ok: false, service: "Geomacro Coinbase x402 Risk Pre-flight", configured: false, error: error instanceof Error ? error.message : "Invalid x402 configuration", execution_authorized: false }, 503);
-        }
-        if (!config) return json({ ok: false, error: "X402_UNCONFIGURED" }, 503);
-        const discoveryConfig: CoinbaseX402Config = config;
-        return json({
+        let discoveryConfig: CoinbaseX402Config | null = null;
+        try { discoveryConfig = getCoinbaseX402Config(); } catch { /* Keyless rails do not depend on CDP configuration. */ }
+        const isTestnet=discoveryConfig?.environment === "testnet";
+        const discoveryResponse={
           ok: true,
-          service: "Geomacro Coinbase x402 Risk Pre-flight",
-          role: discoveryConfig.environment === "production" ? "mainnet_pricing_reference_only" : "base_sepolia_acceptance_only",
+          service: "Geomacro x402 Risk Pre-flight",
+          coinbase_cdp_configured: discoveryConfig !== null,
+          role: isTestnet ? "base_sepolia_acceptance_only" : "mainnet_pricing_reference_only",
           x402_version: 2,
           endpoint: new URL("/api/x402/risk", request.url).toString(),
           production_endpoint: "https://geomacro.live/api/v1/intelligence/query",
           availability_endpoint: new URL("/api/x402/risk/availability", request.url).toString(),
-          environment: discoveryConfig.environment,
-          network: discoveryConfig.network,
+          environment: discoveryConfig?.environment ?? "production",
+          network: discoveryConfig?.network ?? COINBASE_X402_MAINNET_NETWORK,
           asset: "USDC",
-          price_usdc: config.environment === "production" ? null : config.priceUsdc,
-          pricing_model: discoveryConfig.environment === "production" ? "FIXED_TIERED_MAINNET_USDC" : "TESTNET_ACCEPTANCE_ONLY",
-          pricing: discoveryConfig.environment === "production" ? COINBASE_X402_TIER_PRICING : { TESTNET: discoveryConfig.priceUsdc },
-          mainnet_networks: [
-            { name: "Base", network: COINBASE_X402_MAINNET_NETWORK },
-            { name: "Polygon PoS", network: COINBASE_X402_POLYGON_MAINNET_NETWORK },
-            { name: "Arc", network: COINBASE_X402_ARC_MAINNET_NETWORK },
-          ],
+          price_usdc: isTestnet ? discoveryConfig?.priceUsdc ?? null : null,
+          pricing_model: isTestnet ? "TESTNET_ACCEPTANCE_ONLY" : "FIXED_TIERED_MAINNET_USDC",
+          pricing: isTestnet && discoveryConfig
+            ? { TESTNET: discoveryConfig.priceUsdc }
+            : NO_CARD_X402_TIER_PRICING,
+          mainnet_networks: NO_CARD_X402_MAINNET_FACILITATORS.map(rail=>({
+            name:rail.name,network:rail.network,native_usdc_contract:rail.native_usdc_contract,
+            recipient:rail.recipient,primary_facilitators:rail.primary_facilitators,
+            optional_facilitators:rail.optional_facilitators,pricing:rail.pricing,
+          })),
+          facilitator_policy:{primary:"free_keyless",coinbase_cdp:{optional:true,required:false}},
           output_contract: {
             agent_decision: { audience: "machine", description: "Risk Gate action decision; execution_authorized remains false." },
             analyst_brief: { audience: "human", description: "Plain-language reasoning and risk context." },
           },
           pricing_catalog: "/api/v1/pricing",
-          facilitator: "Coinbase CDP",
+          facilitator: "Free/keyless network rails",
+          optional_facilitator: { id:"coinbase_cdp",name:"Coinbase CDP",optional:true,required:false },
           bazaar_discovery: true,
-          current_subject_scope: discoveryConfig.environment === "production"
+          current_subject_scope: !isTestnet
             ? { payable_here: false, minimum_countries: 47, categories: ["GEOPOLITICS", "MACRO_FX", "CRITICAL_MINERALS"], note: "Production purchases use the governed adaptive intelligence endpoint." }
             : { countries: ["USA", "CHN"], corridors: ["USA>CHN", "CHN>USA"] },
           execution_authorized: false,
-        });
+        };
+        const config=discoveryConfig;
+        if (config) {
+          return json({
+            ...discoveryResponse,
+            price_usdc: config.environment === "production" ? null : config.priceUsdc,
+          });
+        }
+        return json({ ...discoveryResponse, price_usdc: null });
       },
       POST: async ({ request }) => {
         let rawBody: unknown;
