@@ -132,6 +132,14 @@ jobs:
           WEB_STAGING_ISOLATION_VERIFIED: ${{ steps.isolation.outputs.verified }}
         run: node scripts/ops/verify-web-production-staging.mjs
 
+      - name: Read-only audit of geomacro.live DNS, Cloudflare Worker binding and public SHA
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+        run: node scripts/ops/audit-cloudflare-production-domain.mjs
+
       - name: Render desktop and mobile routes in Chromium
         env:
           GEOMACRO_WEB_STAGING_URL: https://geomacro-web-production-staging.daspallab202391.workers.dev
