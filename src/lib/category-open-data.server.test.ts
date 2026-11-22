@@ -3,9 +3,9 @@ import { extractOpenData,readCategoryOpenData,OPEN_DATA_SOURCE_FAMILIES } from "
 
 const now=Date.parse("2026-10-13T18:00:00Z");
 describe("no-card original government structured data adapters",()=>{
-  it("uses seven pinned no-card official sources across three launch endpoints",()=>{
+  it("uses bounded pinned no-card official sources across three launch endpoints",()=>{
     expect(OPEN_DATA_SOURCE_FAMILIES).toEqual({
-      geopolitics:5,"macro-fx":4,"critical-minerals":5,
+      geopolitics:5,"macro-fx":4,"critical-minerals":7,
     });
   });
   it("separates native seismic occurrence from political conflict and source URL",()=>{
@@ -211,6 +211,57 @@ describe("no-card original government structured data adapters",()=>{
     }
     expect(extractOpenData("usgs_mcs_pubs",{records:"invalid"},now)).toBeNull();
   });
+  it("reconnects first-party USGS edition JSON to the reviewed critical-minerals lane without inventing news",async()=>{
+    const calls:string[]=[];
+    const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      const url=new URL(String(input));calls.push(url.toString());
+      expect(init?.redirect).toBe("manual");
+      expect(init?.cache).toBe("no-store");
+      if(url.hostname==="pubs.usgs.gov")return new Response(JSON.stringify({records:[{
+        indexId:"mcs2026",publicationYear:"2026",title:"Mineral commodity summaries 2026",
+        confidential_reference:"DO_NOT_PUBLISH",
+      }]}),{headers:{"content-type":"application/json"}});
+      return new Response("unavailable",{status:403});
+    }) as typeof fetch;
+    const report=await readCategoryOpenData("critical-minerals",{
+      now,fetcher,fallbackToD1:false,
+    });
+    expect(calls).toContain("https://pubs.usgs.gov/pubs-services/publication/?reportNumber=mcs2026&page_size=2");
+    expect(report.source_families_attempted).toBe(7);
+    expect(report.source_families_readable).toBe(1);
+    expect(report.findings).toEqual([expect.objectContaining({
+      observation_type:"usgs_mcs_dataset_catalog",clock_semantics:"dataset_edition",
+      observation_period:"2026",score:null,independent_same_event_verification:false,
+    })]);
+    expect(JSON.stringify(report)).not.toContain("DO_NOT_PUBLISH");
+    expect(report.chargeable).toBe(false);
+    expect(report.paid_delivery_authorized).toBe(false);
+    expect(report.persistent_storage_written).toBe(false);
+  });
+  it("accepts only the exact first-party USGS publication HTML edition; challenge responses cannot pass",async()=>{
+    const official=`<!doctype html><html><body><h1>Mineral commodity summaries 2026</h1>
+      <div>Publication Year 2026</div><div>DOI 10.3133/mcs2026</div>
+      <div>Index ID mcs2026</div><div>Record Source USGS Publications Warehouse</div>
+      <div>Private upstream description should never be delivered</div></body></html>`;
+    const fetcher=vi.fn(async(input:RequestInfo|URL)=>{
+      const url=new URL(String(input));
+      return url.hostname==="www.usgs.gov"
+        ?new Response(official,{headers:{"content-type":"text/html; charset=utf-8"}})
+        :new Response("access denied",{status:403});
+    }) as typeof fetch;
+    const found=await readCategoryOpenData("critical-minerals",{now,fetcher,fallbackToD1:false});
+    expect(found.source_families_readable).toBe(1);
+    expect(found.findings[0]).toMatchObject({
+      observation_type:"usgs_mcs_dataset_catalog",observation_period:"2026",
+      clock_semantics:"dataset_edition",score:null,
+    });
+    expect(JSON.stringify(found)).not.toContain("Private upstream description");
+    expect(extractOpenData("usgs_mcs_publication",official.replace("mcs2026","mcs2025"),now))
+      .toBeNull();
+    expect(extractOpenData("usgs_mcs_publication","<html><h1>Access denied</h1></html>",now))
+      .toBeNull();
+    expect(found.paid_delivery_authorized).toBe(false);
+  });
   it("accepts bounded official GA and World Bank mineral reference schemas without treating them as live events",()=>{
     const ga=extractOpenData("ga_critical_minerals_mines",{
       fields:[{name:"objectid",type:"esriFieldTypeOID"}],
@@ -247,7 +298,7 @@ describe("no-card original government structured data adapters",()=>{
     expect(extractOpenData("uk_dbt_ogl_minerals_atom",feed.replace("<published>","<updated>"),now)?.signals).toHaveLength(0);
     expect(extractOpenData("uk_dbt_ogl_minerals_atom",feed.replace("critical minerals","sports"),now)?.signals).toHaveLength(0);
   });
-  it("can keep a verified UK Atom source readable while the other four mineral providers fail",async()=>{
+  it("can keep a verified UK Atom source readable while the other six mineral providers fail",async()=>{
     const hit:string[]=[];
     const feed=`<feed xmlns="http://www.w3.org/2005/Atom"><entry>
       <title>Critical minerals policy update</title><published>${new Date(now-60_000).toISOString()}</published>
@@ -260,7 +311,7 @@ describe("no-card original government structured data adapters",()=>{
     }) as typeof fetch;
     const result=await readCategoryOpenData("critical-minerals",{now,fetcher:source,fallbackToD1:false});
     expect(hit).toContain("www.gov.uk");
-    expect(result.source_families_attempted).toBe(5);
+    expect(result.source_families_attempted).toBe(7);
     expect(result.source_families_readable).toBe(1);
     expect(result.findings[0]).toMatchObject({observation_type:"uk_dbt_minerals_publisher_topic",
       clock_semantics:"publisher_publication",score:null});
