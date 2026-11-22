@@ -26,6 +26,7 @@ const LEGACY_PRIVATE_OSINT_TOPICS=Object.freeze({
  rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|rare earth elements?|strategic minerals?|mineral supply chains?|mine closures?|mining royalties|mineral exports?|mineral imports?|ore processing|smelting|refining|separation plants?|magnet materials?|permanent magnets?|battery supply chains?|battery minerals?|mineral reserves?|mineral deposits?|mine permits?|mine production|mining output|mineral processing|tailings|concentrates?|lithium brine|spodumene|bauxite|manganese|vanadium|antimony|indium|scandium|tantalum|niobium|platinum group metals?|cobalt|lithium|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|yttrium|praseodymium|samarium|tungsten|tin|chromium|molybdenum|mineral supply|refinery|minerais? cr[ií]ticos?|minerales? cr[ií]ticos?|terras? raras?|tierras? raras?|terres? rares?|min[eé]raux critiques?|min[eé]raux strat[eé]giques?|minería|mineração|minier\w*|litio|l[ií]tio|cobalto|cobre|cuivre|gali[ou]m|germ[aâ]nio|seltene erden|bergbau|kupfer)\b|关键矿产|稀土|锂|钴|稀土類|希土類|鉱山|희토류|리튬|معادن|редкозем|литий|кобальт|খনিজ|लिथियम|खनिज|מינרלים|ליתיום|קובלט|נחושת|יסודות נדירים|معادن کمیاب|مواد معدنية|літій|рідкозем|górnictwo|bányászat)/iu,
 });
 
+const DIGITAL_ASSET_PRIVATE_TOPIC=/(?:\b(?:crypto(?:currency|currencies)?|digital[- ]assets?|bitcoin|ethereum|stablecoins?|central[- ]bank digital currenc(?:y|ies)|CBDCs?|tokeni[sz](?:ed|ation) (?:securities|assets?|deposits?)|cryptomonnaies?|criptomonedas?|criptomoedas?|criptovalute?|kryptowährungen?)\b|加密货币|数字资产|比特币|以太坊|暗号資産|仮想通貨|ビットコイン|イーサリアム|암호화폐|디지털 자산|비트코인|이더리움|क्रिप्टोकरेंसी|बिटकॉइन|ক্রিপ্টোকারেন্সি|বিটকয়েন|العملات المشفرة)/iu;
 // Preserve all reviewed native-language patterns while closing taxonomy gaps.
 // Context-specific multilingual mineral terminology. Generic "mines" and
 // "tambang" alone are not enough to infer a critical-minerals event.
@@ -33,6 +34,7 @@ const MINERAL_LANGUAGE_EXPANSION=/(?:\b(?:níquel|niquel|nikel|bauksit|hilirisas
 export const PRIVATE_OSINT_TOPICS=Object.freeze(Object.fromEntries(
  Object.entries(LEGACY_PRIVATE_OSINT_TOPICS).map(([category,pattern])=>[
   category,new RegExp('(?:'+pattern.source+')|(?:'+LAUNCH_NEWS_TOPIC_PATTERNS[category].source+')'+
+    (category==='macro'?'|(?:'+DIGITAL_ASSET_PRIVATE_TOPIC.source+')':'')+
     (category==='rare_earth'?'|(?:'+MINERAL_LANGUAGE_EXPANSION.source+')':''),'iu')
  ])
 ));
