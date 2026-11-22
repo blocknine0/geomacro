@@ -77,7 +77,9 @@ test('SEC first-party digital-asset releases are Macro-only and explicitly no ma
  assert.equal(derived[0].same_event_corrob_verified,false);
  assert.equal(derived[0].severity,null);
  assert.equal(derived[0].sources_credited[0],spec.credit);
- assert.ok(!JSON.stringify(derived).includes(article));
+ // Assert an invariant over all output fields, not a URL substring
+ // comparison: no publisher URL or URL-shaped data may reach the public card.
+ assert.doesNotMatch(JSON.stringify(derived),/https?:\/\/|www\./iu);
  assert.equal(parseMacroFeed(rss('SEC Updates Corporate Audit Trail Filing Instructions',article),spec,now).length,0);
  assert.equal(parseMacroFeed(rss(title,article.replace('www.sec.gov/','www.sec.gov.fake.test/')),spec,now).length,0);
  assert.equal(parseMacroFeed(rss(title,article,new Date(now+60_000).toISOString()),spec,now).length,0);
