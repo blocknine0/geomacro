@@ -1561,7 +1561,7 @@
   },
   "approved_pricing_tabbed_sections_20261123": {
     "approval": "Founder explicitly authorized the interactive Risk Gate pricing tabs on 2026-11-23.",
-    "approved_source_commit": "3a761c14ebb5e3e2cbbbb770a5a75711ee1ccc9a",
+    "approved_source_commit": "4ec45f346c73a74f125ac5138bc72d715efe55b6",
     "approved_paths": [
       "src/routes/pricing.tsx",
       "src/components/low-barrier-pricing.tsx"

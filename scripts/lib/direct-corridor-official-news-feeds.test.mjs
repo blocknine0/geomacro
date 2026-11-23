@@ -9,12 +9,16 @@ import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs
 const NOW=new Date("2026-11-02T12:00:00.000Z");
 const rss=(title,url)=>'<rss><channel><item><title>'+title+'</title><pubDate>Mon, 02 Nov 2026 11:45:00 GMT</pubDate><link>'+url+'</link></item></channel></rss>';
 
-test("additional WTO and USGS feeds preserve the expanded 77-entry registry",()=>{
+test("supplemental official feeds preserve the expanded 77-entry registry",()=>{
  assert.equal(assertDirectCorridorSupplementalNativeFeeds(),true);
  assert.equal(DIRECT_GLOBAL_CORRIDOR_SOURCES.length,77);
- assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,4);
+ assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,19);
  assert.deepEqual(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.map(x=>x.original_registry_source_id),
-  ["wto_tariffs","usgs_mcs","usgs_mcs","rbi_releases"]);
+  ["wto_tariffs","usgs_mcs","usgs_mcs","rbi_releases",
+   "aus_rba_media_releases","aus_rba_media_releases","aus_rba_media_releases",
+   "nld_dnb_news","nld_dnb_news","bel_nbb_news","bel_nbb_news","ecb_data",
+   "sarb","esp_bde_news","esp_bde_news","swe_riksbank_press","swe_riksbank_press",
+   "nor_norges_bank_news","nor_norges_bank_news"]);
  assert.ok(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.every(x=>
   x.channel==="CORRIDOR_ONLY"&&x.website_intelligence_enabled===false&&
   x.event_verified===false&&x.commercial_eligible===false));
@@ -47,7 +51,7 @@ test("USGS minerals feed ingests relevant announcements but not generic geology"
  assert.equal(unrelated.candidate_count,0);
 });
 test("same-publisher, no redirect, strict native clock and no paid authorization",async()=>{
- const sources=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS;
+ const sources=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.slice(0,12);
  const out=await collectDirectCorridorNativeNews({now:NOW,sources,
   fetchImpl:async url=>{
    if(url===PINNED_CORRIDOR_OFFICIAL_FEED_URLS.wto_official_news) return Response.redirect("https://example.org/invalid",302);

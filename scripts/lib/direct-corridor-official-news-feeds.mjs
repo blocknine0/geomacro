@@ -1,7 +1,6 @@
 /**
- * Supplementary first-party RSS discovery for existing operator-supplied WTO
- * and USGS source families. This does NOT replace either of the 37 submitted
- * URLs; the official institutions publish these separate news feeds.
+ * Supplementary first-party RSS discovery for existing direct-corridor source
+ * families. These feeds do NOT replace any of the 77 registered source rows.
  *
  * Only native timestamp, original publisher permalink and hashed title are
  * eligible to pass to the existing private 72-hour candidate ledger.
@@ -53,6 +52,156 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   categories:Object.freeze(["macro"]),
   corridors:Object.freeze(["apac"]),
   event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"aus_rba_official_media_releases",
+  original_registry_source_id:"aus_rba_media_releases",
+  url:"https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["apac"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"aus_rba_official_speeches",
+  original_registry_source_id:"aus_rba_media_releases",
+  url:"https://www.rba.gov.au/rss/rss-cb-speeches.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["apac"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"aus_rba_official_bulletin",
+  original_registry_source_id:"aus_rba_media_releases",
+  url:"https://www.rba.gov.au/rss/rss-cb-bulletin.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["apac"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"nld_dnb_official_news",
+  original_registry_source_id:"nld_dnb_news",
+  url:"https://www.dnb.nl/en/rss/16451/6882/News",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"nld_dnb_official_background",
+  original_registry_source_id:"nld_dnb_news",
+  url:"https://www.dnb.nl/en/rss/16451/6882/Background",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"bel_nbb_official_news",
+  original_registry_source_id:"bel_nbb_news",
+  url:"https://www.nbb.be/en/news_rss.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"bel_nbb_official_publications",
+  original_registry_source_id:"bel_nbb_news",
+  url:"https://www.nbb.be/en/publication_rss.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"ecb_official_press_releases",
+  original_registry_source_id:"ecb_data",
+  url:"https://www.ecb.europa.eu/rss/press.html",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"sarb_official_publications",
+  original_registry_source_id:"sarb",
+  url:"https://www.resbank.co.za/bin/sarb/solr/publications/rss",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["africa"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"esp_bde_official_news",
+  original_registry_source_id:"esp_bde_news",
+  url:"https://www.bde.es/wbe/en/inicio/rss/rss-noticias/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"esp_bde_official_studies_publications",
+  original_registry_source_id:"esp_bde_news",
+  url:"https://www.bde.es/wbe/en/inicio/rss/rss-estudios-publicaciones/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"swe_riksbank_official_press_releases",
+  original_registry_source_id:"swe_riksbank_press",
+  url:"https://www.riksbank.se/en-gb/rss/press-releases/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"swe_riksbank_official_notices",
+  original_registry_source_id:"swe_riksbank_press",
+  url:"https://www.riksbank.se/en-gb/rss/notices/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"nor_norges_bank_official_press_releases",
+  original_registry_source_id:"nor_norges_bank_news",
+  url:"https://www.norges-bank.no/en/rss-feeds/Press-releases---Norges-Bank/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"nor_norges_bank_official_speeches",
+  original_registry_source_id:"nor_norges_bank_news",
+  url:"https://www.norges-bank.no/en/rss-feeds/Speeches---Norges-Bank/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["europe"]),
+  event_verified:false,commercial_eligible:false
  })
 ]);
 // Complete publisher URL contracts, not a substring or hostname-only check.
@@ -63,12 +212,27 @@ export const PINNED_CORRIDOR_OFFICIAL_FEED_URLS=Object.freeze({
  usgs_official_minerals_news:"https://www.usgs.gov/news/minerals/feed",
  doe_official_critical_materials_news:"https://www.energy.gov/rss/energygov/2193718",
  rbi_official_press_releases:"https://www.rbi.org.in/pressreleases_rss.xml",
+ aus_rba_official_media_releases:"https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
+ aus_rba_official_speeches:"https://www.rba.gov.au/rss/rss-cb-speeches.xml",
+ aus_rba_official_bulletin:"https://www.rba.gov.au/rss/rss-cb-bulletin.xml",
+ nld_dnb_official_news:"https://www.dnb.nl/en/rss/16451/6882/News",
+ nld_dnb_official_background:"https://www.dnb.nl/en/rss/16451/6882/Background",
+ bel_nbb_official_news:"https://www.nbb.be/en/news_rss.xml",
+ bel_nbb_official_publications:"https://www.nbb.be/en/publication_rss.xml",
+ ecb_official_press_releases:"https://www.ecb.europa.eu/rss/press.html",
+ sarb_official_publications:"https://www.resbank.co.za/bin/sarb/solr/publications/rss",
+ esp_bde_official_news:"https://www.bde.es/wbe/en/inicio/rss/rss-noticias/",
+ esp_bde_official_studies_publications:"https://www.bde.es/wbe/en/inicio/rss/rss-estudios-publicaciones/",
+ swe_riksbank_official_press_releases:"https://www.riksbank.se/en-gb/rss/press-releases/",
+ swe_riksbank_official_notices:"https://www.riksbank.se/en-gb/rss/notices/",
+ nor_norges_bank_official_press_releases:"https://www.norges-bank.no/en/rss-feeds/Press-releases---Norges-Bank/",
+ nor_norges_bank_official_speeches:"https://www.norges-bank.no/en/rss-feeds/Speeches---Norges-Bank/",
 });
 export function assertDirectCorridorSupplementalNativeFeeds(
  feeds=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
 ){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(!Array.isArray(feeds)||feeds.length!==4)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(!Array.isArray(feeds)||feeds.length!==19)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
  for(const s of feeds){
   const original=originals.get(s.original_registry_source_id);

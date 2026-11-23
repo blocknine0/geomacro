@@ -3,8 +3,11 @@ import assert from "node:assert/strict";
 import {CORRIDOR_ONLY_SOURCE_IDS,assertDirectCorridorWebsiteSeparation,
  directGlobalCorridorRouteSources,directGlobalCorridorNewsFeeds}
  from "./direct-global-corridor-sources.mjs";
-import {collectDirectCorridorSourceIntake,probePinnedPortal,PINNED_CORRIDOR_PORTALS}
+import {collectDirectCorridorSourceIntake,collectDirectCorridorNativeNewsInBatches,
+ DIRECT_CORRIDOR_NATIVE_NEWS_BATCH_SIZE,probePinnedPortal,PINNED_CORRIDOR_PORTALS}
  from "./direct-global-corridor-ingestion.mjs";
+import {DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS}
+ from "./direct-corridor-official-news-feeds.mjs";
 const DATE=new Date("2026-11-02T00:10:00Z");
 const customObservers={
  observeUkmto:async()=>({status:"RECENT_INDEX_CONTEXT_OBSERVED",
@@ -46,9 +49,9 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.unique_linked_sources,37);
  assert.equal(result.total_index_metadata_candidates,3);
  assert.deepEqual(result.candidate_corridors,["bab_el_mandeb"]);
- assert.equal(seen.length,16);
+ assert.equal(seen.length,31);
  assert.equal(result.source_checks.filter(s=>s.state==="NOT_A_NATIVE_FEED").length,6);
- assert.equal(result.supplemental_native_feed_checks.length,4);
+ assert.equal(result.supplemental_native_feed_checks.length,19);
  assert.ok(result.supplemental_native_feed_checks.every(s=>s.state==="NOT_A_NATIVE_FEED"));
  assert.equal(result.source_checks.find(s=>s.id==="asean_customs").state,"PORTAL_TRANSPORT_OBSERVED_NO_EVENT");
  assert.ok(seen.some(url=>url===PINNED_CORRIDOR_PORTALS.asean_customs));
@@ -58,7 +61,8 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.website_intelligence_enabled,false);
  assert.equal(result.native_event_evidence_written_to_canonical_db,false);
  assert.equal(result.news_candidate_count,0);
- assert.equal(result.native_news_sources_polled,10);
+ assert.equal(result.original_directory_rss_polled,6);
+ assert.equal(result.native_news_sources_polled,25);
  assert.equal(result.official_reference_source_checks.length,9);
  assert.equal(result.official_reference_observation_count,0);
  assert.equal(result.source_checks.find(x=>x.id==="gdelt_v2_15m").state,
@@ -69,6 +73,33 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.signed_gro_generated,false);
  assert.ok(result.source_checks.every(r=>r.event_verified===false&&r.flow_verified===false));
  assert.ok(!JSON.stringify(result).includes("Official index"));
+});
+test("native RSS intake runs every source in bounded batches of twelve",async()=>{
+ const originalNativeCount=directGlobalCorridorRouteSources().filter(s=>s.format==="rss"&&
+   ["POLL_DIRECT_FEED","EXISTING_DIRECT_FEED"].includes(s.state)).length;
+ const sources=Array.from({length:originalNativeCount+
+   DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length},(_,i)=>({
+   id:`native-feed-${i}`,url:`https://feeds.example/${i}`,format:"rss",
+   state:"POLL_DIRECT_FEED",channel:"CORRIDOR_ONLY",
+   website_intelligence_enabled:false,categories:["macro"],corridors:["global"]
+ }));
+ const batchSizes=[];
+ const receipt=await collectDirectCorridorNativeNewsInBatches({
+   sources,now:DATE,batchSize:DIRECT_CORRIDOR_NATIVE_NEWS_BATCH_SIZE,
+   collect:async({sources:batch})=>{
+     batchSizes.push(batch.length);
+     assert.ok(batch.length<=12);
+     return {schema:"geomacro.corridor-native-news-candidates.v1",
+       checked_at:DATE.toISOString(),channel:"CORRIDOR_ONLY",feed_count:batch.length,
+       source_checks:batch.map(source=>({id:source.id,state:"NOT_A_NATIVE_FEED"})),
+       candidate_count:0,news_candidates:[]};
+   }
+ });
+ assert.deepEqual(batchSizes,[12,12,1]);
+ assert.equal(receipt.feed_count,sources.length);
+ assert.equal(receipt.source_checks.length,sources.length);
+ assert.deepEqual(receipt.source_checks.map(check=>check.id),sources.map(source=>source.id));
+ assert.equal(receipt.candidate_count,0);
 });
 test("native RSS is parsed only inside the corridor receipt",async()=>{
  const rss='<rss><channel><item><title>Monetary policy information</title>'+
