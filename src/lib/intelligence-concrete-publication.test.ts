@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
-import {isConcretePublicIntelligence,concreteIntelligenceHeadline,concreteGeomacroAnalysis,isConcreteHomeFind,intelligenceRequiredSourceCredits} from "./intelligence-concrete-publication";
+import {isConcretePublicIntelligence,concreteIntelligenceHeadline,concreteGeomacroAnalysis,isConcreteHomeFind,intelligenceRequiredSourceCredits,intelligenceDisplayRejection} from "./intelligence-concrete-publication";
 import {projectSourceNeutralOsintSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
 const sample=(category:StatelessIntelligenceSignal["category"]):StatelessIntelligenceSignal=>{
  const nouns={
@@ -26,6 +26,38 @@ describe("actual-event Intelligence publication",()=>{
    expect(isConcretePublicIntelligence(item),category).toBe(true);
    expect(concreteGeomacroAnalysis(item).length).toBeGreaterThan(45);
   }
+ });
+ it("accepts country-anchored source-free Control Plane D1 teasers in all three categories",()=>{
+  const topics={geopolitics:"foreign policy",macro:"monetary policy",rare_earth:"rare-earth supply"} as const;
+  for(const category of ["geopolitics","macro","rare_earth"] as const){
+   const teaser:StatelessIntelligenceSignal={
+    id:category+"-1234abcd",category,
+    title:"Geomacro finds an official event signal for USA",
+    what_changed:"WHAT CHANGED: An eligible official observation was recorded for USA.",
+    why_it_matters:"WHY IT MATTERS: This source-free public observation supports "+topics[category]+" risk monitoring for USA.",
+    topic:topics[category],geography:"USA",development_type:"official update",
+    published_at:"2026-11-23T08:00:00.000Z",date_precision:"exact",
+    observed_release_count:1,sources_credited:[],status:"official_release_observed_unscored",
+    same_event_corrob_verified:false,severity:null,
+   };
+   expect(intelligenceDisplayRejection(teaser),category).toBeNull();
+   expect(isConcretePublicIntelligence(teaser),category).toBe(true);
+   expect(concreteIntelligenceHeadline(teaser)).toBe("Official event signal · USA");
+  }
+ });
+ it("rejects generic event teasers without a matching country anchor",()=>{
+  const teaser:StatelessIntelligenceSignal={
+   id:"macro-1234abcd",category:"macro",
+   title:"Geomacro finds an official event signal",
+   what_changed:"WHAT CHANGED: An eligible official observation was recorded.",
+   why_it_matters:"WHY IT MATTERS: This source-free public observation supports macro risk monitoring.",
+   topic:"monetary policy",geography:null,development_type:"official update",
+   published_at:"2026-11-23T08:00:00.000Z",date_precision:"exact",
+   observed_release_count:1,sources_credited:[],status:"official_release_observed_unscored",
+   same_event_corrob_verified:false,severity:null,
+  };
+  expect(isConcretePublicIntelligence(teaser)).toBe(false);
+  expect(isConcretePublicIntelligence({...teaser,title:"Geomacro finds an official event signal for USA",geography:"CAN"})).toBe(false);
  });
  it("rejects unsupported unverified feed rows and candidates, while retaining credited concrete originals",()=>{
   const s=sample("geopolitics");
