@@ -184,6 +184,8 @@ const approvedPricing = [
   config.approved_pricing_credit_risk_gate_20261116,
   // PR #4175: pin only the exact Risk Gate monthly pack presentation blobs.
   config.approved_pricing_risk_gate_packs_20261123,
+  // Pin only the exact pricing tab and low-barrier presentation blobs.
+  config.approved_pricing_tabbed_sections_20261123,
   // Owner-requested Intelligence freshness and Risk Gate conversion copy;
   // authorize only the exact route and desk component blobs in this PR.
   config.approved_intelligence_risk_gate_conversion_20261116,

@@ -1558,5 +1558,16 @@
     "published_deployment_claimed": false,
     "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_pricing_tabbed_sections_20261123": {
+    "approval": "Founder explicitly authorized the interactive Risk Gate pricing tabs on 2026-11-23.",
+    "approved_source_commit": "3a761c14ebb5e3e2cbbbb770a5a75711ee1ccc9a",
+    "approved_paths": [
+      "src/routes/pricing.tsx",
+      "src/components/low-barrier-pricing.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   }
 }
