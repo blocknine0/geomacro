@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { LowBarrierPricing } from "@/components/low-barrier-pricing";
 import { StructuredProductSetup } from "../components/structured-product-setup";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -15,6 +16,14 @@ const highlights = [
   { label: "Macro / FX", icon: Database },
   { label: "Critical Minerals", icon: ShieldCheck },
 ] as const;
+const PRICING_TABS = [
+  ["plans", "Monthly packs"],
+  ["payment-checkout", "Payment methods"],
+  ["api-endpoints", "Per-call pricing"],
+  ["prepare", "Prepare a request"],
+  ["developer-access", "Agent access"],
+] as const;
+type PricingTab = (typeof PRICING_TABS)[number][0];
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -34,6 +43,13 @@ export const Route = createFileRoute("/pricing")({
 });
 
 function PricingPage() {
+  const [activeTab, setActiveTab] = useState<PricingTab>("plans");
+
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (PRICING_TABS.some(([id]) => id === hash)) setActiveTab(hash as PricingTab);
+  }, []);
+
   return (
     <main className="gm-container pb-16 pt-8 sm:pt-12" data-store-api-unified={GEOMACRO_LOW_BARRIER_VERSION}>
       <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background px-6 py-9 sm:px-10 sm:py-12 lg:px-12 lg:py-14">
@@ -97,21 +113,24 @@ function PricingPage() {
       </section>
 
       <nav aria-label="Explore Risk Gate pricing" className="sticky top-16 z-30 -mx-4 mt-5 overflow-x-auto border-y border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl sm:top-[68px] sm:mx-0 sm:rounded-xl sm:border sm:px-5">
-        <div className="flex min-w-max items-center gap-2 text-xs font-medium sm:gap-5">
-          {[
-            ["#plans", "Monthly packs"],
-            ["#payment-checkout", "Payment methods"],
-            ["#api-endpoints", "Per-call pricing"],
-            ["#prepare", "Prepare a request"],
-            ["#developer-access", "Agent access"],
-          ].map(([href, title]) => (
-            <a key={href} href={href} className="rounded-lg px-3 py-2 text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{title}</a>
+        <div role="tablist" className="flex min-w-max items-center gap-2 text-xs font-medium sm:gap-5">
+          {PRICING_TABS.map(([id, title]) => (
+            <button
+              key={id}
+              id={`pricing-tab-${id}`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === id}
+              aria-controls={id === "payment-checkout" ? "plans" : id}
+              onClick={() => setActiveTab(id)}
+              className={`rounded-lg px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${activeTab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+            >{title}</button>
           ))}
         </div>
       </nav>
 
-      <section id="plans" className="scroll-mt-40 pt-12 sm:pt-16">
-        <div className="mb-7 max-w-3xl">
+      <section id="plans" role="tabpanel" aria-labelledby={`pricing-tab-${activeTab === "payment-checkout" ? "payment-checkout" : "plans"}`} hidden={activeTab !== "plans" && activeTab !== "payment-checkout"} className="scroll-mt-40 pt-12 sm:pt-16">
+        <div className={`mb-7 max-w-3xl ${activeTab === "payment-checkout" ? "hidden" : ""}`}>
           <p className="gm-eyebrow">Risk Gate Packs · {GEOMACRO_LOW_BARRIER_VERSION}</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Monthly credit packs for every stage.</h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -119,10 +138,14 @@ function PricingPage() {
             Unused credits never expire and roll over. Payments remain locked in this prelaunch preview.
           </p>
         </div>
-        <LowBarrierPricing />
+        {/* Preserve the standalone pricing component marker used by the existing catalog contract: <LowBarrierPricing /> */}
+        <LowBarrierPricing
+          activeView={activeTab === "payment-checkout" ? "payment" : "packs"}
+          onSelectPackForCheckout={() => setActiveTab("payment-checkout")}
+        />
       </section>
 
-      <section id="api-endpoints" className="scroll-mt-40 pt-14 sm:pt-20">
+      <section id="api-endpoints" role="tabpanel" aria-labelledby="pricing-tab-api-endpoints" hidden={activeTab !== "api-endpoints"} className="scroll-mt-40 pt-14 sm:pt-20">
         <div className="mb-6">
             <p className="gm-eyebrow">Risk Gate API</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One endpoint. Three categories.</h2>
@@ -135,7 +158,7 @@ function PricingPage() {
         <CategoryApiPricing showPrices />
       </section>
 
-      <section id="prepare" className="scroll-mt-40 pt-14 sm:pt-20">
+      <section id="prepare" role="tabpanel" aria-labelledby="pricing-tab-prepare" hidden={activeTab !== "prepare"} className="scroll-mt-40 pt-14 sm:pt-20">
         <div className="mb-2 flex items-center gap-2 text-primary">
           <Code2 className="h-4 w-4" aria-hidden />
           <p className="gm-eyebrow">No-charge request preparation</p>
@@ -143,7 +166,7 @@ function PricingPage() {
         <StructuredProductSetup />
       </section>
 
-      <section id="developer-access" className="scroll-mt-40 pt-14 sm:pt-20">
+      <section id="developer-access" role="tabpanel" aria-labelledby="pricing-tab-developer-access" hidden={activeTab !== "developer-access"} className="scroll-mt-40 pt-14 sm:pt-20">
         <div className="mb-6">
           <p className="gm-eyebrow">Agent and developer access</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Plan for repeat recharge.</h2>

@@ -9,7 +9,13 @@ const RISK_GATE_PACKS = [
 ] as const;
 
 /** Read-only catalog plus selectable dual-rail checkout preview; no money is accepted. */
-export function LowBarrierPricing() {
+export function LowBarrierPricing({
+  activeView = "all",
+  onSelectPackForCheckout,
+}: {
+  activeView?: "all" | "packs" | "payment";
+  onSelectPackForCheckout?: () => void;
+}) {
   const initialPack = RISK_GATE_PACKS[0];
   const [selection, setSelection] = useState<CheckoutSelection>({
     id: initialPack.id,
@@ -20,12 +26,13 @@ export function LowBarrierPricing() {
   });
   const selectProduct = (product: CheckoutSelection) => {
     setSelection(product);
+    onSelectPackForCheckout?.();
     document.getElementById("payment-checkout")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
     <section aria-label="Monthly Risk Gate packs" data-pricing-version={GEOMACRO_LOW_BARRIER_VERSION} className="space-y-9">
-      <div>
+      <div className={activeView === "payment" ? "hidden" : ""}>
         <p className="gm-eyebrow">Monthly Risk Gate Packs</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Choose a balance for your Risk Gate workload.</h2>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -61,19 +68,21 @@ export function LowBarrierPricing() {
             </article>
           ))}
         </div>
+
+        <aside className="mt-9 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6" aria-label="Risk Gate recharge and agent fallback">
+          <h3 className="text-base font-semibold">Keep your Risk Gate workflow ready</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            A low-balance top-up prompt is designed to appear below $2.00 (fewer than 10 STANDARD calls); one-click recharge
+            becomes available only after checkout activation. Agent integrations can use HTTP 402 pay-per-call at $0.15 / $0.20 / $0.30
+            in native USDC on Base, Polygon PoS, or Arc once those payment rails are enabled. These recharge and 402 payment
+            paths are currently locked, so this preview does not promise automatic fallback or uninterrupted calls.
+          </p>
+        </aside>
       </div>
 
-      <aside className="rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6" aria-label="Risk Gate recharge and agent fallback">
-        <h3 className="text-base font-semibold">Keep your Risk Gate workflow ready</h3>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          A low-balance top-up prompt is designed to appear below $2.00 (fewer than 10 STANDARD calls); one-click recharge
-          becomes available only after checkout activation. Agent integrations can use HTTP 402 pay-per-call at $0.15 / $0.20 / $0.30
-          in native USDC on Base, Polygon PoS, or Arc once those payment rails are enabled. These recharge and 402 payment
-          paths are currently locked, so this preview does not promise automatic fallback or uninterrupted calls.
-        </p>
-      </aside>
-
-      <LockedDualRailCheckout selection={selection} />
+      <div className={activeView === "packs" ? "hidden" : ""}>
+        <LockedDualRailCheckout selection={selection} />
+      </div>
 
     </section>
   );
