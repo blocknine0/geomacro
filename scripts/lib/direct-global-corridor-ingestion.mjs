@@ -18,6 +18,8 @@ import {riskGateSuppliedSourceCensus} from "./risk-gate-supplied-source-rules.mj
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
 const MAX_BYTES=128*1024;
+export const DIRECT_CORRIDOR_NATIVE_NEWS_BATCH_SIZE=12;
+const MAX_NATIVE_NEWS_CANDIDATES=160;
 // Only these exact six previously registered official portal URLs may be
 // probed; matching a host, partial URL or an attacker-controlled prefix is
 // insufficient. Keep this separate from the RSS and dataset adapter paths.
@@ -67,6 +69,44 @@ export async function probePinnedPortal(spec,fetchImpl){
  finally{try{await reader.cancel()}catch{}reader.releaseLock();}
  return {state:length>0?"PORTAL_TRANSPORT_OBSERVED_NO_EVENT":"EMPTY_PAGE"};
 }
+export async function collectDirectCorridorNativeNewsInBatches({
+ sources,fetchImpl,now,batchSize=DIRECT_CORRIDOR_NATIVE_NEWS_BATCH_SIZE,
+ collect=collectDirectCorridorNativeNews
+}={}){
+ if(!Array.isArray(sources)||typeof collect!=="function"||
+    !Number.isInteger(batchSize)||batchSize<1||
+    batchSize>DIRECT_CORRIDOR_NATIVE_NEWS_BATCH_SIZE)
+   throw Error("CORRIDOR_NATIVE_NEWS_BATCH_INPUT_INVALID");
+ const source_checks=[],news_candidates=[],seenIds=new Set(),seenPermalinks=new Set();
+ let checkedAt=null;
+ for(let offset=0;offset<sources.length;offset+=batchSize){
+   const batchSources=sources.slice(offset,offset+batchSize);
+   const batch=await collect({sources:batchSources,fetchImpl,now});
+   if(batch?.schema!=="geomacro.corridor-native-news-candidates.v1"||
+      batch.channel!=="CORRIDOR_ONLY"||batch.feed_count!==batchSources.length||
+      !Array.isArray(batch.source_checks)||batch.source_checks.length!==batchSources.length||
+      batch.source_checks.some((check,index)=>check?.id!==batchSources[index]?.id)||
+      !Array.isArray(batch.news_candidates)||batch.candidate_count!==batch.news_candidates.length)
+     throw Error("CORRIDOR_NATIVE_NEWS_BATCH_PARITY_INVALID");
+   checkedAt??=batch.checked_at;
+   source_checks.push(...batch.source_checks);
+   for(const item of batch.news_candidates){
+     if(seenIds.has(item.id)||seenPermalinks.has(item.article_url)||
+        news_candidates.length>=MAX_NATIVE_NEWS_CANDIDATES)continue;
+     seenIds.add(item.id);seenPermalinks.add(item.article_url);news_candidates.push(item);
+   }
+ }
+ if(source_checks.length!==sources.length)
+   throw Error("CORRIDOR_NATIVE_NEWS_BATCH_PARITY_INVALID");
+ return Object.freeze({schema:"geomacro.corridor-native-news-candidates.v1",
+   checked_at:checkedAt??now?.toISOString?.()??new Date().toISOString(),
+   channel:"CORRIDOR_ONLY",feed_count:sources.length,source_checks,
+   candidate_count:news_candidates.length,news_candidates,
+   website_intelligence_enabled:false,website_intelligence_writes:0,
+   source_news_collector_calls:0,d1_writes:0,b2_writes:0,supabase_writes:0,
+   publisher_titles_persisted:false,raw_feed_bodies_persisted:false,
+   commercial_rights_verified:false,paid_delivery_enabled:false,signed_gro_generated:false});
+}
 export async function collectDirectCorridorSourceIntake({
  now=new Date(),fetchImpl=fetch,observeUkmto=observeUkmtoOfficialIndex,
  observeIndependent=observeIndependentMaritimeOfficialContext,
@@ -110,7 +150,9 @@ export async function collectDirectCorridorSourceIntake({
       ["POLL_DIRECT_FEED","EXISTING_DIRECT_FEED"].includes(s.state));
  const nativeSources=[...registryNativeSources,...DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS];
  const supplementalNativeChecks=[];
- const native=await collectDirectCorridorNativeNews({sources:nativeSources,fetchImpl,now});
+ const native=await collectDirectCorridorNativeNewsInBatches({
+   sources:nativeSources,fetchImpl,now
+ });
  for(const check of native.source_checks){
    const original=byId.get(check.id);
    if(original)add(original,check.state,{metadata_candidates:check.metadata_candidates});

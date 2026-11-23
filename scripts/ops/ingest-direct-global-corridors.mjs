@@ -6,6 +6,8 @@ import {createHash} from "node:crypto";
 import {cryptoIndividualRecord,validCryptoIndividual,CRYPTO_NEWS_SCHEMA}
  from "../../lib/crypto-news-individual-structured.mjs";
 import {collectDirectCorridorSourceIntake} from "../lib/direct-global-corridor-ingestion.mjs";
+import {DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS}
+ from "../lib/direct-corridor-official-news-feeds.mjs";
 import {buildPrivateCorridorStructuredResearch} from "../lib/corridor-derived-structured-research.mjs";
 export function writeOptionalRiskStreamNormalizedOriginals(receipt,{
  enabled=process.env.GEOMACRO_RISK_STREAM_NORMALIZED_EXPORT_ENABLED,
@@ -41,7 +43,11 @@ export async function runDirectCorridorIntake({
     receipt.supabase_writes!==0||receipt.chargeable!==false)
    throw Error("DIRECT_CORRIDOR_OUTPUT_BOUNDARY_INVALID");
  // Fail closed if any candidate breaks publisher provenance, age or isolation.
- if(receipt.native_news_sources_polled!==10||
+ if(!Number.isSafeInteger(receipt.original_directory_rss_polled)||
+    !Array.isArray(receipt.supplemental_native_feed_checks)||
+    receipt.supplemental_native_feed_checks.length!==DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length||
+    receipt.native_news_sources_polled!==receipt.original_directory_rss_polled+
+      DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length||
     !Number.isSafeInteger(receipt.news_candidate_count)||
     receipt.news_candidate_count<0||receipt.news_candidate_count>160||
     receipt.news_candidate_count!==receipt.news_candidates?.length||
