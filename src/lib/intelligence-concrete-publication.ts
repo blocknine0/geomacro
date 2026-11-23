@@ -18,10 +18,53 @@ const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not s
 const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|UN News|United Nations|United Nations Office at Geneva|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|U\.S\. Securities and Exchange Commission|Commodity Futures Trading Commission|\bCC BY\b|Creative Commons Attribution/iu;
 const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed|released|releases|maintained|maintains|kept|holds|held|left|leaves|forecast|forecasts|projected|projects|revised|revises|estimated|estimates|recorded|records|sets|announces|approves|urges|warns|reports|says|said|told|issued|launches|supports|calls for|condemns|concludes|released|was approved|warn|urge|announce|approve|report|support|condemn|sign|raise|lower|reduce|increase|appeal|call for|launch|impose|propose)\b/iu;
 const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified|inflation|gdp|prices?|employment|unemployment|interest rates?|consumer|economic data|finance)\b/iu;
+const RISK_STREAM_PUBLIC_TOPICS:Readonly<Record<StatelessCategory,string>>={
+ geopolitics:"foreign policy",macro:"monetary policy",rare_earth:"rare-earth supply",
+};
+const RISK_STREAM_PUBLIC_UNSAFE=/\b(?:publisher|according to|reported by|published by|source(?:d)? by|Reuters|Associated Press|Bloomberg|Financial Times|The Guardian|BBC News|Al Jazeera|CNBC|CNN|New York Times|Wall Street Journal|Nikkei|The Hindu|AFP|risk_score_0_100|value_0_100|agent_decision|source_originals|signature_b64)\b|https?:\/\/|www\.|[<>]/iu;
+
+/**
+ * The Control Plane's source-redacted teaser has a bounded D1 identity and an
+ * ISO3 repeated in its title and geography. It is a country-level event signal,
+ * not a claimed named-actor action; require the full teaser contract so generic
+ * unanchored placeholder copy still fails the ordinary actor/action gate.
+ */
+function countryAnchoredRiskStreamTeaser(s:StatelessIntelligenceSignal):string|null{
+ if(s?.status!=="official_release_observed_unscored"||
+    !["geopolitics","macro","rare_earth"].includes(s.category)||
+    !Array.isArray(s.sources_credited)||s.sources_credited.length!==0||
+    s.same_event_corrob_verified!==false||s.severity!==null||
+    s.development_type!=="official update"||s.date_precision!=="exact"||
+    s.observed_release_count!==1||s.topic!==RISK_STREAM_PUBLIC_TOPICS[s.category]||
+    typeof s.id!=="string"||typeof s.title!=="string"||typeof s.geography!=="string"||
+    typeof s.what_changed!=="string"||typeof s.why_it_matters!=="string"||
+    typeof s.published_at!=="string")return null;
+ const idPrefix=s.category+"-";
+ if(!new RegExp("^"+idPrefix+"[0-9a-f]{8}$","u").test(s.id))return null;
+ const title=/^Geomacro finds an official event signal for ([A-Z]{3})$/u.exec(s.title);
+ if(!title)return null;
+ const country=title[1];
+ if(s.geography!==country||
+    (s.country_iso3!==undefined&&s.country_iso3!==country))return null;
+ const changed=s.what_changed.trim();
+ const exactTemplate=changed===`WHAT CHANGED: An eligible official observation was recorded for ${country}.`||
+   changed===`Official update recorded for ${country}.`;
+ const anchoredOrAction=changed.includes(country)||ACTOR_ACTION.test(changed);
+ const why=s.why_it_matters.trim();
+ const safeCopy=[s.title,changed,why,s.topic].join(" ");
+ const ms=Date.parse(s.published_at);
+ if(changed.length<25||changed.length>650||why.length<30||why.length>700||
+    RISK_STREAM_PUBLIC_UNSAFE.test(safeCopy)||GENERIC.test(safeCopy)||
+    (!exactTemplate&&!anchoredOrAction)||!Number.isFinite(ms)||
+    !/^\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(s.published_at))return null;
+ return country;
+}
 
 /** Stable derived publisher-release headline only; never substitute a feed
  * hostname for the grammatical actor or imply verification of an outcome. */
 export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):string|null{
+ const teaserCountry=countryAnchoredRiskStreamTeaser(s);
+ if(teaserCountry)return "Official event signal · "+teaserCountry;
  const projectedOsint=s?.status==="osint_feed_observed_unverified"
   ?projectSourceNeutralOsintSignal(s):null;
  if(projectedOsint&&isSourceNeutralOsintSignal(projectedOsint))
@@ -72,7 +115,8 @@ export function intelligenceDisplayRejection(s:StatelessIntelligenceSignal):Inte
       credit.length>230||/[<>]|https?:\/\//iu.test(credit))||
     s.severity!==null||s.same_event_corrob_verified!==false)
    return "INVALID_STATE_OR_CREDIT";
- if(s.category==="rare_earth"&&!isCriticalMineralsSubject(s))
+ const teaserCountry=countryAnchoredRiskStreamTeaser(s);
+ if(s.category==="rare_earth"&&!isCriticalMineralsSubject(s)&&!teaserCountry)
    return "OUTSIDE_CRITICAL_MINERALS_SCOPE";
  if(s.status==="osint_feed_observed_unverified"){
   const ms=Date.parse(s.published_at);
@@ -82,6 +126,7 @@ export function intelligenceDisplayRejection(s:StatelessIntelligenceSignal):Inte
    return "INVALID_PUBLICATION_DATE";
   return null;
  }
+ if(teaserCountry)return null;
  // Feed hostname is not the actual government/IGO original publisher credit.
  // Do not downgrade a first-party feed to a fake source-reported no-credit card.
  const headline=concreteIntelligenceHeadline(s),change=intelligenceActorChange(s);
