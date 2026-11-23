@@ -1,0 +1,156 @@
+name: Deploy GeoMacro Web Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_GEOMACRO_WEB_PRODUCTION to authorize the production deployment
+        required: true
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-web-production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+
+      - name: Require exact-head Product CI and CodeQL success before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_PRODUCTION_DISPATCH_SHA_NOT_CURRENT_MAIN'; exit 2; }
+          for attempt in $(seq 1 60); do
+            product="$(gh api "repos/blocknine0/geomacro/actions/workflows/product-ci.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=20" --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .head_branch == "main")][0].conclusion // "pending"')"
+            codeql="$(gh api "repos/blocknine0/geomacro/actions/workflows/codeql-security.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=20" --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .head_branch == "main")][0].conclusion // "pending"')"
+            if [[ "$product" == success && "$codeql" == success ]]; then
+              echo 'WEB_PRODUCTION_EXACT_SHA_CI_AND_CODEQL_PASS'
+              exit 0
+            fi
+            if [[ "$product" != pending && "$product" != success ]]; then echo 'WEB_PRODUCTION_PRODUCT_CI_FAILED'; exit 2; fi
+            if [[ "$codeql" != pending && "$codeql" != success ]]; then echo 'WEB_PRODUCTION_CODEQL_FAILED'; exit 2; fi
+            if [[ "$attempt" -lt 60 ]]; then sleep 30; fi
+          done
+          echo 'WEB_PRODUCTION_EXACT_SHA_CHECKS_NOT_COMPLETE'
+          exit 2
+
+      - name: Build the production Workers app
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+          node scripts/ops/prepare-web-production.mjs --target production
+
+      - name: Require Cloudflare and approved B2 read credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'WEB_PRODUCTION_CLOUDFLARE_API_TOKEN_REQUIRED'; exit 2; }
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]] || { echo 'WEB_PRODUCTION_CLOUDFLARE_ACCOUNT_ID_INVALID'; exit 2; }
+          test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo 'WEB_PRODUCTION_B2_READ_KEY_ID_SECRET_REQUIRED'; exit 2; }
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_SECRET_REQUIRED'; exit 2; }
+          echo 'WEB_PRODUCTION_REQUIRED_CREDENTIALS_PRESENT'
+
+      - name: Inspect existing production Worker bindings without exposing secret values
+        id: production-bindings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          settings_file="$(mktemp)"
+          status="$(curl -sS -o "$settings_file" -w '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/geomacro-web-production/settings")"
+          if [[ "$status" == 404 ]]; then
+            echo 'b2_key_id_present=false' >> "$GITHUB_OUTPUT"
+            echo 'b2_application_key_present=false' >> "$GITHUB_OUTPUT"
+            echo 'fingerprint_pepper_present=false' >> "$GITHUB_OUTPUT"
+            echo 'WEB_PRODUCTION_WORKER_NOT_YET_DEPLOYED'
+          elif [[ "$status" == 200 ]]; then
+            jq -e '.success == true and (.result.bindings | type == "array")' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_BINDING_INVENTORY_INVALID'; exit 2; }
+            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then .name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby" elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
+            for binding in B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY GEOMACRO_SECURITY_FINGERPRINT_PEPPER; do
+              present="$(jq -r --arg name "$binding" 'any(.result.bindings[]; .type == "secret_text" and .name == $name)' "$settings_file")"
+              case "$binding" in
+                B2_ARCHIVE_READ_KEY_ID) echo "b2_key_id_present=$present" >> "$GITHUB_OUTPUT" ;;
+                B2_ARCHIVE_READ_APPLICATION_KEY) echo "b2_application_key_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_SECURITY_FINGERPRINT_PEPPER) echo "fingerprint_pepper_present=$present" >> "$GITHUB_OUTPUT" ;;
+              esac
+            done
+            echo 'WEB_PRODUCTION_EXISTING_BINDINGS_VALIDATED'
+          else
+            echo "WEB_PRODUCTION_BINDING_INVENTORY_HTTP_$status"
+            exit 2
+          fi
+          rm -f "$settings_file"
+
+      - name: Deploy geomacro-web-production with both custom domains
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          B2_KEY_ID_PRESENT: ${{ steps.production-bindings.outputs.b2_key_id_present }}
+          B2_APPLICATION_KEY_PRESENT: ${{ steps.production-bindings.outputs.b2_application_key_present }}
+          FINGERPRINT_PEPPER_PRESENT: ${{ steps.production-bindings.outputs.fingerprint_pepper_present }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y wrangler@4.136.3 deploy --config .output/server/production-wrangler.json
+          if [[ "$B2_KEY_ID_PRESENT" != true ]]; then
+            printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y wrangler@4.136.3 secret put B2_ARCHIVE_READ_KEY_ID --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_B2_READ_KEY_ID_PROVISIONED'
+          else echo 'WEB_PRODUCTION_B2_READ_KEY_ID_RETAINED'; fi
+          if [[ "$B2_APPLICATION_KEY_PRESENT" != true ]]; then
+            printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y wrangler@4.136.3 secret put B2_ARCHIVE_READ_APPLICATION_KEY --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_PROVISIONED'
+          else echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_RETAINED'; fi
+          if [[ "$FINGERPRINT_PEPPER_PRESENT" != true ]]; then
+            node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))' |
+              npx -y wrangler@4.136.3 secret put GEOMACRO_SECURITY_FINGERPRINT_PEPPER --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_FINGERPRINT_PEPPER_PROVISIONED'
+          else echo 'WEB_PRODUCTION_FINGERPRINT_PEPPER_RETAINED'; fi
+
+      - name: Verify exact SHA and audit production DNS, Worker domains, and public serving
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_PRODUCTION_SUPERSEDED_AFTER_DEPLOY'; exit 2; }
+          report="$(node scripts/ops/audit-cloudflare-production-domain.mjs)"
+          printf '%s\n' "$report"
+          printf '%s' "$report" | jq -e '.production_hostname_cloudflare_serving_verified == true' >/dev/null || { echo 'WEB_PRODUCTION_DOMAIN_AUDIT_FAILED'; exit 2; }
+          echo 'WEB_PRODUCTION_CUSTOM_DOMAINS_AND_PUBLIC_SHA_VERIFIED'

@@ -139,6 +139,7 @@
     "deploy-risk-stream-attesters-reviewer.yml",
     "deploy-telegram-signal-supabase.yml",
     "deploy-web-candidate.yml",
+    "deploy-web-production.yml",
     "deploy-web-production-staging.yml",
     "derive-risk-object-public-key.yml",
     "derived-risk-gate-discovery-20m.yml",
@@ -485,6 +486,7 @@
     "deploy-intelligence-edge.yml",
     "deploy-permanent-public-finds-archive.yml",
     "deploy-telegram-signal-supabase.yml",
+    "deploy-web-production.yml",
     "deploy-web-production-staging.yml",
     "five-minute-original-news-fastlane.yml",
     "geomacro-protected-hot50-worker-rollout.yml",
@@ -568,7 +570,8 @@
     "phase2h-private-r2-b2-quota-backup.yml": "Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)",
     "apply-predge-addendum-v2-migration-0131.yml": "Apply Predge Addendum v2 D1 migration 0131 (single file)",
     "country-source-gap-audit.yml": "Country Source Gap Audit",
-    "deploy-web-production-staging.yml": "Deploy Production-Capable Website to Cloudflare Staging"
+    "deploy-web-production-staging.yml": "Deploy Production-Capable Website to Cloudflare Staging",
+    "deploy-web-production.yml": "Deploy GeoMacro Web Production"
   },
   "lockedTriggerStrings": {
     "owner-issue-dispatch-gateway.yml": [
@@ -752,6 +755,13 @@
       "CLOUDFLARE_API_TOKEN",
       "B2_ARCHIVE_READ_KEY_ID",
       "EXACT_SHA_CI_AND_CODEQL_PASS"
+    ],
+    "deploy-web-production.yml": [
+      "workflow_dispatch:",
+      "DEPLOY_GEOMACRO_WEB_PRODUCTION",
+      "github.ref == 'refs/heads/main'",
+      "scripts/ops/prepare-web-production.mjs --target production",
+      "node scripts/ops/audit-cloudflare-production-domain.mjs"
     ]
   },
   "predgeBlobSha1": {
