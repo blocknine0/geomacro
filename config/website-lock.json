@@ -21,6 +21,16 @@
     "cloudflare_domain_cutover_authorized": false,
     "pending_exact_sha_live_deployment_acceptance": true
   },
+  "approved_intelligence_desk_blob_carryforward_20261123": {
+    "approval": "Founder explicitly authorized Intelligence live-desk and Website Lock carry-forward repair on 2026-11-23.",
+    "approved_source_commit": "7c5b518989a423bc5ae162656068bef95a814af6",
+    "approved_paths": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
+  },
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
   "lock_revision": "founder-approved-risk-indices-72h-dashboard-20261029",
