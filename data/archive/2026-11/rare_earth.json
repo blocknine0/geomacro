@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-23T00:38:27.730Z",
+  "updated_at": "2026-11-23T00:57:17.173Z",
   "signals": [
     {
       "id": "rare_earth-d925d5cf",
@@ -27,6 +27,27 @@
     },
     {
       "id": "rare_earth-5d4a6313",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Copper Supply & Processing — Australia (AUS)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a proposal under review by mineral processors and refining operators, affecting Copper Supply & Processing in Australia; direction is tightening (tightening or disruption pressure).",
+      "why_it_matters": "WHY IT MATTERS — Risk: tightening Copper Supply & Processing pressure in Australia → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: LME copper benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
+      "topic": "Copper Supply & Processing",
+      "geography": "Australia",
+      "country_iso3": "AUS",
+      "corridor": null,
+      "event_direction": "tightening",
+      "event_action": "Proposal Under Review",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-23T00:28:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-dc5e1b0b",
       "category": "rare_earth",
       "title": "GeoMacro Critical Minerals Brief · Copper Supply & Processing — Australia (AUS)",
       "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a proposal under review by mineral processors and refining operators, affecting Copper Supply & Processing in Australia; direction is tightening (tightening or disruption pressure).",
