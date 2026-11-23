@@ -1537,7 +1537,7 @@
   },
   "approved_website_polish_docs_20261123": {
     "approval": "Founder explicitly authorized robust page loading, compact Customer Care, plain-language cleanup, and the updated customer-facing Docs landing page on 2026-11-23.",
-    "approved_source_commit": "21d87ef9ed7e591df34f80506ed8c3e5d8311529",
+    "approved_source_commit": "b6f5e931c439affeff9f8f5ec9aa7d381543f262",
     "approved_paths": [
       "src/routes/__root.tsx",
       "src/routes/docs.tsx",
