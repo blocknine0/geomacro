@@ -51,8 +51,8 @@ export function VerifiedHistoricalRiskIndices(){
   <p className="mt-2">The archive could not be authenticated. No numeric values have been substituted.</p>
  </section>;
  const data=state.data;
- return <section aria-label="Archived historical Risk Indices — not live" className="mt-10 border-t border-border/70 pt-8">
-  <h2 className="flex items-center gap-2 text-lg font-semibold"><Archive className="h-5 w-5"/>Last verified historical snapshot — not live</h2>
+ return <section aria-label="Archived historical Risk Indices (not live)" className="mt-10 border-t border-border/70 pt-8">
+  <h2 className="flex items-center gap-2 text-lg font-semibold"><Archive className="h-5 w-5"/>Last verified historical snapshot (not live)</h2>
   <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
    Archived GRI v1.2 readings shown at their original source timestamps. These figures are not a current risk assessment, independent re-review, trade signal, or paid output. Current certification is unavailable.
   </p>

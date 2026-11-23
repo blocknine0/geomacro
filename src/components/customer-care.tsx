@@ -98,10 +98,10 @@ export function CustomerCare() {
 
       <button
         onClick={() => setOpen((value) => !value)}
-        className="ml-auto flex items-center gap-2 rounded-full border border-primary/30 bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition hover:bg-primary/90"
+        className="ml-auto flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition hover:bg-primary/90"
         aria-label="Open Geomacro Customer Care"
       >
-        <MessageCircle className="h-4 w-4" />
+        <MessageCircle className="h-3.5 w-3.5" />
         <span>Customer Care</span>
       </button>
     </div>

@@ -32,8 +32,8 @@ describe("public intelligence preview route failure boundary", () => {
 
   it("renders an institutional pending hero before the bounded source loaders finish",()=>{
     const page=readFileSync("src/routes/intelligence.tsx","utf8");
-    expect(page).toContain("pendingMs: 0");
+    expect(page).toContain("pendingMs: 180");
     expect(page).toContain("pendingComponent:");
-    expect(page).toContain("Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates");
+    expect(page).toContain("Loading current intelligence…");
   });
 });

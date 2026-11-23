@@ -39,7 +39,12 @@ function docsDescription(markdown: string, title: string) {
 
 export const Route = createFileRoute("/docs_/$slug")({
   loader: ({ params }) => {
-    const page = getDocsPage(params.slug);
+    let page: ReturnType<typeof getDocsPage>;
+    try {
+      page = getDocsPage(params.slug);
+    } catch {
+      throw notFound();
+    }
     if (!page) throw notFound();
     return { page };
   },

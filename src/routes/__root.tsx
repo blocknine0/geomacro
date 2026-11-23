@@ -91,6 +91,17 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
   );
 }
 
+function RootPendingComponent() {
+  return (
+    <main role="status" aria-live="polite" className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+      <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+        GEOMACRO
+      </p>
+      <p className="mt-3 text-sm text-muted-foreground">Loading this page…</p>
+    </main>
+  );
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -159,6 +170,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  pendingMs: 180,
+  pendingMinMs: 250,
+  pendingComponent: RootPendingComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });

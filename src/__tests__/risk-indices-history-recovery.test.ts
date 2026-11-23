@@ -57,7 +57,7 @@ describe("historical GRI display is separate from current certified publication"
   expect(server).toContain('mode==="historical"?EDGE_URL+"/history":EDGE_URL');
   expect(api).toContain('readRiskIndicesEdge("historical")');
   expect(api).toContain("customer_chargeable:false");
-  expect(view).toContain("Last verified historical snapshot — not live");
+  expect(view).toContain("Last verified historical snapshot (not live)");
   expect(view).toContain("Current certification is unavailable.");
   expect(original).toContain("readCurrentReviewedSignedIndices()");
   expect(original).toContain("readGeoMacroCertifiedNewsRisk()");

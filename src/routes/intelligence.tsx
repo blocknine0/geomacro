@@ -45,14 +45,23 @@ function mergeJournalWithTeasers(
     });
 }
 
+function safePublicSignals(value: unknown): StatelessIntelligenceSignal[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((signal): signal is StatelessIntelligenceSignal =>
+    Boolean(signal) &&
+    typeof signal === "object" &&
+    typeof signal.id === "string" &&
+    typeof signal.published_at === "string",
+  );
+}
+
 export const Route = createFileRoute("/intelligence")({
   validateSearch: intelligenceCategorySearch,
-  pendingMs: 0,
-  pendingMinMs: 0,
-  pendingComponent: () => <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+  pendingMs: 180,
+  pendingMinMs: 250,
+  pendingComponent: () => <main role="status" aria-live="polite" className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
     <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">GEOMACRO · LIVE INTELLIGENCE</p>
-    <h1 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight sm:text-5xl">Real-Time Geopolitical, Macro/FX &amp; Critical Minerals Risk Gates: Built for Both Analysts &amp; Autonomous AI Agents.</h1>
-    <p className="mt-4 text-sm text-muted-foreground">Loading the source-neutral public briefing…</p>
+    <p className="mt-3 text-sm text-muted-foreground">Loading current intelligence…</p>
   </main>,
   loader: async () => {
     const now = Date.now();
@@ -64,24 +73,35 @@ export const Route = createFileRoute("/intelligence")({
     // The three category checks are independent: one timeout must never hide
     // another category's valid original-dated releases.
     const domains = ["geopolitics", "macro", "rare_earth"] as const;
-    const liveTeasersPromise = fetchRiskStreamPublicTeasers().catch(() => []);
-    const [geopolitics, macro, minerals, history] = await Promise.allSettled([
-      ...domains.map(category => withPublicRuntimeTimeout(
+    const liveTeasersPromise = Promise.resolve()
+      .then(() => fetchRiskStreamPublicTeasers())
+      .then((signals) => Array.isArray(signals) ? signals : [])
+      .catch(() => []);
+    const categoryLoads = domains.map((category) =>
+      Promise.resolve().then(() => withPublicRuntimeTimeout(
         getStatelessIntelligence({ data: { category } }),
         8_000,
         "Original publisher Intelligence source check timed out.",
       )),
-      withPublicRuntimeTimeout(
-        fetchDirectDerivedNews(),
-        9_000,
-        "Derived Intelligence journal read timed out.",
-      ),
+    );
+    const journalLoad = Promise.resolve().then(() => withPublicRuntimeTimeout(
+      fetchDirectDerivedNews(),
+      9_000,
+      "Derived Intelligence journal read timed out.",
+    ));
+    const [geopolitics, macro, minerals, history] = await Promise.allSettled([
+      ...categoryLoads,
+      journalLoad,
     ]);
-    const liveTeasers = await liveTeasersPromise;
+    const liveTeasers = safePublicSignals(await liveTeasersPromise);
+    const fallbackJournal = history.status === "fulfilled" && Array.isArray(history.value) ? history.value : [];
     const accepted = [geopolitics, macro, minerals].map((entry, i) =>
-      entry.status === "fulfilled" && !Array.isArray(entry.value) &&
-       entry.value.category === domains[i] &&
-      entry.value.healthy_feed_count > 0 ? entry.value : null);
+      entry.status === "fulfilled" && entry.value && typeof entry.value === "object" &&
+       !Array.isArray(entry.value) && entry.value.category === domains[i] &&
+      typeof entry.value.healthy_feed_count === "number" && entry.value.healthy_feed_count > 0
+        ? entry.value
+        : null,
+    );
     return {
       rows: [],
       now,
@@ -95,7 +115,9 @@ export const Route = createFileRoute("/intelligence")({
       // NOT {signals}. A successful journal is combined with actual live
       // issuer answers; neither supplies a canonical signed risk score.
       // Preserve the established fallback semantics: `? history.value : []`.
-      journal: history.status === "fulfilled" && Array.isArray(history.value) ? mergeJournalWithTeasers(history.value, liveTeasers) : mergeJournalWithTeasers([], liveTeasers),
+      journal: history.status === "fulfilled" && Array.isArray(history.value)
+        ? mergeJournalWithTeasers(safePublicSignals(history.value), liveTeasers)
+        : mergeJournalWithTeasers(safePublicSignals(fallbackJournal), liveTeasers),
     };
   },
   head: () => ({

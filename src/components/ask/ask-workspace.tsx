@@ -36,7 +36,7 @@ function followUpQuestions(question:string,_answer:AskAnswer):string[]{
     ]);
   if(/critical mineral|rare earth|lithium|cobalt|nickel|graphite|copper|refin|processing|mining/.test(text))
     groups.push([
-      "Which stage—mining, refining or processing—is most exposed?",
+      "Which stage, mining, refining or processing, is most exposed?",
       "What verified output data is available for this mineral?",
       "Which countries are key to this supply chain?",
     ]);

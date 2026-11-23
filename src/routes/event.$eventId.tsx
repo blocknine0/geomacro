@@ -19,6 +19,11 @@ function eventPageTitle(value: string | null | undefined) {
 }
 
 export const Route = createFileRoute("/event/$eventId")({
+  pendingMs: 180,
+  pendingMinMs: 250,
+  pendingComponent: () => <main role="status" aria-live="polite" className="mx-auto max-w-5xl px-4 py-14 sm:px-6 md:py-20">
+    <p className="text-sm text-muted-foreground">Loading this intelligence event…</p>
+  </main>,
   loader: async ({ params }) => {
     try {
       return await withPublicRuntimeTimeout(
