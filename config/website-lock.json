@@ -1534,5 +1534,29 @@
     "source_raw_content_exposed": false,
     "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_website_polish_docs_20261123": {
+    "approval": "Founder explicitly authorized robust page loading, compact Customer Care, plain-language cleanup, and the updated customer-facing Docs landing page on 2026-11-23.",
+    "approved_source_commit": "21d87ef9ed7e591df34f80506ed8c3e5d8311529",
+    "approved_paths": [
+      "src/routes/__root.tsx",
+      "src/routes/docs.tsx",
+      "src/routes/docs_.$slug.tsx",
+      "src/routes/docs_.gri-architecture.tsx",
+      "src/routes/event.$eventId.tsx",
+      "src/routes/intelligence.tsx",
+      "src/lib/docs-content.ts",
+      "src/components/customer-care.tsx",
+      "src/components/ask/ask-workspace.tsx",
+      "src/components/risk-indices/risk-indices-workspace.tsx",
+      "src/components/risk-indices/verified-historical-indices.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "funds_authorized": false,
+    "published_deployment_claimed": false,
+    "published_source_sha_unchanged": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }

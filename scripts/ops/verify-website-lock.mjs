@@ -200,6 +200,8 @@ const approvedPricing = [
   config.approved_transformative_osint_riskstream_conversion_20261116,
   // Founder-requested recovery of the currently merged Intelligence presentation: exact immutable blobs only.
   config.approved_intelligence_live_teaser_current_blobs_20261122,
+  // Exact authorized docs, route-loading, and customer-care presentation blobs.
+  config.approved_website_polish_docs_20261123,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
