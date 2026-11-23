@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-23T12:49:57.744Z",
+  "checked_at": "2026-11-23T13:43:25.635Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -15,10 +15,10 @@
   "item_count": 23,
   "counts": {
     "geopolitics": 4,
-    "macro": 3,
-    "rare_earth": 16
+    "macro": 4,
+    "rare_earth": 15
   },
-  "source_native_ids_sha256": "a9b608d0779a38d8f676355736b114690400b07d26bfe739b5f5a9308b0082b5",
+  "source_native_ids_sha256": "e65f30560f8722c06ba194a4524943d8a1ef9cd2de34d36abae39602367d81fe",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,27 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-8a1ea02c",
+      "category": "macro",
+      "title": "GeoMacro Macro/FX Brief · Monetary Policy & FX Liquidity — China (CHN)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported review or discussion by central-bank, treasury or currency-policy actors, affecting Monetary Policy & FX Liquidity in China; direction is uncertain (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: uncertain Monetary Policy & FX Liquidity pressure in China → Downstream effect: local funding, settlement and import costs may shift → Price impact channel: CNY/USD and China sovereign spreads. Action Posture: REQUIRE_APPROVAL.",
+      "topic": "Monetary Policy & FX Liquidity",
+      "geography": "China",
+      "country_iso3": "CHN",
+      "corridor": null,
+      "event_direction": "uncertain",
+      "event_action": "Reported Review or Discussion",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-23T13:03:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-17f11f2d",
       "category": "rare_earth",
@@ -474,27 +495,6 @@
       "event_action": "Reported Review or Discussion",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-20T21:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-171e92b8",
-      "category": "rare_earth",
-      "title": "GeoMacro Critical Minerals Brief · Lithium & Battery-Grade Supply — Zimbabwe (ZWE)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a proposal under review by mineral regulators and supply-chain operators, affecting Lithium & Battery-Grade Supply in Zimbabwe; direction is tightening (tightening or disruption pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: tightening Lithium & Battery-Grade Supply pressure in Zimbabwe → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: battery-grade lithium benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
-      "topic": "Lithium & Battery-Grade Supply",
-      "geography": "Zimbabwe",
-      "country_iso3": "ZWE",
-      "corridor": null,
-      "event_direction": "tightening",
-      "event_action": "Proposal Under Review",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-20T13:34:41.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
