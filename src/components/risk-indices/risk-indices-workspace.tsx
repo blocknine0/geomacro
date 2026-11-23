@@ -68,7 +68,7 @@ export function RiskIndicesWorkspace() {
             The world moves in three directions. Track news-driven geopolitical, macroeconomic and critical-minerals severity, with original observation times and source-aware confidence.
           </p>
           <p className="mt-3 max-w-2xl text-xs leading-6 text-muted-foreground">
-            A GeoMacro self-certified calculation—not independently certified event facts, probabilities or investment advice.
+            A GeoMacro self-certified calculation. It does not independently certify event facts, probabilities or investment advice.
           </p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm backdrop-blur-sm">
@@ -100,7 +100,7 @@ export function RiskIndicesWorkspace() {
 
       <section aria-labelledby="history-heading" id="history" className="mt-16 border-t border-border/70 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-6">
-          <SectionHeader eyebrow="02 / OBSERVED HISTORY" title="The past 72 hours, without guesswork" copy="Actual qualified news-severity observations, grouped in 6-hour bins. These bars are observed event severity—not retrospective certified GRI index scores." />
+          <SectionHeader eyebrow="02 / OBSERVED HISTORY" title="The past 72 hours, without guesswork" copy="Qualified news-severity observations grouped in 6-hour bins. These bars show observed event severity, not retrospective certified GRI index scores." />
           <div className="inline-flex rounded-xl border border-border/70 bg-card/65 p-1" role="group" aria-label="Choose history window">
             {WINDOWS.map(item=><button key={item} type="button" aria-pressed={window===item} onClick={()=>setWindow(item)}
               className={"min-w-16 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
@@ -132,7 +132,7 @@ export function RiskIndicesWorkspace() {
 
       <section id="integrity" className="mt-16 border-t border-border/70 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <SectionHeader eyebrow="04 / PROOF & INTEGRITY" title="Evidence you can inspect" copy="Cryptographic fingerprints identify the exact calculation and inputs. The HMAC is verified by GeoMacro's server-held issuer key—not by an external auditor." />
+          <SectionHeader eyebrow="04 / PROOF & INTEGRITY" title="Evidence you can inspect" copy="Cryptographic fingerprints identify the calculation and its inputs. GeoMacro verifies the HMAC with a server-held issuer key; an external auditor has not verified it." />
           <span className="inline-flex items-center gap-2 rounded-full border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-primary" /> GeoMacro self-certified</span>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-3">

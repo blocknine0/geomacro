@@ -89,7 +89,7 @@ function GriArchitecturePage() {
       </section>
 
       <section className="mt-12">
-        <SectionTitle eyebrow="Definition" title="What GRI measures — and what it does not" />
+        <SectionTitle eyebrow="Definition" title="What GRI measures and what it does not" />
         <div className="grid gap-4 lg:grid-cols-2">
           <Panel title="GRI is">
             <ProofList

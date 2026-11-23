@@ -23,6 +23,25 @@ export const DOCS_MANIFEST = (manifestJson as DocsManifestEntry[]).map((entry) =
 }));
 export const DOCS_PAGE_COUNT = DOCS_MANIFEST.length;
 
+export const DOCS_CURRENT_OVERVIEW = {
+  headline: "What GeoMacro delivers in 10 seconds",
+  summary:
+    "In about 10 seconds, GeoMacro turns verified primary evidence into a signed Risk Gate decision across Geopolitics, Macro / FX, and Critical Minerals.",
+  categories: ["Geopolitics", "Macro / FX", "Critical Minerals"],
+  perCallTiers: [
+    { name: "BASIC", price: "$0.15" },
+    { name: "STANDARD", price: "$0.20" },
+    { name: "COMPLEX", price: "$0.30" },
+  ],
+  monthlyPacks: [
+    { name: "Small", price: "$15/mo", credits: "1,500 credits" },
+    { name: "Standard", price: "$30/mo", credits: "3,000 credits" },
+    { name: "Best", price: "$60/mo", credits: "6,000 credits" },
+  ],
+  creditValue: "1 credit = $0.01 USD",
+  rollover: "Unused credits roll over and never expire.",
+} as const;
+
 const rawFiles = import.meta.glob("../content/docs/*.md", {
   query: "?raw",
   import: "default",
