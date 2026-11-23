@@ -1367,7 +1367,7 @@
   },
   "approved_pricing_risk_gate_packs_20261123": {
     "approval": "Founder explicitly authorized the PR #4175 Risk Gate monthly pack presentation and type-safety changes on 2026-11-23. Pin the exact listed blobs; keep the website lock active and payment execution disabled.",
-    "approved_source_commit": "5a71b25beb0678630531cbbc2606680ab5ca4639",
+    "approved_source_commit": "70f4808cf64d4fe1309c8a1240b7b9dd2d97afc1",
     "approved_paths": [
       "src/components/dual-rail-checkout.tsx",
       "src/components/low-barrier-pricing.tsx",
