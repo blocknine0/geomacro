@@ -1357,12 +1357,26 @@
     ],
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
     "paid_flags_enabled": false,
     "payment_authorized": false,
     "canary_hold_unchanged": true,
     "protected_intelligence_and_risk_index_files_unchanged": true,
     "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_pricing_risk_gate_packs_20261123": {
+    "approval": "Founder explicitly authorized the PR #4175 Risk Gate monthly pack presentation and type-safety changes on 2026-11-23. Pin the exact listed blobs; keep the website lock active and payment execution disabled.",
+    "approved_source_commit": "5a71b25beb0678630531cbbc2606680ab5ca4639",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/structured-product-setup.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   },
   "approved_intelligence_risk_gate_conversion_20261116": {
     "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk → Effect → Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
