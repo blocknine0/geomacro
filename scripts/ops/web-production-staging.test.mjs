@@ -47,6 +47,32 @@ test("production-capable build config is workers.dev-only with no private bindin
   assert.equal(marker.canonical_main_sha, "a".repeat(40));
   assert.equal(marker.production_activation_performed, false);
   assert.equal(result.payment_authorized, false);
+
+  const productionResult = prepareWebProduction({ root, sha: "a".repeat(40), target: "production" });
+  const productionConfig = JSON.parse(readFileSync(join(root, ".output/server/production-wrangler.json"), "utf8"));
+  const productionMarker = JSON.parse(readFileSync(join(root, ".output/public/.well-known/geomacro-build.json"), "utf8"));
+  assert.equal(productionConfig.name, "geomacro-web-production");
+  assert.equal(productionConfig.workers_dev, false);
+  assert.equal(productionConfig.preview_urls, false);
+  assert.deepEqual(productionConfig.routes, [
+    { pattern: "geomacro.live", custom_domain: true },
+    { pattern: "www.geomacro.live", custom_domain: true },
+  ]);
+  assert.equal(productionMarker.production_activation_performed, true);
+  assert.equal(productionMarker.deployment_mode, "production");
+  assert.equal(productionResult.schema, "geomacro.web-production-build.v1");
+});
+
+test("production deployment workflow is manual-only and requires explicit confirmation", () => {
+  const workflow = readFileSync(new URL("../../.github/workflows/deploy-web-production.yml", import.meta.url), "utf8");
+  const triggers = workflow.split("\npermissions:", 1)[0];
+  assert.match(triggers, /^on:\n  workflow_dispatch:/mu);
+  assert.doesNotMatch(triggers, /^\s+(?:push|schedule|pull_request):/mu);
+  assert.match(triggers, /confirmation:[\s\S]*?required: true/u);
+  assert.match(workflow, /inputs\.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION'/u);
+  assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/u);
+  assert.match(workflow, /persist-credentials: false/u);
+  assert.match(workflow, /permissions:\n  contents: read/u);
 });
 
 test("staging SSR paths include public Risk Gate and omit the redirecting data API route", () => {
