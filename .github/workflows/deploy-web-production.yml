@@ -69,6 +69,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -76,6 +77,7 @@ jobs:
           [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]] || { echo 'WEB_PRODUCTION_CLOUDFLARE_ACCOUNT_ID_INVALID'; exit 2; }
           test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo 'WEB_PRODUCTION_B2_READ_KEY_ID_SECRET_REQUIRED'; exit 2; }
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_SECRET_REQUIRED'; exit 2; }
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_INVALID'; exit 2; }
           echo 'WEB_PRODUCTION_REQUIRED_CREDENTIALS_PRESENT'
 
       - name: Inspect existing production Worker bindings without exposing secret values
@@ -94,16 +96,18 @@ jobs:
             echo 'b2_key_id_present=false' >> "$GITHUB_OUTPUT"
             echo 'b2_application_key_present=false' >> "$GITHUB_OUTPUT"
             echo 'fingerprint_pepper_present=false' >> "$GITHUB_OUTPUT"
+            echo 'commerce_ledger_token_present=false' >> "$GITHUB_OUTPUT"
             echo 'WEB_PRODUCTION_WORKER_NOT_YET_DEPLOYED'
           elif [[ "$status" == 200 ]]; then
             jq -e '.success == true and (.result.bindings | type == "array")' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_BINDING_INVENTORY_INVALID'; exit 2; }
-            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then .name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby" elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
-            for binding in B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY GEOMACRO_SECURITY_FINGERPRINT_PEPPER; do
+            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then .name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby" elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER", "GEOMACRO_COMMERCE_LEDGER_TOKEN"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
+            for binding in B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY GEOMACRO_SECURITY_FINGERPRINT_PEPPER GEOMACRO_COMMERCE_LEDGER_TOKEN; do
               present="$(jq -r --arg name "$binding" 'any(.result.bindings[]; .type == "secret_text" and .name == $name)' "$settings_file")"
               case "$binding" in
                 B2_ARCHIVE_READ_KEY_ID) echo "b2_key_id_present=$present" >> "$GITHUB_OUTPUT" ;;
                 B2_ARCHIVE_READ_APPLICATION_KEY) echo "b2_application_key_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GEOMACRO_SECURITY_FINGERPRINT_PEPPER) echo "fingerprint_pepper_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_COMMERCE_LEDGER_TOKEN) echo "commerce_ledger_token_present=$present" >> "$GITHUB_OUTPUT" ;;
               esac
             done
             echo 'WEB_PRODUCTION_EXISTING_BINDINGS_VALIDATED'
@@ -119,9 +123,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           B2_KEY_ID_PRESENT: ${{ steps.production-bindings.outputs.b2_key_id_present }}
           B2_APPLICATION_KEY_PRESENT: ${{ steps.production-bindings.outputs.b2_application_key_present }}
           FINGERPRINT_PEPPER_PRESENT: ${{ steps.production-bindings.outputs.fingerprint_pepper_present }}
+          COMMERCE_LEDGER_TOKEN_PRESENT: ${{ steps.production-bindings.outputs.commerce_ledger_token_present }}
         shell: bash
         run: |
           set -euo pipefail
@@ -139,6 +145,10 @@ jobs:
               npx -y wrangler@4.136.3 secret put GEOMACRO_SECURITY_FINGERPRINT_PEPPER --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_FINGERPRINT_PEPPER_PROVISIONED'
           else echo 'WEB_PRODUCTION_FINGERPRINT_PEPPER_RETAINED'; fi
+          if [[ "$COMMERCE_LEDGER_TOKEN_PRESENT" != true ]]; then
+            printf '%s' "$GEOMACRO_COMMERCE_LEDGER_TOKEN" | npx -y wrangler@4.136.3 secret put GEOMACRO_COMMERCE_LEDGER_TOKEN --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_PROVISIONED'
+          else echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_RETAINED'; fi
 
       - name: Verify exact SHA and audit production DNS, Worker domains, and public serving
         env:
