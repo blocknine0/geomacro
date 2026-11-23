@@ -1,0 +1,39 @@
+name: Daily Cold Wallet Sweep
+
+on:
+  schedule:
+    - cron: "55 23 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run balance checks without sending USDC
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    if: vars.GEOMACRO_COLD_SWEEP_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Run destination-locked sweep
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || vars.GEOMACRO_COLD_SWEEP_ENABLED != 'true' }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          GEOMACRO_HOT_WALLET_SWEEP_PRIVATE_KEY: ${{ vars.GEOMACRO_COLD_SWEEP_ENABLED == 'true' && (github.event_name == 'schedule' || inputs.dry_run == false) && secrets.GEOMACRO_HOT_WALLET_SWEEP_PRIVATE_KEY || '' }}
+          GEOMACRO_COLD_SWEEP_ENABLED: ${{ vars.GEOMACRO_COLD_SWEEP_ENABLED }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            node scripts/ops/sweep-hot-wallet-to-cold.mjs --dry-run
+          else
+            node scripts/ops/sweep-hot-wallet-to-cold.mjs --execute
+          fi
