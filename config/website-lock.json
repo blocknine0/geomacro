@@ -1334,8 +1334,8 @@
     "payments_unmodified": true
   },
   "approved_pricing_credit_risk_gate_20261116": {
-    "approval": "Founder explicitly authorized the 2026-11-16 unified Risk Gate pricing and credit-parity presentation update in ChatGPT. Exact source blobs only; keep the website lock active and all payment execution disabled.",
-    "approved_source_commit": "2695e62969a122cfe536f437155642fb33e56a5a",
+    "approval": "Founder authorized the unified Risk Gate pricing and credit-parity presentation update, including the 2026-11-23 PR #4175 pack type-safety fix. Pin only the exact listed source blobs; keep the website lock active and all payment execution disabled.",
+    "approved_source_commit": "a5d128a0665f871a64717542c865b68dab1aec84",
     "approved_paths": [
       "src/components/capability-price-schedule.test.tsx",
       "src/components/category-api-pricing.test.tsx",
@@ -1347,6 +1347,7 @@
     ],
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
     "paid_flags_enabled": false,
     "payment_authorized": false,
     "canary_hold_unchanged": true,
