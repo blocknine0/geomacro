@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-23T09:44:48.457Z",
+  "checked_at": "2026-11-23T10:19:54.872Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 25,
+  "item_count": 27,
   "counts": {
-    "geopolitics": 6,
+    "geopolitics": 7,
     "macro": 4,
-    "rare_earth": 15
+    "rare_earth": 16
   },
-  "source_native_ids_sha256": "cb9abccc44b3794bab1c67e521b6b5fb7c40c303192fbf065db2b3e7769c8c33",
+  "source_native_ids_sha256": "2c4c5c6c82a461c99f3697c74d7a1f993d842f8926be331286d68e802fdd46c4",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-6a21e65e",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement on Ukraine - IAEA Board of Governors November 2026 · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "United Kingdom issued a statement on Ukraine - IAEA Board of Governors November 2026. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-23T09:49:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b910cf59",
       "category": "geopolitics",
@@ -209,6 +228,27 @@
       "event_action": "Proposal Under Review",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-22T18:51:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-01fcc2f0",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Rare-Earth Supply & Processing — Myanmar (MMR)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a proposal under review by mineral processors and refining operators, affecting Rare-Earth Supply & Processing in Myanmar; direction is tightening (tightening or disruption pressure).",
+      "why_it_matters": "WHY IT MATTERS — Risk: tightening Rare-Earth Supply & Processing pressure in Myanmar → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
+      "topic": "Rare-Earth Supply & Processing",
+      "geography": "Myanmar",
+      "country_iso3": "MMR",
+      "corridor": null,
+      "event_direction": "tightening",
+      "event_action": "Proposal Under Review",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-22T13:43:43.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],

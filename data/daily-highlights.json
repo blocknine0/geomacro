@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-23T09:44:48.457Z",
+  "generated_at": "2026-11-23T10:19:54.872Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-6a21e65e",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement on Ukraine - IAEA Board of Governors November 2026 · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "United Kingdom issued a statement on Ukraine - IAEA Board of Governors November 2026. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-23T09:49:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b910cf59",
       "category": "geopolitics",
@@ -308,25 +327,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-62e077e5",
-      "category": "geopolitics",
-      "title": "Geomacro finds Security Council: extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026) · Africa",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "Security Council extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026). Country or region mentioned: Africa.",
-      "geography": "Africa",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-12T22:52:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "United Nations"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
