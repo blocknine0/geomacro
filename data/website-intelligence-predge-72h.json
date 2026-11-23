@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-23T12:17:07.120Z",
+  "checked_at": "2026-11-23T12:19:10.203Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 23,
+  "item_count": 24,
   "counts": {
     "geopolitics": 5,
     "macro": 3,
-    "rare_earth": 15
+    "rare_earth": 16
   },
-  "source_native_ids_sha256": "1e382f61b381a527a8393ed670656c5fd16a61bc623c3425509b4e127fbb32c8",
+  "source_native_ids_sha256": "3fb0b928d2e73ad053eeaa7a4f2cb4de801a1269fcb19bbbb124c5453e85cb64",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,27 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-17f11f2d",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Copper Supply & Processing — Australia (AUS)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported indicator update by mineral processors and refining operators, affecting Copper Supply & Processing in Australia; direction is uncertain (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: uncertain Copper Supply & Processing pressure in Australia → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: LME copper benchmark and regional concentrate premiums. Action Posture: REQUIRE_APPROVAL.",
+      "topic": "Copper Supply & Processing",
+      "geography": "Australia",
+      "country_iso3": "AUS",
+      "corridor": null,
+      "event_direction": "uncertain",
+      "event_action": "Reported Indicator Update",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-23T11:13:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-6a21e65e",
       "category": "geopolitics",
