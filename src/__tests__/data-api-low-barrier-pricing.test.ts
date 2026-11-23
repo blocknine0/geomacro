@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   GEOMACRO_AGENT_MICROPAYMENT,
-  GEOMACRO_ONE_TIME_PACKS,
-  GEOMACRO_SUBSCRIPTIONS,
   GEOMACRO_LOW_BARRIER_VERSION,
 } from "../lib/low-barrier-pricing";
 import {
@@ -18,15 +16,19 @@ const riskGateSetup = readFileSync("src/components/structured-product-setup.tsx"
 const paymentPreview = readFileSync("src/components/dual-rail-checkout.tsx", "utf8");
 
 describe("unified Store & API: one authoritative low-barrier pricing catalog", () => {
-  it("renders new-sale plans and packs from the same versioned catalog as Store", () => {
-    expect(GEOMACRO_SUBSCRIPTIONS.map((p) => [p.price_usd, p.credits_per_30_days]))
-      .toEqual([[9, 900], [29, 2900], [99, 9900]]);
-    expect(GEOMACRO_ONE_TIME_PACKS.map((p) => [p.price_usd, p.credits]))
-      .toEqual([[5, 500], [15, 1500], [30, 3000]]);
+  it("shows only the three monthly Risk Gate Packs with published call equivalents", () => {
     expect(page).toContain("GEOMACRO_LOW_BARRIER_VERSION");
     expect(page).toContain("data-store-api-unified={GEOMACRO_LOW_BARRIER_VERSION}");
-    expect(store).toContain("GEOMACRO_SUBSCRIPTIONS.map");
-    expect(store).toContain("GEOMACRO_ONE_TIME_PACKS.map");
+    expect(store).toContain('aria-label="Monthly Risk Gate packs"');
+    expect(store).toContain('id: "risk-gate-small", name: "Small", priceUsd: 15, credits: 1_500, basic: 100, standard: 75, complex: 50');
+    expect(store).toContain('id: "risk-gate-standard", name: "Standard", priceUsd: 30, credits: 3_000, basic: 200, standard: 150, complex: 100');
+    expect(store).toContain('id: "risk-gate-best", name: "Best", priceUsd: 60, credits: 6_000, basic: 400, standard: 300, complex: 200');
+    expect(store).toContain("Unused credits never expire; your balance rolls over month to month.");
+    expect(store).toContain("below $2.00");
+    expect(store).toContain("Base, Polygon PoS, or Arc");
+    expect(store).toContain("this preview does not promise automatic fallback or uninterrupted calls");
+    expect(store).not.toContain("GEOMACRO_SUBSCRIPTIONS.map");
+    expect(store).not.toContain("GEOMACRO_ONE_TIME_PACKS.map");
     expect(page).toContain("<LowBarrierPricing />");
     expect(store).toContain("1 credit = $0.01 USD");
     expect(page).toContain("$0.15 / $0.20 / $0.30 per eligible delivery");
@@ -36,6 +38,7 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(riskGateSetup).toContain('value: "CRITICAL_MINERALS"');
     expect(riskGateSetup).toContain("country_iso3: riskGateCountry.trim().toUpperCase()");
     expect(riskGateSetup).toContain('mode: "prepare"');
+    expect(riskGateSetup).not.toContain("structuredProductSetup");
     expect(paymentPreview).toContain("AI Agents · Base x402");
     expect(paymentPreview).toContain("Base USDC x402 agent payment · Locked preview");
     expect(alias).toContain('redirect({ to: "/pricing", replace: true })');

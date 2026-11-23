@@ -47,7 +47,7 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
           <p className="mt-3 font-medium">{selection.credits.toLocaleString("en-US")} credits</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             {selection.kind === "monthly_plan"
-              ? "Prepaid 30-day access · manual renewal, no recurring charge"
+              ? "Monthly Risk Gate Pack · manual recharge; unused credits roll over"
               : "One-time credit pack · no subscription"}
           </p>
           <p className="mt-5 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">

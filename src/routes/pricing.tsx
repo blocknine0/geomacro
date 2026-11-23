@@ -8,7 +8,7 @@ import { GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
-  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans at 1 cent per credit, $5/$15/$30 credit packs, a unified three-category Risk Gate at $0.15/$0.20/$0.30 per eligible delivery, and locked PayPal/card, USDC and Base x402 previews.";
+  "Monthly GeoMacro Risk Gate Packs from $15, with 1,500–6,000 credits and unified Geopolitics, Macro / FX, and Critical Minerals pricing.";
 const URL = "https://geomacro.live/pricing";
 const highlights = [
   { label: "Geopolitics", icon: Globe2 },
@@ -41,18 +41,18 @@ function PricingPage() {
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 right-1/3 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
         <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(270px,0.8fr)] lg:items-center">
           <div>
-            <p className="gm-eyebrow">Geomacro Store · API & Agents</p>
+            <p className="gm-eyebrow">Geomacro Store · Risk Gate · API & Agents</p>
             <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
-              Intelligence for people.
-              <span className="block text-primary">Built for machines.</span>
+              Risk Gate pricing.
+              <span className="block text-primary">One balance. Three categories.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              One place for 30-day prepaid plans and one-time credits. Choose how to pay,
-              explore the unified three-category Risk Gate and prepare requests without a charge. Credit packs use 1 credit = $0.01 USD.
+              Compare monthly Risk Gate Packs for Geopolitics, Macro / FX, and Critical Minerals.
+              Per-call pricing is $0.15 BASIC, $0.20 STANDARD, and $0.30 COMPLEX. Each credit equals $0.01 USD.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#plans" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
-                Explore plans <ArrowRight className="h-4 w-4" />
+                Explore Risk Gate Packs <ArrowRight className="h-4 w-4" />
               </a>
               <a href="#payment-checkout" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/50 bg-background/80 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5">
                 Payment methods <ShieldCheck className="h-4 w-4" />
@@ -69,11 +69,12 @@ function PricingPage() {
           </div>
           <div className="rounded-2xl border border-border/80 bg-background/80 p-6 shadow-xl shadow-primary/5 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-3">
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Machine intelligence</span>
+              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Risk Gate</span>
               <Braces className="h-5 w-5 text-primary" aria-hidden />
             </div>
-            <p className="mt-6 text-3xl font-semibold tracking-tight">Three categories</p>
+            <p className="mt-6 text-3xl font-semibold tracking-tight">One unified product</p>
             <p className="mt-2 text-sm text-muted-foreground">Geopolitics · Macro / FX · Critical Minerals</p>
+            <p className="mt-1 text-xs text-muted-foreground">Geopolitics, Macro / FX and Critical Minerals</p>
             <div className="my-6 h-px bg-border" />
             <div className="space-y-3 text-sm">
               {[
@@ -88,21 +89,21 @@ function PricingPage() {
               ))}
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-              Preview PayPal/card (international fiat), native USDC (Base / Polygon), or AI-agent Base USDC x402.
-              All payment methods remain locked and non-payable.
+              Monthly Risk Gate Packs and per-call prices are shown for planning. PayPal/card, USDC, credits, and x402
+              remain locked and non-payable until production activation.
             </p>
           </div>
         </div>
       </section>
 
-      <nav aria-label="Explore Store and API" className="sticky top-16 z-30 -mx-4 mt-5 overflow-x-auto border-y border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl sm:top-[68px] sm:mx-0 sm:rounded-xl sm:border sm:px-5">
+      <nav aria-label="Explore Risk Gate pricing" className="sticky top-16 z-30 -mx-4 mt-5 overflow-x-auto border-y border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl sm:top-[68px] sm:mx-0 sm:rounded-xl sm:border sm:px-5">
         <div className="flex min-w-max items-center gap-2 text-xs font-medium sm:gap-5">
           {[
-            ["#plans", "Plans & credits"],
+            ["#plans", "Monthly packs"],
             ["#payment-checkout", "Payment methods"],
-            ["#api-endpoints", "Endpoints"],
-            ["#prepare", "Try a request"],
-            ["#developer-access", "Get access"],
+            ["#api-endpoints", "Per-call pricing"],
+            ["#prepare", "Prepare a request"],
+            ["#developer-access", "Agent access"],
           ].map(([href, title]) => (
             <a key={href} href={href} className="rounded-lg px-3 py-2 text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{title}</a>
           ))}
@@ -111,13 +112,11 @@ function PricingPage() {
 
       <section id="plans" className="scroll-mt-40 pt-12 sm:pt-16">
         <div className="mb-7 max-w-3xl">
-          <p className="gm-eyebrow">Flexible access · {GEOMACRO_LOW_BARRIER_VERSION}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Start small. Grow on your terms.
-          </h2>
+          <p className="gm-eyebrow">Risk Gate Packs · {GEOMACRO_LOW_BARRIER_VERSION}</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Monthly credit packs for every stage.</h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Compare prepaid 30-day plans and one-time credit packs at 1 credit = $0.01 USD, then select
-            PayPal/card, native Base/Polygon USDC, or AI-agent Base USDC x402. Production transactions remain locked.
+            Choose Small, Standard, or Best for one balance shared across the three Risk Gate categories.
+            Unused credits never expire and roll over. Payments remain locked in this prelaunch preview.
           </p>
         </div>
         <LowBarrierPricing />
@@ -125,10 +124,11 @@ function PricingPage() {
 
       <section id="api-endpoints" className="scroll-mt-40 pt-14 sm:pt-20">
         <div className="mb-6">
-          <p className="gm-eyebrow">Developer integration</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One engine. Three categories.</h2>
+            <p className="gm-eyebrow">Risk Gate API</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One endpoint. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Geopolitics, Macro / FX and Critical Minerals share one signed Risk Gate endpoint and three evidence tiers.
+            GEOPOLITICS, MACRO_FX, and CRITICAL_MINERALS share one signed Risk Gate endpoint and three evidence tiers.
+            One engine. Three categories. Geopolitics, Macro / FX and Critical Minerals use the same tier rates.
             Prices are $0.15 / $0.20 / $0.30 per eligible delivery; payment activation remains separately gated.
           </p>
         </div>
@@ -145,27 +145,29 @@ function PricingPage() {
 
       <section id="developer-access" className="scroll-mt-40 pt-14 sm:pt-20">
         <div className="mb-6">
-          <p className="gm-eyebrow">Launch access</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Ready to connect?</h2>
+          <p className="gm-eyebrow">Agent and developer access</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Plan for repeat recharge.</h2>
         </div>
         <ApiKeysNotice />
         <p className="mt-4 max-w-3xl text-xs leading-6 text-muted-foreground">
           Paid API requests become available only when the live payment and delivery service confirms activation.
-          Availability is checked for each request. Signed risk products are private pilots;
-          customers retain control of every action. This page shows a locked checkout preview and never requests a payment.
+          Availability is checked for each request. Customer action stays explicit: customers retain control of every action while payments remain under the separate activation gate.
+          When enabled, a low-balance prompt is intended below $2.00 and agent integrations may use 402 pay-per-call
+          at the published tier rates. Base, Polygon PoS, and Arc support remains locked until each rail is activated;
+          this page shows a non-payable preview and never requests payment.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Link to="/docs" className="group flex items-start justify-between gap-5 rounded-2xl border border-border p-6 transition hover:border-primary/40 hover:bg-primary/5">
             <div>
               <p className="text-base font-semibold">Developer documentation</p>
-              <p className="mt-2 text-sm text-muted-foreground">API schemas, source eligibility and delivery contracts.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Risk Gate API schema, evidence eligibility, and delivery contracts.</p>
             </div>
             <ArrowUpRight className="h-5 w-5 shrink-0 text-primary" aria-hidden />
           </Link>
           <Link to="/contact" className="group flex items-start justify-between gap-5 rounded-2xl border border-border p-6 transition hover:border-primary/40 hover:bg-primary/5">
             <div>
               <p className="text-base font-semibold">Discuss your workflow</p>
-              <p className="mt-2 text-sm text-muted-foreground">Pricing, volumes, integrations and private pilot qualification.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Discuss Risk Gate pricing, volumes, and agent integration access.</p>
             </div>
             <ArrowUpRight className="h-5 w-5 shrink-0 text-primary" aria-hidden />
           </Link>
@@ -175,16 +177,16 @@ function PricingPage() {
       <section className="mt-16 grid gap-5 border-t border-border pt-8 md:grid-cols-2">
         <div>
           <h2 className="text-lg font-semibold">Just exploring?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Read public findings and use Ask Geomacro for free.</p>
-          <Link to="/intelligence" className="gm-text-link mt-4">
-            Open intelligence <ArrowRight className="h-4 w-4" />
+          <p className="mt-2 text-sm text-muted-foreground">Review categories, evidence tiers, and request readiness.</p>
+          <Link to="/risk-gate" className="gm-text-link mt-4">
+            Open Risk Gate <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         <div>
           <h2 className="text-lg font-semibold">Building for a team?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Discuss your scope, volume and delivery needs.</p>
-          <Link to="/contact" className="gm-text-link mt-4">
-            Contact Geomacro <ArrowRight className="h-4 w-4" />
+          <p className="mt-2 text-sm text-muted-foreground">See public Risk Gate findings or discuss a team workflow across the three categories.</p>
+          <Link to="/intelligence" className="gm-text-link mt-4">
+            Open intelligence <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>
