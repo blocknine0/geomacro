@@ -2,7 +2,7 @@ import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchDirectDerivedNews, fetchPermanentDerivedNews, fetchRiskStreamPublicTeasers } from "@/lib/public-derived-news-client";
+import { fetchDirectDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -249,9 +249,8 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   }, [initial, initialFeeds]);
 
   // Historical findings come from the append-only static archive. The rolling
-  // derived-news snapshot adds new findings between archive publications, while
-  // the separate public Risk Stream endpoint contributes short-lived,
-  // source-redacted D1 teasers. Neither feed falls back to a server function.
+  // static snapshot adds new findings between archive publications. No website
+  // read has a D1 or server-function fallback.
   useEffect(() => {
     let alive = true;
     let pending = false;
@@ -292,18 +291,13 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             if (alive) setJournalUnavailable(true);
           }
         }
-        const [recentResult, teaserResult] = await Promise.allSettled([
-          fetchDirectDerivedNews(),
-          fetchRiskStreamPublicTeasers(),
-        ]);
-        if (!alive) return;
-        const recent = recentResult.status === "fulfilled" ? recentResult.value : [];
-        const teasers = teaserResult.status === "fulfilled" ? teaserResult.value : [];
-        if (recentResult.status === "fulfilled" || teasers.length > 0) {
-          setJournal(previous => mergeUnseen(previous, [...recent, ...teasers]));
+        try {
+          const recent = await fetchDirectDerivedNews();
+          if (!alive) return;
+          setJournal(previous => mergeUnseen(previous, recent));
           if (archiveLoaded) setJournalUnavailable(false);
-        } else {
-          setJournalUnavailable(true);
+        } catch {
+          if (alive) setJournalUnavailable(true);
         }
       } finally {
         pending = false;
