@@ -38,7 +38,7 @@ export function LowBarrierPricing() {
             <article key={pack.id} data-pack-id={pack.id} className="flex flex-col rounded-2xl border border-border p-6">
               <div className="flex min-h-7 items-start justify-between gap-2">
                 <h3 className="text-lg font-semibold">{pack.name}</h3>
-                {pack.popular && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Most Popular</span>}
+                {"popular" in pack && pack.popular && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Most Popular</span>}
               </div>
               <p className="mt-4">
                 <span className="text-3xl font-semibold">{"$"}{pack.priceUsd}</span>
