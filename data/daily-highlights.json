@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-23T03:45:25.033Z",
+  "generated_at": "2026-11-23T09:44:48.457Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-b910cf59",
+      "category": "geopolitics",
+      "title": "Geomacro finds Sovereign AI and National Security Strategic Investment: funded backing British autonomous defence systems firm · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Sovereign AI and National Security Strategic Investment funded backing British autonomous defence systems firm. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "funding",
+      "topic": "foreign policy",
+      "published_at": "2026-11-23T08:00:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b52e71f1",
       "category": "geopolitics",
@@ -308,25 +327,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-886d2cd1",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Ukraine's armed forces are lawful combatants · United Kingdom",
-      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
-      "what_changed": "United Kingdom issued a statement to the OSCE concerning Ukraine's armed forces are lawful combatants. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "announcement",
-      "topic": "foreign policy",
-      "published_at": "2026-11-12T10:09:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,

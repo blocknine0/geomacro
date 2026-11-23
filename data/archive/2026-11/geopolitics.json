@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-23T03:45:25.033Z",
+  "updated_at": "2026-11-23T09:44:48.457Z",
   "signals": [
+    {
+      "id": "geopolitics-b910cf59",
+      "category": "geopolitics",
+      "title": "Geomacro finds Sovereign AI and National Security Strategic Investment: funded backing British autonomous defence systems firm · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Sovereign AI and National Security Strategic Investment funded backing British autonomous defence systems firm. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "funding",
+      "topic": "foreign policy",
+      "published_at": "2026-11-23T08:00:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-8405d4d1",
       "category": "geopolitics",
