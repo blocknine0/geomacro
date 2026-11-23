@@ -1334,8 +1334,8 @@
     "payments_unmodified": true
   },
   "approved_pricing_credit_risk_gate_20261116": {
-    "approval": "Founder authorized the unified Risk Gate pricing and credit-parity presentation update, including the 2026-11-23 PR #4175 pack type-safety fix. Pin only the exact listed source blobs; keep the website lock active and all payment execution disabled.",
-    "approved_source_commit": "a5d128a0665f871a64717542c865b68dab1aec84",
+    "approval": "Founder explicitly authorized the 2026-11-16 unified Risk Gate pricing and credit-parity presentation update in ChatGPT. Exact source blobs only; keep the website lock active and all payment execution disabled.",
+    "approved_source_commit": "2695e62969a122cfe536f437155642fb33e56a5a",
     "approved_paths": [
       "src/components/capability-price-schedule.test.tsx",
       "src/components/category-api-pricing.test.tsx",
@@ -1354,6 +1354,19 @@
     "protected_intelligence_and_risk_index_files_unchanged": true,
     "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_pricing_risk_gate_packs_20261123": {
+    "approval": "Founder explicitly authorized the PR #4175 Risk Gate monthly pack presentation and type-safety changes on 2026-11-23. Pin the exact listed blobs; keep the website lock active and payment execution disabled.",
+    "approved_source_commit": "5a71b25beb0678630531cbbc2606680ab5ca4639",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/structured-product-setup.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   },
   "approved_intelligence_risk_gate_conversion_20261116": {
     "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk → Effect → Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
