@@ -49,9 +49,9 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.unique_linked_sources,37);
  assert.equal(result.total_index_metadata_candidates,3);
  assert.deepEqual(result.candidate_corridors,["bab_el_mandeb"]);
- assert.equal(seen.length,32);
+ assert.equal(seen.length,37);
  assert.equal(result.source_checks.filter(s=>s.state==="NOT_A_NATIVE_FEED").length,6);
- assert.equal(result.supplemental_native_feed_checks.length,20);
+ assert.equal(result.supplemental_native_feed_checks.length,25);
  assert.ok(result.supplemental_native_feed_checks.every(s=>s.state==="NOT_A_NATIVE_FEED"));
  assert.equal(result.source_checks.find(s=>s.id==="asean_customs").state,"PORTAL_TRANSPORT_OBSERVED_NO_EVENT");
  assert.ok(seen.some(url=>url===PINNED_CORRIDOR_PORTALS.asean_customs));
@@ -62,7 +62,7 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.native_event_evidence_written_to_canonical_db,false);
  assert.equal(result.news_candidate_count,0);
  assert.equal(result.original_directory_rss_polled,6);
- assert.equal(result.native_news_sources_polled,26);
+ assert.equal(result.native_news_sources_polled,31);
  assert.equal(result.official_reference_source_checks.length,9);
  assert.equal(result.official_reference_observation_count,0);
  assert.equal(result.source_checks.find(x=>x.id==="gdelt_v2_15m").state,
@@ -95,7 +95,7 @@ test("native RSS intake runs every source in bounded batches of twelve",async()=
        candidate_count:0,news_candidates:[]};
    }
  });
- assert.deepEqual(batchSizes,[12,12,2]);
+ assert.deepEqual(batchSizes,[12,12,7]);
  assert.equal(receipt.feed_count,sources.length);
  assert.equal(receipt.source_checks.length,sources.length);
  assert.deepEqual(receipt.source_checks.map(check=>check.id),sources.map(source=>source.id));
