@@ -28,10 +28,19 @@ const ANSWER_FORMAT={
 } as const;
 let inflight=0,minute={until:0,count:0},day={until:0,count:0};
 const clients=new Map<string,{until:number,count:number}>();
+function currentSourceFreeOfficialObservation(c:HybridAskAnswer,now=Date.now()):boolean{
+ const published=Date.parse(String(c.latest_original_published_at??""));
+ return c.insufficient_evidence===false&&c.low_confidence===true&&c.gri===null&&
+   c.signed_gro_generated===false&&c.independent_same_event_verification===false&&
+   Number.isFinite(published)&&published<=now+5*60_000&&published>=now-24*60*60_000&&
+   c.evidence.length>0&&c.evidence.length<=5&&
+   c.evidence.every(item=>/^live:official:(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(item.eventId));
+}
 function eligible(c:HybridAskAnswer):boolean{
+ const safeUnscoredObservation=currentSourceFreeOfficialObservation(c);
  if(c.gri!==null||(c as {signed_gro_generated?:boolean}).signed_gro_generated===true||c.answer_kind==="public_info"||
    c.real_time_message==="CURRENT_SIGNED_RISK_INDEX_UNAVAILABLE"||
-   c.insufficient_evidence||c.low_confidence||
+   c.insufficient_evidence||c.low_confidence&&!safeUnscoredObservation||
    c.evidence.some(x=>x.eventId==="live:official:numeric"))return false;
  return [c.summary,c.what_changed,c.why_it_matters,c.geomacro_view].every(x=>
   typeof x==="string"&&x.length<=1800&&!/(?:https?:\/\/|www\.|@|-----BEGIN|sk-[a-z0-9_-]+)/iu.test(x));

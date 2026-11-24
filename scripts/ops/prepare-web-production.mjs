@@ -24,7 +24,10 @@ export function prepareWebProduction({ root = process.cwd(), sha = process.env.G
     assets: { binding: "ASSETS", directory: "../public", run_worker_first: true },
     workers_dev: target !== "production",
     preview_urls: false,
-    vars: { GEOMACRO_SUPABASE_RUNTIME_MODE: "standby" },
+    vars: {
+      GEOMACRO_SUPABASE_RUNTIME_MODE: "standby",
+      ...(target === "production" ? { GEOMACRO_ASK_FREE_GROQ_ENABLED: "true" } : {}),
+    },
     observability: { enabled: false },
   };
   if (target === "production") {

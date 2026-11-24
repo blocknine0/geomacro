@@ -73,6 +73,8 @@ test("production deployment workflow deploys on main push and manual confirmatio
   assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/u);
   assert.match(workflow, /persist-credentials: false/u);
   assert.match(workflow, /permissions:\n  contents: read/u);
+  assert.match(workflow, /GROQ_API_KEY: \$\{\{ secrets\.GROQ_API_KEY \}\}/u);
+  assert.match(workflow, /secret put GROQ_API_KEY/u);
 });
 
 test("staging SSR paths include public Risk Gate and omit the redirecting data API route", () => {

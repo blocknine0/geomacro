@@ -181,4 +181,46 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(await enhanceAskWithFreeGroq("Latest sanctions news today? Example 2498",none,"client",{fetchImpl:req as any})).toBe(none);
    expect(req).not.toHaveBeenCalled();
  });
+ it("conversationally renders current source-free official observations while preserving their caveat",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const canonical={...a,
+     summary:"I found a recent official release in Geopolitics; this is observed news, not a corroborated risk assessment.",
+     what_changed:"An eligible official observation was recorded for India.",
+     why_it_matters:"The release gives current context, but it has not been independently matched to the same event.",
+     geomacro_view:"This item has not been scored or signed as a Risk Gate.",
+     low_confidence:true,latest_original_published_at:new Date().toISOString(),
+     signed_gro_generated:false,independent_same_event_verification:false,
+     evidence:[{eventId:"live:official:geopolitics-a1b2c3d4",title:"Geomacro finds an official event signal for IND",relevance:100}],
+   } satisfies HybridAskAnswer;
+   const reply={summary:"An official Geopolitics release was recorded for India, but it has not been matched to a second report.",
+     what_changed:"The live observation concerns an official development in India.",
+     why_it_matters:"It adds current context, while the event match remains unconfirmed.",
+     geomacro_view:"This is an unscored observation, not a signed Risk Gate."};
+   const request=vi.fn(async()=>new Response(JSON.stringify({
+     choices:[{message:{content:JSON.stringify(reply)}}],
+   }),{status:200}));
+   const result=await enhanceAskWithFreeGroq("What changed in Geopolitics in India?",canonical,
+     "live-official-observation-client-501",{fetchImpl:request as any,
+       readContext:async()=>({categories:["geopolitics"],canonical_evidence_items:1,
+         research_activity_by_category:[],official_release_context:[{
+           category:"geopolitics",topic:"official event signal",published_at:canonical.latest_original_published_at!,
+         }]})});
+   expect(result.model_rendering).toBe("assisted");
+   expect(result.summary).toBe(reply.summary);
+   expect(result.evidence).toStrictEqual(canonical.evidence);
+   expect(result.signed_gro_generated).toBe(false);
+   expect(request).toHaveBeenCalledTimes(1);
+ });
+ it("does not model-render stale or malformed low-confidence observations",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const request=vi.fn();
+   const stale={...a,low_confidence:true,latest_original_published_at:"2020-01-01T00:00:00.000Z",
+     signed_gro_generated:false,independent_same_event_verification:false,
+     evidence:[{eventId:"live:official:geopolitics-a1b2c3d4",title:"Old item",relevance:100}]};
+   expect(await enhanceAskWithFreeGroq("Latest geopolitics news?",stale,"stale-live-observation",{
+     fetchImpl:request as any})).toBe(stale);
+   expect(request).not.toHaveBeenCalled();
+ });
 });
