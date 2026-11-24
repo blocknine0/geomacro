@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, Languages, Menu, Pause, Play, Twitter } from "lucide-react";
+import { ChevronDown, Languages, Menu, Pause, Play } from "lucide-react";
 import { IntelligenceBackground } from "@/components/intelligence-background";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
@@ -321,9 +321,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <div className="mt-3 flex flex-col gap-2.5">
                   <Link to="/ecosystem" className="hover:text-foreground">Ecosystem</Link>
                   <Link to="/about" className="hover:text-foreground">About & Trust</Link>
-                  <Link to="/contact" className="hover:text-foreground">Contact</Link>
-                  <a href="https://x.com/GeomacroLive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
-                    <Twitter className="h-3.5 w-3.5" /> X
+                  <a href="https://x.com/GeomacroLive" target="_blank" rel="noreferrer" className="hover:text-foreground">
+                    X (@GeomacroLive)
                   </a>
                 </div>
               </div>

@@ -36,10 +36,16 @@ describe("commercial access is explained sitewide", () => {
     expect(pricing).not.toContain("Launch price for the first 20,000");
     expect(dataApi).not.toContain("Launch price for the first 20,000");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
-    expect(guide).toContain("Monthly access");
+    expect(guide).toContain("Team plans");
     expect(guide).toContain("Recurring intelligence for teams and workflows");
     expect(guide).toContain('mailto:contact@geomacro.live?subject=Geomacro%20monthly');
-    expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
+    expect(guide).toContain("/api/v1/payments/usdc-risk-gate");
+    expect(guide).toContain("$15 / $30 / $60 packs on Arc, Base, or Polygon");
+    expect(guide).toContain("Risk Gate never authorizes or submits customer transactions.");
+    expect(guide).not.toContain("Monthly subscription checkout is Coming Soon");
+    expect((shell.match(/<Link to="\/contact" className="hover:text-foreground">Contact<\/Link>/gu) ?? [])).toHaveLength(1);
+    expect(shell).toContain("X (@GeomacroLive)");
+    expect(shell).not.toContain("<Twitter");
     expect(read("src/components/api-keys-notice.tsx")).toContain("Approved prices for all three category APIs are published in Store &amp; API.");
     expect(pricing).toContain("Building for a team?");
   });

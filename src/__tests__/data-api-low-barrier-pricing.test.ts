@@ -27,13 +27,14 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(store).toContain('id: "risk-gate-best", name: "Best", priceUsd: 60, credits: 6_000, basic: 400, standard: 300, complex: 200');
     expect(store).toContain("Unused credits never expire; your balance rolls over month to month.");
     expect(store).toContain("below $2.00");
-    expect(store).toContain("Base, Polygon PoS, or Arc");
-    expect(store).toContain("this preview does not promise automatic fallback or uninterrupted calls");
+    expect(store).toContain("Arc, Base, or Polygon");
+    expect(store).toContain("Checkout and crediting require live activation");
+    expect(store).toContain("never authorizes or submits customer transactions");
     expect(store).not.toContain("GEOMACRO_SUBSCRIPTIONS.map");
     expect(store).not.toContain("GEOMACRO_ONE_TIME_PACKS.map");
     expect(page).toContain("<LowBarrierPricing />");
     expect(store).toContain("1 credit = $0.01 USD");
-    expect(page).toContain("$0.15 / $0.20 / $0.30 per eligible delivery");
+    expect(page).toContain("$0.15 BASIC, $0.20 STANDARD, or $0.30 COMPLEX");
     expect(riskGateSetup).toContain('fetch("/api/v1/risk-gate"');
     expect(riskGateSetup).toContain('value: "GEOPOLITICS"');
     expect(riskGateSetup).toContain('value: "MACRO_FX"');

@@ -26,19 +26,24 @@ describe("published pricing and current access status are truthful across commer
     expect(pricing).not.toContain("Subscribe now");
   });
 
-  it("does not hardcode paid API availability when production activation has not been proven", () => {
+  it("shows mainnet USDC access options without hardcoding payment activation", () => {
     expect(guide).toContain("useAgentCommerceStatus()");
     expect(guide).toContain('commerce.mode === "production"');
-    expect(guide).toContain('"Check live checkout"');
-    expect(guide).toContain('"Coming Soon"');
+    expect(guide).toContain('"Mainnet USDC · activation confirmed"');
+    expect(guide).toContain('"Mainnet USDC · activation required"');
+    expect(guide).toContain("/api/v1/payments/usdc-risk-gate");
+    expect(guide).toContain("Live checks govern checkout and crediting.");
     expect(commerce).toContain("Mainnet USDC · production activation pending");
     expect(commerce).toContain('state.mode === "production"');
     expect(api).toContain("<ApiKeysNotice />");
   });
 
-  it("preserves restricted pilot status but labels unrestricted public access Coming Soon", () => {
+  it("preserves restricted pilot status and states the bounded mainnet payment options", () => {
     expect(riskGate).toContain(">PRIVATE PILOT</Badge>");
-    expect(riskGate).toContain("Coming Soon for general access");
+    expect(riskGate).toContain("mainnet USDC pay-per-call");
+    expect(riskGate).toContain("USDC packs");
+    expect(riskGate).toContain("Arc, Base, and Polygon");
+    expect(riskGate).not.toContain("Coming Soon for general access");
     expect(shell).not.toContain('to: "/risk-gate"');
     expect(shell).not.toContain('to="/risk-gate"');
     expect(riskGate).toContain("execution_authorized = false");
