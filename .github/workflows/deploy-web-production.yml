@@ -1,9 +1,6 @@
 name: Deploy GeoMacro Web Production
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       confirmation:
@@ -22,7 +19,7 @@ concurrency:
 
 jobs:
   deploy-production:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION')
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: production
@@ -66,13 +63,14 @@ jobs:
           bun run build
           node scripts/ops/prepare-web-production.mjs --target production
 
-      - name: Require Cloudflare and approved B2 read credentials
+      - name: Require Cloudflare, approved B2, and Ask credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -81,6 +79,7 @@ jobs:
           test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo 'WEB_PRODUCTION_B2_READ_KEY_ID_SECRET_REQUIRED'; exit 2; }
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_SECRET_REQUIRED'; exit 2; }
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_INVALID'; exit 2; }
+          test "${#GROQ_API_KEY}" -ge 20 || { echo 'WEB_PRODUCTION_ASK_GROQ_KEY_INVALID'; exit 2; }
           echo 'WEB_PRODUCTION_REQUIRED_CREDENTIALS_PRESENT'
 
       - name: Inspect existing production Worker bindings without exposing secret values
@@ -103,7 +102,7 @@ jobs:
             echo 'WEB_PRODUCTION_WORKER_NOT_YET_DEPLOYED'
           elif [[ "$status" == 200 ]]; then
             jq -e '.success == true and (.result.bindings | type == "array")' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_BINDING_INVENTORY_INVALID'; exit 2; }
-            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then .name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby" elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER", "GEOMACRO_COMMERCE_LEDGER_TOKEN"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
+            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then .name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby" elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER", "GEOMACRO_COMMERCE_LEDGER_TOKEN", "GROQ_API_KEY"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
             for binding in B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY GEOMACRO_SECURITY_FINGERPRINT_PEPPER GEOMACRO_COMMERCE_LEDGER_TOKEN; do
               present="$(jq -r --arg name "$binding" 'any(.result.bindings[]; .type == "secret_text" and .name == $name)' "$settings_file")"
               case "$binding" in
@@ -127,6 +126,7 @@ jobs:
           B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           B2_KEY_ID_PRESENT: ${{ steps.production-bindings.outputs.b2_key_id_present }}
           B2_APPLICATION_KEY_PRESENT: ${{ steps.production-bindings.outputs.b2_application_key_present }}
           FINGERPRINT_PEPPER_PRESENT: ${{ steps.production-bindings.outputs.fingerprint_pepper_present }}
@@ -152,6 +152,8 @@ jobs:
             printf '%s' "$GEOMACRO_COMMERCE_LEDGER_TOKEN" | npx -y wrangler@4.136.3 secret put GEOMACRO_COMMERCE_LEDGER_TOKEN --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_PROVISIONED'
           else echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_RETAINED'; fi
+          printf '%s' "$GROQ_API_KEY" | npx -y wrangler@4.136.3 secret put GROQ_API_KEY --config .output/server/production-wrangler.json >/dev/null
+          echo 'WEB_PRODUCTION_ASK_GROQ_KEY_PROVISIONED_OR_UPDATED'
 
       - name: Verify exact SHA and audit production DNS, Worker domains, and public serving
         env:
@@ -163,12 +165,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_PRODUCTION_SUPERSEDED_AFTER_DEPLOY'; exit 2; }
-          report=""
-          for i in 1 2 3 4; do
-            sleep 5
-            report="$(node scripts/ops/audit-cloudflare-production-domain.mjs || true)"
-            if printf '%s' "$report" | jq -e '.production_hostname_cloudflare_serving_verified == true' >/dev/null 2>&1; then break; fi
-          done
+          report="$(node scripts/ops/audit-cloudflare-production-domain.mjs)"
           printf '%s\n' "$report"
           printf '%s' "$report" | jq -e '.production_hostname_cloudflare_serving_verified == true' >/dev/null || { echo 'WEB_PRODUCTION_DOMAIN_AUDIT_FAILED'; exit 2; }
           echo 'WEB_PRODUCTION_CUSTOM_DOMAINS_AND_PUBLIC_SHA_VERIFIED'
