@@ -48,11 +48,12 @@ describe("store catalog and launch availability", () => {
     expect(html).not.toContain("Buy now");
     expect(html).not.toContain("Connect wallet");
   });
-  it("states published pricing and the access enquiry path before the catalog", () => {
+  it("states the live mainnet API access paths before the catalog", () => {
     const html = renderToStaticMarkup(createElement(ApiKeysNotice));
-    expect(html).toContain("Per-call API pricing");
-    expect(html).toContain("Published");
-    expect(html).toContain("Contact us to confirm access for your deployment.");
+    expect(html).toContain("Live mainnet access for agents");
+    expect(html).toContain("POST https://geomacro.live/api/v1/payments/usdc-risk-gate");
+    expect(html).toContain("POST https://geomacro.live/api/v1/risk-gate");
+    expect(html).toContain("GET https://geomacro.live/v1/risk-stream/commercial-public-key");
     expect(html).not.toMatch(/API keys.*coming soon/iu);
   });
 });

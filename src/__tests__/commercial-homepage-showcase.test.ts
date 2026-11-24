@@ -35,15 +35,15 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(reader).toContain("v.same_event_corrob_verified!==false");
   });
 
-  it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
+  it("shows live USDC pay-per-call and prepaid pack access", () => {
     const guide = readFileSync("src/components/commercial-access-guide.tsx", "utf8");
     const shell = readFileSync("src/components/site-shell.tsx", "utf8");
     expect(shell).not.toContain("<CommercialAccessGuide />");
     expect(shell).toContain('label: "Store & API"');
     expect(guide).toContain("Exact USDC price by capability");
-    expect(guide).toContain("Coming Soon · enquiries open");
-    expect(guide).toContain("Request monthly access");
-    expect(guide).toContain("mailto:contact@geomacro.live");
+    expect(guide).toContain("Mainnet USDC access");
+    expect(guide).toContain("Open pay-per-call API");
+    expect(guide).toContain("Choose a USDC pack");
     expect(card).not.toContain("From 0.05 USDC");
   });
 
@@ -60,6 +60,9 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(home).toContain("Explore Risk Gate");
     expect(home).toContain("Follow the risks that affect your work.");
     expect(home).not.toContain("Not another raw-data feed.");
+    expect(home).toContain("Monthly Risk Gate Packs start at $15: choose $15, $30, or $60");
+    expect(home).toContain("Mainnet USDC pay-per-call on Arc, Base, and Polygon");
+    expect(home).not.toContain("Monthly plans from $9");
   });
 
   it("avoids customer-facing internal runtime vocabulary in showcase markup", () => {

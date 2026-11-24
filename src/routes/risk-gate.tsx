@@ -42,7 +42,7 @@ function RiskGatePage() {
           <div>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[10px] uppercase tracking-[0.14em] text-amber-300">PRIVATE PILOT</Badge>
-              <span className="self-center text-xs text-muted-foreground">Coming Soon for general access</span>
+              <span className="self-center text-xs text-muted-foreground">Mainnet USDC access is live</span>
             </div>
             <h1 className="mt-5 text-[clamp(2.8rem,6vw,5.6rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
               Put a risk check between context and action.
@@ -54,7 +54,9 @@ function RiskGatePage() {
               <Button asChild size="lg" className="h-12 gap-2 px-6"><Link to="/contact">Discuss a Private Pilot <ArrowRight className="h-4 w-4" /></Link></Button>
               <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/intelligence">See live intelligence</Link></Button>
             </div>
-            <p className="mt-5 max-w-3xl text-xs leading-5 text-muted-foreground">Controlled pilot only. Geomacro returns decision context; it does not sign, authorize or submit customer transactions.</p>
+            <p className="mt-5 max-w-3xl text-xs leading-5 text-muted-foreground">
+              Direct pay-per-call is available without an account at <a href="https://geomacro.live/api/v1/payments/usdc-risk-gate" className="underline underline-offset-2">POST /api/v1/payments/usdc-risk-gate</a> on Arc, Base, and Polygon. See <Link to="/pricing" hash="payment-checkout" className="underline underline-offset-2">USDC packs</Link> for prepaid API access. Risk Gate provides decision support only; execution_authorized: false.
+            </p>
           </div>
 
           <div className="rounded-[1.65rem] border border-border/65 bg-card/65 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">

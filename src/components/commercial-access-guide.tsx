@@ -21,20 +21,20 @@ const ACCESS = [
     features: ["Structured intelligence for APIs and AI agents", "Pay only when a verified delivery succeeds"],
   },
   {
-    key: "monthly",
-    title: "Monthly access",
-    subtitle: "Request a plan",
-    features: ["Recurring intelligence for teams and workflows", "Usage and commercial terms agreed directly"],
+    key: "packs",
+    title: "Prepaid API access",
+    subtitle: "USDC credit packs",
+    features: ["$15, $30, or $60 Risk Gate Packs", "Arc, Base, and Polygon mainnet checkout"],
   },
 ] as const;
 
 export function CommercialAccessGuide() {
   const commerce = useAgentCommerceStatus();
   const x402Status = commerce.mode === "production"
-    ? "Check live checkout"
+    ? "Mainnet payment service live"
     : commerce.mode === "checking"
-      ? "Checking availability"
-      : "Coming Soon";
+      ? "Checking mainnet payment service"
+      : "Mainnet USDC access";
 
   return (
     <section aria-label="Choose how to access Geomacro" className="border-t border-border/60 bg-card/15">
@@ -54,15 +54,13 @@ export function CommercialAccessGuide() {
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-semibold">{item.title}</h3>
                 {item.key === "call" ? <Zap className="h-4 w-4 text-primary" aria-hidden="true" /> :
-                  item.key === "monthly" ? <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" /> : null}
+                  item.key === "packs" ? <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" /> : null}
               </div>
               <p className="mt-1 text-xs font-medium text-primary">{item.subtitle}</p>
               <p className="mt-1 text-[11px] font-medium text-muted-foreground" aria-live={item.key === "call" ? "polite" : undefined}>
                 {item.key === "free"
                   ? "Available now"
-                  : item.key === "monthly"
-                    ? "Coming Soon · enquiries open"
-                    : x402Status}
+                  : x402Status}
               </p>
               <ul className="mt-4 flex-1 space-y-2">
                 {item.features.map((feature) => (
@@ -77,20 +75,20 @@ export function CommercialAccessGuide() {
                   Explore intelligence <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               ) : item.key === "call" ? (
-                <Link to="/pricing" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                  Check API availability <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
+                <a href="https://geomacro.live/api/v1/payments/usdc-risk-gate" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                  Open pay-per-call API <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
               ) : (
-                <a href="mailto:contact@geomacro.live?subject=Geomacro%20monthly%20intelligence%20access" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                  Request monthly access <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                <a href="/pricing#payment-checkout" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                  Choose a USDC pack <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
               )}
             </div>
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Public exploration is free. Pay-per-call requires a live, enabled payment and delivery service. Monthly subscription checkout is Coming Soon; plan enquiries are open.
-          {" "}<Link to="/contact" className="text-primary hover:underline">Annual and enterprise requests</Link> are handled directly.
+          Direct pay-per-call needs no account: POST /api/v1/payments/usdc-risk-gate on Base (8453), Polygon PoS (137), or Arc (5042). Eligible deliveries cost $0.15 BASIC, $0.20 STANDARD, or $0.30 COMPLEX; insufficient evidence costs $0. Risk Gate is decision support only, with execution_authorized: false.
+          {" "}<Link to="/pricing" className="text-primary hover:underline">Compare packs and agent access</Link>.
         </p>
       </div>
     </section>

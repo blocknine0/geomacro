@@ -17,6 +17,9 @@ describe("commercial access is explained sitewide", () => {
     expect(shell).toContain('{ to: "/pricing", label: "Store & API" }');
     expect(guide).toContain('aria-label="Choose how to access Geomacro"');
     expect(guide).toContain('to="/pricing"');
+    expect(shell.split('<Link to="/contact" className="hover:text-foreground">Contact</Link>').length - 1).toBe(1);
+    expect(shell).toContain("X (@GeomacroLive)");
+    expect(shell).not.toContain("Twitter");
   });
 
   it("distinguishes public free exploration from charged API and monthly enquiries", () => {
@@ -36,11 +39,19 @@ describe("commercial access is explained sitewide", () => {
     expect(pricing).not.toContain("Launch price for the first 20,000");
     expect(dataApi).not.toContain("Launch price for the first 20,000");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
-    expect(guide).toContain("Monthly access");
-    expect(guide).toContain("Recurring intelligence for teams and workflows");
-    expect(guide).toContain('mailto:contact@geomacro.live?subject=Geomacro%20monthly');
-    expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
-    expect(read("src/components/api-keys-notice.tsx")).toContain("Approved prices for all three category APIs are published in Store &amp; API.");
+    expect(guide).toContain("Prepaid API access");
+    expect(guide).toContain("Arc, Base, and Polygon mainnet checkout");
+    expect(guide).toContain("Direct pay-per-call needs no account");
+    expect(guide).toContain("execution_authorized: false");
+    const notice = read("src/components/api-keys-notice.tsx");
+    expect(notice).toContain("POST https://geomacro.live/api/v1/payments/usdc-risk-gate");
+    expect(notice).toContain("POST https://geomacro.live/api/v1/risk-gate");
+    expect(notice).toContain("GET https://geomacro.live/v1/risk-stream/commercial-public-key");
+    expect(notice).toContain("No account needed");
+    expect(notice).toContain("Base (8453), Polygon PoS (137), and Arc (5042)");
+    expect(notice).toContain("$0.15 BASIC / $0.20 STANDARD / $0.30 COMPLEX");
+    expect(notice).toContain("Insufficient evidence costs $0");
+    expect(notice).toContain("live Arc, Base, or Polygon checkout");
     expect(pricing).toContain("Building for a team?");
   });
 

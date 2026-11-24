@@ -38,7 +38,7 @@ export function LowBarrierPricing({
         <p className="mt-3 text-sm text-muted-foreground">
           Each pack is a monthly purchase amount, not an expiring subscription. 1 credit = $0.01 USD;
           eligible Risk Gate deliveries cost 15 BASIC, 20 STANDARD, or 30 COMPLEX credits across all three categories.
-          Recharge manually when needed; checkout and credit allocation are still locked in this prelaunch preview.
+          Select a pack to open the live mainnet USDC payment options. Credits are added after the transfer is verified.
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {RISK_GATE_PACKS.map(pack => (
@@ -72,10 +72,8 @@ export function LowBarrierPricing({
         <aside className="mt-9 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6" aria-label="Risk Gate recharge and agent fallback">
           <h3 className="text-base font-semibold">Keep your Risk Gate workflow ready</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            A low-balance top-up prompt is designed to appear below $2.00 (fewer than 10 STANDARD calls); one-click recharge
-            becomes available only after checkout activation. Agent integrations can use HTTP 402 pay-per-call at $0.15 / $0.20 / $0.30
-            in native USDC on Base, Polygon PoS, or Arc once those payment rails are enabled. These recharge and 402 payment
-            paths are currently locked, so this preview does not promise automatic fallback or uninterrupted calls.
+            Agent integrations can use direct mainnet USDC pay-per-call for eligible $0.15 / $0.20 / $0.30 deliveries on Arc, Base, or Polygon.
+            Insufficient evidence costs $0. Risk Gate provides decision support only and never authorizes or submits customer transactions.
           </p>
         </aside>
       </div>

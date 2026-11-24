@@ -34,9 +34,8 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(pricing).toContain("<CategoryApiPricing showPrices />");
     expect(api).toContain("CategoryApiPricing");
     expect(read("src/components/category-api-pricing.tsx")).toContain("There is no category surcharge.");
-    expect(notice).toContain("Per-call API pricing");
-    expect(notice).toContain("Published");
-    expect(notice).toContain("Enquire about launch access");
+    expect(notice).toContain("Ed25519 Decision Key Discovery");
+    expect(notice).toContain("gmk_live_...");
     expect(notice).not.toMatch(/API keys.*coming soon/iu);
     expect(catalog).toContain("GEOMACRO_CAPABILITY_PRICES");
     expect(catalog).toContain("Enquire about this product");
@@ -49,7 +48,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     }
     expect(shell).not.toContain("AgentCommerceStatus compact");
     expect(api).toContain("API & Agents");
-    expect(api).toContain("One engine. Three categories.");
+    expect(api).toContain("Use one Risk Gate API across GEOPOLITICS");
     expect(api).not.toContain("Runtime truth, not marketing copy");
     expect((riskGate.match(/>PRIVATE PILOT<\/Badge>/gu) ?? []).length).toBe(1);
     expect(about).toContain("The customer remains responsible for any decision or action");
@@ -69,7 +68,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(about).toContain('id="product-use"');
     expect(about).toContain("Risk Gate remains non-authorizing");
     expect(api).toContain("<ApiKeysNotice />");
-    expect(api).toContain("Paid API requests become available only when the live payment");
+    expect(api).toContain("execution_authorized: false");
     expect(pricing).toContain("ApiKeysNotice");
     expect(riskGate).toContain("execution_authorized = false");
   });

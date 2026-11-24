@@ -26,14 +26,15 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(store).toContain('id: "risk-gate-standard", name: "Standard", priceUsd: 30, credits: 3_000, basic: 200, standard: 150, complex: 100');
     expect(store).toContain('id: "risk-gate-best", name: "Best", priceUsd: 60, credits: 6_000, basic: 400, standard: 300, complex: 200');
     expect(store).toContain("Unused credits never expire; your balance rolls over month to month.");
-    expect(store).toContain("below $2.00");
-    expect(store).toContain("Base, Polygon PoS, or Arc");
-    expect(store).toContain("this preview does not promise automatic fallback or uninterrupted calls");
+    expect(store).toContain("direct mainnet USDC pay-per-call");
+    expect(store).toContain("on Arc, Base, or Polygon");
+    expect(store).toContain("Insufficient evidence costs $0");
     expect(store).not.toContain("GEOMACRO_SUBSCRIPTIONS.map");
     expect(store).not.toContain("GEOMACRO_ONE_TIME_PACKS.map");
     expect(page).toContain("<LowBarrierPricing />");
     expect(store).toContain("1 credit = $0.01 USD");
-    expect(page).toContain("$0.15 / $0.20 / $0.30 per eligible delivery");
+    expect(page).toContain("Pricing by eligible delivery is listed in the catalog below.");
+    expect(readFileSync("src/components/category-api-pricing.tsx", "utf8")).toContain("$0.15");
     expect(riskGateSetup).toContain('fetch("/api/v1/risk-gate"');
     expect(riskGateSetup).toContain('value: "GEOPOLITICS"');
     expect(riskGateSetup).toContain('value: "MACRO_FX"');
@@ -80,7 +81,7 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(checkoutHelpers).toContain("0x95ba71d21c41bda8bba9533f96d25f793e4137b5");
     expect(inline).toContain("eth_sendTransaction");
     expect(inline).not.toContain("createOrder(");
-    expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
+    expect(page).toContain("execution_authorized: false");
     expect(page).not.toContain("<CapabilityPriceSchedule />");
     expect(page).not.toContain('id="api-products"');
     expect(page).not.toContain('id="product-catalog"');
