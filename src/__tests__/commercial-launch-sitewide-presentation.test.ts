@@ -49,7 +49,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     }
     expect(shell).not.toContain("AgentCommerceStatus compact");
     expect(api).toContain("API & Agents");
-    expect(api).toContain("One engine. Three categories.");
+    expect(api).toContain("One balance. Three categories.");
     expect(api).not.toContain("Runtime truth, not marketing copy");
     expect((riskGate.match(/>PRIVATE PILOT<\/Badge>/gu) ?? []).length).toBe(1);
     expect(about).toContain("The customer remains responsible for any decision or action");

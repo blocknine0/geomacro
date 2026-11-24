@@ -1580,5 +1580,20 @@
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
     "global_risk_final_lock_unmodified": true
+  },
+  "approved_website_copy_footer_cleanup_20261124": {
+    "approval": "Founder explicitly authorized canonical pricing copy, mainnet USDC access wording, and footer cleanup on 2026-11-24.",
+    "approved_source_commit": "7efead020b664076131f64394a1ed96b4789adbc",
+    "approved_paths": [
+      "src/components/home/commercial-home.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/commercial-access-guide.tsx",
+      "src/components/site-shell.tsx",
+      "src/routes/pricing.tsx",
+      "src/routes/risk-gate.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   }
 }

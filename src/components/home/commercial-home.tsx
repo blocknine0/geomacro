@@ -136,7 +136,7 @@ export function CommercialHome() {
             <Link to="/pricing" className="gm-heading-link">The same intelligence. Structured for your workflow. <ArrowRight className="h-5 w-5 text-primary" aria-hidden /></Link>
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            Monthly plans from $9, one-time credit packs from $5, and Base USDC x402 at $0.02–$0.05 per eligible call. Checkout availability is verified separately.
+            Monthly Risk Gate Packs are $15, $30, or $60, with 1 credit = $0.01 USD. Mainnet USDC pay-per-call on Arc, Base, and Polygon is $0.15 BASIC, $0.20 STANDARD, or $0.30 COMPLEX per eligible delivery.
           </p>
         </div>
         <Link to="/pricing" className="gm-text-link">

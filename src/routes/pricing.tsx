@@ -63,8 +63,7 @@ function PricingPage() {
               <span className="block text-primary">One balance. Three categories.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Compare monthly Risk Gate Packs for Geopolitics, Macro / FX, and Critical Minerals.
-              Per-call pricing is $0.15 BASIC, $0.20 STANDARD, and $0.30 COMPLEX. Each credit equals $0.01 USD.
+              Compare monthly Risk Gate Packs for Geopolitics, Macro / FX, and Critical Minerals. Each credit is worth $0.01 USD.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#plans" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
@@ -105,8 +104,7 @@ function PricingPage() {
               ))}
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-              Monthly Risk Gate Packs and per-call prices are shown for planning. PayPal/card, USDC, credits, and x402
-              remain locked and non-payable until production activation.
+              Pay with native USDC on Arc, Base, or Polygon when live activation is confirmed. Only verified payments create credits.
             </p>
           </div>
         </div>
@@ -135,7 +133,6 @@ function PricingPage() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Monthly credit packs for every stage.</h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Choose Small, Standard, or Best for one balance shared across the three Risk Gate categories.
-            Unused credits never expire and roll over. Payments remain locked in this prelaunch preview.
           </p>
         </div>
         {/* Preserve the standalone pricing component marker used by the existing catalog contract: <LowBarrierPricing /> */}
@@ -150,9 +147,8 @@ function PricingPage() {
             <p className="gm-eyebrow">Risk Gate API</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One endpoint. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            GEOPOLITICS, MACRO_FX, and CRITICAL_MINERALS share one signed Risk Gate endpoint and three evidence tiers.
-            One engine. Three categories. Geopolitics, Macro / FX and Critical Minerals use the same tier rates.
-            Prices are $0.15 / $0.20 / $0.30 per eligible delivery; payment activation remains separately gated.
+            Choose a category and evidence tier. Eligible delivered results cost $0.15 BASIC, $0.20 STANDARD, or $0.30 COMPLEX.
+            Pay-per-call settlement uses native USDC on Arc, Base, or Polygon when payment activation is confirmed.
           </p>
         </div>
         <CategoryApiPricing showPrices />
@@ -174,10 +170,9 @@ function PricingPage() {
         <ApiKeysNotice />
         <p className="mt-4 max-w-3xl text-xs leading-6 text-muted-foreground">
           Paid API requests become available only when the live payment and delivery service confirms activation.
-          Availability is checked for each request. Customer action stays explicit: customers retain control of every action while payments remain under the separate activation gate.
-          When enabled, a low-balance prompt is intended below $2.00 and agent integrations may use 402 pay-per-call
-          at the published tier rates. Base, Polygon PoS, and Arc support remains locked until each rail is activated;
-          this page shows a non-payable preview and never requests payment.
+          Availability is checked for each request. A low-balance prompt is planned below $2.00, and agents can use the
+          <a href="/api/v1/payments/usdc-risk-gate" className="mx-1 underline underline-offset-2">mainnet USDC pay-per-call route</a>
+          for eligible deliveries. Customers keep control of every action; Risk Gate never authorizes or submits transactions.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Link to="/docs" className="group flex items-start justify-between gap-5 rounded-2xl border border-border p-6 transition hover:border-primary/40 hover:bg-primary/5">

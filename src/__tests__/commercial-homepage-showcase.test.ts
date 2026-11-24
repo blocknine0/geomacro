@@ -41,7 +41,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(shell).not.toContain("<CommercialAccessGuide />");
     expect(shell).toContain('label: "Store & API"');
     expect(guide).toContain("Exact USDC price by capability");
-    expect(guide).toContain("Coming Soon · enquiries open");
+    expect(guide).toContain("Team enquiries open");
+    expect(guide).toContain("$15 / $30 / $60 packs on Arc, Base, or Polygon");
     expect(guide).toContain("Request monthly access");
     expect(guide).toContain("mailto:contact@geomacro.live");
     expect(card).not.toContain("From 0.05 USDC");

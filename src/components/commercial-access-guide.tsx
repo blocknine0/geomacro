@@ -22,8 +22,8 @@ const ACCESS = [
   },
   {
     key: "monthly",
-    title: "Monthly access",
-    subtitle: "Request a plan",
+    title: "Team plans",
+    subtitle: "Custom terms by enquiry",
     features: ["Recurring intelligence for teams and workflows", "Usage and commercial terms agreed directly"],
   },
 ] as const;
@@ -31,10 +31,10 @@ const ACCESS = [
 export function CommercialAccessGuide() {
   const commerce = useAgentCommerceStatus();
   const x402Status = commerce.mode === "production"
-    ? "Check live checkout"
+    ? "Mainnet USDC · activation confirmed"
     : commerce.mode === "checking"
-      ? "Checking availability"
-      : "Coming Soon";
+      ? "Checking mainnet availability"
+      : "Mainnet USDC · activation required";
 
   return (
     <section aria-label="Choose how to access Geomacro" className="border-t border-border/60 bg-card/15">
@@ -61,7 +61,7 @@ export function CommercialAccessGuide() {
                 {item.key === "free"
                   ? "Available now"
                   : item.key === "monthly"
-                    ? "Coming Soon · enquiries open"
+                    ? "Team enquiries open"
                     : x402Status}
               </p>
               <ul className="mt-4 flex-1 space-y-2">
@@ -77,9 +77,9 @@ export function CommercialAccessGuide() {
                   Explore intelligence <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               ) : item.key === "call" ? (
-                <Link to="/pricing" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                  Check API availability <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
+                <a href="/api/v1/payments/usdc-risk-gate" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                  Open pay-per-call route <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
               ) : (
                 <a href="mailto:contact@geomacro.live?subject=Geomacro%20monthly%20intelligence%20access" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                   Request monthly access <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -89,7 +89,7 @@ export function CommercialAccessGuide() {
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Public exploration is free. Pay-per-call requires a live, enabled payment and delivery service. Monthly subscription checkout is Coming Soon; plan enquiries are open.
+          Native USDC options include eligible Risk Gate pay-per-call at $0.15 / $0.20 / $0.30 via /api/v1/payments/usdc-risk-gate, plus $15 / $30 / $60 packs on Arc, Base, or Polygon. Live checks govern checkout and crediting. Risk Gate never authorizes or submits customer transactions.
           {" "}<Link to="/contact" className="text-primary hover:underline">Annual and enterprise requests</Link> are handled directly.
         </p>
       </div>
