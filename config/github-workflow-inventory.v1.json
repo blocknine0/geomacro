@@ -315,6 +315,7 @@
     "ppg-production-promotion-census.yml",
     "pre-mainnet-x402-zero-fund-acceptance.yml",
     "predge-daily-internal-excel.yml",
+    "predge-paid-risk-gate-lock.yml",
     "predge-pilot-signed-news-v2-ci.yml",
     "predge-pilot-signed-news-v2-refresh.yml",
     "predge-pilot-v2-live-acceptance.yml",
