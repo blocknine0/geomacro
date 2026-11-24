@@ -64,6 +64,7 @@ import { Route as ApiV1PricingRouteImport } from './routes/api.v1.pricing'
 import { Route as ApiV1RiskGateRouteImport } from './routes/api.v1.risk-gate'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
+import { Route as V1RiskStreamCommercialPublicKeyRouteImport } from './routes/v1.risk-stream.commercial-public-key'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
@@ -85,6 +86,7 @@ import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.paym
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
 import { Route as ApiX402RiskAvailabilityRouteImport } from './routes/api.x402.risk_.availability'
+import { Route as V2PartnerPredgePaidRiskGateRouteImport } from './routes/v2.partner.predge.paid-risk-gate'
 import { Route as ApiV1PaymentsCryptoQuoteRouteImport } from './routes/api.v1.payments.crypto.quote'
 import { Route as ApiV1PaymentsCryptoVerifyRouteImport } from './routes/api.v1.payments.crypto.verify'
 import { Route as ApiV1PaymentsPaypalCaptureOrderRouteImport } from './routes/api.v1.payments.paypal_.capture-order'
@@ -366,6 +368,12 @@ const ApiX402RiskRoute = ApiX402RiskRouteImport.update({
   path: '/api/x402/risk',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V1RiskStreamCommercialPublicKeyRoute =
+  V1RiskStreamCommercialPublicKeyRouteImport.update({
+    id: '/v1/risk-stream/commercial-public-key',
+    path: '/v1/risk-stream/commercial-public-key',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGoatPilotArtifactRoute = ApiGoatPilotArtifactRouteImport.update({
   id: '/api/goat/pilot/artifact',
   path: '/api/goat/pilot/artifact',
@@ -481,6 +489,12 @@ const ApiX402RiskAvailabilityRoute = ApiX402RiskAvailabilityRouteImport.update({
   path: '/api/x402/risk/availability',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V2PartnerPredgePaidRiskGateRoute =
+  V2PartnerPredgePaidRiskGateRouteImport.update({
+    id: '/v2/partner/predge/paid-risk-gate',
+    path: '/v2/partner/predge/paid-risk-gate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1PaymentsCryptoQuoteRoute =
   ApiV1PaymentsCryptoQuoteRouteImport.update({
     id: '/api/v1/payments/crypto/quote',
@@ -562,6 +576,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
+  '/v1/risk-stream/commercial-public-key': typeof V1RiskStreamCommercialPublicKeyRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -583,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
+  '/v2/partner/predge/paid-risk-gate': typeof V2PartnerPredgePaidRiskGateRoute
   '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
   '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
   '/api/v1/payments/paypal/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
@@ -644,6 +660,7 @@ export interface FileRoutesByTo {
   '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
+  '/v1/risk-stream/commercial-public-key': typeof V1RiskStreamCommercialPublicKeyRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -665,6 +682,7 @@ export interface FileRoutesByTo {
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
+  '/v2/partner/predge/paid-risk-gate': typeof V2PartnerPredgePaidRiskGateRoute
   '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
   '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
   '/api/v1/payments/paypal/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
@@ -727,6 +745,7 @@ export interface FileRoutesById {
   '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
+  '/v1/risk-stream/commercial-public-key': typeof V1RiskStreamCommercialPublicKeyRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -748,6 +767,7 @@ export interface FileRoutesById {
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk_/availability': typeof ApiX402RiskAvailabilityRoute
+  '/v2/partner/predge/paid-risk-gate': typeof V2PartnerPredgePaidRiskGateRoute
   '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
   '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
   '/api/v1/payments/paypal_/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
@@ -811,6 +831,7 @@ export interface FileRouteTypes {
     | '/api/v1/risk-gate'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
+    | '/v1/risk-stream/commercial-public-key'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -832,6 +853,7 @@ export interface FileRouteTypes {
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
+    | '/v2/partner/predge/paid-risk-gate'
     | '/api/v1/payments/crypto/quote'
     | '/api/v1/payments/crypto/verify'
     | '/api/v1/payments/paypal/capture-order'
@@ -893,6 +915,7 @@ export interface FileRouteTypes {
     | '/api/v1/risk-gate'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
+    | '/v1/risk-stream/commercial-public-key'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -914,6 +937,7 @@ export interface FileRouteTypes {
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
+    | '/v2/partner/predge/paid-risk-gate'
     | '/api/v1/payments/crypto/quote'
     | '/api/v1/payments/crypto/verify'
     | '/api/v1/payments/paypal/capture-order'
@@ -975,6 +999,7 @@ export interface FileRouteTypes {
     | '/api/v1/risk-gate'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
+    | '/v1/risk-stream/commercial-public-key'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -996,6 +1021,7 @@ export interface FileRouteTypes {
     | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
     | '/api/x402/risk_/availability'
+    | '/v2/partner/predge/paid-risk-gate'
     | '/api/v1/payments/crypto/quote'
     | '/api/v1/payments/crypto/verify'
     | '/api/v1/payments/paypal_/capture-order'
@@ -1058,6 +1084,7 @@ export interface RootRouteChildren {
   ApiV1RiskGateRoute: typeof ApiV1RiskGateRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
+  V1RiskStreamCommercialPublicKeyRoute: typeof V1RiskStreamCommercialPublicKeyRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
@@ -1079,6 +1106,7 @@ export interface RootRouteChildren {
   ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
   ApiX402NeverminedIntelligenceRoute: typeof ApiX402NeverminedIntelligenceRoute
   ApiX402RiskAvailabilityRoute: typeof ApiX402RiskAvailabilityRoute
+  V2PartnerPredgePaidRiskGateRoute: typeof V2PartnerPredgePaidRiskGateRoute
   ApiV1PaymentsCryptoQuoteRoute: typeof ApiV1PaymentsCryptoQuoteRoute
   ApiV1PaymentsCryptoVerifyRoute: typeof ApiV1PaymentsCryptoVerifyRoute
   ApiV1PaymentsPaypalCaptureOrderRoute: typeof ApiV1PaymentsPaypalCaptureOrderRoute
@@ -1472,6 +1500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiX402RiskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v1/risk-stream/commercial-public-key': {
+      id: '/v1/risk-stream/commercial-public-key'
+      path: '/v1/risk-stream/commercial-public-key'
+      fullPath: '/v1/risk-stream/commercial-public-key'
+      preLoaderRoute: typeof V1RiskStreamCommercialPublicKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/goat/pilot/artifact': {
       id: '/api/goat/pilot/artifact'
       path: '/api/goat/pilot/artifact'
@@ -1619,6 +1654,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiX402RiskAvailabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v2/partner/predge/paid-risk-gate': {
+      id: '/v2/partner/predge/paid-risk-gate'
+      path: '/v2/partner/predge/paid-risk-gate'
+      fullPath: '/v2/partner/predge/paid-risk-gate'
+      preLoaderRoute: typeof V2PartnerPredgePaidRiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/payments/crypto/quote': {
       id: '/api/v1/payments/crypto/quote'
       path: '/api/v1/payments/crypto/quote'
@@ -1706,6 +1748,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1RiskGateRoute: ApiV1RiskGateRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
+  V1RiskStreamCommercialPublicKeyRoute: V1RiskStreamCommercialPublicKeyRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
@@ -1730,6 +1773,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,
   ApiX402RiskAvailabilityRoute: ApiX402RiskAvailabilityRoute,
+  V2PartnerPredgePaidRiskGateRoute: V2PartnerPredgePaidRiskGateRoute,
   ApiV1PaymentsCryptoQuoteRoute: ApiV1PaymentsCryptoQuoteRoute,
   ApiV1PaymentsCryptoVerifyRoute: ApiV1PaymentsCryptoVerifyRoute,
   ApiV1PaymentsPaypalCaptureOrderRoute: ApiV1PaymentsPaypalCaptureOrderRoute,
