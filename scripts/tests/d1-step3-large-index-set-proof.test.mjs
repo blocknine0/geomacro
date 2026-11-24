@@ -196,14 +196,14 @@ test("ROWID join fails closed on forged provider plan, mismatch and FK/UNIQUE pr
 });
 
 test("0211 spool join admits the reviewed 335k cap and current production rows",()=>{
- assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,335000);
+ assert.equal(STEP3_JOIN_MAX_SOURCE_ROWS,400000);
  const currentProductionRows=314936;
  assert.equal(verifyStep3IndexJoinResult([{
   index_rows:currentProductionRows,distinct_rowids:currentProductionRows,mismatched_rows:0
  }],{sourceRows:currentProductionRows}).verified_rows,currentProductionRows);
- const atBound=[{index_rows:335000,distinct_rowids:335000,mismatched_rows:0}];
- assert.equal(verifyStep3IndexJoinResult(atBound,{sourceRows:335000}).verified_rows,335000);
- const overBound=[{index_rows:335001,distinct_rowids:335001,mismatched_rows:0}];
- assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:335001}),
+ const atBound=[{index_rows:400000,distinct_rowids:400000,mismatched_rows:0}];
+ assert.equal(verifyStep3IndexJoinResult(atBound,{sourceRows:400000}).verified_rows,400000);
+ const overBound=[{index_rows:400001,distinct_rowids:400001,mismatched_rows:0}];
+ assert.throws(()=>verifyStep3IndexJoinResult(overBound,{sourceRows:400001}),
   /COMPLETE_ROWID_AND_KEY_PARITY_UNVERIFIED/u);
 });

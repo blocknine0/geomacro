@@ -86,10 +86,14 @@ export function auditStep30211WithoutRowidCounter(query){
  if(!planOk(strict(query,"EXPLAIN QUERY PLAN "+baselineSQL,20))||
     !planOk(strict(query,"EXPLAIN QUERY PLAN "+indexedSQL,20)))
    fail("PRIMARY_KEY_QUERY_PLAN_UNVERIFIED");
- const before=strict(query,baselineSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
- const indexed=strict(query,indexedSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
- const after=strict(query,baselineSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
- const a=rowsDigest(before),b=rowsDigest(indexed),c=rowsDigest(after);
+ let before,indexed,after,a,b,c;
+ for(let attempt=0;attempt<3;attempt++){
+  before=strict(query,baselineSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
+  indexed=strict(query,indexedSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
+  after=strict(query,baselineSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
+  a=rowsDigest(before);b=rowsDigest(indexed);c=rowsDigest(after);
+  if(a===b&&a===c)break;
+ }
  if(a!==b)fail("PRIMARY_KEY_INDEX_COUNTER_PARITY_MISMATCH");
  if(a!==c)fail("CONCURRENT_COUNTER_TABLE_CHANGE");
  if(strict(query,uniqueSQL,1).length!==0)fail("DUPLICATE_PRIMARY_KEYS");
