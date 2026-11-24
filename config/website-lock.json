@@ -1380,7 +1380,7 @@
   },
   "approved_live_mainnet_usdc_checkout_20261124": {
     "approval": "Founder explicitly authorized replacing the prelaunch pricing checkout with the mainnet USDC wallet and verified transfer activation flow on 2026-11-24.",
-    "approved_source_commit": "020b4d46126b1a73fecbd54806acabbac2bae37e",
+    "approved_source_commit": "acb9fa177b16eaa8898890fb04382786cb1d368f",
     "approved_paths": [
       "src/components/dual-rail-checkout.tsx"
     ],
