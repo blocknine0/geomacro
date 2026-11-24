@@ -32,15 +32,15 @@ test("all staged source budgets match exhaustive integrity ceilings and current 
  const ordinary=STEP3_MIGRATIONS.find(x=>x.id==="0204");
  const spool=STEP3_MIGRATIONS.find(x=>x.id==="0211");
  const pending=STEP3_MIGRATIONS.find(x=>x.id==="0212");
- assert.equal(STEP3_MAX_EXISTING_ROWS_PER_TABLE,335000);
+ assert.equal(STEP3_MAX_EXISTING_ROWS_PER_TABLE,400000);
  assert.equal(ordinary.sizeTableRowCap,STEP3_0204_SOURCE_ROW_BUDGET);
  assert.equal(ordinary.sizeTableRowCap,100000);
  assert.equal(spool.sizeTableRowCap,STEP3_0211_SOURCE_ROW_BUDGET);
- assert.equal(spool.sizeTableRowCap,335000);
+ assert.equal(spool.sizeTableRowCap,400000);
  const spoolQuery=step3SizeProbeSQL(spool.sizeTables,spool.sizeTableRowCap);
- assert.match(spoolQuery,/OFFSET 335000/u);
+ assert.match(spoolQuery,/OFFSET 400000/u);
  assert.equal(validateStep3SizeProbe(spool.sizeTables,
-  [{over_0:0}],spool.sizeTableRowCap).maximum_existing_rows_per_table,335000);
+  [{over_0:0}],spool.sizeTableRowCap).maximum_existing_rows_per_table,400000);
  assert.equal(pending.sizeTableRowCap,STEP3_0212_PENDING_SOURCE_CAP);
  assert.equal(pending.sizeTableRowCap,100000);
  const query=step3SizeProbeSQL(ordinary.sizeTables,ordinary.sizeTableRowCap);
@@ -59,10 +59,10 @@ test("all staged source budgets match exhaustive integrity ceilings and current 
  assert.throws(()=>validateStep3SizeProbe(pending.sizeTables,
   [{over_0:1}],pending.sizeTableRowCap),
   /SOURCE_ROWS_EXCEED_STAGED_INDEX_BUDGET/u);
- assert.throws(()=>step3SizeProbeSQL(pending.sizeTables,335001),
+ assert.throws(()=>step3SizeProbeSQL(pending.sizeTables,400001),
   /TABLE_SIZE_SCOPE_INVALID/u);
  assert.throws(()=>validateStep3SizeProbe(pending.sizeTables,
-  [{over_0:0}],335001),/TABLE_SIZE_SCOPE_INVALID/u);
+  [{over_0:0}],400001),/TABLE_SIZE_SCOPE_INVALID/u);
  assert.throws(()=>step3SizeProbeSQL(["sqlite_master;DELETE FROM x"]),
   /TABLE_SIZE_SCOPE_INVALID/u);
  const observedHeadroom={
@@ -76,7 +76,7 @@ test("all staged source budgets match exhaustive integrity ceilings and current 
  const high=deriveStep3SourceRowBudget("0204",observedHeadroom);
  assert.equal(high.budget,100000);
  assert.equal(high.derived_from_fresh_paid_monthly_headroom,true);
- assert.equal(deriveStep3SourceRowBudget("0211",observedHeadroom).budget,335000);
+ assert.equal(deriveStep3SourceRowBudget("0211",observedHeadroom).budget,400000);
  assert.equal(deriveStep3SourceRowBudget("0212",observedHeadroom).budget,100000);
  const paced=deriveStep3SourceRowBudget("0211",{
   status:"PASS",remaining_rows_read:1_000_000,
@@ -89,7 +89,7 @@ test("all staged source budgets match exhaustive integrity ceilings and current 
  assert.equal(paced.budget,1100);
  const multiTable=deriveStep3SourceRowBudget("0204",{
   status:"PASS",remaining_rows_read:10000000,
-  remaining_rows_written:5000000,
+  remaining_rows_written:4000000,
   paced_remaining_rows_read:9000000,
   paced_remaining_rows_written:4000000,
   reserved_migration_rows_read:1000000,
@@ -184,7 +184,7 @@ test("only pending DDL is size-probed; native schema is not acceptance",()=>{
 
 test("0212 pending source envelope scales to its integrity ceiling while retaining monthly admission",()=>{
  assert.deepEqual(STEP3_MIGRATIONS.map(x=>[x.id,x.sizeTableRowCap]),[
-  ["0204",100000],["0211",335000],["0212",100000],["0213",335000]
+  ["0204",100000],["0211",400000],["0212",100000],["0213",400000]
  ]);
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  assert.match(runner,/remaining_rows_read:x\.remaining_rows_read/u);

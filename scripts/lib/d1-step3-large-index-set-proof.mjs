@@ -14,7 +14,7 @@ const q=x=>{if(typeof x!=="string"||!IDENT.test(x))fail("IDENTIFIER_INVALID");re
 export const STEP3_SET_MAX_SOURCE_ROWS=100000;
 // Reviewed only for the 0211 spool ROWID join. The source-row ceiling is
 // separate from the caller's metered provider rows-read cap across all queries.
-export const STEP3_JOIN_MAX_SOURCE_ROWS=335000;
+export const STEP3_JOIN_MAX_SOURCE_ROWS=400000;
 export const STEP3_JOIN_CHUNK_ROWS=50000;
 const PREDICATES=Object.freeze({
  phase2h_private_raw_news:Object.freeze({
