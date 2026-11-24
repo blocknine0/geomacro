@@ -36,12 +36,13 @@ const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
  "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer",
  "X-GeoMacro-Publisher":"https://geomacro.live"};
+const DECISION_SUPPORT_NOTICE="Decision support only. GeoMacro does not initiate, authorize, approve, or execute any payment, trade, or transaction. All execution decisions, actions, and resulting outcomes remain the sole responsibility of the user or AI agent.";
 function fail(error,status=503,extra={}){
  return Response.json({ok:false,error,channel:"predge_b2b",verdict_id:null,
   tier:null,structure_type:null,customer_price_usdc:"0.00",
   geomacro_fee_usdc:"0.00",billable:false,
   entry_status:"UNDELIVERED",
-  advisory_decision:"PAUSE",execution_authorized:false,...extra},{status,headers});
+  advisory_decision:"PAUSE",execution_authorized:false,decision_support_notice:DECISION_SUPPORT_NOTICE,...extra},{status,headers});
 }
 function constantEqual(a,b){
  const left=encoder.encode(String(a??"")),right=encoder.encode(String(b??""));
@@ -619,10 +620,14 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
         REQUIRE_HUMAN_APPROVAL:"REQUIRE_APPROVAL",BLOCK:"PAUSE"}[result.decision]??"PAUSE";
        const ttl=Math.max(60,Math.min(604800,Math.floor(
         (Date.parse(paidCommercialLicense.envelope.payload.expires_at)-now)/1000)));
+       const audienceTier=lockedTier==="complex_full"?"COMPLEX":lockedTier==="standard"?"STANDARD":"BASIC";
+       const rawDelta=Number(score.delta_vs_7d??0);
+       const deltaVs7d=Number.isFinite(rawDelta)?Math.max(-100,Math.min(100,rawDelta)):0;
        const audience=buildRiskStreamDualAudience({category:score.category,
         eventClass:score.event_class??"UNCLASSIFIED",score:result.risk.score,
         confidence:result.risk.confidence,horizonHours:24,ttlSeconds:ttl,
-        actionPosture:posture,
+        actionPosture:posture,tier:audienceTier,deltaVs7d,
+        corroborationReady:Boolean(score.corroboration_ready),
         contagionCorridors:score.agent_decision?.contagion_corridors??[]});
        return {eligible_derived_score:score,agent_decision:audience.agent_decision,
         analyst_brief:audience.analyst_brief,raw_source_redacted:true};
@@ -639,7 +644,8 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
      predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode:billingMode,entry_status:entryStatus,
      tier_activation_matrix:tierActivationMatrix,
-     execution_authorized:false
+     execution_authorized:false,
+     decision_support_notice:DECISION_SUPPORT_NOTICE
    };
    const decisionSignature=await signProgressiveDecision(signedPayload,env);
    const response={ok:true,...signedPayload,
