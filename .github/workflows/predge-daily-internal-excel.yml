@@ -1,0 +1,70 @@
+name: Predge Daily Internal Excel Ledger
+
+on:
+  schedule:
+    - cron: '55 23 * * *'
+  workflow_dispatch:
+    inputs:
+      day_utc:
+        description: Optional UTC date (YYYY-MM-DD); defaults to current UTC day
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: predge-daily-internal-excel
+  cancel-in-progress: false
+
+jobs:
+  export-daily-excel:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+
+      - name: Restore previous accumulated Excel workbook if available
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/predge-daily-delivery
+          prev_id="$(gh run list --repo blocknine0/geomacro --workflow=predge-daily-internal-excel.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // ""')"
+          if [[ -n "$prev_id" ]]; then
+            gh run download "$prev_id" --repo blocknine0/geomacro --name predge-daily-internal-excel --dir /tmp/prev-predge-excel || true
+            if [[ -f /tmp/prev-predge-excel/predge-daily-internal-log.xlsx ]]; then
+              cp /tmp/prev-predge-excel/predge-daily-internal-log.xlsx artifacts/predge-daily-delivery/predge-daily-internal-log.xlsx
+            fi
+          fi
+
+      - name: Query D1 Predge daily counts and update Excel workbook
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          INPUT_DAY_UTC: ${{ inputs.day_utc }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          day_utc="${INPUT_DAY_UTC:-$(date -u +%Y-%m-%d)}"
+          node scripts/ops/reconcile-predge-daily-delivery.mjs --day "$day_utc" --out-dir artifacts/predge-daily-delivery
+          python3 scripts/ops/export-predge-daily-excel.py artifacts/predge-daily-delivery artifacts/predge-daily-delivery/predge-daily-internal-log.xlsx
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: predge-daily-internal-excel
+          path: |
+            artifacts/predge-daily-delivery/predge-daily-internal-log.xlsx
+            artifacts/predge-daily-delivery/*-summary.csv
+            artifacts/predge-daily-delivery/*-summary.json
+          retention-days: 90
