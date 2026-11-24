@@ -83,6 +83,7 @@ import { Route as ApiV1IntelligenceStructuredAnswerRouteImport } from './routes/
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
 import { Route as ApiV1PaymentsPaypalRouteImport } from './routes/api.v1.payments.paypal'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
+import { Route as ApiV1PaymentsUsdcPackActivateRouteImport } from './routes/api.v1.payments.usdc-pack-activate'
 import { Route as ApiV1PaymentsUsdcRiskGateRouteImport } from './routes/api.v1.payments.usdc-risk-gate'
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
@@ -473,6 +474,12 @@ const ApiV1PaymentsPreflightRoute = ApiV1PaymentsPreflightRouteImport.update({
   path: '/api/v1/payments/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PaymentsUsdcPackActivateRoute =
+  ApiV1PaymentsUsdcPackActivateRouteImport.update({
+    id: '/api/v1/payments/usdc-pack-activate',
+    path: '/api/v1/payments/usdc-pack-activate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1PaymentsUsdcRiskGateRoute =
   ApiV1PaymentsUsdcRiskGateRouteImport.update({
     id: '/api/v1/payments/usdc-risk-gate',
@@ -602,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
+  '/api/v1/payments/usdc-pack-activate': typeof ApiV1PaymentsUsdcPackActivateRoute
   '/api/v1/payments/usdc-risk-gate': typeof ApiV1PaymentsUsdcRiskGateRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
@@ -687,6 +695,7 @@ export interface FileRoutesByTo {
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
+  '/api/v1/payments/usdc-pack-activate': typeof ApiV1PaymentsUsdcPackActivateRoute
   '/api/v1/payments/usdc-risk-gate': typeof ApiV1PaymentsUsdcRiskGateRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
@@ -773,6 +782,7 @@ export interface FileRoutesById {
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
+  '/api/v1/payments/usdc-pack-activate': typeof ApiV1PaymentsUsdcPackActivateRoute
   '/api/v1/payments/usdc-risk-gate': typeof ApiV1PaymentsUsdcRiskGateRoute
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
@@ -860,6 +870,7 @@ export interface FileRouteTypes {
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
+    | '/api/v1/payments/usdc-pack-activate'
     | '/api/v1/payments/usdc-risk-gate'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
@@ -945,6 +956,7 @@ export interface FileRouteTypes {
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
+    | '/api/v1/payments/usdc-pack-activate'
     | '/api/v1/payments/usdc-risk-gate'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
@@ -1030,6 +1042,7 @@ export interface FileRouteTypes {
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
+    | '/api/v1/payments/usdc-pack-activate'
     | '/api/v1/payments/usdc-risk-gate'
     | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
@@ -1116,6 +1129,7 @@ export interface RootRouteChildren {
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
   ApiV1PaymentsPaypalRoute: typeof ApiV1PaymentsPaypalRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
+  ApiV1PaymentsUsdcPackActivateRoute: typeof ApiV1PaymentsUsdcPackActivateRoute
   ApiV1PaymentsUsdcRiskGateRoute: typeof ApiV1PaymentsUsdcRiskGateRoute
   ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
   ApiX402NeverminedIntelligenceRoute: typeof ApiX402NeverminedIntelligenceRoute
@@ -1647,6 +1661,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PaymentsPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/payments/usdc-pack-activate': {
+      id: '/api/v1/payments/usdc-pack-activate'
+      path: '/api/v1/payments/usdc-pack-activate'
+      fullPath: '/api/v1/payments/usdc-pack-activate'
+      preLoaderRoute: typeof ApiV1PaymentsUsdcPackActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/payments/usdc-risk-gate': {
       id: '/api/v1/payments/usdc-risk-gate'
       path: '/api/v1/payments/usdc-risk-gate'
@@ -1791,6 +1812,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPaypalRoute: ApiV1PaymentsPaypalRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
+  ApiV1PaymentsUsdcPackActivateRoute: ApiV1PaymentsUsdcPackActivateRoute,
   ApiV1PaymentsUsdcRiskGateRoute: ApiV1PaymentsUsdcRiskGateRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,

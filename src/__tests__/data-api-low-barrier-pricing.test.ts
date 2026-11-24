@@ -8,12 +8,14 @@ import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   publicCapabilityPricingCatalog,
 } from "../lib/capability-pricing-catalog";
+import { encodeUsdcPackTransferCalldata, USDC_PACK_RECIPIENT } from "../lib/usdc-pack-checkout";
 
 const page = readFileSync("src/routes/pricing.tsx", "utf8");
 const alias = readFileSync("src/routes/data-api.tsx", "utf8");
 const store = readFileSync("src/components/low-barrier-pricing.tsx", "utf8");
 const riskGateSetup = readFileSync("src/components/structured-product-setup.tsx", "utf8");
 const paymentPreview = readFileSync("src/components/dual-rail-checkout.tsx", "utf8");
+const checkoutHelpers = readFileSync("src/lib/usdc-pack-checkout.ts", "utf8");
 
 describe("unified Store & API: one authoritative low-barrier pricing catalog", () => {
   it("shows only the three monthly Risk Gate Packs with published call equivalents", () => {
@@ -39,8 +41,9 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(riskGateSetup).toContain("country_iso3: riskGateCountry.trim().toUpperCase()");
     expect(riskGateSetup).toContain('mode: "prepare"');
     expect(riskGateSetup).not.toContain("structuredProductSetup");
-    expect(paymentPreview).toContain("AI Agents · Base x402");
-    expect(paymentPreview).toContain("Base USDC x402 agent payment · Locked preview");
+    expect(paymentPreview).toContain("Crypto USDC");
+    expect(paymentPreview).toContain("AI Agents Free Pay-Per-Call USDC");
+    expect(paymentPreview).toContain("/api/v1/payments/usdc-risk-gate");
     expect(alias).toContain('redirect({ to: "/pricing", replace: true })');
     expect(GEOMACRO_LOW_BARRIER_VERSION).toBe("geomacro.low-barrier.v1");
   });
@@ -62,22 +65,34 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(rows.find((r) => r.capability === "risk_gate_bundle")?.launch_status)
       .toBe("COMING_SOON");
   });
-  it("never presents an unverified card link or merchant settlement as active", () => {
+  it("keeps USDC checkout gated and removes the PayPal rail", () => {
     const inline = readFileSync("src/components/dual-rail-checkout.tsx", "utf8");
     expect(store).toContain("<LockedDualRailCheckout selection={selection} />");
     expect(store).not.toContain("Card to crypto");
     expect(store).not.toContain("Pay by card. Merchant receives USDC.");
     expect(inline).toContain('id="payment-checkout"');
-    expect(inline).toContain("PayPal / card checkout · Locked");
-    expect(inline).toContain("Manual transfer / QR · Locked");
-    expect(inline).toContain("PayPal / card checkout · Locked");
+    expect(inline).not.toContain("PayPal");
+    expect(inline).toContain("checkout_enabled");
+    expect(inline).toContain("eth_sendTransaction");
+    expect(inline).toContain("Base Mainnet");
+    expect(inline).toContain("Polygon PoS Mainnet");
+    expect(inline).toContain("Arc Mainnet");
+    expect(checkoutHelpers).toContain("0x95ba71d21c41bda8bba9533f96d25f793e4137b5");
+    expect(inline).toContain("eth_sendTransaction");
     expect(inline).not.toContain("createOrder(");
-    expect(inline).not.toContain("sendTransaction(");
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).not.toContain("<CapabilityPriceSchedule />");
     expect(page).not.toContain('id="api-products"');
     expect(page).not.toContain('id="product-catalog"');
     expect(page).not.toContain("What every delivery includes.");
     expect(page).not.toMatch(/checkout\.stripe\.com|buy\.stripe\.com|payment_authorized:\s*true/);
+  });
+  it("encodes an exact native USDC transfer to the fixed settlement wallet", () => {
+    expect(USDC_PACK_RECIPIENT).toBe("0x95ba71d21c41bda8bba9533f96d25f793e4137b5");
+    expect(encodeUsdcPackTransferCalldata(15)).toBe(
+      "0xa9059cbb" + USDC_PACK_RECIPIENT.slice(2).padStart(64, "0") + "0".repeat(58) + "e4e1c0",
+    );
+    expect(encodeUsdcPackTransferCalldata(30).slice(-64)).toBe((30_000_000n).toString(16).padStart(64, "0"));
+    expect(() => encodeUsdcPackTransferCalldata(0)).toThrow("USDC_PACK_AMOUNT_INVALID");
   });
 });

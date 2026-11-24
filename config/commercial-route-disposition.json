@@ -332,6 +332,10 @@
     "/api/v1/payments/usdc-risk-gate": {
       "classification": "PRODUCTION",
       "status": "LIVE"
+    },
+    "/api/v1/payments/usdc-pack-activate": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
     }
   }
 }

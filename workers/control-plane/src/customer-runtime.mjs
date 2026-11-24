@@ -50,7 +50,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','wallet-bind','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -122,6 +122,19 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    return reply({ok:true,user:created,session_token:opaque,max_age:3600});
   }
   const user=await session(db,pepper,body.session_token,at);
+  if(action==='wallet-bind'){
+   if(Object.keys(body).some(k=>!['session_token','wallet_address'].includes(k))||
+      typeof body.wallet_address!=='string'||!/^0x[0-9a-f]{40}$/.test(body.wallet_address))
+    fail(400,'CUSTOMER_WALLET_BINDING_INVALID');
+   const owner=await db.prepare('SELECT user_id FROM customer_wallet_addresses WHERE wallet_address=?').bind(body.wallet_address).first();
+   if(owner&&owner.user_id!==user.id)fail(409,'CUSTOMER_WALLET_ALREADY_BOUND');
+   try{await db.prepare(`INSERT INTO customer_wallet_addresses(user_id,wallet_address,created_at)
+     VALUES(?,?,?) ON CONFLICT(user_id,wallet_address) DO NOTHING`).bind(user.id,body.wallet_address,at).run();}
+   catch{fail(409,'CUSTOMER_WALLET_ALREADY_BOUND');}
+   const bound=await db.prepare('SELECT wallet_address FROM customer_wallet_addresses WHERE user_id=? AND wallet_address=?').bind(user.id,body.wallet_address).first();
+   if(!bound)fail(503,'CUSTOMER_WALLET_BINDING_READBACK_UNAVAILABLE');
+   return reply({ok:true,wallet_address:bound.wallet_address});
+  }
   // PayPal is a dedicated authenticated server-to-server flow. No browser
   // capture receipt, caller price, account or arbitrary identity is trusted.
   if(action.startsWith('paypal-')){

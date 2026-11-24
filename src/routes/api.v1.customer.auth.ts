@@ -28,6 +28,10 @@ export const Route=createFileRoute("/api/v1/customer/auth")({server:{handlers:{
     return Response.json({ok:true,user:{email:result.user.email}},{headers:{...c.customerHeaders(),
      "Set-Cookie":c.customerSessionCookie(result.session_token,request,result.max_age)}});
    }
+   if(body.action==="wallet-bind"){
+    const {bindCustomerWallet}=await import("../lib/customer-wallet.server");
+    return Response.json(await bindCustomerWallet(request,body),{headers:c.customerHeaders()});
+   }
    throw new c.CustomerError(400,"CUSTOMER_AUTH_ACTION_INVALID");
   }catch(error){return c.customerFailure(error);}
  },
