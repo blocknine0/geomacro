@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-24T19:22:58.521Z",
+  "checked_at": "2026-11-24T20:45:07.826Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 496,
+  "item_count": 497,
   "counts": {
-    "geopolitics": 260,
+    "geopolitics": 261,
     "macro": 149,
     "rare_earth": 87
   },
-  "source_native_ids_sha256": "bd82d0e7d784a363c5ad2ff73b07ff23a5daa5f6d231504fa29e9df6e15d8fc9",
+  "source_native_ids_sha256": "01d5db2946649d39e71ee185d8a5cf6a2c9099c46c171fb3b03f0cb587a4a1ba",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-fa0e87a4",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Technology will not make peace for us, but used well, it can help us to build, protect and support it · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Technology will not make peace for us, but used well, it can help us to build, protect and support it. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-24T19:27:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-a8d0aff4",
       "category": "rare_earth",
