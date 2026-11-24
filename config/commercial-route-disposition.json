@@ -328,6 +328,10 @@
     "/v1/risk-stream/commercial-public-key": {
       "classification": "PRODUCTION",
       "status": "LIVE"
+    },
+    "/api/v1/payments/usdc-risk-gate": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
     }
   }
 }
