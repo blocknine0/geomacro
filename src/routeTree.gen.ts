@@ -473,11 +473,12 @@ const ApiV1PaymentsPreflightRoute = ApiV1PaymentsPreflightRouteImport.update({
   path: '/api/v1/payments/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1PaymentsUsdcRiskGateRoute = ApiV1PaymentsUsdcRiskGateRouteImport.update({
-  id: '/api/v1/payments/usdc-risk-gate',
-  path: '/api/v1/payments/usdc-risk-gate',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ApiV1PaymentsUsdcRiskGateRoute =
+  ApiV1PaymentsUsdcRiskGateRouteImport.update({
+    id: '/api/v1/payments/usdc-risk-gate',
+    path: '/api/v1/payments/usdc-risk-gate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiX402CircleIntelligenceRoute =
   ApiX402CircleIntelligenceRouteImport.update({
     id: '/api/x402/circle_/intelligence',
