@@ -51,8 +51,10 @@ describe("keyless merchant x402 buyer catalog is exact-price and no-funds",()=>{
   expect(price).not.toContain("KeylessBuyerQuickstart");
   expect(dataApi).not.toContain("KeylessBuyerQuickstart");
   const accessNotice=readFileSync("src/components/api-keys-notice.tsx","utf8");
-  expect(accessNotice).toContain("Per-call API pricing");
-  expect(accessNotice).toContain("Published");
+  expect(accessNotice).toContain("Live mainnet access for agents");
+  expect(accessNotice).toContain("POST https://geomacro.live/api/v1/payments/usdc-risk-gate");
+  expect(accessNotice).toContain("POST https://geomacro.live/api/v1/risk-gate");
+  expect(accessNotice).toContain("GET https://geomacro.live/v1/risk-stream/commercial-public-key");
   expect(accessNotice).not.toMatch(/API keys.*coming soon/iu);
  });
 });

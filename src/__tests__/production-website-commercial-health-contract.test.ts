@@ -18,7 +18,7 @@ describe("production website health validates real commercial promises", () => {
     expect(job).not.toContain("Score dates remain the original verified evidence times.");
   });
 
-  it("verifies store and coming-soon promises against checked-out source", () => {
+  it("verifies store and live mainnet access copy against checked-out source", () => {
     const notice = read("src/components/api-keys-notice.tsx");
     const schedule = read("src/components/capability-price-schedule.tsx");
     for (const phrase of ["Geomacro Store", "LowBarrierPricing", "ApiKeysNotice", "CategoryApiPricing"]) {
@@ -28,9 +28,12 @@ describe("production website health validates real commercial promises", () => {
     expect(pricing).not.toContain("<CapabilityPriceSchedule />");
     expect(job).toContain("CategoryApiPricing");
     expect(job).toContain("GEOMACRO_CAPABILITY_PRICES.intelligence_query");
-    expect(job).toContain("Self-service access and checkout are not open yet.");
-    expect(notice).toContain("Per-call API pricing");
-    expect(notice).toContain("Published");
+    expect(notice).toContain("Live mainnet access for agents");
+    expect(notice).toContain("POST https://geomacro.live/api/v1/payments/usdc-risk-gate");
+    expect(notice).toContain("POST https://geomacro.live/api/v1/risk-gate");
+    expect(notice).toContain("GET https://geomacro.live/v1/risk-stream/commercial-public-key");
+    expect(notice).toContain("Insufficient evidence costs $0");
+    expect(notice).toContain("No account needed");
     expect(notice).not.toMatch(/API keys.*coming soon/iu);
     expect(job).toContain("Each exact request must qualify before payment.");
     expect(schedule).toContain("Each exact request must qualify before payment.");

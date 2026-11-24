@@ -27,7 +27,8 @@ describe("homepage reader and buyer journeys", () => {
     for (const target of ["/intelligence", "/ask-geomacro", "/data-api", "/pricing", "/institutional"]) {
       expect(html).toContain(`href="${target}"`);
     }
-    expect(html).toContain("Checkout availability is verified separately.");
+    expect(html).toContain("Monthly Risk Gate Packs start at $15: choose $15, $30, or $60");
+    expect(html).toContain("Mainnet USDC pay-per-call on Arc, Base, and Polygon costs");
     expect(html).not.toMatch(/API keys.*coming soon/iu);
     expect(html).not.toContain('href="/risk-indices"');
     expect(html).not.toMatch(/Generate structured JSON|Paste news text|Source license|payment-signature/);
