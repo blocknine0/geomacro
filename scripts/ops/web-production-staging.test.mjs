@@ -40,6 +40,7 @@ test("production-capable build config is workers.dev-only with no private bindin
   assert.equal(config.workers_dev, true);
   assert.equal(config.preview_urls, false);
   assert.equal(config.vars.GEOMACRO_SUPABASE_RUNTIME_MODE, "standby");
+  assert.equal(config.vars.GEOMACRO_ASK_FREE_GROQ_ENABLED, "false");
   assert.equal(config.routes, undefined);
   assert.equal(config.d1_databases, undefined);
   assert.equal(config.durable_objects, undefined);
@@ -54,6 +55,7 @@ test("production-capable build config is workers.dev-only with no private bindin
   assert.equal(productionConfig.name, "geomacro-web-production");
   assert.equal(productionConfig.workers_dev, false);
   assert.equal(productionConfig.preview_urls, false);
+  assert.equal(productionConfig.vars.GEOMACRO_ASK_FREE_GROQ_ENABLED, "true");
   assert.deepEqual(productionConfig.routes, [
     { pattern: "geomacro.live", custom_domain: true },
     { pattern: "www.geomacro.live", custom_domain: true },
@@ -73,6 +75,9 @@ test("production deployment workflow deploys on main push and manual confirmatio
   assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/u);
   assert.match(workflow, /persist-credentials: false/u);
   assert.match(workflow, /permissions:\n  contents: read/u);
+  assert.ok(workflow.includes('"GEOMACRO_COMMERCE_LEDGER_TOKEN", "GROQ_API_KEY"'));
+  assert.ok(workflow.includes("GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}"));
+  assert.ok(workflow.includes("WEB_PRODUCTION_GROQ_API_KEY_OPTIONAL_UNSET"));
 });
 
 test("staging SSR paths include public Risk Gate and omit the redirecting data API route", () => {

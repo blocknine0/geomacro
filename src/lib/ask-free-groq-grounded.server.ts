@@ -31,7 +31,11 @@ const clients=new Map<string,{until:number,count:number}>();
 function eligible(c:HybridAskAnswer):boolean{
  if(c.gri!==null||(c as {signed_gro_generated?:boolean}).signed_gro_generated===true||c.answer_kind==="public_info"||
    c.real_time_message==="CURRENT_SIGNED_RISK_INDEX_UNAVAILABLE"||
-   c.insufficient_evidence||c.low_confidence||
+   c.insufficient_evidence||
+   (c.low_confidence&&!(c.intelligence_tier==="official_observation_unscored"&&
+     c.signed_gro_generated===false&&c.independent_same_event_verification===false&&
+     c.execution_authorized===false&&c.gri===null&&c.evidence.length>0&&
+     c.evidence.every(x=>/^live:official:(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(x.eventId))))||
    c.evidence.some(x=>x.eventId==="live:official:numeric"))return false;
  return [c.summary,c.what_changed,c.why_it_matters,c.geomacro_view].every(x=>
   typeof x==="string"&&x.length<=1800&&!/(?:https?:\/\/|www\.|@|-----BEGIN|sk-[a-z0-9_-]+)/iu.test(x));
@@ -107,13 +111,22 @@ function privateSafeContext(context:AskModelContext):AskModelContext{
 async function requestFreeGroq(
   question:string,canonical:HybridAskAnswer,
   clientKey:string,dependencies:Dependencies,
+  deadlineAt:number,
   diagnostic:(reason:string)=>void,
 ):Promise<HybridAskAnswer>{
  // We read the secret only on the backend. No paid provider, no auto upgrade.
+ if(Date.now()>=deadlineAt){diagnostic("request_timeout");return canonical;}
  if(!admit(clientKey)){diagnostic("budget_limited");return canonical;}
+ let contextTimer:ReturnType<typeof setTimeout>|undefined;
  let phase:"context"|"upstream"|"validation"="context";
  try{
-   const ctx=await (dependencies.readContext??collectAskModelContext)(question,canonical);
+   const ctx=await Promise.race([
+     (dependencies.readContext??collectAskModelContext)(question,canonical),
+     new Promise<never>((_,reject)=>{contextTimer=setTimeout(
+       ()=>reject(new Error("ASK_GROQ_HARD_TIMEOUT")),Math.max(1,deadlineAt-Date.now()));}),
+   ]);
+   if(contextTimer!==undefined)clearTimeout(contextTimer);
+   if(Date.now()>=deadlineAt){diagnostic("request_timeout");return canonical;}
    const payload={
      model:MODEL,temperature:0,reasoning_effort:"low",
      max_completion_tokens:MAX_OUTPUT_TOKENS,
@@ -137,7 +150,7 @@ async function requestFreeGroq(
      method:"POST",redirect:"manual",
      headers:{Accept:"application/json","Content-Type":"application/json",
        "Cache-Control":"no-store",Authorization:"Bearer "+process.env.GROQ_API_KEY},
-     body:JSON.stringify(payload),signal:AbortSignal.timeout(MAX_MS),
+     body:JSON.stringify(payload),signal:AbortSignal.timeout(Math.max(1,deadlineAt-Date.now())),
    });
    // Groq Free Plan 429 is a normal fallback, never a paid-provider retry.
    if(!res.ok){
@@ -165,12 +178,12 @@ async function requestFreeGroq(
    // all-blank output or unapproved assertions return the canonical answer.
    return assisted?{...validated!,model_rendering:"assisted"}:canonical;
  }catch(error){
-   const timeout=error instanceof Error&&/timeout|abort/i.test(error.name);
+   const timeout=error instanceof Error&&/timeout|abort/i.test(error.name+" "+error.message);
    diagnostic(timeout?"request_timeout":phase==="context"?"context_unavailable":
      phase==="upstream"?"transport_error":"response_invalid");
    return canonical;
  }
- finally{inflight=Math.max(0,inflight-1);}
+ finally{if(contextTimer!==undefined)clearTimeout(contextTimer);inflight=Math.max(0,inflight-1);}
 }
 /** Shared keyed cache and in-flight dedup precede expensive Groq admission.
  * A new canonical source revision always forces a new answer cache key. */
@@ -186,26 +199,34 @@ export async function enhanceAskWithFreeGroq(
  if(!providerEnabled&&!globalCacheEnabled)return canonical;
  let cacheStatus:"hit"|"miss"|"coalesced"|"bypassed"="bypassed";
  let diagnostic="not_attempted";
+ const deadlineAt=Date.now()+MAX_MS;
  let globalHit=false;
- const result=await cachedGroqAnswer(question,canonical,
+ let hardTimer:ReturnType<typeof setTimeout>|undefined;
+ const hardDeadline=new Promise<HybridAskAnswer>(resolve=>{
+   hardTimer=setTimeout(()=>{diagnostic="request_timeout";resolve(canonical);},MAX_MS);
+ });
+ let result:HybridAskAnswer;
+ try{result=await Promise.race([cachedGroqAnswer(question,canonical,
    async()=>{
      // Read only hashed, existing public explainer wording. Never cache a
      // current event, score, follow-up context or source record in D1.
      // A mocked provider fetch is not a mock of the unrelated private D1
      // cache. Production has neither dependency injected; tests may opt into
      // cache behaviour with an explicit cacheFetchImpl mock.
-     const remote=globalCacheEnabled
+     const remote=globalCacheEnabled&&Date.now()<deadlineAt
        ? await readGlobalAskModelCache(question,canonical,dependencies.cacheFetchImpl??fetch)
        : null;
+     if(Date.now()>=deadlineAt){diagnostic="request_timeout";return canonical;}
      if(remote){globalHit=true;return remote;}
      if(!providerEnabled){diagnostic="provider_unconfigured";return canonical;}
-     const rendered=await requestFreeGroq(question,canonical,clientKey,dependencies,
+     const rendered=await requestFreeGroq(question,canonical,clientKey,dependencies,deadlineAt,
        code=>{diagnostic=code;});
      if(rendered.model_rendering==="assisted"&&globalCacheEnabled)
        await writeGlobalAskModelCache(question,canonical,rendered,dependencies.cacheFetchImpl??fetch);
      return rendered;
    },
-   status=>{cacheStatus=status;});
+   status=>{cacheStatus=status;}),hardDeadline]).catch(()=>canonical);}
+ finally{if(hardTimer!==undefined)clearTimeout(hardTimer);}
  return {...result,
    model_rendering:result.model_rendering==="assisted"?"assisted":"canonical",
    model_render_cache:globalHit?"hit":cacheStatus,

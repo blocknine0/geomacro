@@ -76,14 +76,17 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    const src=readFileSync("src/lib/ask-answer.server.ts","utf8");
    expect(src).toContain("if (planAskOfficialNumeric(question))");
    expect(src).toContain("answerFromCurrentOriginals(question)");
-   expect(src).toContain("collectSharedOfficialNews(categories)");
+   expect(src).toContain("collectSharedOfficialNews(categories,{allowLiveFallback:false");
    expect(src).toContain("answerHybridQuestion(question)");
-   expect(src.indexOf("collectSharedOfficialNews(categories)"))
+   expect(src.indexOf("collectSharedOfficialNews(categories,{allowLiveFallback:false"))
      .toBeLessThan(src.indexOf("answerFromCurrentOriginals(question)"));
    expect(src).toContain('const [originalResult,derivedResult,indexedResult]=await Promise.allSettled([');
    expect(src).toContain('boundedAskAdapter("current_originals"');
    expect(src).toContain('boundedAskAdapter("derived_intelligence"');
    expect(src).toContain('boundedAskAdapter("indexed_discovery"');
+   expect(src).toContain('scope:{countryNames:countryTerms,corridorTerms}');
+   expect(src).toContain('execution_authorized:false');
+   expect(src).toContain('Decision support only. This answer is not execution authorization');
    const helper=readFileSync("src/lib/ask-shared-derived-journal.server.ts","utf8");
    expect(helper).toContain("sources_credited.length===0");
    expect(helper).not.toContain("settleCoinbaseX402");

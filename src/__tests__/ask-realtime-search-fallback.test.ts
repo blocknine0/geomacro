@@ -21,9 +21,10 @@ describe("Ask Geomacro realtime search fallback", () => {
     const shared = read("src/lib/ask-shared-derived-journal.server.ts");
     const verifier = read("workers/control-plane/src/website-derived-intelligence.mjs");
     // Original-source fallback moved into the shared D1-first reader.
-    expect(orchestrator).toContain("collectSharedOfficialNews(categories)");
+    expect(orchestrator).toContain("collectSharedOfficialNews(categories,{allowLiveFallback:false");
     expect(shared).toContain("readStatelessWebsiteIntelligence(category)");
-    expect(shared).toContain("fetchAllDerivedNews()");
+    expect(shared).toContain("fetchRiskStreamPublicTeasers()");
+    expect(shared).not.toContain("fetchAllDerivedNews()");
     expect(shared).toContain("const CLOCK_24H=24*60*60_000");
     expect(shared).toContain("Promise.allSettled(");
     expect(shared).toContain("verifyDerivedStory(s,now)");
@@ -33,7 +34,7 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(shared).toContain('s.status==="official_release_observed_unscored"');
     expect(verifier).toContain("s.same_event_corrob_verified!==false");
     expect(verifier).toContain("s.severity!==null");
-    expect(orchestrator).toContain("selectOfficialNewsCategories(question)");
+    expect(orchestrator).toContain("selectOfficialNewsRequest(question)");
     expect(orchestrator).toContain("what (?:has )?changed today");
     expect(orchestrator).toContain("signals.map(signal => signal.category)");
     expect(orchestrator).toContain("latest_original_published_at: latestOriginal");
@@ -59,11 +60,11 @@ describe("Ask Geomacro realtime search fallback", () => {
   it("keeps broad current-news fallback bounded and model-free when no official release qualifies", () => {
     const orchestrator = read("src/lib/ask-answer.server.ts");
     const search = read("src/lib/ask-realtime-search.server.ts");
-    expect(orchestrator).toContain("if (selectOfficialNewsCategories(question).length > 0)");
+    expect(orchestrator).toContain("const newsRequest=selectOfficialNewsRequest(question)");
     expect(orchestrator).toContain("noCurrentPublisherNewsAnswer()");
-    expect(orchestrator).toContain("realtimeSearchAnswer(question,unavailable,");
-    expect(orchestrator).toContain("allowBrowserFallback:false");
-    expect(orchestrator).toContain("return unavailable;");
+    expect(orchestrator).toContain("noCurrentPublisherNewsAnswer(newsRequest.scopeLabel)");
+    expect(orchestrator).toContain("allowLiveFallback:false");
+    expect(orchestrator).not.toContain("realtimeSearchAnswer(question,unavailable,");
     expect(orchestrator).toContain("insufficient_evidence: true");
     expect(orchestrator).toContain("signed_gro_generated: false");
     expect(search).toContain("options: { deterministicOnly?: boolean; allowBrowserFallback?: boolean } = {}");

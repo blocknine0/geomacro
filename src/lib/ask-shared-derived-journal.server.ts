@@ -5,7 +5,7 @@
  * A D1 outage, missing category or unattributed/older row falls back to
  * that category's existing first-party live reader. No paid proof or score.
  */
-import {fetchAllDerivedNews,fetchRiskStreamPublicTeasers} from "./public-derived-news-client";
+import {fetchRiskStreamPublicTeasers} from "./public-derived-news-client";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 import type {StatelessCategory} from "./stateless-intelligence-model";
@@ -15,6 +15,7 @@ export type SharedAskNewsResult={
  journal_categories_reused:StatelessCategory[];
  live_categories_queried:StatelessCategory[];
 };
+export type SharedAskNewsScope={countryNames?:readonly string[];corridorTerms?:readonly string[]};
 type ReadJournal=()=>Promise<StatelessIntelligenceSignal[]>;
 type ReadLive=(category:StatelessCategory)=>Promise<{signals:StatelessIntelligenceSignal[]}>;
 const ALL=new Set<StatelessCategory>(["geopolitics","macro","rare_earth"]);
@@ -54,24 +55,38 @@ function eligible(s:StatelessIntelligenceSignal,now:number){
    (groTeaser||verifyDerivedStory(s,now))&&s.sources_credited.length===0&&
    Number.isFinite(issued)&&now-issued>=0&&now-issued<=CLOCK_24H;
 }
+function normalizedText(value:string):string{
+ return value.normalize("NFKC").toLocaleLowerCase().replace(/[‐‑‒–—]/gu,"-")
+  .replace(/[^\p{L}\p{N}]+/gu," ").trim();
+}
+function containsPhrase(text:string,phrase:string):boolean{
+ const source=normalizedText(text),needle=normalizedText(phrase);
+ return Boolean(needle)&&(` ${source} `).includes(` ${needle} `);
+}
+function matchesScope(s:StatelessIntelligenceSignal,scope?:SharedAskNewsScope):boolean{
+ if(!scope)return true;
+ const text=[s.geography??"",s.title,s.what_changed,s.why_it_matters].join(" ");
+ const hasCountry=Boolean(scope.countryNames?.length);
+ const hasCorridor=Boolean(scope.corridorTerms?.length);
+ if(!hasCountry&&!hasCorridor)return true;
+ const countryMatch=hasCountry&&scope.countryNames!.some(name=>containsPhrase(text,name));
+ const corridorMatch=hasCorridor&&scope.corridorTerms!.some(name=>containsPhrase(text,name));
+ return (hasCountry&&countryMatch)||(hasCorridor&&corridorMatch);
+}
 const defaultLive:ReadLive=async(category)=>{
  const m=await import("./stateless-public-intelligence.server");
  return m.readStatelessWebsiteIntelligence(category);
 };
 const defaultJournal:ReadJournal=async()=>{
- const [journal,teasers]=await Promise.all([
-   fetchAllDerivedNews(),fetchRiskStreamPublicTeasers(),
- ]);
- const merged=new Map<string,StatelessIntelligenceSignal>();
- for(const signal of journal)merged.set(signal.id,signal);
- for(const signal of teasers)merged.set(signal.id,signal);
- return [...merged.values()].sort((a,b)=>
-   b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+ // The public-teasers endpoint is the canonical, source-redacted D1 view for
+ // Ask. One read avoids duplicating the website-derived-news D1 projection.
+ return fetchRiskStreamPublicTeasers();
 };
 export async function collectSharedOfficialNews(
  categories:readonly StatelessCategory[],
- {now=Date.now(),readJournal=defaultJournal,readLive=defaultLive}:{
-  now?:number;readJournal?:ReadJournal;readLive?:ReadLive;
+  {now=Date.now(),readJournal=defaultJournal,readLive=defaultLive,scope,allowLiveFallback=true}:{
+  now?:number;readJournal?:ReadJournal;readLive?:ReadLive;scope?:SharedAskNewsScope;
+  allowLiveFallback?:boolean;
  }={},
 ):Promise<SharedAskNewsResult>{
  if(!Number.isFinite(now)||!Array.isArray(categories)||categories.length<1||
@@ -82,7 +97,7 @@ export async function collectSharedOfficialNews(
    const candidate=await readJournal();
    if(!Array.isArray(candidate)||candidate.length>720)
      throw Error("ASK_SHARED_JOURNAL_CONTRACT_INVALID");
-   rows=candidate.filter(r=>eligible(r,now));
+   rows=candidate.filter(r=>eligible(r,now)&&matchesScope(r,scope));
  }catch{rows=[]}
  const journal_categories_reused:StatelessCategory[]=[];
  const missing:StatelessCategory[]=[];
@@ -96,7 +111,7 @@ export async function collectSharedOfficialNews(
      const ordinary=group.filter(s=>!safePublicGroTeaser(s,now));
      signals.push(...ordinary.slice(0,categories.length===1?3:1));
      journal_categories_reused.push(category);
-   }else missing.push(category);
+   }else if(allowLiveFallback)missing.push(category);
  }
  const live=await Promise.allSettled(missing.map(c=>readLive(c)));
  for(let i=0;i<live.length;i++){
@@ -105,7 +120,7 @@ export async function collectSharedOfficialNews(
    const records=outcome.value?.signals;
    if(!Array.isArray(records))continue;
    const category=missing[i];
-   const checked=records.filter(s=>s.category===category&&eligible(s,now))
+   const checked=records.filter(s=>s.category===category&&eligible(s,now)&&matchesScope(s,scope))
      .sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
    signals.push(...checked.slice(0,categories.length===1?3:1));
  }
