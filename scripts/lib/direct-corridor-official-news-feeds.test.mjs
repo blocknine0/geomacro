@@ -12,13 +12,13 @@ const rss=(title,url)=>'<rss><channel><item><title>'+title+'</title><pubDate>Mon
 test("supplemental official feeds preserve the expanded 77-entry registry",()=>{
  assert.equal(assertDirectCorridorSupplementalNativeFeeds(),true);
  assert.equal(DIRECT_GLOBAL_CORRIDOR_SOURCES.length,77);
- assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,19);
+ assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,20);
  assert.deepEqual(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.map(x=>x.original_registry_source_id),
   ["wto_tariffs","usgs_mcs","usgs_mcs","rbi_releases",
    "aus_rba_media_releases","aus_rba_media_releases","aus_rba_media_releases",
    "nld_dnb_news","nld_dnb_news","bel_nbb_news","bel_nbb_news","ecb_data",
    "sarb","esp_bde_news","esp_bde_news","swe_riksbank_press","swe_riksbank_press",
-   "nor_norges_bank_news","nor_norges_bank_news"]);
+   "nor_norges_bank_news","nor_norges_bank_news","panama_canal"]);
  assert.ok(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.every(x=>
   x.channel==="CORRIDOR_ONLY"&&x.website_intelligence_enabled===false&&
   x.event_verified===false&&x.commercial_eligible===false));

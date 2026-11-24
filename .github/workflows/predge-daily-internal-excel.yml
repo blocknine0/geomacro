@@ -22,6 +22,7 @@ concurrency:
 jobs:
   export-daily-excel:
     if: github.repository == 'blocknine0/geomacro'
+    environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
