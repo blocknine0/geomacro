@@ -70,7 +70,7 @@ test("all staged source budgets match exhaustive integrity ceilings and current 
   remaining_rows_written:30_374_780,
   paced_remaining_rows_read:6_666_097_425,
   paced_remaining_rows_written:9_010_518,
-  reserved_migration_rows_read:20_000_000,
+  reserved_migration_rows_read:40_000_000,
   reserved_migration_rows_written:1_000_000
  };
  const high=deriveStep3SourceRowBudget("0204",observedHeadroom);

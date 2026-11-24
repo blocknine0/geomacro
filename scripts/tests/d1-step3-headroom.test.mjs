@@ -33,7 +33,7 @@ const paid=(read,written)=>assessD1PaidMonthlyAdmission({
 });
 test("reviewed migration estimates admit the 335k Step 3 ceiling within headroom bounds",()=>{
  assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_read,
-  20_000_000);
+  40_000_000);
  assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_written,
   8_000_000);
  const estimateNow=new Date("2026-12-04T09:00:00.000Z");
@@ -46,25 +46,25 @@ test("reviewed migration estimates admit the 335k Step 3 ceiling within headroom
  });
  const admitted=assessRows(335_000);
  assert.equal(admitted.status,"PASS");
- assert.equal(admitted.reserved_migration_rows_read,28_375_000);
+ assert.equal(admitted.reserved_migration_rows_read,48_375_000);
  assert.equal(admitted.reserved_migration_rows_written,7_700_000);
  const maximumApproved=assessRows(400_000);
  assert.equal(maximumApproved.status,"PASS");
- assert.equal(maximumApproved.reserved_migration_rows_read,30_000_000);
+ assert.equal(maximumApproved.reserved_migration_rows_read,50_000_000);
  assert.equal(maximumApproved.reserved_migration_rows_written,9_000_000);
  const readCap=assessD1PaidMonthlyAdmission({
   usage:{...usage(100,100,estimateNow),
    observed_through_utc:estimateNow.toISOString().slice(0,10)},
   paidProof:paidProof(estimateNow),now:estimateNow,lane:"migration",
-  estimatedMigrationRowsRead:20_000_000
+  estimatedMigrationRowsRead:40_000_000
  });
  assert.equal(readCap.status,"PASS");
- assert.equal(readCap.reserved_migration_rows_read,40_000_000);
+ assert.equal(readCap.reserved_migration_rows_read,80_000_000);
  const overReadCap=assessD1PaidMonthlyAdmission({
   usage:{...usage(100,100,estimateNow),
    observed_through_utc:estimateNow.toISOString().slice(0,10)},
   paidProof:paidProof(estimateNow),now:estimateNow,lane:"migration",
-  estimatedMigrationRowsRead:20_000_001
+  estimatedMigrationRowsRead:40_000_001
  });
  assert.equal(overReadCap.status,"HOLD");
  assert.equal(overReadCap.reason,"MIGRATION_ESTIMATED_COST_EXCEEDS_REVIEWED_BOUND");
