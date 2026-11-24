@@ -21,6 +21,9 @@ const PERMITTED=Object.freeze({
   credits_100:CUSTOMER_ENABLED_CAPABILITIES,
   credits_500:CUSTOMER_ENABLED_CAPABILITIES,
   credits_1500:CUSTOMER_ENABLED_CAPABILITIES,
+  risk_gate_pack_small:CUSTOMER_ENABLED_CAPABILITIES,
+  risk_gate_pack_standard:CUSTOMER_ENABLED_CAPABILITIES,
+  risk_gate_pack_best:CUSTOMER_ENABLED_CAPABILITIES,
 });
 const tokenPattern=/^gmk_live_[0-9a-f]{64}$/;
 const requestPattern=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
@@ -205,7 +208,7 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
   // capability eligibility gate still withholds new public Risk Gate sales.
   if(grants.some(g=>g.remaining>0 && ['business_pilot','pro_analyst','starter_dev'].includes(g.tier)))
     scopes.push('signed:read','risk-gate:read');
-  else if(grants.some(g=>g.remaining>0 && String(g.tier).startsWith('credits_')))
+  else if(grants.some(g=>g.remaining>0 && (String(g.tier).startsWith('credits_') || String(g.tier).startsWith('risk_gate_pack_'))))
     scopes.push('signed:read','risk-gate:read');
   const key='gmk_live_'+randHex(32),keyId='gmk_live_'+randHex(16);
   const hash=await customerPaidKeyDigest(env,key);

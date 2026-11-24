@@ -8,6 +8,9 @@ function fixture(){
  const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');
  for(const name of ['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql','0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql','0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql','0096_customer_prepaid_pack_spend.sql','0097_customer_paypal_checkout_intents.sql'])
   sql.exec(readFileSync('workers/control-plane/migrations/'+name,'utf8'));
+ sql.exec('CREATE TABLE risk_gate_d1_quota(client_id TEXT,usage_day TEXT,used INTEGER DEFAULT 0,PRIMARY KEY(client_id,usage_day))');
+ sql.exec(readFileSync('workers/control-plane/migrations/0133_customer_store_risk_gate_recharge.sql','utf8'));
+ sql.exec(readFileSync('workers/control-plane/migrations/0226_customer_mainnet_usdc_pack_funding.sql','utf8'));
  const prepare=q=>({bind(...args){return {q,args,first:async()=>sql.prepare(q).get(...args)??null,
   all:async()=>({results:sql.prepare(q).all(...args)}),run:async()=>({meta:{changes:Number(sql.prepare(q).run(...args).changes)}})};}});
  const db={prepare,async batch(statements){sql.exec('BEGIN IMMEDIATE');try{const results=statements.map(s=>({meta:{changes:Number(sql.prepare(s.q).run(...s.args).changes)}}));sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
@@ -42,6 +45,18 @@ test('accepted OTP creates one HMAC-only session under concurrent verification a
  assert.equal((await f.verify('a@example.com')).status,401);
  assert.equal(f.sql.prepare('SELECT count(*) n FROM sessions').get().n,1);
  assert.equal(f.sql.prepare('SELECT count(*) n FROM credit_ledger').get().n,0);f.sql.close();
+});
+test('verified customer can bind a unique immutable self-custody wallet address',async()=>{
+ const f=fixture();await f.start('wallet@example.com');const owner=await f.verify('wallet@example.com');
+ const wallet='0x1234567890abcdef1234567890abcdef12345678';
+ assert.equal((await f.post('wallet-bind',{session_token:owner.session_token,wallet_address:wallet})).wallet_address,wallet);
+ assert.equal((await f.post('wallet-bind',{session_token:owner.session_token,wallet_address:wallet})).status,200,
+  'same user binding is idempotent');
+ await f.start('other@example.com');const other=await f.verify('other@example.com');
+ assert.equal((await f.post('wallet-bind',{session_token:other.session_token,wallet_address:wallet})).code,'CUSTOMER_WALLET_ALREADY_BOUND');
+ assert.throws(()=>f.sql.prepare('UPDATE customer_wallet_addresses SET wallet_address=?').run('0x'.padEnd(42,'1')),/IMMUTABLE/);
+ assert.throws(()=>f.sql.prepare('DELETE FROM customer_wallet_addresses').run(),/IMMUTABLE/);
+ assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM customer_wallet_addresses').get().n,1);f.sql.close();
 });
 test('five wrong codes exhaust challenge and correct code cannot rescue it',async()=>{
  const f=fixture();await f.start('a@example.com');const wrong=f.otp==='000000'?'000001':'000000';

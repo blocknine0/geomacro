@@ -63,6 +63,7 @@ import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
 import {commercialRiskGateEvaluate} from "./commercial-risk-gate.mjs";
 import {storeRiskGateD1} from "./store-risk-gate.mjs";
 import {storeRiskGateUsdcD1} from "./store-risk-gate-usdc.mjs";
+import {storeUsdcPackActivate} from "./store-usdc-pack-activate.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
 import {pingUnifiedIngestorHealth} from "./unified-ingestor-keepalive.mjs";
@@ -1898,6 +1899,8 @@ export default {
       return storeRiskGateD1(request,env);
     if(url.pathname==="/v1/store/risk-gate-usdc")
       return storeRiskGateUsdcD1(request,env);
+    if(url.pathname==="/v1/store/usdc-pack-activate")
+      return storeUsdcPackActivate(request,env);
     if(url.pathname==="/v2/partner/predge/verify-verdict")
       return verifyPredgePaidVerdictD1(request,env);
     if(url.pathname==="/v1/risk-gate/unified/evaluate")
