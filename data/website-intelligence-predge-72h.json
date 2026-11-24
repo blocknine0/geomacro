@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-23T22:29:21.156Z",
+  "checked_at": "2026-11-24T00:12:14.495Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 28,
+  "item_count": 29,
   "counts": {
     "geopolitics": 5,
     "macro": 7,
-    "rare_earth": 16
+    "rare_earth": 17
   },
-  "source_native_ids_sha256": "70ab290c25a8de932207aefe7d528009781e488eb69a31afef861d1c8d03c11a",
+  "source_native_ids_sha256": "b31d336443da7ca80c0c2d36ea6a49a24feaefe331478e1b5fd3a48e1ab9a677",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,27 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-1f267f4f",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Cobalt & Battery-Grade Supply — Australia (AUS)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported policy or operating action by mineral regulators and supply-chain operators, affecting Cobalt & Battery-Grade Supply in Australia; direction is tightening (tightening or disruption pressure).",
+      "why_it_matters": "WHY IT MATTERS — Risk: tightening Cobalt & Battery-Grade Supply pressure in Australia → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: battery-grade lithium benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
+      "topic": "Cobalt & Battery-Grade Supply",
+      "geography": "Australia",
+      "country_iso3": "AUS",
+      "corridor": null,
+      "event_direction": "tightening",
+      "event_action": "Reported Policy or Operating Action",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-23T23:50:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-d29216f2",
       "category": "geopolitics",
