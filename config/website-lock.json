@@ -1378,6 +1378,17 @@
     "website_lock_remains_active": true,
     "global_risk_final_lock_unmodified": true
   },
+  "approved_live_mainnet_usdc_checkout_20261124": {
+    "approval": "Founder explicitly authorized replacing the prelaunch pricing checkout with the mainnet USDC wallet and verified transfer activation flow on 2026-11-24.",
+    "approved_source_commit": "020b4d46126b1a73fecbd54806acabbac2bae37e",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "paid_and_checkout_acceptance_gates_remain_required": true
+  },
   "approved_intelligence_risk_gate_conversion_20261116": {
     "approval": "Owner explicitly requested the institutional /intelligence hero, source-neutral Risk → Effect → Price Impact preview, tier conversion strip and resolution of the named intelligence freshness/browser health failures on 2026-11-16.",
     "purpose": "Improve only the Intelligence route and desk presentation. Preserve unscored public evidence semantics, source attribution, no copyrighted-source republishing, disabled paid execution, and the independent Global Risk presentation lock.",

@@ -184,6 +184,8 @@ const approvedPricing = [
   config.approved_pricing_credit_risk_gate_20261116,
   // PR #4175: pin only the exact Risk Gate monthly pack presentation blobs.
   config.approved_pricing_risk_gate_packs_20261123,
+  // Pin the exact mainnet USDC checkout UI; the Worker acceptance gates remain separate.
+  config.approved_live_mainnet_usdc_checkout_20261124,
   // Pin only the exact pricing tab and low-barrier presentation blobs.
   config.approved_pricing_tabbed_sections_20261123,
   // Owner-requested Intelligence freshness and Risk Gate conversion copy;
