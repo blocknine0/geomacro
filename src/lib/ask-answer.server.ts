@@ -6,6 +6,7 @@ import {
 } from "./hybrid-ask-intelligence.server";
 import { realtimeSearchAnswer } from "./ask-realtime-search.server";
 import { answerFromCurrentOriginals } from "./ask-on-demand-original.server";
+import { COUNTRIES_195, type Country195 } from "./canonical-country-registry-195";
 import { answerOfficialNumeric, planAskOfficialNumeric } from "./ask-official-numeric.server";
 import {collectSharedOfficialNews} from "./ask-shared-derived-journal.server";
 
@@ -29,21 +30,57 @@ import {collectSharedOfficialNews} from "./ask-shared-derived-journal.server";
  * causal, directional and investment questions remain on the governed path.
  */
 type OfficialNewsCategory = "geopolitics" | "macro" | "rare_earth";
+type OfficialNewsRequest={categories:OfficialNewsCategory[];countryTerms:string[];corridorTerms:string[];scopeLabel:string};
+const ASK_CORRIDORS:ReadonlyArray<{label:string;terms:readonly string[]}>= [
+ {label:"Red Sea",terms:["Red Sea"]},
+ {label:"Bab el-Mandeb",terms:["Bab el-Mandeb","Bab al-Mandab"]},
+ {label:"Strait of Hormuz",terms:["Strait of Hormuz","Hormuz Strait","Hormuz"]},
+ {label:"Strait of Malacca",terms:["Strait of Malacca","Malacca Strait","Malacca"]},
+ {label:"Suez Canal",terms:["Suez Canal"]},
+ {label:"Panama Canal",terms:["Panama Canal"]},
+ {label:"Bosporus",terms:["Bosporus","Bosphorus"]},
+ {label:"GIUK Gap",terms:["GIUK Gap"]},
+ {label:"Cape of Good Hope",terms:["Cape of Good Hope"]},
+ {label:"Bering Strait",terms:["Bering Strait"]},
+];
+function escapeRegExp(value:string):string{return value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}
+function phraseOccurs(text:string,phrase:string,caseSensitive=false):boolean{
+ const flags=caseSensitive?"u":"iu";
+ return new RegExp("(?:^|[^\\p{L}\\p{N}])"+escapeRegExp(phrase)+"(?:$|[^\\p{L}\\p{N}])",flags).test(text);
+}
+function countryMentions(question:string):Country195[]{
+ return COUNTRIES_195.filter(country=>{
+   const names=[country.name,...country.aliases,country.iso3];
+   if(country.iso3==="USA")names.push("US","U.S.");
+   if(country.iso3==="GBR")names.push("UK","U.K.");
+   return names.some(name=>name.length>=2&&phraseOccurs(question,name,name.length<=3));
+ });
+}
+function removePhrases(text:string,phrases:readonly string[]):string{
+ return phrases.filter(Boolean).reduce((result,phrase)=>result.replace(
+   new RegExp(escapeRegExp(phrase),"giu")," "),text);
+}
 
-function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] {
+function selectOfficialNewsRequest(question: string): OfficialNewsRequest|null {
   const q = question.trim().toLowerCase();
   const patterns: readonly { category: OfficialNewsCategory; test: RegExp }[] = [
     { category: "geopolitics", test: /\b(geopolitic(?:s|al)?|diplomac(?:y|ies)|foreign policy)\b/i },
     { category: "macro", test: /\b(macro(?:economics?|economic)?|fx|foreign exchange)\b/i },
-    { category: "rare_earth", test: /\b(critical minerals?|rare earths?|rare-earths?)\b/i },
+   { category: "rare_earth", test: /\b(critical minerals?|rare earths?|rare-earths?|lithium|cobalt|nickel|graphite|copper|uranium|tungsten|gallium|germanium)\b/i },
   ];
   const matches = patterns.filter(item => item.test.test(q));
+  const countries=countryMentions(question);
+  const corridorMatches=ASK_CORRIDORS.filter(row=>row.terms.some(term=>phraseOccurs(question,term)));
+  const countryScope=countries;
+  const corridorScope=corridorMatches.length===1?corridorMatches[0]:null;
   const genericNews = /^(?:what (?:has )?changed today|what (?:is|'s) new today|what happened today|what(?: is|'s) happening today|latest news|latest developments|(?:give me )?(?:the )?(?:news|updates) today)\??$/i.test(q);
   const looksLikeNews = /\b(latest|recent|current|new|updates?|developments?|releases?|news|changed|changing|happened|happening|today)\b/i.test(q);
-  if (!looksLikeNews || matches.length > 1 || (matches.length === 0 && !genericNews))
-    return [];
-  const rest = q
-    .replace(/\b(?:geopolitics?|geopolitical|diplomacy|foreign policy|macro\/fx|macroeconomics?|macroeconomic|macro|fx|foreign exchange|critical minerals?|rare[- ]earths?)\b/gi, " ")
+  if (!looksLikeNews || corridorMatches.length>1 || countries.length>3 ||
+      (matches.length===0&&!genericNews&&!countryScope.length&&!corridorScope))return null;
+  const entities=[...countryScope.flatMap(country=>[country.name,...country.aliases,country.iso3]),
+    ...(corridorScope?.terms??[])];
+  const rest = removePhrases(q,entities)
+    .replace(/\b(?:geopolitics?|geopolitical|diplomac(?:y|ies)|foreign policy|macro\/fx|macroeconomics?|macroeconomic|macro|fx|foreign exchange|critical minerals?|rare[- ]earths?)\b/gi, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
   const allowed = new Set([
@@ -52,12 +89,13 @@ function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] 
     "developments", "release", "releases", "changed", "changing",
     "show", "me", "give", "tell", "about", "in", "on", "for", "any",
     "from", "today", "now", "please", "us", "there", "have", "been",
-    "globally", "global", "world",
+    "globally", "global", "world", "risk", "around", "regarding",
   ]);
-  if (rest.split(/\s+/).some(token => token && !allowed.has(token))) return [];
-  return matches.length === 1
-    ? [matches[0].category]
-    : ["geopolitics", "macro", "rare_earth"];
+  if (rest.split(/\s+/).some(token => token && !allowed.has(token))) return null;
+  const categories:OfficialNewsCategory[]=matches.length?matches.map(item=>item.category):["geopolitics","macro","rare_earth"];
+  const countryTerms=countryScope.flatMap(country=>[country.name,...country.aliases,country.iso3]);
+  const scopeLabel=[...countryScope.map(country=>country.name),corridorScope?.label].filter(Boolean).join(" and ");
+  return {categories,countryTerms,corridorTerms:corridorScope?.terms.slice()??[],scopeLabel};
 }
 
 /**
@@ -65,14 +103,17 @@ function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] 
  * payment-eligible country/commodity/corridor risk assessment.
  */
 async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAskAnswer | null> {
-  const categories = selectOfficialNewsCategories(question);
-  if (!categories.length) return null;
+  const request=selectOfficialNewsRequest(question);
+  if(!request)return null;
+  const {categories,countryTerms,corridorTerms,scopeLabel}=request;
   // The SAME source-neutral, native-dated D1 journal already powers website
   // and free API. Reuse it for covered categories instead of re-fetching
-  // official publishers; missing categories still get bounded live checks.
-  const selected=await collectSharedOfficialNews(categories);
+  // official publishers. A missing D1 category stays missing in this answer,
+  // so the deterministic composer has no upstream rate limit or provider dependency.
+  const selected=await collectSharedOfficialNews(categories,{allowLiveFallback:false,
+    scope:{countryNames:countryTerms,corridorTerms}});
   const signals=selected.signals;
-  if (!signals.length) return null;
+  if (!signals.length) return noCurrentPublisherNewsAnswer(scopeLabel);
   // Report only categories that ACTUALLY yielded native-dated releases.
   // A healthy request for three categories is not evidence that all three
   // produced eligible stories today.
@@ -82,13 +123,14 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
       : category === "macro" ? "Macro/FX" : "Geopolitics"
   ).join(", ");
   const latestOriginal = signals.map(signal => signal.published_at).sort().at(-1)!;
+  const scopeCopy=scopeLabel?" for "+scopeLabel:"";
   return {
     summary: "I found " + signals.length + " recent official release" +
-      (signals.length === 1 ? "" : "s") + " " + categoryLabel +
+      (signals.length === 1 ? "" : "s") + scopeCopy+" " + categoryLabel +
       "; this is observed news, not a corroborated risk assessment.",
     what_changed: signals.map(signal => signal.what_changed).join(" "),
     why_it_matters: signals.map(signal => signal.why_it_matters).join(" "),
-    geomacro_view: "I checked the original release dates. These items haven't been independently matched to the same event, scored or signed as a Risk Gate.",
+    geomacro_view: "I checked the original release dates. These observations are not independently matched to the same event, scored or signed as a Risk Gate. Decision support only. This answer is not execution authorization.",
     evidence: signals.map(signal => ({
       eventId: "live:official:" + signal.id,
       title: signal.title,
@@ -104,27 +146,30 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
     cache_status: selected.live_categories_queried.length===0 ? "hit":"bypassed",
     source_identity_exposed: false,
     durable_live_storage_write: false,
-    real_time_message: selected.live_categories_queried.length===0
-      ? "Reused original-dated Geomacro D1 news. No new issuer request or signed risk claim."
-      : "Reused qualified D1 news; checked missing categories via bounded live originals. No signed risk claim.",
+    real_time_message: "Read the canonical source-free D1 journal once. No issuer request or signed risk claim.",
     intelligence_tier: "official_observation_unscored",
     signed_gro_generated: false,
     independent_same_event_verification: false,
+    execution_authorized:false,
+    decision_support_boundary:"Decision support only. This answer is not execution authorization or a signed Risk Gate.",
   };
 }
 
-function noCurrentPublisherNewsAnswer(): HybridAskAnswer {
+function noCurrentPublisherNewsAnswer(scopeLabel=""): HybridAskAnswer {
+  const scopeCopy=scopeLabel?" for "+scopeLabel:"";
   return {
-    summary: "I couldn't confirm a fresh original release in the feeds checked over the past 24 hours.",
-    what_changed: "The checked first-party feeds didn't return a qualifying new release for this question.",
-    why_it_matters: "That doesn't mean nothing happened; some sources may be delayed, unavailable or outside this check.",
-    geomacro_view: "I won't replace the gap with an old score or a newly invented claim.",
+    summary: "I couldn't confirm a fresh qualifying official observation"+scopeCopy+" in the last 24 hours.",
+    what_changed: "The canonical source-free journal has no matching observation for this question.",
+    why_it_matters: "This is a data gap, not evidence that nothing happened or that conditions are unchanged.",
+    geomacro_view: "I won't replace the gap with an old score or an invented claim. Decision support only. This answer is not execution authorization.",
     evidence: [], insufficient_evidence: true, mean_relevance: null,
     low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
     data_mode: "ephemeral_live", cache_status: "bypassed",
     source_identity_exposed: false, durable_live_storage_write: false,
-    real_time_message: "First-party source freshness unconfirmed; no scored or signed result.",
+    real_time_message: "Canonical D1 observation unavailable for the requested scope; no score or signed result.",
     signed_gro_generated: false, independent_same_event_verification: false,
+    execution_authorized:false,
+    decision_support_boundary:"Decision support only. This answer is not execution authorization or a signed Risk Gate.",
   };
 }
 
@@ -229,16 +274,10 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   }
   // Broad free-news requests use original releases and bounded index discovery.
   // Country, corridor and scored questions keep the governed path below.
-  if (selectOfficialNewsCategories(question).length > 0) {
-    const unavailable=noCurrentPublisherNewsAnswer();
-    const [officialResult,indexedResult]=await Promise.allSettled([
-      boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500),
-      boundedAskAdapter("indexed_discovery",()=>realtimeSearchAnswer(question,unavailable,
-        {deterministicOnly:true,allowBrowserFallback:false}),6_000),
-    ]);
-    if(officialResult.status==="fulfilled"&&officialResult.value)return officialResult.value;
-    if(indexedResult.status==="fulfilled"&&indexedResult.value)return indexedResult.value;
-    return unavailable;
+  const newsRequest=selectOfficialNewsRequest(question);
+  if (newsRequest) {
+    return (await boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500)
+      .catch(()=>null))??noCurrentPublisherNewsAnswer(newsRequest.scopeLabel);
   }
 
   // These readers are independent. Start them together and bound each one so

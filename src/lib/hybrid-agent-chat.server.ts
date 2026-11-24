@@ -11,6 +11,7 @@ import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import { COUNTRIES_195 } from "./canonical-country-registry-195";
 import { planAskOfficialNumeric } from "./ask-official-numeric.server";
 import { enhanceAskWithFreeGroq } from "./ask-free-groq-grounded.server";
+import { publicAskResearchProjection } from "./ask-public-research-projection";
 
 type HybridChatMode = "grounded_ask" | "bounded_follow_up";
 
@@ -170,9 +171,10 @@ export async function executeHybridChatTurn(
   const composed = Date.now()-startedAt < 10_000
     ? await enhanceAskWithFreeGroq(resolved.question, localized, clientKey)
     : localized;
+  const publicAnswer=publicAskResearchProjection(composed);
   return {
     answer: /^(?:please\s+)?(?:(?:make it |be )?(?:shorter)|summari[sz]e(?: that| it)?)[.!?]*$/i.test(rawQuestion)
-      ? {...composed, what_changed:"", why_it_matters:"", geomacro_view:""} : composed,
+      ? {...publicAnswer, what_changed:"", why_it_matters:"", geomacro_view:publicAnswer.decision_support_boundary} : publicAnswer,
     context_turns: parsed.history.length,
     mode: resolved.mode,
     resolved_question: resolved.question,

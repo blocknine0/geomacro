@@ -10,6 +10,16 @@ const a={
  generatedAt:"2026-11-06T00:00:00Z",data_mode:"ephemeral_live",cache_status:"bypassed",
  source_identity_exposed:false,durable_live_storage_write:false,answer_kind:"explainer",
 } satisfies HybridAskAnswer;
+const sourceFreeOfficial={
+ ...a,summary:"One recent official release for USA in Macro/FX; observed news, not a corroborated risk assessment.",
+ what_changed:"An eligible observation was recorded for USA.",
+ why_it_matters:"This source-free public observation supports risk monitoring for USA.",
+ geomacro_view:"This observation is not independently matched to the same event, scored or signed as a Risk Gate. Decision support only. This answer is not execution authorization.",
+ evidence:[{eventId:"live:official:macro-1234abcd",title:"Geomacro finds an official event signal for USA",relevance:100}],
+ low_confidence:true,intelligence_tier:"official_observation_unscored" as const,
+ signed_gro_generated:false as const,independent_same_event_verification:false as const,
+ execution_authorized:false as const,
+} satisfies HybridAskAnswer;
 const key=process.env.GROQ_API_KEY,enabled=process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED;
 afterEach(()=>{
  if(key===undefined)delete process.env.GROQ_API_KEY;
@@ -24,6 +34,42 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    const req=vi.fn();
    expect(await enhanceAskWithFreeGroq("Why does nickel matter?",a,"client",{fetchImpl:req as any})).toBe(a);
    expect(req).not.toHaveBeenCalled();
+ });
+ it("allows production phrasing for a source-free unscored observation only after strict fact checks",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const reply={summary:sourceFreeOfficial.summary+" The observation remains unscored.",
+     what_changed:sourceFreeOfficial.what_changed,why_it_matters:sourceFreeOfficial.why_it_matters,
+     geomacro_view:sourceFreeOfficial.geomacro_view};
+   const fetchImpl=vi.fn(async()=>new Response(JSON.stringify({
+     choices:[{message:{content:JSON.stringify(reply)}}]}),{status:200}));
+   const result=await enhanceAskWithFreeGroq("Latest macro news in USA",sourceFreeOfficial,
+     "source-free-official-3741",{fetchImpl:fetchImpl as any,
+       readContext:async()=>({categories:["macro"],canonical_evidence_items:1,
+         research_activity_by_category:[],official_release_context:[]})});
+   expect(fetchImpl).toHaveBeenCalledOnce();
+   expect(result.model_rendering).toBe("assisted");
+   expect(result.evidence).toStrictEqual(sourceFreeOfficial.evidence);
+ });
+ it("falls back if the model adds execution authorization or drops a canonical fact",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const attempts=[
+     {...sourceFreeOfficial,geomacro_view:"Execution is authorized. This is a signed Risk Gate."},
+     {...sourceFreeOfficial,what_changed:"An observation was recorded."},
+   ];
+   for(const [index,reply] of attempts.entries()){
+     const response=JSON.stringify({choices:[{message:{content:JSON.stringify({
+       summary:reply.summary,what_changed:reply.what_changed,
+       why_it_matters:reply.why_it_matters,geomacro_view:reply.geomacro_view,
+     })}}]});
+     const result=await enhanceAskWithFreeGroq("Latest macro news in USA",sourceFreeOfficial,
+       "source-free-unsafe-"+index,{fetchImpl:vi.fn(async()=>new Response(response,{status:200})) as any,
+        readContext:async()=>({categories:["macro"],canonical_evidence_items:1,
+          research_activity_by_category:[],official_release_context:[]})});
+     expect(result.model_rendering).toBe("canonical");
+     expect(result.summary).toBe(sourceFreeOfficial.summary);
+   }
  });
  it("uses a safe shared public-model-cache paraphrase when Groq is not enabled",async()=>{
    delete process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED;
@@ -180,5 +226,28 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    const none={...a,insufficient_evidence:true,answer_kind:undefined};
    expect(await enhanceAskWithFreeGroq("Latest sanctions news today? Example 2498",none,"client",{fetchImpl:req as any})).toBe(none);
    expect(req).not.toHaveBeenCalled();
+ });
+ it("fails open on a missing key, provider 5xx, or a stalled context within the hard timeout",async()=>{
+   vi.useFakeTimers();
+   try{
+   vi.setSystemTime(new Date(Date.now()+120_000));
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   delete process.env.GROQ_API_KEY;
+   const noKey=vi.fn();
+   expect(await enhanceAskWithFreeGroq("Why does nickel matter?",a,"missing-key-811",{fetchImpl:noKey as any})).toBe(a);
+   expect(noKey).not.toHaveBeenCalled();
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const unavailable=await enhanceAskWithFreeGroq("Why does nickel matter?",a,"provider-5xx-812",{
+     fetchImpl:vi.fn(async()=>new Response("",{status:503})) as any,
+     readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
+       research_activity_by_category:[],official_release_context:[]})});
+   expect(unavailable).toMatchObject({model_rendering:"canonical",model_render_failure:"upstream_5xx"});
+   expect(unavailable.summary).toBe(a.summary);
+   const pending=enhanceAskWithFreeGroq("Why does nickel matter?",a,"stalled-context-813",{
+     fetchImpl:vi.fn() as any,readContext:()=>new Promise(()=>{})});
+   await vi.advanceTimersByTimeAsync(0);
+   await vi.advanceTimersByTimeAsync(3400);
+   expect(await pending).toMatchObject({summary:a.summary,model_render_failure:"request_timeout"});
+   }finally{vi.useRealTimers()}
  });
 });

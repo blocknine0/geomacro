@@ -68,7 +68,24 @@ function allowed(question:string,answer:HybridAskAnswer):boolean{
 }
 export type SafeGroundedOutputRejection=
   |"invalid_json"|"invalid_shape"|"unexpected_fields"|"invalid_field"
-  |"field_too_long"|"forbidden_text"|"unapproved_number"|"unsupported_certainty";
+  |"field_too_long"|"forbidden_text"|"unapproved_number"|"unsupported_certainty"
+  |"execution_claim"|"canonical_fact_dropped";
+
+const EXECUTION_CLAIM=/\b(?:execution\s+(?:is\s+)?authori[sz]ed|(?:trade|trading|transaction)\s+(?:is\s+)?authori[sz]ed|authori[sz](?:e|es|ed)\s+(?:a\s+)?(?:trade|execution)|ready\s+for\s+execution|execute\s+this|(?:signed|independently verified)(?:\s+as)?\s+(?:a\s+)?(?:risk gate|gro))\b/giu;
+function hasPositiveExecutionClaim(text:string):boolean{
+ for(const match of text.matchAll(EXECUTION_CLAIM)){
+  const start=match.index??0;
+  const before=text.slice(Math.max(0,start-100),start);
+  if(/\b(?:not|never|cannot|can't|isn't|aren't)\b[^.!?]{0,100}$/iu.test(before))continue;
+  return true;
+ }
+ return false;
+}
+const FACT_STOPWORDS=new Set(["geomacro","official","observation","observations","release","releases","signal","signals","recorded","supports","support","monitoring","risk","this","that","with","from","into","across","could","would","should","have","has","been","for","the","and","not","only","decision","answer"]);
+function keyFacts(value:string):string[]{
+ return Array.from(new Set(value.toLocaleLowerCase().match(/[\p{L}\p{N}]{3,}/gu)??[]))
+   .filter(word=>!FACT_STOPWORDS.has(word));
+}
 
 /**
  * Existing evidence-safe formatter validator. The optional rejection callback
@@ -96,19 +113,29 @@ export function safeGroundedOpenAIOutput(
   for(const [key,max] of Object.entries(limits)){
     if(typeof data[key]!=="string"||!(data[key] as string).trim())
       return reject("invalid_field");
-    const normalized=(data[key] as string).trim().replace(/\s+/gu," ");
+    const normalized=(data[key] as string).trim().replace(/\s+/gu," ").replace(/\s*—\s*/gu,". ");
     if(normalized.length>max)return reject("field_too_long");
     if(forbiddenTransfer.test(normalized)||forbiddenPublic.test(normalized))
       return reject("forbidden_text");
     fields[key as keyof typeof limits]=normalized;
   }
   // No new numerical values, rates, dates or percentages from the model.
-  const numbers=(s:string)=>s.match(/\d+(?:[.,]\d+)*/gu)??[];
+  const numbers=(s:string):string[]=>s.match(/\d+(?:[.,]\d+)*/gu)??[];
   const reference=[question,canonical.summary,canonical.what_changed,
     canonical.why_it_matters,canonical.geomacro_view].join(" ");
   const approved=new Set(numbers(reference));
   if(numbers(Object.values(fields).join(" ")).some(n=>!approved.has(n)))
     return reject("unapproved_number");
+  if(hasPositiveExecutionClaim(Object.values(fields).join(" ")))
+    return reject("execution_claim");
+  if(canonical.intelligence_tier==="official_observation_unscored"){
+    const required=keyFacts([canonical.summary,canonical.what_changed,canonical.why_it_matters].join(" "));
+    const retained=new Set(keyFacts(Object.values(fields).join(" ")));
+    if(required.some(fact=>!retained.has(fact)))return reject("canonical_fact_dropped");
+    const sourceNumbers=new Set(numbers([canonical.summary,canonical.what_changed,canonical.why_it_matters].join(" ")));
+    if([...sourceNumbers].some(number=>!numbers(Object.values(fields).join(" ")).includes(number)))
+      return reject("canonical_fact_dropped");
+  }
   if((canonical.insufficient_evidence||canonical.low_confidence)&&
     /\b(?:confirmed|verified|established|proven|announced today|has increased|has fallen)\b/iu
       .test(Object.values(fields).join(" ")))

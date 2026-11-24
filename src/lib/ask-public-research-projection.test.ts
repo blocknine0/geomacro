@@ -21,5 +21,17 @@ describe("private OSINT classification remains internal to GeoMacro Ask",()=>{
    expect(out.evidence).toEqual([]);
    expect(out.gri).toBeNull();
    expect(out.signed_gro_generated).toBe(false);
+   expect(out.execution_authorized).toBe(false);
+   expect(out.decision_support_boundary).toContain("Decision support only");
+   expect(out.geomacro_view).toContain("not execution authorization or a signed Risk Gate");
+ });
+ it("removes prose em dashes from every public answer field",()=>{
+   const out=publicAskResearchProjection({
+     summary:"Current picture — still uncertain.",what_changed:"No new release — the journal is empty.",
+     why_it_matters:"The data is delayed — conclusions should wait.",geomacro_view:"Advisory — not execution authority.",
+     real_time_message:"Read complete — no signature.",
+   });
+   expect(JSON.stringify(out)).not.toContain("—");
+   expect(out.execution_authorized).toBe(false);
  });
 });
