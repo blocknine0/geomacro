@@ -212,6 +212,56 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   categories:Object.freeze(["geopolitics","macro"]),
   corridors:Object.freeze(["panama"]),
   event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"cointelegraph_crypto_macro_news",
+  original_registry_source_id:"cryptocompare_news",
+  url:"https://cointelegraph.com/rss",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"bis_central_bank_speeches",
+  original_registry_source_id:"snb_data",
+  url:"https://www.bis.org/doclist/cbspeeches.rss",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"bis_official_press_releases",
+  original_registry_source_id:"snb_data",
+  url:"https://www.bis.org/doclist/all_pressrels.rss",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"uk_gov_news_and_speeches",
+  original_registry_source_id:"wto_tariffs",
+  url:"https://www.gov.uk/search/news-and-communications.atom",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"us_cbp_official_trade_tariffs",
+  original_registry_source_id:"wto_tariffs",
+  url:"https://www.cbp.gov/rss/trade",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
  })
 ]);
 // Complete publisher URL contracts, not a substring or hostname-only check.
@@ -238,12 +288,17 @@ export const PINNED_CORRIDOR_OFFICIAL_FEED_URLS=Object.freeze({
  nor_norges_bank_official_press_releases:"https://www.norges-bank.no/en/rss-feeds/Press-releases---Norges-Bank/",
  nor_norges_bank_official_speeches:"https://www.norges-bank.no/en/rss-feeds/Speeches---Norges-Bank/",
  panama_canal_official_news:"https://pancanal.com/en/feed/",
+ cointelegraph_crypto_macro_news:"https://cointelegraph.com/rss",
+ bis_central_bank_speeches:"https://www.bis.org/doclist/cbspeeches.rss",
+ bis_official_press_releases:"https://www.bis.org/doclist/all_pressrels.rss",
+ uk_gov_news_and_speeches:"https://www.gov.uk/search/news-and-communications.atom",
+ us_cbp_official_trade_tariffs:"https://www.cbp.gov/rss/trade",
 });
 export function assertDirectCorridorSupplementalNativeFeeds(
  feeds=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
 ){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(!Array.isArray(feeds)||feeds.length!==20)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(!Array.isArray(feeds)||feeds.length!==25)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
  for(const s of feeds){
   const original=originals.get(s.original_registry_source_id);
