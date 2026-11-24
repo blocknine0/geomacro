@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-24T11:33:29.812Z",
+  "updated_at": "2026-11-24T13:47:22.432Z",
   "signals": [
     {
       "id": "rare_earth-7524b488",
@@ -39,6 +39,27 @@
       "event_action": "Reported Update",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-24T11:16:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-463e1bda",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Cobalt & Battery-Grade Supply — China (CHN)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported supply or operations disruption by mineral regulators and supply-chain operators, affecting Cobalt & Battery-Grade Supply in China; direction is tightening (tightening or disruption pressure).",
+      "why_it_matters": "WHY IT MATTERS — Risk: tightening Cobalt & Battery-Grade Supply pressure in China → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: battery-grade lithium benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
+      "topic": "Cobalt & Battery-Grade Supply",
+      "geography": "China",
+      "country_iso3": "CHN",
+      "corridor": null,
+      "event_direction": "tightening",
+      "event_action": "Reported Supply or Operations Disruption",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-24T10:23:57.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
@@ -1261,6 +1282,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9961d2a4",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested in new mineral exploration capabilities through the Canadian Digital Core Library · Canada",
+      "why_it_matters": "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output.",
+      "what_changed": "Canada invested in new mineral exploration capabilities through the Canadian Digital Core Library. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "mineral exploration and production",
+      "published_at": "2026-11-23",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
