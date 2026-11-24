@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-24T20:47:33.906Z",
+  "checked_at": "2026-11-24T23:58:18.893Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 498,
+  "item_count": 499,
   "counts": {
     "geopolitics": 261,
     "macro": 149,
-    "rare_earth": 88
+    "rare_earth": 89
   },
-  "source_native_ids_sha256": "c987e85b87ad82f44a269a8760076d456a8928c6052acc498985fc50e578309a",
+  "source_native_ids_sha256": "5db209e8f554cab53e8f0baedeae2bccd0d29ee811a2c9998532fdb7b961e9b6",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -627,6 +627,27 @@
       "event_action": "Reported Update",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-24T14:07:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-be25f5ea",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Critical-Mineral Supply & Processing — Morocco (MAR)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported review or discussion by mineral processors and refining operators, affecting Critical-Mineral Supply & Processing in Morocco; direction is uncertain (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: uncertain Critical-Mineral Supply & Processing pressure in Morocco → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REQUIRE_APPROVAL.",
+      "topic": "Critical-Mineral Supply & Processing",
+      "geography": "Morocco",
+      "country_iso3": "MAR",
+      "corridor": null,
+      "event_direction": "uncertain",
+      "event_action": "Reported Review or Discussion",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-24T14:04:30.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
