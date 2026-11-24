@@ -202,6 +202,16 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   categories:Object.freeze(["macro"]),
   corridors:Object.freeze(["europe"]),
   event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"panama_canal_official_news",
+  original_registry_source_id:"panama_canal",
+  url:"https://pancanal.com/en/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["panama"]),
+  event_verified:false,commercial_eligible:false
  })
 ]);
 // Complete publisher URL contracts, not a substring or hostname-only check.
@@ -227,12 +237,13 @@ export const PINNED_CORRIDOR_OFFICIAL_FEED_URLS=Object.freeze({
  swe_riksbank_official_notices:"https://www.riksbank.se/en-gb/rss/notices/",
  nor_norges_bank_official_press_releases:"https://www.norges-bank.no/en/rss-feeds/Press-releases---Norges-Bank/",
  nor_norges_bank_official_speeches:"https://www.norges-bank.no/en/rss-feeds/Speeches---Norges-Bank/",
+ panama_canal_official_news:"https://pancanal.com/en/feed/",
 });
 export function assertDirectCorridorSupplementalNativeFeeds(
  feeds=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
 ){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(!Array.isArray(feeds)||feeds.length!==19)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(!Array.isArray(feeds)||feeds.length!==20)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
  for(const s of feeds){
   const original=originals.get(s.original_registry_source_id);
