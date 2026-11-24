@@ -320,6 +320,14 @@
     "/api/research-risk-gate": {
       "classification": "INTERNAL",
       "status": "RESEARCH_ONLY_FAIL_CLOSED"
+    },
+    "/v2/partner/predge/paid-risk-gate": {
+      "classification": "PRODUCTION",
+      "status": "PRIVATE_PILOT"
+    },
+    "/v1/risk-stream/commercial-public-key": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
     }
   }
 }

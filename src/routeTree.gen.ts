@@ -62,6 +62,8 @@ import { Route as ApiV1AgentRouteImport } from './routes/api.v1.agent'
 import { Route as ApiV1FindsRouteImport } from './routes/api.v1.finds'
 import { Route as ApiV1PricingRouteImport } from './routes/api.v1.pricing'
 import { Route as ApiV1RiskGateRouteImport } from './routes/api.v1.risk-gate'
+import { Route as V2PartnerPredgePaidRiskGateRouteImport } from './routes/v2.partner.predge.paid-risk-gate'
+import { Route as V1RiskStreamCommercialPublicKeyRouteImport } from './routes/v1.risk-stream.commercial-public-key'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
@@ -356,6 +358,16 @@ const ApiV1RiskGateRoute = ApiV1RiskGateRouteImport.update({
   path: '/api/v1/risk-gate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V2PartnerPredgePaidRiskGateRoute = V2PartnerPredgePaidRiskGateRouteImport.update({
+  id: '/v2/partner/predge/paid-risk-gate',
+  path: '/v2/partner/predge/paid-risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const V1RiskStreamCommercialPublicKeyRoute = V1RiskStreamCommercialPublicKeyRouteImport.update({
+  id: '/v1/risk-stream/commercial-public-key',
+  path: '/v1/risk-stream/commercial-public-key',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402IntelligenceRoute = ApiX402IntelligenceRouteImport.update({
   id: '/api/x402/intelligence',
   path: '/api/x402/intelligence',
@@ -560,6 +572,8 @@ export interface FileRoutesByFullPath {
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/v1/risk-gate': typeof ApiV1RiskGateRoute
+  '/v2/partner/predge/paid-risk-gate': typeof V2PartnerPredgePaidRiskGateRoute
+  '/v1/risk-stream/commercial-public-key': typeof V1RiskStreamCommercialPublicKeyRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -1056,6 +1070,8 @@ export interface RootRouteChildren {
   ApiV1FindsRoute: typeof ApiV1FindsRoute
   ApiV1PricingRoute: typeof ApiV1PricingRoute
   ApiV1RiskGateRoute: typeof ApiV1RiskGateRoute
+  V2PartnerPredgePaidRiskGateRoute: typeof V2PartnerPredgePaidRiskGateRoute
+  V1RiskStreamCommercialPublicKeyRoute: typeof V1RiskStreamCommercialPublicKeyRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
@@ -1458,6 +1474,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1RiskGateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v2/partner/predge/paid-risk-gate': {
+      id: '/v2/partner/predge/paid-risk-gate'
+      path: '/v2/partner/predge/paid-risk-gate'
+      fullPath: '/v2/partner/predge/paid-risk-gate'
+      preLoaderRoute: typeof V2PartnerPredgePaidRiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v1/risk-stream/commercial-public-key': {
+      id: '/v1/risk-stream/commercial-public-key'
+      path: '/v1/risk-stream/commercial-public-key'
+      fullPath: '/v1/risk-stream/commercial-public-key'
+      preLoaderRoute: typeof V1RiskStreamCommercialPublicKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/intelligence': {
       id: '/api/x402/intelligence'
       path: '/api/x402/intelligence'
@@ -1704,6 +1734,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1FindsRoute: ApiV1FindsRoute,
   ApiV1PricingRoute: ApiV1PricingRoute,
   ApiV1RiskGateRoute: ApiV1RiskGateRoute,
+  V2PartnerPredgePaidRiskGateRoute: V2PartnerPredgePaidRiskGateRoute,
+  V1RiskStreamCommercialPublicKeyRoute: V1RiskStreamCommercialPublicKeyRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,

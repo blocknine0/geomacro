@@ -22,9 +22,10 @@ const DEFAULT_POLICY={policy_id:"geomacro-direct-risk-gate-default",policy_versi
   continue_max_score:35,reduce_limit_max_score:55,require_approval_max_score:75,
   minimum_confidence_for_auto_continue:0.8,require_commercial_verification_for_continue:true,
   max_positive_delta_for_auto_continue:5};
+const DECISION_SUPPORT_NOTICE="Decision support only. GeoMacro does not initiate, authorize, approve, or execute any payment, trade, or transaction. All execution decisions, actions, and resulting outcomes remain the sole responsibility of the user or AI agent.";
 const isRecord=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
 const bad=(error:string,status:number)=>Response.json({ok:false,error,
-  execution_authorized:false,chargeable:false},{status,headers:HEADERS});
+  execution_authorized:false,chargeable:false,decision_support_notice:DECISION_SUPPORT_NOTICE},{status,headers:HEADERS});
 
 function validateSignedStoreDecision(value:Record<string,unknown>,keySpki:string,keyId:string){
   const payload=value.decision_signed_payload;
@@ -97,7 +98,7 @@ export async function forwardDirectRiskGate(request:Request,
       tier:canonicalTier,price_usdc:PRICE_BY_TIER[canonicalTier],
       credit_equivalent:GEOMACRO_RISK_GATE_CREDIT_COSTS[canonicalTier],
       chargeable:false,payment_authorized:false,settlement_attempted:false,
-      evidence_checked:false,decision_signed:false,execution_authorized:false},
+      evidence_checked:false,decision_signed:false,execution_authorized:false,decision_support_notice:DECISION_SUPPORT_NOTICE},
       {status:200,headers:HEADERS});
   }
   const authorization=request.headers.get("authorization")??"";
@@ -127,7 +128,7 @@ export async function forwardDirectRiskGate(request:Request,
       const trusted=await resolveDecisionKey(origin,fetcher);
       if(!validateSignedStoreDecision(value,trusted.key,trusted.id))throw Error("RISK_GATE_SIGNATURE_INVALID");
     }
-    return Response.json(value,{status:upstream.status,headers:HEADERS});
+    return Response.json({...value,decision_support_notice:DECISION_SUPPORT_NOTICE},{status:upstream.status,headers:HEADERS});
   }catch{
     return bad("RISK_GATE_D1_TRANSPORT_UNAVAILABLE",503);
   }
