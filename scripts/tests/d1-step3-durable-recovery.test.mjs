@@ -63,6 +63,84 @@ test("offline simulation: real checkpoint implementation encrypts, signs and rea
  assert(!JSON.stringify(r).includes("opaque-proven-bookmark-value"));
  assert(r.object_key.startsWith("backups/d1/manifests/"+uuid));
 });
+
+test("offline: encrypted R2 PUT retries 503, 429 and network errors with exponential backoff, then independently GETs bytes",async()=>{
+ const p=provider(),delays=[],uploads=[];
+ let attempts=0;
+ const fetchImpl=async(url,req)=>{
+  if(req.method==="PUT"&&url.endsWith(".enc")){
+   attempts++;uploads.push(Buffer.from(req.body));
+   if(attempts===1)return new Response(null,{status:503});
+   if(attempts===2)return new Response(null,{status:429});
+   if(attempts===3)throw Error("synthetic temporary network error");
+  }
+  return p.fetchImpl(url,req);
+ };
+ const result=await captureDurableD1Checkpoint({
+  env,dbId:uuid,migrationSha:sha,now:at,fetchImpl,
+  sleepImpl:async ms=>{delays.push(ms)}
+ });
+ assert.equal(result.status,"PASS_REAL_PROVIDER_R2_BYTE_READBACK");
+ assert.equal(attempts,4);
+ assert.deepEqual(delays,[500,1000,2000]);
+ for(const bytes of uploads)assert(bytes.equals(uploads[0]));
+ assert(p.calls.some(x=>x.method==="GET"&&x.url.endsWith(".enc")));
+ assert.equal(result.signed_manifest_readback_verified,true);
+});
+test("offline: transient signed-manifest PUT also retries same signed bytes without skipping cryptographic GET",async()=>{
+ const p=provider(),delays=[],uploads=[];
+ let attempts=0;
+ const fetchImpl=async(url,req)=>{
+  if(req.method==="PUT"&&url.endsWith(".manifest.json")){
+   attempts++;uploads.push(Buffer.from(req.body));
+   if(attempts<3)return new Response(null,{status:502});
+  }
+  return p.fetchImpl(url,req);
+ };
+ const result=await captureDurableD1Checkpoint({
+  env,dbId:uuid,migrationSha:sha,now:at,fetchImpl,
+  sleepImpl:async ms=>{delays.push(ms)}
+ });
+ assert.equal(result.status,"PASS_REAL_PROVIDER_R2_BYTE_READBACK");
+ assert.deepEqual(delays,[500,1000]);
+ assert.equal(attempts,3);
+ assert(uploads.every(x=>x.equals(uploads[0])));
+ assert(p.calls.some(x=>x.method==="GET"&&x.url.endsWith(".manifest.json")));
+});
+test("offline: persistent 503 exhausts three retries and still HOLD; no success claim",async()=>{
+ const p=provider(),delays=[];let attempts=0;
+ const fetchImpl=async(url,req)=>{
+  if(req.method==="PUT"&&url.endsWith(".enc")){
+   attempts++;return new Response(null,{status:503});
+  }
+  return p.fetchImpl(url,req);
+ };
+ await assert.rejects(captureDurableD1Checkpoint({
+  env,dbId:uuid,migrationSha:sha,now:at,fetchImpl,
+  sleepImpl:async ms=>{delays.push(ms)}
+ }),/STEP3_RECOVERY_CLOUDFLARE_ENCRYPTED_OBJECT_PUT_HTTP_OR_NETWORK_UNVERIFIED/u);
+ assert.equal(attempts,4);
+ assert.deepEqual(delays,[500,1000,2000]);
+ assert.equal(p.calls.some(x=>x.method==="GET"&&x.url.endsWith(".enc")),false);
+});
+test("offline: permanent 400, 401, 403 or 404 never retry",async()=>{
+ for(const status of [400,401,403,404]){
+  const p=provider(),delays=[];let attempts=0;
+  const fetchImpl=async(url,req)=>{
+   if(req.method==="PUT"&&url.endsWith(".enc")){
+    attempts++;return new Response(null,{status});
+   }
+   return p.fetchImpl(url,req);
+  };
+  await assert.rejects(captureDurableD1Checkpoint({
+   env,dbId:uuid,migrationSha:sha,now:at,fetchImpl,
+   sleepImpl:async ms=>{delays.push(ms)}
+  }),/STEP3_RECOVERY_CLOUDFLARE_ENCRYPTED_OBJECT_PUT_HTTP_OR_NETWORK_UNVERIFIED/u);
+  assert.equal(attempts,1);
+  assert.deepEqual(delays,[]);
+ }
+});
+
 test("offline negative: no R2 full byte readback = no checkpoint",async()=>{
  await assert.rejects(captureDurableD1Checkpoint({
   env,dbId:uuid,migrationSha:sha,now:at,

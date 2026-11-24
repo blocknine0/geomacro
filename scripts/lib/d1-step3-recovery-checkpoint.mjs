@@ -61,11 +61,37 @@ async function cfRequest(url,{token,fetchImpl,method="GET",body=null}={}){
    headers:{Authorization:"Bearer "+token,"Cache-Control":"no-store",
     ...(body!==null?{"Content-Type":"application/octet-stream"}:{})},
    ...(body!==null?{body}:{}),signal:AbortSignal.timeout(20000)});
-  if(!response||response.redirected||response.status<200||response.status>=300)
+  if(!response||response.redirected)fail("PROVIDER_REQUEST_FAILED");
+  // Only an allowlisted retryability code; no provider body or secrets.
+  if(response.status===408||response.status===429||
+     response.status>=500&&response.status<=599)
+   fail("PROVIDER_TRANSIENT_HTTP");
+  if(response.status<200||response.status>=300)
    fail("PROVIDER_REQUEST_FAILED");
   return response;
  }catch(e){if(String(e.message).startsWith("STEP3_RECOVERY_"))throw e;
   fail("PROVIDER_REQUEST_UNAVAILABLE")}
+}
+const R2_PUT_MAX_RETRIES=3; // Three retries after the initial PUT.
+const defaultSleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function putRecoveryR2WithBackoff(url,{
+ token,fetchImpl,body,sleepImpl=defaultSleep
+}={}){
+ if(typeof sleepImpl!=="function")fail("RETRY_SLEEP_INVALID");
+ for(let attempt=0;attempt<=R2_PUT_MAX_RETRIES;attempt++){
+  try{
+   // EXACT same key and encrypted bytes on each retry. Only subsequent
+   // GET/decrypt/signature/hash readback may certify durable recovery.
+   return await cfRequest(url,{token,fetchImpl,method:"PUT",body});
+  }catch(e){
+   const retryable=e?.message==="STEP3_RECOVERY_PROVIDER_TRANSIENT_HTTP"||
+    e?.message==="STEP3_RECOVERY_PROVIDER_REQUEST_UNAVAILABLE";
+   if(!retryable||attempt===R2_PUT_MAX_RETRIES)throw e;
+   // Bounded exponential backoff: 500, 1000, 2000ms.
+   await sleepImpl(500*2**attempt);
+  }
+ }
+ fail("R2_PUT_RETRY_EXHAUSTED");
 }
 function encryptPayload(key,payload){
  const iv=randomBytes(12);
@@ -113,7 +139,8 @@ export function verifyRecoveryManifest(serialized,identity){
   fail("SIGNED_MANIFEST_INVALID")}
 }
 export async function captureDurableD1Checkpoint({
- env=process.env,dbId,migrationSha,now=new Date(),fetchImpl=fetch
+ env=process.env,dbId,migrationSha,now=new Date(),fetchImpl=fetch,
+ sleepImpl=defaultSleep
 }={}){
  if(!ACCOUNT.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
     !UUID.test(dbId??"")||!SHA.test(migrationSha??"")||
@@ -162,7 +189,9 @@ export async function captureDurableD1Checkpoint({
   const encryptedUrl=endpoint({account,bucket,key:objectKey});
   const manifestUrl=endpoint({account,bucket,key:objectKey+".manifest.json"});
   stage="ENCRYPTED_OBJECT_PUT";
-  await cfRequest(encryptedUrl,{token,fetchImpl,method:"PUT",body:encrypted});
+  await putRecoveryR2WithBackoff(encryptedUrl,{
+   token,fetchImpl,body:encrypted,sleepImpl
+  });
   stage="ENCRYPTED_OBJECT_GET";
   const remote=Buffer.from(await (await cfRequest(encryptedUrl,{token,fetchImpl})).arrayBuffer());
   if(!eq(encrypted,remote)||digest(remote)!==manifest.manifest_sha256||
@@ -171,7 +200,9 @@ export async function captureDurableD1Checkpoint({
   const opened=decryptPayload(key,JSON.parse(remote.toString("utf8")));
   if(!eq(opened,plaintext))fail("ENCRYPTED_R2_DECRYPTED_PAYLOAD_MISMATCH");
   stage="SIGNED_MANIFEST_PUT";
-  await cfRequest(manifestUrl,{token,fetchImpl,method:"PUT",body:signed});
+  await putRecoveryR2WithBackoff(manifestUrl,{
+   token,fetchImpl,body:signed,sleepImpl
+  });
   stage="SIGNED_MANIFEST_GET";
   const remoteManifest=Buffer.from(await (
    await cfRequest(manifestUrl,{token,fetchImpl})).arrayBuffer());
@@ -198,7 +229,7 @@ export async function captureDurableD1Checkpoint({
    plaintext_bookmark_leaked_to_artifact:false
   });
  }catch(e){
-  if(/^STEP3_RECOVERY_PROVIDER_REQUEST_(?:FAILED|UNAVAILABLE)$/u.test(e?.message??""))
+  if(/^STEP3_RECOVERY_PROVIDER_(?:REQUEST_(?:FAILED|UNAVAILABLE)|TRANSIENT_HTTP)$/u.test(e?.message??""))
    fail("CLOUDFLARE_"+stage+"_HTTP_OR_NETWORK_UNVERIFIED");
   throw e;
  }finally{key.fill(0)}
