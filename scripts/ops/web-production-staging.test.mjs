@@ -63,13 +63,13 @@ test("production-capable build config is workers.dev-only with no private bindin
   assert.equal(productionResult.schema, "geomacro.web-production-build.v1");
 });
 
-test("production deployment workflow is manual-only and requires explicit confirmation", () => {
+test("production deployment workflow deploys on main push and manual confirmation", () => {
   const workflow = readFileSync(new URL("../../.github/workflows/deploy-web-production.yml", import.meta.url), "utf8");
   const triggers = workflow.split("\npermissions:", 1)[0];
-  assert.match(triggers, /^on:\n  workflow_dispatch:/mu);
-  assert.doesNotMatch(triggers, /^\s+(?:push|schedule|pull_request):/mu);
+  assert.match(triggers, /^on:\n  push:\n    branches:\n      - main\n  workflow_dispatch:/mu);
+  assert.doesNotMatch(triggers, /^\s+(?:schedule|pull_request):/mu);
   assert.match(triggers, /confirmation:[\s\S]*?required: true/u);
-  assert.match(workflow, /inputs\.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION'/u);
+  assert.match(workflow, /github\.event_name == 'push' \|\| inputs\.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION'/u);
   assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/u);
   assert.match(workflow, /persist-credentials: false/u);
   assert.match(workflow, /permissions:\n  contents: read/u);
