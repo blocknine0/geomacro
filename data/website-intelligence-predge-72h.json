@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-24T20:45:07.826Z",
+  "checked_at": "2026-11-24T20:47:33.906Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 497,
+  "item_count": 498,
   "counts": {
     "geopolitics": 261,
     "macro": 149,
-    "rare_earth": 87
+    "rare_earth": 88
   },
-  "source_native_ids_sha256": "01d5db2946649d39e71ee185d8a5cf6a2c9099c46c171fb3b03f0cb587a4a1ba",
+  "source_native_ids_sha256": "c987e85b87ad82f44a269a8760076d456a8928c6052acc498985fc50e578309a",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -501,6 +501,27 @@
       "event_action": "Reported Update",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-24T14:18:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e8ed1348",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Nickel Supply & Processing — Democratic Republic of the Congo (COD)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported supply or operations disruption by mineral processors and refining operators, affecting Nickel Supply & Processing in Democratic Republic of the Congo; direction is tightening (tightening or disruption pressure).",
+      "why_it_matters": "WHY IT MATTERS — Risk: tightening Nickel Supply & Processing pressure in Democratic Republic of the Congo → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
+      "topic": "Nickel Supply & Processing",
+      "geography": "Democratic Republic of the Congo",
+      "country_iso3": "COD",
+      "corridor": null,
+      "event_direction": "tightening",
+      "event_action": "Reported Supply or Operations Disruption",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-24T14:17:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
