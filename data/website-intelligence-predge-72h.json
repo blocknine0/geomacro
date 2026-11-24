@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-24T02:17:56.689Z",
+  "checked_at": "2026-11-24T06:46:50.822Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 31,
+  "item_count": 30,
   "counts": {
     "geopolitics": 5,
     "macro": 7,
-    "rare_earth": 19
+    "rare_earth": 18
   },
-  "source_native_ids_sha256": "24eda5eabc5e8fd1cae503af3c03527cd14ea0b4778fdcdc8535da0006f55d9c",
+  "source_native_ids_sha256": "4b0eed67d1ffc979b9405d005fcb35d7204c44669c30a5c73691a7699f835a9d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -638,27 +638,6 @@
       "event_action": "Reported Policy or Operating Action",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-21T13:09:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-0ddbbc9b",
-      "category": "rare_earth",
-      "title": "GeoMacro Critical Minerals Brief · Mining & Mineral Processing — India (IND)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a policy warning or appeal by mineral processors and refining operators, affecting Mining & Mineral Processing in India; direction is tightening (tightening or disruption pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: tightening Mining & Mineral Processing pressure in India → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
-      "topic": "Mining & Mineral Processing",
-      "geography": "India",
-      "country_iso3": "IND",
-      "corridor": null,
-      "event_direction": "tightening",
-      "event_action": "Policy Warning or Appeal",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-21T06:27:59.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
