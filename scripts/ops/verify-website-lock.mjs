@@ -188,6 +188,8 @@ const approvedPricing = [
   config.approved_live_mainnet_usdc_checkout_20261124,
   // Pin only the exact pricing tab and low-barrier presentation blobs.
   config.approved_pricing_tabbed_sections_20261123,
+  // Pin exact authorized pricing, checkout, Risk Gate, homepage, and footer copy.
+  config.approved_website_copy_footer_cleanup_20261124,
   // Owner-requested Intelligence freshness and Risk Gate conversion copy;
   // authorize only the exact route and desk component blobs in this PR.
   config.approved_intelligence_risk_gate_conversion_20261116,
