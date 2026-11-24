@@ -1,6 +1,9 @@
 name: Deploy GeoMacro Web Production
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirmation:
@@ -19,7 +22,7 @@ concurrency:
 
 jobs:
   deploy-production:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.confirmation == 'DEPLOY_GEOMACRO_WEB_PRODUCTION')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: production
@@ -165,7 +168,12 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'WEB_PRODUCTION_SUPERSEDED_AFTER_DEPLOY'; exit 2; }
-          report="$(node scripts/ops/audit-cloudflare-production-domain.mjs)"
+          report=""
+          for i in 1 2 3 4; do
+            sleep 5
+            report="$(node scripts/ops/audit-cloudflare-production-domain.mjs || true)"
+            if printf '%s' "$report" | jq -e '.production_hostname_cloudflare_serving_verified == true' >/dev/null 2>&1; then break; fi
+          done
           printf '%s\n' "$report"
           printf '%s' "$report" | jq -e '.production_hostname_cloudflare_serving_verified == true' >/dev/null || { echo 'WEB_PRODUCTION_DOMAIN_AUDIT_FAILED'; exit 2; }
           echo 'WEB_PRODUCTION_CUSTOM_DOMAINS_AND_PUBLIC_SHA_VERIFIED'
