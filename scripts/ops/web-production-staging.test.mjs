@@ -383,4 +383,3 @@ test("exact canonical main SHA is mandatory before producing a deployment", t =>
   }));
   assert.throws(() => prepareWebProduction({ root, sha: "not-a-sha" }), /WEB_PRODUCTION_EXACT_SHA_REQUIRED/u);
 });
-
