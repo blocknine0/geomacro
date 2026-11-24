@@ -1580,5 +1580,22 @@
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
     "global_risk_final_lock_unmodified": true
+  },
+  "approved_pricing_agent_access_refresh_20261124": {
+    "approval": "Founder explicitly authorized live mainnet Agent access copy, canonical pricing cleanup, and footer cleanup on 2026-11-24.",
+    "approved_source_commit": "b44c5e2c1ada02349cd2a624fb3c5dc416ea7276",
+    "approved_paths": [
+      "src/components/api-keys-notice.tsx",
+      "src/components/commercial-access-guide.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/site-shell.tsx",
+      "src/routes/pricing.tsx",
+      "src/routes/risk-gate.tsx",
+      "src/components/capability-price-schedule.test.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   }
 }

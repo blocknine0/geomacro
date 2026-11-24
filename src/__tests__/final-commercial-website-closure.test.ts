@@ -42,13 +42,14 @@ describe("final commercial website closure", () => {
     expect(shell).not.toContain('to: "/global-risk"');
   });
 
-  it("keeps Risk Gate controlled and x402 fail-closed until production activation", () => {
+  it("keeps Risk Gate decision support non-authorizing on live USDC rails", () => {
     const riskGate = read("src/routes/risk-gate.tsx");
     const dataApi = read("src/routes/pricing.tsx");
     const status = read("src/components/agent-commerce-status.tsx");
     expect(riskGate).toContain("PRIVATE PILOT");
     expect(riskGate).toContain("execution_authorized = false");
-    expect(dataApi).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
+    expect(dataApi).toContain("Risk Gate returns decision support only.");
+    expect(dataApi).toContain("execution_authorized: false");
     expect(status).toContain("production activation pending");
   });
 

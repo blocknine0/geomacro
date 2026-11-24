@@ -95,6 +95,7 @@ describe("commercial public surface v2", () => {
     const status = read("src/components/agent-commerce-status.tsx");
     const home = read("src/components/home/commercial-home.tsx");
     const dataApi = read("src/routes/pricing.tsx");
+    const accessNotice = read("src/components/api-keys-notice.tsx");
 
     expect(status).toContain('fetch("/api/health"');
     expect(status).toContain('environment === "production"');
@@ -102,7 +103,8 @@ describe("commercial public surface v2", () => {
     expect(status.toLowerCase()).not.toContain("testnet");
     expect(dataApi).toContain("<ApiKeysNotice />");
     expect(dataApi).not.toContain("Try the request console");
-    expect(dataApi).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
+    expect(dataApi).toContain("execution_authorized: false");
+    expect(accessNotice).toContain("POST https://geomacro.live/api/v1/payments/usdc-risk-gate");
     expect(home).not.toContain("AgentCommerceStatus compact");
     expect(home).not.toContain("0.05 USDC");
     expect(home).not.toContain("Try the request console");

@@ -8,9 +8,10 @@ const packageDoc = readFileSync(
 );
 
 describe("structural data commercial surface", () => {
-  it("keeps commercial machine delivery governed and runtime-status driven without a free API promise", () => {
+  it("keeps commercial machine delivery governed with live mainnet access", () => {
     expect(page).toContain("API & Agents");
-    expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
+    expect(page).toContain("Risk Gate returns decision support only.");
+    expect(page).toContain("execution_authorized: false");
     expect(page).toContain("<ApiKeysNotice />");
     expect(page).not.toContain("NewsJsonWorkbench");
     expect(page).not.toContain("<CapabilityPriceSchedule />");
@@ -27,11 +28,11 @@ describe("structural data commercial surface", () => {
   it("keeps the public overview concise and customer-controlled", () => {
     expect(page).not.toContain("ENDPOINT_COMPOSED_V0_1");
     expect(page).not.toContain("ApiEndpointDirectory");
-    expect(page).toContain("customers retain control of every action");
+    expect(page).toContain("your system retains all signing, approval, and execution authority");
   });
 
   it("preserves the methodology and source-rights boundary", () => {
-    expect(page).toContain("Availability is checked for each request.");
+    expect(page).toContain("Pricing by eligible delivery is listed in the catalog below.");
     expect(page).not.toContain("All products deliver structured Geomacro JSON.");
     expect(page).not.toContain("What every delivery includes.");
     expect(packageDoc).toContain("EVIDENCE_ONLY_NOT_IN_GRO_V02");

@@ -60,6 +60,6 @@ describe("canonical product architecture alignment", () => {
     const dataApi = read("src/routes/pricing.tsx");
     expect(dataApi).toContain("API & Agents");
     expect(dataApi).toContain("<ApiKeysNotice />");
-    expect(dataApi).toContain("customers retain control of every action");
+    expect(dataApi).toContain("your system retains all signing, approval, and execution authority");
   });
 });

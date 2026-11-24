@@ -14,34 +14,36 @@ describe("published pricing and current access status are truthful across commer
   const commerce = read("src/components/agent-commerce-status.tsx");
   const policy = read("src/content/docs/48-status-labels.md");
 
-  it("shows published per-call pricing and an access enquiry without an API-key coming-soon banner", () => {
+  it("shows live mainnet API access without an API-key coming-soon banner", () => {
     const notice = read("src/components/api-keys-notice.tsx");
     expect(pricing).toContain("Just exploring?");
     expect(pricing).toContain("<ApiKeysNotice />");
-    expect(notice).toContain("Per-call API pricing");
-    expect(notice).toContain("Published");
-    expect(notice).toContain("Contact us to confirm access for your deployment.");
+    expect(notice).toContain("Live mainnet access for agents");
+    expect(notice).toContain("gmk_live_...");
     expect(notice).not.toMatch(/API keys.*coming soon/iu);
     expect(shell).not.toContain("<CommercialAccessGuide />");
     expect(pricing).not.toContain("Subscribe now");
   });
 
-  it("does not hardcode paid API availability when production activation has not been proven", () => {
+  it("describes mainnet payment status without calling the live rails locked", () => {
     expect(guide).toContain("useAgentCommerceStatus()");
     expect(guide).toContain('commerce.mode === "production"');
-    expect(guide).toContain('"Check live checkout"');
-    expect(guide).toContain('"Coming Soon"');
+    expect(guide).toContain('"Mainnet payment service live"');
+    expect(guide).toContain('"Mainnet USDC access"');
+    expect(guide).not.toContain('"Coming Soon"');
     expect(commerce).toContain("Mainnet USDC · production activation pending");
     expect(commerce).toContain('state.mode === "production"');
     expect(api).toContain("<ApiKeysNotice />");
   });
 
-  it("preserves restricted pilot status but labels unrestricted public access Coming Soon", () => {
+  it("preserves pilot scope and shows live mainnet USDC access with the decision boundary", () => {
     expect(riskGate).toContain(">PRIVATE PILOT</Badge>");
-    expect(riskGate).toContain("Coming Soon for general access");
+    expect(riskGate).toContain("Mainnet USDC access is live");
+    expect(riskGate).toContain("POST /api/v1/payments/usdc-risk-gate");
     expect(shell).not.toContain('to: "/risk-gate"');
     expect(shell).not.toContain('to="/risk-gate"');
     expect(riskGate).toContain("execution_authorized = false");
+    expect(riskGate).toContain("execution_authorized: false");
   });
 
   it("does not present autonomous agent and future services as active products", () => {
