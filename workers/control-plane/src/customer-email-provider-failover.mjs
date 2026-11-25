@@ -4,7 +4,7 @@
 export const PROVIDERS=Object.freeze([
  {name:"resend",env:"EMAIL_PROVIDER_API_KEY",fromEnv:"EMAIL_FROM_ADDRESS",daily:90,monthly:2700},
  {name:"brevo",env:"BREVO_EMAIL_API_KEY",fromEnv:"BREVO_EMAIL_FROM_ADDRESS",daily:270,monthly:null},
- {name:"mailjet",env:"MAILJET_API_KEY",secretEnv:"MAILJET_SECRET_KEY",
+ {name:"mailjet",env:"MAILJET_EMAIL_API_KEY",secretEnv:"MAILJET_EMAIL_SECRET_KEY",
   fromEnv:"MAILJET_EMAIL_FROM_ADDRESS",daily:180,monthly:5400},
 ]);
 const ORIGINS=Object.freeze({

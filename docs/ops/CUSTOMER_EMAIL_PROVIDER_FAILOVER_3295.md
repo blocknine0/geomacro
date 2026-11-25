@@ -6,7 +6,7 @@ This is a provider-router foundation, **not live customer OTP/login acceptance**
 
 1. Resend (Primary): soft app cap 90/day and 2,700/month. `EMAIL_PROVIDER_API_KEY`, `EMAIL_FROM_ADDRESS`.
 2. Brevo (Fallback 1): soft app cap 270/day, with no local monthly cap. `BREVO_EMAIL_API_KEY`, `BREVO_EMAIL_FROM_ADDRESS`.
-3. Mailjet (Fallback 2): soft app cap 180/day and 5,400/month. `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`, `MAILJET_EMAIL_FROM_ADDRESS`. The Mailjet sender must be verified.
+3. Mailjet (Fallback 2): soft app cap 180/day and 5,400/month. `MAILJET_EMAIL_API_KEY`, `MAILJET_EMAIL_SECRET_KEY`, `MAILJET_EMAIL_FROM_ADDRESS`. The Mailjet sender must be verified.
 
 **Separate provider accounts**, not multiple keys/accounts created to bypass an individual provider's quota. Keep each provider account in good standing and adhere to its fair-use/anti-abuse policy. These allowances are caps, not guaranteed deliverability. Provider billing/country eligibility must be verified directly. Configure only providers whose sender domain is independently verified. The implementation explicitly requires `@geomacro.live` sender addresses; DNS SPF/DKIM/DMARC must match the provider.
 

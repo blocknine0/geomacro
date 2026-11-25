@@ -20,8 +20,8 @@ const full={EMAIL_PROVIDER_API_KEY:"re_test",
   EMAIL_FROM_ADDRESS:"auth@geomacro.live",
   BREVO_EMAIL_API_KEY:"brevo-test",
   BREVO_EMAIL_FROM_ADDRESS:"auth@geomacro.live",
-  MAILJET_API_KEY:"mj-public-test",
-  MAILJET_SECRET_KEY:"mj-private-test",
+  MAILJET_EMAIL_API_KEY:"mj-public-test",
+  MAILJET_EMAIL_SECRET_KEY:"mj-private-test",
   MAILJET_EMAIL_FROM_ADDRESS:"auth@geomacro.live"};
 const args=(db,env=full)=>({db,env,challengeId:randomUUID(),email:"user@example.com",
  otp:"123456",randomUUID,now});
@@ -41,7 +41,7 @@ test("provider priority is by distinct provider accounts, not rotated API keys",
  assert.deepEqual(PROVIDERS.map(x=>[x.env,x.secretEnv??null,x.fromEnv]),[
   ["EMAIL_PROVIDER_API_KEY",null,"EMAIL_FROM_ADDRESS"],
   ["BREVO_EMAIL_API_KEY",null,"BREVO_EMAIL_FROM_ADDRESS"],
-  ["MAILJET_API_KEY","MAILJET_SECRET_KEY","MAILJET_EMAIL_FROM_ADDRESS"],
+  ["MAILJET_EMAIL_API_KEY","MAILJET_EMAIL_SECRET_KEY","MAILJET_EMAIL_FROM_ADDRESS"],
  ]);
 });
 
