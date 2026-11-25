@@ -67,6 +67,61 @@ export const DIRECT_CORRIDOR_OFFICIAL_HTML_PORTALS = Object.freeze([
     "channel": "CORRIDOR_ONLY",
     "event_verified": false,
     "commercial_eligible": false
+  },
+  {
+    "id": "imf_data",
+    "url": "https://www.imf.org/en/Data",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "bcb_brazil",
+    "url": "https://www.bcb.gov.br/en",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "zmb_boz_public_notices",
+    "url": "https://www.boz.zm/news/public-notices",
+    "categories": [
+      "geopolitics"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "pol_nbp_news",
+    "url": "https://nbp.pl/en/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "mys_bnm_home",
+    "url": "https://www.bnm.gov.my/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
   }
 ]);
 
@@ -118,4 +173,14 @@ export async function fetchOfficialPortalMetadata(source, { fetchImpl = fetch } 
     return { source_id: source.id, status: "TRANSPORT_BLOCKED", items: [] };
   }
   return { source_id: source.id, status: "OK", items: extractOfficialPortalMetadata({ html, source }) };
+}
+
+export async function fetchAllOfficialPortalsMetadata({ portals = DIRECT_CORRIDOR_OFFICIAL_HTML_PORTALS, fetchImpl = fetch } = {}) {
+  const results = [];
+  for (let i = 0; i < portals.length; i += 8) {
+    const batch = portals.slice(i, i + 8);
+    const settled = await Promise.all(batch.map(p => fetchOfficialPortalMetadata(p, { fetchImpl }).catch(() => ({ source_id: p.id, status: "FETCH_ERROR", items: [] }))));
+    results.push(...settled);
+  }
+  return results;
 }
