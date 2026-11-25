@@ -1616,7 +1616,6 @@
   },
   "approved_transparent_customer_dashboard_20261125": {
     "approval": "Founder requested a transparent customer dashboard showing wallets, payment receipts, and Risk Gate usage history on 2026-11-25.",
-    "approved_source_commit": "a118b3b31d02c12708408f63669953b342e07e70",
     "approved_paths": [
       "src/routes/dashboard.tsx"
     ],
