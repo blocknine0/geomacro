@@ -1,5 +1,5 @@
 import {GEOMACRO_CREDIT_CONTRACT_VERSION,GEOMACRO_CREDIT_COSTS} from "./commercial-access-contract";
-import {GEOMACRO_NEW_SALE_TIER_CAPABILITIES,GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES} from "./credit-metering-policy.mjs";
+import {GEOMACRO_NEW_SALE_TIER_CAPABILITIES,GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES,GEOMACRO_RISK_GATE_CREDIT_COSTS} from "./credit-metering-policy.mjs";
 import {corridorEnterprisePricingDiscovery} from "./enterprise-corridor-pricing";
 import { GEOMACRO_CARD_TO_USDC_READINESS, GEOMACRO_CARD_TO_USDC_PRODUCTS } from "./card-to-usdc-readiness";
 import { GEOMACRO_PAYPAL_READINESS, GEOMACRO_PAYPAL_PRODUCT_CATALOG } from "./paypal-checkout-readiness";
@@ -62,6 +62,7 @@ export function publicGeomacroPaidPricingManifest(){
     subscriptions:GEOMACRO_SUBSCRIPTIONS,
     prepaid_credit_contract_version:GEOMACRO_CREDIT_CONTRACT_VERSION,
     prepaid_credit_costs:GEOMACRO_CREDIT_COSTS,
+    prepaid_risk_gate_credit_costs:GEOMACRO_RISK_GATE_CREDIT_COSTS,
     prepaid_new_sale_tier_capabilities:GEOMACRO_NEW_SALE_TIER_CAPABILITIES,
     prepaid_customer_meterable_capabilities:GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES,
     prepaid_credit_billing_unit:"PER_QUALIFIED_DELIVERY" as const,
@@ -69,6 +70,11 @@ export function publicGeomacroPaidPricingManifest(){
     customer_paid_api_activation_authorized:false as const,
     corridor_enterprise_discovery:corridorEnterprisePricingDiscovery(),
     one_time_credit_packs:GEOMACRO_ONE_TIME_PACKS,
+    usdc_credit_packs:[
+      {id:"risk-gate-small",name:"Small",price_usd:15,credits:1500,amount_atomic:"15000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+      {id:"risk-gate-standard",name:"Standard",price_usd:30,credits:3000,amount_atomic:"30000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+      {id:"risk-gate-best",name:"Best",price_usd:60,credits:6000,amount_atomic:"60000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+    ],
     agent_x402:GEOMACRO_AGENT_MICROPAYMENT,
     card_to_usdc_settlement:GEOMACRO_CARD_TO_USDC_READINESS,
     card_to_usdc_products:GEOMACRO_CARD_TO_USDC_PRODUCTS,

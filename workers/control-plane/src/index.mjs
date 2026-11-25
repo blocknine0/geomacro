@@ -1792,6 +1792,22 @@ export default {
     const parts = url.pathname.split("/").filter(Boolean);
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
+    if (request.method === "GET" && url.pathname === "/v1/risk-stream/commercial-public-key") {
+      let keys = [];
+      try {
+        const parsed = JSON.parse(String(env.RISK_OBJECT_VERIFY_KEYS_JSON || "[]"));
+        if (Array.isArray(parsed)) keys = parsed;
+      } catch {}
+      if (keys.length === 0 && env.RISK_OBJECT_SIGNING_KEY_ID && env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
+        keys = [{
+          key_id: env.RISK_OBJECT_SIGNING_KEY_ID,
+          algorithm: "Ed25519",
+          public_key_spki_b64: env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64,
+          status: "active",
+        }];
+      }
+      return json({ ok: true, algorithm: "Ed25519", keys }, keys.length > 0 ? 200 : 503);
+    }
     // R2-only public latest-feed. Return a real degraded status rather than
     // running an unbudgeted D1 query or rebuilding the website.
     if(request.method==="GET"&&url.pathname==="/v1/public/latest-feed.json"&&!url.search){
