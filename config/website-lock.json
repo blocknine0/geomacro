@@ -1380,7 +1380,7 @@
   },
   "approved_live_mainnet_usdc_checkout_20261124": {
     "approval": "Founder explicitly authorized replacing the prelaunch pricing checkout with the mainnet USDC wallet and verified transfer activation flow on 2026-11-24.",
-    "approved_source_commit": "acb9fa177b16eaa8898890fb04382786cb1d368f",
+    "approved_source_commit": "0ddd4bc6eba2dc9a026316a08da98bf8a5b9626c",
     "approved_paths": [
       "src/components/dual-rail-checkout.tsx"
     ],
@@ -1583,7 +1583,7 @@
   },
   "approved_pricing_agent_access_refresh_20261124": {
     "approval": "Founder explicitly authorized live mainnet Agent access copy, canonical pricing cleanup, and footer cleanup on 2026-11-24.",
-    "approved_source_commit": "b44c5e2c1ada02349cd2a624fb3c5dc416ea7276",
+    "approved_source_commit": "5c885346e93b64af0f16bf1202f47fc252106ede",
     "approved_paths": [
       "src/components/api-keys-notice.tsx",
       "src/components/commercial-access-guide.tsx",
@@ -1593,6 +1593,22 @@
       "src/routes/pricing.tsx",
       "src/routes/risk-gate.tsx",
       "src/components/capability-price-schedule.test.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
+  },
+  "approved_main_presentation_carryforward_20261125": {
+    "approval": "Founder authorized syncing existing main presentation blobs on 2026-11-25 so Website Lock passes cleanly for ongoing development.",
+    "approved_source_commit": "0ddd4bc6eba2dc9a026316a08da98bf8a5b9626c",
+    "approved_paths": [
+      "src/components/api-endpoint-directory.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/intelligence/macro-fastlane-panel.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/components/sections/roadmap-section.tsx",
+      "src/routes/about.tsx",
+      "src/routes/contact.tsx"
     ],
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
