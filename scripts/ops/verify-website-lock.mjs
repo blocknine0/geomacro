@@ -208,6 +208,7 @@ const approvedPricing = [
   config.approved_website_polish_docs_20261123,
   // Exact authorized current pricing, agent access, Risk Gate, and footer presentation.
   config.approved_pricing_agent_access_refresh_20261124,
+  config.approved_main_presentation_carryforward_20261125,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
