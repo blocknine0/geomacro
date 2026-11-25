@@ -2,14 +2,15 @@
 // A quota rejection can advance to another independently configured provider.
 // Ambiguous network/provider outcomes must NEVER send a second OTP.
 export const PROVIDERS=Object.freeze([
- {name:"resend",env:"EMAIL_PROVIDER_API_KEY",daily:90,monthly:2700},
- {name:"brevo",env:"BREVO_EMAIL_API_KEY",daily:270,monthly:null},
- {name:"mailersend",env:"MAILERSEND_EMAIL_API_KEY",daily:80,monthly:450},
+ {name:"resend",env:"EMAIL_PROVIDER_API_KEY",fromEnv:"EMAIL_FROM_ADDRESS",daily:90,monthly:2700},
+ {name:"brevo",env:"BREVO_EMAIL_API_KEY",fromEnv:"BREVO_EMAIL_FROM_ADDRESS",daily:270,monthly:null},
+ {name:"mailjet",env:"MAILJET_API_KEY",secretEnv:"MAILJET_SECRET_KEY",
+  fromEnv:"MAILJET_EMAIL_FROM_ADDRESS",daily:180,monthly:5400},
 ]);
 const ORIGINS=Object.freeze({
  resend:"https://api.resend.com/emails",
  brevo:"https://api.brevo.com/v3/smtp/email",
- mailersend:"https://api.mailersend.com/v1/email",
+ mailjet:"https://api.mailjet.com/v3.1/send",
 });
 const COUNT_SQL=`INSERT INTO customer_email_dispatch_attempts
  (attempt_id,challenge_id,provider,status,submitted_at)
@@ -23,13 +24,13 @@ const COUNT_SQL=`INSERT INTO customer_email_dispatch_attempts
 const UTC_DAY=now=>now.slice(0,10)+"T00:00:00.000Z";
 const UTC_MONTH=now=>now.slice(0,7)+"-01T00:00:00.000Z";
 const validEmail=x=>typeof x==="string"&&x.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(x);
-const emailFrom=(env,name)=>String(env[name==="resend"?"EMAIL_FROM_ADDRESS":
- name==="brevo"?"BREVO_EMAIL_FROM_ADDRESS":"MAILERSEND_EMAIL_FROM_ADDRESS"]??"").trim();
+const emailFrom=(env,provider)=>String(env[provider.fromEnv]??"").trim();
 function conf(env,p){
- const key=String(env[p.env]??"").trim(),from=emailFrom(env,p.name);
+ const key=String(env[p.env]??"").trim(),from=emailFrom(env,p);
  // Sending domains must be explicitly verified independently per provider.
- if(!key||!validEmail(from)||!from.toLowerCase().endsWith("@geomacro.live"))return null;
- return {key,from};
+ const secret=p.secretEnv?String(env[p.secretEnv]??"").trim():"";
+ if(!key||(p.secretEnv&&!secret)||!validEmail(from)||!from.toLowerCase().endsWith("@geomacro.live"))return null;
+ return {key,secret,from};
 }
 const textBody=otp=>"Your GeoMacro sign-in code is "+otp+
  ". This code expires in 10 minutes. Do not share it.";
@@ -41,15 +42,13 @@ function payload(p,c,to,otp,id){
  if(p.name==="brevo")return {
   url:ORIGINS.brevo,headers:{"api-key":c.key},
   body:{sender:{email:c.from},to:[{email:to}],subject,textContent:body}};
- return {
-  url:ORIGINS.mailersend,headers:{Authorization:"Bearer "+c.key},
-  body:{from:{email:c.from},to:[{email:to}],subject,text:body}};
+ if(p.name==="mailjet")return {
+  url:ORIGINS.mailjet,headers:{Authorization:`Basic ${btoa(`${c.key}:${c.secret}`)}`},
+  body:{Messages:[{From:{Email:c.from},To:[{Email:to}],Subject:subject,TextPart:body,
+   CustomID:id}]}};
+ throw new Error("CUSTOMER_EMAIL_PROVIDER_UNSUPPORTED");
 }
 async function resultOf(provider,response){
- if(provider==="mailersend"&&response.status===202){
-  const id=response.headers.get("x-message-id");
-  return id?{kind:"accepted",id}:{kind:"unknown"};
- }
  if(provider==="resend"&&response.status===200){
   const data=await response.json().catch(()=>null);
   return typeof data?.id==="string"?{kind:"accepted",id:data.id}:{kind:"unknown"};
@@ -59,11 +58,13 @@ async function resultOf(provider,response){
   return typeof data?.messageId==="string"?{kind:"accepted",id:data.messageId}:{kind:"unknown"};
  }
  if(response.status===429)return {kind:"quota"};
- // MailerSend specifically documents #MS42242 as the monthly overage cap.
- if(provider==="mailersend"&&response.status===422){
-  const data=await response.text().catch(()=>null);
-  if(typeof data==="string"&&data.slice(0,4096).includes("MS42242"))
-    return {kind:"quota"};
+ if(provider==="mailjet"&&response.status===200){
+  const data=await response.json().catch(()=>null);
+  const message=data?.Messages?.[0],recipient=message?.To?.[0];
+  const id=recipient?.MessageID??recipient?.MessageUUID;
+  return message?.Status==="success"&&
+   (typeof id==="string"&&id.length>0||typeof id==="number"&&Number.isFinite(id))
+   ?{kind:"accepted",id:String(id)}:{kind:"unknown"};
  }
  if(response.status>=500)return {kind:"unknown"};
  return {kind:"rejected"};
