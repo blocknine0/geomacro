@@ -12,9 +12,9 @@ export const GEOMACRO_SUBSCRIPTIONS = [
     audience:"Fintech and import/export teams" },
 ] as const;
 export const GEOMACRO_ONE_TIME_PACKS = [
-  { id:"risk-gate-small", name:"Small", price_usd:15, credits:1500 },
-  { id:"risk-gate-standard", name:"Standard", price_usd:30, credits:3000 },
-  { id:"risk-gate-best", name:"Best", price_usd:60, credits:6000 },
+  { id:"starter_pack", name:"Starter", price_usd:5, credits:500 },
+  { id:"standard_pack", name:"Standard", price_usd:15, credits:1500 },
+  { id:"growth_pack", name:"Growth", price_usd:30, credits:3000 },
 ] as const;
 export const GEOMACRO_AGENT_MICROPAYMENT = {
   network:"eip155:8453", asset:"USDC", minimum_usdc:"0.02", maximum_usdc:"0.30",
@@ -22,4 +22,4 @@ export const GEOMACRO_AGENT_MICROPAYMENT = {
 } as const;
 /** Catalog != live sale: recurring billing and top-ups require verified checkout + idempotent credit funding. */
 export const GEOMACRO_SUBSCRIPTION_CHECKOUT_STATUS="NOT_YET_VERIFIED" as const;
-export const GEOMACRO_CREDIT_PACK_CHECKOUT_STATUS="DIRECT_USDC_MAINNET_LIVE" as const;
+export const GEOMACRO_CREDIT_PACK_CHECKOUT_STATUS="NOT_YET_VERIFIED" as const;

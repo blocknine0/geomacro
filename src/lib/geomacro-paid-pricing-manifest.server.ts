@@ -70,6 +70,11 @@ export function publicGeomacroPaidPricingManifest(){
     customer_paid_api_activation_authorized:false as const,
     corridor_enterprise_discovery:corridorEnterprisePricingDiscovery(),
     one_time_credit_packs:GEOMACRO_ONE_TIME_PACKS,
+    usdc_credit_packs:[
+      {id:"risk-gate-small",name:"Small",price_usd:15,credits:1500,amount_atomic:"15000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+      {id:"risk-gate-standard",name:"Standard",price_usd:30,credits:3000,amount_atomic:"30000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+      {id:"risk-gate-best",name:"Best",price_usd:60,credits:6000,amount_atomic:"60000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+    ],
     agent_x402:GEOMACRO_AGENT_MICROPAYMENT,
     card_to_usdc_settlement:GEOMACRO_CARD_TO_USDC_READINESS,
     card_to_usdc_products:GEOMACRO_CARD_TO_USDC_PRODUCTS,

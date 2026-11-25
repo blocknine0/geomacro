@@ -1621,6 +1621,7 @@
     ],
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
-    "global_risk_final_lock_unmodified": true
+    "global_risk_final_lock_unmodified": true,
+    "approved_source_commit": "5463f78c14f4fba489701dbd0e9eb6a75bc506ff"
   }
 }
