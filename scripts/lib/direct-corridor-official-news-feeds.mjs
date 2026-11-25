@@ -262,6 +262,146 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   categories:Object.freeze(["geopolitics","macro"]),
   corridors:Object.freeze(["global"]),
   event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"ita_bancaditalia_official_news",
+  original_registry_source_id:"ita_bancaditalia_news",
+  url:"https://www.bancaditalia.it/util/index.rss.html",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"adb_official_news",
+  original_registry_source_id:"adb_open_data",
+  url:"https://feeds.feedburner.com/adb_news",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"adb_official_publications",
+  original_registry_source_id:"adb_open_data",
+  url:"https://feeds.feedburner.com/adb_publications",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"sgp_mpa_official_media_releases",
+  original_registry_source_id:"sgp_mas_news",
+  url:"https://www.mpa.gov.sg/feeds/media-releases",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"fra_economie_gouv_official_news",
+  original_registry_source_id:"fra_banque_france_news",
+  url:"https://www.economie.gouv.fr/rss/toutesactualites",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"us_whitehouse_official_news",
+  original_registry_source_id:"wto_tariffs",
+  url:"https://www.whitehouse.gov/news/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"eu_council_official_press_releases",
+  original_registry_source_id:"wto_tariffs",
+  url:"https://www.consilium.europa.eu/en/rss/pressreleases.ashx",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"eu_commission_official_press_releases",
+  original_registry_source_id:"wto_tariffs",
+  url:"https://ec.europa.eu/commission/presscorner/api/rss",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"coindesk_crypto_macro_news",
+  original_registry_source_id:"cryptocompare_news",
+  url:"https://www.coindesk.com/arc/outboundfeeds/rss/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"decrypt_crypto_macro_news",
+  original_registry_source_id:"cryptocompare_news",
+  url:"https://decrypt.co/feed",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"theblock_crypto_macro_news",
+  original_registry_source_id:"cryptocompare_news",
+  url:"https://www.theblock.co/rss.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"rareearthexchanges_corridor_news",
+  original_registry_source_id:"usgs_mcs",
+  url:"https://rareearthexchanges.com/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["rare_earth"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"mining_technology_critical_minerals_feed",
+  original_registry_source_id:"usgs_mcs",
+  url:"https://www.mining-technology.com/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["rare_earth"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"mining_technology_critical_minerals_news",
+  original_registry_source_id:"usgs_mcs",
+  url:"https://www.mining-technology.com/news/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["rare_earth"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
  })
 ]);
 // Complete publisher URL contracts, not a substring or hostname-only check.
@@ -293,12 +433,26 @@ export const PINNED_CORRIDOR_OFFICIAL_FEED_URLS=Object.freeze({
  bis_official_press_releases:"https://www.bis.org/doclist/all_pressrels.rss",
  uk_gov_news_and_speeches:"https://www.gov.uk/search/news-and-communications.atom",
  us_cbp_official_trade_tariffs:"https://www.cbp.gov/rss/trade",
+ ita_bancaditalia_official_news:"https://www.bancaditalia.it/util/index.rss.html",
+ adb_official_news:"https://feeds.feedburner.com/adb_news",
+ adb_official_publications:"https://feeds.feedburner.com/adb_publications",
+ sgp_mpa_official_media_releases:"https://www.mpa.gov.sg/feeds/media-releases",
+ fra_economie_gouv_official_news:"https://www.economie.gouv.fr/rss/toutesactualites",
+ us_whitehouse_official_news:"https://www.whitehouse.gov/news/feed/",
+ eu_council_official_press_releases:"https://www.consilium.europa.eu/en/rss/pressreleases.ashx",
+ eu_commission_official_press_releases:"https://ec.europa.eu/commission/presscorner/api/rss",
+ coindesk_crypto_macro_news:"https://www.coindesk.com/arc/outboundfeeds/rss/",
+ decrypt_crypto_macro_news:"https://decrypt.co/feed",
+ theblock_crypto_macro_news:"https://www.theblock.co/rss.xml",
+ rareearthexchanges_corridor_news:"https://rareearthexchanges.com/feed/",
+ mining_technology_critical_minerals_feed:"https://www.mining-technology.com/feed/",
+ mining_technology_critical_minerals_news:"https://www.mining-technology.com/news/feed/",
 });
 export function assertDirectCorridorSupplementalNativeFeeds(
  feeds=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
 ){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(!Array.isArray(feeds)||feeds.length!==25)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(!Array.isArray(feeds)||feeds.length!==39)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
  for(const s of feeds){
   const original=originals.get(s.original_registry_source_id);
