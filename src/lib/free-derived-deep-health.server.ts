@@ -123,7 +123,7 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
     if(!CAT.includes(row.category as Category)||
       typeof row.id!=="string"||!new RegExp("^(geopolitics|macro|rare_earth)-[a-f0-9]{8}$","u").test(row.id)||
       ids.has(row.id)||typeof row.title!=="string"||
-      !row.title.startsWith("Geomacro finds ")||
+      !(row.title.startsWith("Geomacro finds ")||row.title.startsWith("GeoMacro "))||
       row.title.length>240||
       row.severity!==null||row.same_event_corrob_verified!==false||
       publicationState(row,checked)!=="CURRENT"||
