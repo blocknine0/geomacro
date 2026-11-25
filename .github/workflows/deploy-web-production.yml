@@ -74,6 +74,8 @@ jobs:
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_CUSTOMER_SSR_TOKEN: ${{ secrets.GEOMACRO_CUSTOMER_SSR_TOKEN }}
+          CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
+          CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
@@ -83,6 +85,8 @@ jobs:
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_SECRET_REQUIRED'; exit 2; }
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_INVALID'; exit 2; }
           test "${#GEOMACRO_CUSTOMER_SSR_TOKEN}" -ge 64 || { echo 'WEB_PRODUCTION_CUSTOMER_SSR_TOKEN_INVALID'; exit 2; }
+          test -n "${CDP_API_KEY_ID:-}" || { echo 'WEB_PRODUCTION_CDP_API_KEY_ID_MISSING'; exit 2; }
+          test -n "${CDP_API_KEY_SECRET:-}" || { echo 'WEB_PRODUCTION_CDP_API_KEY_SECRET_MISSING'; exit 2; }
           echo 'WEB_PRODUCTION_REQUIRED_CREDENTIALS_PRESENT'
 
       - name: Inspect existing production Worker bindings without exposing secret values
@@ -105,6 +109,12 @@ jobs:
             echo 'customer_ssr_token_present=false' >> "$GITHUB_OUTPUT"
             echo 'customer_worker_url_present=false' >> "$GITHUB_OUTPUT"
             echo 'customer_trusted_edge_present=false' >> "$GITHUB_OUTPUT"
+            echo 'cdp_id_present=false' >> "$GITHUB_OUTPUT"
+            echo 'cdp_secret_present=false' >> "$GITHUB_OUTPUT"
+            echo 'coinbase_env_present=false' >> "$GITHUB_OUTPUT"
+            echo 'coinbase_ack_present=false' >> "$GITHUB_OUTPUT"
+            echo 'coinbase_pay_to_present=false' >> "$GITHUB_OUTPUT"
+            echo 'commercial_launch_ack_present=false' >> "$GITHUB_OUTPUT"
             echo 'groq_api_key_present=false' >> "$GITHUB_OUTPUT"
             echo 'WEB_PRODUCTION_WORKER_NOT_YET_DEPLOYED'
           elif [[ "$status" == 200 ]]; then
@@ -120,6 +130,12 @@ jobs:
                 GEOMACRO_CUSTOMER_SSR_TOKEN) echo "customer_ssr_token_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GEOMACRO_CUSTOMER_WORKER_URL) echo "customer_worker_url_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GEOMACRO_CUSTOMER_TRUSTED_EDGE) echo "customer_trusted_edge_present=$present" >> "$GITHUB_OUTPUT" ;;
+                CDP_API_KEY_ID) echo "cdp_id_present=$present" >> "$GITHUB_OUTPUT" ;;
+                CDP_API_KEY_SECRET) echo "cdp_secret_present=$present" >> "$GITHUB_OUTPUT" ;;
+                COINBASE_X402_ENVIRONMENT) echo "coinbase_env_present=$present" >> "$GITHUB_OUTPUT" ;;
+                COINBASE_X402_MAINNET_ACK) echo "coinbase_ack_present=$present" >> "$GITHUB_OUTPUT" ;;
+                COINBASE_X402_PAY_TO) echo "coinbase_pay_to_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_COMMERCIAL_LAUNCH_ACK) echo "commercial_launch_ack_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GROQ_API_KEY) echo "groq_api_key_present=$present" >> "$GITHUB_OUTPUT" ;;
               esac
             done
@@ -145,7 +161,15 @@ jobs:
           COMMERCE_LEDGER_TOKEN_PRESENT: ${{ steps.production-bindings.outputs.commerce_ledger_token_present }}
           CUSTOMER_SSR_TOKEN_PRESENT: ${{ steps.production-bindings.outputs.customer_ssr_token_present }}
           CUSTOMER_WORKER_URL_PRESENT: ${{ steps.production-bindings.outputs.customer_worker_url_present }}
+          CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
+          CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
           CUSTOMER_TRUSTED_EDGE_PRESENT: ${{ steps.production-bindings.outputs.customer_trusted_edge_present }}
+          CDP_ID_PRESENT: ${{ steps.production-bindings.outputs.cdp_id_present }}
+          CDP_SECRET_PRESENT: ${{ steps.production-bindings.outputs.cdp_secret_present }}
+          COINBASE_ENV_PRESENT: ${{ steps.production-bindings.outputs.coinbase_env_present }}
+          COINBASE_ACK_PRESENT: ${{ steps.production-bindings.outputs.coinbase_ack_present }}
+          COINBASE_PAY_TO_PRESENT: ${{ steps.production-bindings.outputs.coinbase_pay_to_present }}
+          COMMERCIAL_LAUNCH_ACK_PRESENT: ${{ steps.production-bindings.outputs.commercial_launch_ack_present }}
           GROQ_API_KEY_PRESENT: ${{ steps.production-bindings.outputs.groq_api_key_present }}
         shell: bash
         run: |
@@ -180,6 +204,30 @@ jobs:
             printf '%s' 'cloudflare' | npx -y wrangler@4.136.3 secret put GEOMACRO_CUSTOMER_TRUSTED_EDGE --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_CUSTOMER_TRUSTED_EDGE_PROVISIONED'
           else echo 'WEB_PRODUCTION_CUSTOMER_TRUSTED_EDGE_RETAINED'; fi
+          if [[ "$CDP_ID_PRESENT" != true ]]; then
+            printf '%s' "$CDP_API_KEY_ID" | npx -y wrangler@4.136.3 secret put CDP_API_KEY_ID --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_CDP_API_KEY_ID_PROVISIONED'
+          else echo 'WEB_PRODUCTION_CDP_API_KEY_ID_RETAINED'; fi
+          if [[ "$CDP_SECRET_PRESENT" != true ]]; then
+            printf '%s' "$CDP_API_KEY_SECRET" | npx -y wrangler@4.136.3 secret put CDP_API_KEY_SECRET --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_CDP_API_KEY_SECRET_PROVISIONED'
+          else echo 'WEB_PRODUCTION_CDP_API_KEY_SECRET_RETAINED'; fi
+          if [[ "$COINBASE_ENV_PRESENT" != true ]]; then
+            printf '%s' 'production' | npx -y wrangler@4.136.3 secret put COINBASE_X402_ENVIRONMENT --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_COINBASE_X402_ENVIRONMENT_PROVISIONED'
+          else echo 'WEB_PRODUCTION_COINBASE_X402_ENVIRONMENT_RETAINED'; fi
+          if [[ "$COINBASE_ACK_PRESENT" != true ]]; then
+            printf '%s' 'I_ACCEPT_REAL_USDC' | npx -y wrangler@4.136.3 secret put COINBASE_X402_MAINNET_ACK --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_COINBASE_X402_MAINNET_ACK_PROVISIONED'
+          else echo 'WEB_PRODUCTION_COINBASE_X402_MAINNET_ACK_RETAINED'; fi
+          if [[ "$COINBASE_PAY_TO_PRESENT" != true ]]; then
+            printf '%s' '0x95ba71d21c41bda8bba9533f96d25f793e4137b5' | npx -y wrangler@4.136.3 secret put COINBASE_X402_PAY_TO --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_COINBASE_X402_PAY_TO_PROVISIONED'
+          else echo 'WEB_PRODUCTION_COINBASE_X402_PAY_TO_RETAINED'; fi
+          if [[ "$COMMERCIAL_LAUNCH_ACK_PRESENT" != true ]]; then
+            printf '%s' 'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH' | npx -y wrangler@4.136.3 secret put GEOMACRO_COMMERCIAL_LAUNCH_ACK --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_COMMERCIAL_LAUNCH_ACK_PROVISIONED'
+          else echo 'WEB_PRODUCTION_COMMERCIAL_LAUNCH_ACK_RETAINED'; fi
           if [[ -n "$GROQ_API_KEY" && "$GROQ_API_KEY_PRESENT" != true ]]; then
             printf '%s' "$GROQ_API_KEY" | npx -y wrangler@4.136.3 secret put GROQ_API_KEY --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_GROQ_API_KEY_PROVISIONED'
