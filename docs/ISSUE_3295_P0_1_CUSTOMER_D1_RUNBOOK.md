@@ -36,7 +36,7 @@ and owner-scoped irreversible revocation operate only on D1 rows.
 - Existing email-provider account credentials and independently verified
   `@geomacro.live` sender settings: `EMAIL_PROVIDER_API_KEY`,
   `EMAIL_FROM_ADDRESS`, `BREVO_EMAIL_API_KEY`, `BREVO_EMAIL_FROM_ADDRESS`,
-  `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`, `MAILJET_EMAIL_FROM_ADDRESS`. The
+  `MAILJET_EMAIL_API_KEY`, `MAILJET_EMAIL_SECRET_KEY`, `MAILJET_EMAIL_FROM_ADDRESS`. The
   quota-aware provider order is Resend, Brevo, then Mailjet.
 
 The Worker requires its existing canonical `DB` binding. Missing configuration,
