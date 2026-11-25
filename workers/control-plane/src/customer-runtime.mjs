@@ -205,10 +205,16 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    const result=await db.prepare(`UPDATE api_keys SET revoked_at=? WHERE key_id=? AND user_id=? AND revoked_at IS NULL`).bind(at,body.key_id,user.id).run();
    if(result.meta?.changes!==1)fail(404,'CUSTOMER_KEY_NOT_FOUND');return reply({ok:true,revoked:true});
   }
-  const [funded,keys]=await Promise.all([
-   readCanonicalCustomerPaidAccount(db,user.id,at),
-   db.prepare(`SELECT key_id,scopes_json,created_at,expires_at,revoked_at,last_used_at FROM api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 25`).bind(user.id).all(),
-  ]);
+  const safeAll=(p)=>p.catch(()=>({results:[]}));
+   const [funded,keys,wallets,payments,rgUsage,capUsage]=await Promise.all([
+    readCanonicalCustomerPaidAccount(db,user.id,at),
+    db.prepare(`SELECT key_id,scopes_json,created_at,expires_at,revoked_at,last_used_at FROM api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 25`).bind(user.id).all(),
+    safeAll(db.prepare(`SELECT wallet_address,created_at FROM customer_wallet_addresses WHERE user_id=? ORDER BY created_at DESC LIMIT 10`).bind(user.id).all()),
+    safeAll(db.prepare(`SELECT r.receipt_id,r.provider,r.environment,r.sku,r.amount_minor_units,r.currency,r.settled_at,t.network,t.tx_hash,t.wallet_address FROM customer_payment_receipts r LEFT JOIN customer_usdc_pack_transfers t ON t.receipt_id=r.receipt_id WHERE r.user_id=? ORDER BY r.settled_at DESC LIMIT 25`).bind(user.id).all()),
+    safeAll(db.prepare(`SELECT request_id,key_id,tier AS item,charge_cents AS amount_cents,occurred_at,'risk_gate' AS kind FROM customer_store_risk_gate_usage WHERE user_id=? ORDER BY occurred_at DESC LIMIT 25`).bind(user.id).all()),
+    safeAll(db.prepare(`SELECT request_id,key_id,capability AS item,credit_cost AS credits,occurred_at,'api_credit' AS kind FROM customer_usage_receipts WHERE user_id=? ORDER BY occurred_at DESC LIMIT 25`).bind(user.id).all()),
+   ]);
+   const usage=[...(rgUsage.results??[]),...(capUsage.results??[])].sort((a,b)=>String(b.occurred_at).localeCompare(String(a.occurred_at))).slice(0,30);
   const paidAccepted=env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE==='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
   const riskGateAccepted=env.GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE==='ACCEPTED_RISK_GATE_PRICING_LEDGER';
   const credentialReady=String(env.GEOMACRO_API_CREDENTIAL_PEPPER??'').length>=32;
@@ -218,7 +224,7 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
   const credits=funded.credits?{...funded.credits,
    status:(paidAccepted||riskGateAccepted)&&credentialReady?funded.credits.status:'pending_activation'}:null;
   return reply({ok:true,user:{email:user.email},principal_ready:true,credits,
-   verified_balance:credits?.remaining??0,keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
+    verified_balance:credits?.remaining??0,wallets:wallets.results??[],payments:payments.results??[],usage,keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
    checkout_enabled:false,key_issuance_enabled:canIssue,
    key_issuance_code:canIssue?null:!(paidAccepted||riskGateAccepted)?CUSTOMER_KEY_GATE:
     !credentialReady?'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED':'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED'});

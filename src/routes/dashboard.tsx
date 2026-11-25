@@ -8,8 +8,12 @@ export const Route=createFileRoute("/dashboard")({
  component:CustomerDashboard,
 });
 type KeyMeta={key_id:string;enabled:boolean;scopes:string[];created_at:string;expires_at:string|null;revoked_at:string|null;last_used_at:string|null};
+type WalletMeta={wallet_address:string;created_at:string};
+type PaymentMeta={receipt_id:string;provider:string;environment:string;sku:string;amount_minor_units:number;currency:string;settled_at:string;network?:string|null;tx_hash?:string|null;wallet_address?:string|null};
+type UsageMeta={request_id:string;key_id:string;item:string;amount_cents?:number;credits?:number;occurred_at:string;kind:string};
 type Account={ok:boolean;code?:string;user?:{email:string};principal_ready?:boolean;
  credits?:{tier:string;allocated:number;used:number;remaining:number;period_ends_at:string;status:string}|null;
+ wallets?:WalletMeta[];payments?:PaymentMeta[];usage?:UsageMeta[];
  keys?:KeyMeta[]};
 function CustomerDashboard(){
  const [account,setAccount]=useState<Account|null>(null);
@@ -120,11 +124,48 @@ function CustomerDashboard(){
     <div className="mt-6 divide-y divide-border">
      {account.keys?.length?account.keys.map(key=><div key={key.key_id} className="flex flex-wrap items-center justify-between gap-3 py-4">
       <div className="min-w-0"><code className="text-sm">{key.key_id}</code>
-       <p className="mt-1 text-xs text-muted-foreground">Created {new Date(key.created_at).toLocaleDateString()} · {key.enabled&&!key.revoked_at?"Active":"Revoked"}</p></div>
+       <p className="mt-1 text-xs text-muted-foreground">Created {new Date(key.created_at).toLocaleDateString()} · {key.enabled&&!key.revoked_at?"Active":"Revoked"}{key.last_used_at?` · Last used ${new Date(key.last_used_at).toLocaleString()}`:""}</p></div>
       {key.enabled&&!key.revoked_at&&<button type="button" disabled={busy} onClick={()=>void revokeKey(key.key_id)} className="rounded-lg border border-border px-4 py-2 text-sm text-destructive">Revoke</button>}
      </div>):<p className="py-4 text-sm text-muted-foreground">No API keys issued yet.</p>}
-    </div>
-   </section>
+     </div>
+    </section>
+    <section className="rounded-xl border border-border p-6">
+     <h2 className="text-xl font-semibold">Linked self-custody wallets</h2>
+     <p className="mt-1 text-sm text-muted-foreground">Verified EVM addresses bound to your email account.</p>
+     <div className="mt-4 divide-y divide-border">
+      {account.wallets?.length?account.wallets.map(w=><div key={w.wallet_address} className="flex flex-wrap items-center justify-between gap-2 py-3">
+       <code className="break-all text-xs sm:text-sm">{w.wallet_address}</code>
+       <span className="text-xs text-muted-foreground">Linked {new Date(w.created_at).toLocaleDateString()}</span>
+      </div>):<p className="py-3 text-sm text-muted-foreground">No wallet bound yet. <Link to="/pricing" className="text-primary underline underline-offset-4">Bind a wallet on Pricing</Link></p>}
+     </div>
+    </section>
+    <section className="rounded-xl border border-border p-6">
+     <h2 className="text-xl font-semibold">Verified payments &amp; USDC receipts</h2>
+     <p className="mt-1 text-sm text-muted-foreground">On-chain transfers and settled pack receipts credited to your ledger.</p>
+     <div className="mt-4 divide-y divide-border">
+      {account.payments?.length?account.payments.map(p=><div key={p.receipt_id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+       <div className="min-w-0">
+        <p className="font-medium">{p.sku} · {(p.amount_minor_units/100).toFixed(2)} {p.currency}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{p.network??p.provider} · {new Date(p.settled_at).toLocaleString()}</p>
+        {p.tx_hash&&<code className="mt-1 block break-all text-xs text-muted-foreground">{p.tx_hash}</code>}
+       </div>
+       <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium">Verified</span>
+      </div>):<p className="py-3 text-sm text-muted-foreground">No verified payments recorded yet.</p>}
+     </div>
+    </section>
+    <section className="rounded-xl border border-border p-6">
+     <h2 className="text-xl font-semibold">API &amp; Risk Gate usage history</h2>
+     <p className="mt-1 text-sm text-muted-foreground">Transparent per-call charges and credit deductions across your API keys.</p>
+     <div className="mt-4 divide-y divide-border">
+      {account.usage?.length?account.usage.map(u=><div key={u.request_id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+       <div className="min-w-0">
+        <p className="font-medium">{u.item} <span className="text-xs font-normal text-muted-foreground">({u.kind==="risk_gate"?"Risk Gate":"API"})</span></p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{new Date(u.occurred_at).toLocaleString()} · Key {u.key_id}</p>
+       </div>
+       <span className="font-mono text-xs font-medium">{typeof u.amount_cents==="number"?`${(u.amount_cents/100).toFixed(2)}`:`-${u.credits??0} cr`}</span>
+      </div>):<p className="py-3 text-sm text-muted-foreground">No API or Risk Gate usage recorded yet.</p>}
+     </div>
+    </section>
   </div>}
  </main>;
 }
