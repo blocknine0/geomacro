@@ -167,7 +167,7 @@ describe("authentic free-derived static archive deep-health",()=>{
       {original_release_delay_minutes:1},{retention_hours:720},
       {chargeable:true},{scored:true},{supabase_dependency:true},
       {delivery_scope:"paid"},{checked_at:"2026-10-22T00:00:00.000Z"},
-      {page_offset:250},{page_size:1000},{has_more:true},{signals:"invalid"},
+      {page_offset:250},{page_size:1001},{has_more:true},{signals:"invalid"},
     ]){
       expect(classifyFreeDerivedFeed(feed([story()],overrides),time).statusCode)
         .toBe(503);
