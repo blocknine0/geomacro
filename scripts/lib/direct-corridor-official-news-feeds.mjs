@@ -402,6 +402,76 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   categories:Object.freeze(["rare_earth"]),
   corridors:Object.freeze(["global"]),
   event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"jpn_boj_official_whatsnew",
+  original_registry_source_id:"jpn_boj_home",
+  url:"https://www.boj.or.jp/en/rss/whatsnew.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"can_boc_official_speeches",
+  original_registry_source_id:"bank_of_canada",
+  url:"https://www.bankofcanada.ca/content_type/speeches/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"can_boc_official_publications",
+  original_registry_source_id:"bank_of_canada",
+  url:"https://www.bankofcanada.ca/content_type/publications/feed/",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"gbr_boe_official_news",
+  original_registry_source_id:"ecb_data",
+  url:"https://www.bankofengland.co.uk/rss/news",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"ecb_official_publications",
+  original_registry_source_id:"ecb_data",
+  url:"https://www.ecb.europa.eu/rss/pub.html",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"ind_niti_aayog_official_news",
+  original_registry_source_id:"rbi_releases",
+  url:"https://www.niti.gov.in/rss.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
+  id:"un_official_global_news",
+  original_registry_source_id:"wto_tariffs",
+  url:"https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["geopolitics","macro"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
  })
 ]);
 // Complete publisher URL contracts, not a substring or hostname-only check.
@@ -447,12 +517,19 @@ export const PINNED_CORRIDOR_OFFICIAL_FEED_URLS=Object.freeze({
  rareearthexchanges_corridor_news:"https://rareearthexchanges.com/feed/",
  mining_technology_critical_minerals_feed:"https://www.mining-technology.com/feed/",
  mining_technology_critical_minerals_news:"https://www.mining-technology.com/news/feed/",
+ jpn_boj_official_whatsnew:"https://www.boj.or.jp/en/rss/whatsnew.xml",
+ can_boc_official_speeches:"https://www.bankofcanada.ca/content_type/speeches/feed/",
+ can_boc_official_publications:"https://www.bankofcanada.ca/content_type/publications/feed/",
+ gbr_boe_official_news:"https://www.bankofengland.co.uk/rss/news",
+ ecb_official_publications:"https://www.ecb.europa.eu/rss/pub.html",
+ ind_niti_aayog_official_news:"https://www.niti.gov.in/rss.xml",
+ un_official_global_news:"https://news.un.org/feed/subscribe/en/news/all/rss.xml",
 });
 export function assertDirectCorridorSupplementalNativeFeeds(
  feeds=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
 ){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(!Array.isArray(feeds)||feeds.length!==39)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(!Array.isArray(feeds)||feeds.length!==46)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
  for(const s of feeds){
   const original=originals.get(s.original_registry_source_id);
