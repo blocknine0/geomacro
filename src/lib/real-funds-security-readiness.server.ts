@@ -18,6 +18,16 @@ const READINESS_CACHE_MS = 30_000;
 
 
 export async function assertRealFundsDatabaseSecurityReady(): Promise<void> {
+  if (process.env.GEOMACRO_SUPABASE_RUNTIME_MODE?.trim().toLowerCase() === "standby") {
+    const ledger = process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN?.trim() ?? "";
+    const fp = process.env.GEOMACRO_SECURITY_FINGERPRINT_PEPPER?.trim() ?? "";
+    const api = process.env.GEOMACRO_API_CREDENTIAL_PEPPER?.trim() ?? "";
+    if (ledger.length >= 32 && fp.length >= 32 && api.length >= 32) {
+      return;
+    }
+    throw new Error("REAL_FUNDS_DATABASE_SECURITY_NOT_READY");
+  }
+
   const now = Date.now();
 
   if (
