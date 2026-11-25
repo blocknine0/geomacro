@@ -103,10 +103,10 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
      input.scored!==false||input.chargeable!==false||
      input.supabase_dependency!==false||
      (input.page_offset!==undefined&&input.page_offset!==0)||
-     (input.page_size!==undefined&&input.page_size!==250)||
+     (input.page_size!==undefined&&(typeof input.page_size!=="number"||input.page_size<1||input.page_size>1000))||
      (input.has_more!==undefined&&input.has_more!==false)||
      (input.next_offset!==undefined&&input.next_offset!==null)||
-     !Array.isArray(input.signals)||input.signals.length>250)
+     !Array.isArray(input.signals)||input.signals.length>1000)
     return result(false,"FREE_ARCHIVE_CONTRACT_INVALID");
   // The archive's generated_at clock can be cached; it never makes an old
   // story current. The actual event/feed timestamps below are the freshness gate.
