@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-24T23:58:18.893Z",
+  "generated_at": "2026-11-25T00:01:49.877Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -494,25 +494,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Natural Resources Canada"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-7da3d13a",
-      "category": "rare_earth",
-      "title": "Geomacro finds Energy Department: awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce",
-      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
-      "what_changed": "Energy Department awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce.",
-      "geography": null,
-      "development_type": "official update",
-      "topic": "critical-minerals policy",
-      "published_at": "2026-10-26",
-      "date_precision": "day",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "U.S. Department of Energy"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
