@@ -122,6 +122,149 @@ export const DIRECT_CORRIDOR_OFFICIAL_HTML_PORTALS = Object.freeze([
     "channel": "CORRIDOR_ONLY",
     "event_verified": false,
     "commercial_eligible": false
+  },
+  {
+    "id": "mining_com_rare_earth",
+    "url": "https://www.mining.com/commodity/rare-earth/",
+    "categories": [
+      "rare_earth"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "kor_bok_home",
+    "url": "https://www.bok.or.kr/eng/main/main.do",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "idn_bi_home",
+    "url": "https://www.bi.go.id/en/default.aspx",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "phl_bsp_home",
+    "url": "https://www.bsp.gov.ph/SitePages/Default.aspx",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "bgd_bangladesh_bank_home",
+    "url": "https://www.bb.org.bd/en/index.php",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "kaz_national_bank_home",
+    "url": "https://nationalbank.kz/en",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "mng_mongolbank_home",
+    "url": "https://www.mongolbank.mn/en/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "isr_boi_home",
+    "url": "https://www.boi.org.il/en/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "irq_cbi_news",
+    "url": "https://cbi.iq/news",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "mex_banxico_home",
+    "url": "https://www.banxico.org.mx/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "arg_bcra_home",
+    "url": "https://www.bcra.gob.ar/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "per_bcrp_home",
+    "url": "https://www.bcrp.gob.pe/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "bol_bcb_home",
+    "url": "https://www.bcb.gob.bo/",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
   }
 ]);
 
