@@ -265,6 +265,50 @@ export const DIRECT_CORRIDOR_OFFICIAL_HTML_PORTALS = Object.freeze([
     "channel": "CORRIDOR_ONLY",
     "event_verified": false,
     "commercial_eligible": false
+  },
+  {
+    "id": "sau_sama_home",
+    "url": "https://www.sama.gov.sa/en-us/Pages/default.aspx",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "egy_cbe_home",
+    "url": "https://www.cbe.org.eg/en",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "imb_piracy",
+    "url": "https://icc-ccs.org/",
+    "categories": [
+      "geopolitics"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
+  },
+  {
+    "id": "tur_tcmb_announcements",
+    "url": "https://www.tcmb.gov.tr/kurlar/today.xml",
+    "categories": [
+      "macro"
+    ],
+    "format": "html_portal",
+    "channel": "CORRIDOR_ONLY",
+    "event_verified": false,
+    "commercial_eligible": false
   }
 ]);
 
