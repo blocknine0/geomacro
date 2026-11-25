@@ -76,6 +76,7 @@ jobs:
           GEOMACRO_CUSTOMER_SSR_TOKEN: ${{ secrets.GEOMACRO_CUSTOMER_SSR_TOKEN }}
           CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
           CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
+          GEOMACRO_API_CREDENTIAL_PEPPER: ${{ secrets.GEOMACRO_API_CREDENTIAL_PEPPER }}
         shell: bash
         run: |
           set -euo pipefail
@@ -87,6 +88,7 @@ jobs:
           test "${#GEOMACRO_CUSTOMER_SSR_TOKEN}" -ge 64 || { echo 'WEB_PRODUCTION_CUSTOMER_SSR_TOKEN_INVALID'; exit 2; }
           test -n "${CDP_API_KEY_ID:-}" || { echo 'WEB_PRODUCTION_CDP_API_KEY_ID_MISSING'; exit 2; }
           test -n "${CDP_API_KEY_SECRET:-}" || { echo 'WEB_PRODUCTION_CDP_API_KEY_SECRET_MISSING'; exit 2; }
+          test "${#GEOMACRO_API_CREDENTIAL_PEPPER}" -ge 64 || { echo 'WEB_PRODUCTION_API_CREDENTIAL_PEPPER_INVALID'; exit 2; }
           echo 'WEB_PRODUCTION_REQUIRED_CREDENTIALS_PRESENT'
 
       - name: Inspect existing production Worker bindings without exposing secret values
@@ -116,11 +118,14 @@ jobs:
             echo 'coinbase_pay_to_present=false' >> "$GITHUB_OUTPUT"
             echo 'commercial_launch_ack_present=false' >> "$GITHUB_OUTPUT"
             echo 'groq_api_key_present=false' >> "$GITHUB_OUTPUT"
+            echo 'central_security_mode_present=false' >> "$GITHUB_OUTPUT"
+            echo 'real_funds_ack_present=false' >> "$GITHUB_OUTPUT"
+            echo 'api_credential_pepper_present=false' >> "$GITHUB_OUTPUT"
             echo 'WEB_PRODUCTION_WORKER_NOT_YET_DEPLOYED'
           elif [[ "$status" == 200 ]]; then
             jq -e '.success == true and (.result.bindings | type == "array")' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_BINDING_INVENTORY_INVALID'; exit 2; }
-            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then (.name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby") or (.name == "GEOMACRO_ASK_FREE_GROQ_ENABLED" and .text == "true") elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER", "GEOMACRO_COMMERCE_LEDGER_TOKEN", "GROQ_API_KEY", "GEOMACRO_CUSTOMER_SSR_TOKEN", "GEOMACRO_CUSTOMER_WORKER_URL", "GEOMACRO_CUSTOMER_TRUSTED_EDGE", "CDP_API_KEY_ID", "CDP_API_KEY_SECRET", "COINBASE_X402_ENVIRONMENT", "COINBASE_X402_MAINNET_ACK", "COINBASE_X402_PAY_TO", "GEOMACRO_COMMERCIAL_LAUNCH_ACK"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
-            for binding in B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY GEOMACRO_SECURITY_FINGERPRINT_PEPPER GEOMACRO_COMMERCE_LEDGER_TOKEN GEOMACRO_CUSTOMER_SSR_TOKEN GEOMACRO_CUSTOMER_WORKER_URL GEOMACRO_CUSTOMER_TRUSTED_EDGE CDP_API_KEY_ID CDP_API_KEY_SECRET COINBASE_X402_ENVIRONMENT COINBASE_X402_MAINNET_ACK COINBASE_X402_PAY_TO GEOMACRO_COMMERCIAL_LAUNCH_ACK GROQ_API_KEY; do
+            jq -e 'all(.result.bindings[]; if .type == "assets" then .name == "ASSETS" elif .type == "plain_text" then (.name == "GEOMACRO_SUPABASE_RUNTIME_MODE" and .text == "standby") or (.name == "GEOMACRO_ASK_FREE_GROQ_ENABLED" and .text == "true") elif .type == "secret_text" then (.name as $name | ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY", "GEOMACRO_SECURITY_FINGERPRINT_PEPPER", "GEOMACRO_COMMERCE_LEDGER_TOKEN", "GROQ_API_KEY", "GEOMACRO_CUSTOMER_SSR_TOKEN", "GEOMACRO_CUSTOMER_WORKER_URL", "GEOMACRO_CUSTOMER_TRUSTED_EDGE", "CDP_API_KEY_ID", "CDP_API_KEY_SECRET", "COINBASE_X402_ENVIRONMENT", "COINBASE_X402_MAINNET_ACK", "COINBASE_X402_PAY_TO", "GEOMACRO_COMMERCIAL_LAUNCH_ACK", "GEOMACRO_CENTRAL_SECURITY_MODE", "GEOMACRO_REAL_FUNDS_SECURITY_ACK", "GEOMACRO_API_CREDENTIAL_PEPPER"] | index($name) != null) else false end)' "$settings_file" >/dev/null || { echo 'WEB_PRODUCTION_UNKNOWN_OR_UNSAFE_BINDING_PRESENT'; exit 2; }
+            for binding in B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY GEOMACRO_SECURITY_FINGERPRINT_PEPPER GEOMACRO_COMMERCE_LEDGER_TOKEN GEOMACRO_CUSTOMER_SSR_TOKEN GEOMACRO_CUSTOMER_WORKER_URL GEOMACRO_CUSTOMER_TRUSTED_EDGE CDP_API_KEY_ID CDP_API_KEY_SECRET COINBASE_X402_ENVIRONMENT COINBASE_X402_MAINNET_ACK COINBASE_X402_PAY_TO GEOMACRO_COMMERCIAL_LAUNCH_ACK GROQ_API_KEY GEOMACRO_CENTRAL_SECURITY_MODE GEOMACRO_REAL_FUNDS_SECURITY_ACK GEOMACRO_API_CREDENTIAL_PEPPER; do
               present="$(jq -r --arg name "$binding" 'any(.result.bindings[]; .type == "secret_text" and .name == $name)' "$settings_file")"
               case "$binding" in
                 B2_ARCHIVE_READ_KEY_ID) echo "b2_key_id_present=$present" >> "$GITHUB_OUTPUT" ;;
@@ -137,6 +142,9 @@ jobs:
                 COINBASE_X402_PAY_TO) echo "coinbase_pay_to_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GEOMACRO_COMMERCIAL_LAUNCH_ACK) echo "commercial_launch_ack_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GROQ_API_KEY) echo "groq_api_key_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_CENTRAL_SECURITY_MODE) echo "central_security_mode_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_REAL_FUNDS_SECURITY_ACK) echo "real_funds_ack_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_API_CREDENTIAL_PEPPER) echo "api_credential_pepper_present=$present" >> "$GITHUB_OUTPUT" ;;
               esac
             done
             echo 'WEB_PRODUCTION_EXISTING_BINDINGS_VALIDATED'
@@ -169,7 +177,11 @@ jobs:
           COINBASE_ENV_PRESENT: ${{ steps.production-bindings.outputs.coinbase_env_present }}
           COINBASE_ACK_PRESENT: ${{ steps.production-bindings.outputs.coinbase_ack_present }}
           COINBASE_PAY_TO_PRESENT: ${{ steps.production-bindings.outputs.coinbase_pay_to_present }}
+          GEOMACRO_API_CREDENTIAL_PEPPER: ${{ secrets.GEOMACRO_API_CREDENTIAL_PEPPER }}
           COMMERCIAL_LAUNCH_ACK_PRESENT: ${{ steps.production-bindings.outputs.commercial_launch_ack_present }}
+          CENTRAL_SECURITY_MODE_PRESENT: ${{ steps.production-bindings.outputs.central_security_mode_present }}
+          REAL_FUNDS_ACK_PRESENT: ${{ steps.production-bindings.outputs.real_funds_ack_present }}
+          API_CREDENTIAL_PEPPER_PRESENT: ${{ steps.production-bindings.outputs.api_credential_pepper_present }}
           GROQ_API_KEY_PRESENT: ${{ steps.production-bindings.outputs.groq_api_key_present }}
         shell: bash
         run: |
@@ -228,6 +240,18 @@ jobs:
             printf '%s' 'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH' | npx -y wrangler@4.136.3 secret put GEOMACRO_COMMERCIAL_LAUNCH_ACK --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_COMMERCIAL_LAUNCH_ACK_PROVISIONED'
           else echo 'WEB_PRODUCTION_COMMERCIAL_LAUNCH_ACK_RETAINED'; fi
+          if [[ "$CENTRAL_SECURITY_MODE_PRESENT" != true ]]; then
+            printf '%s' 'enforce' | npx -y wrangler@4.136.3 secret put GEOMACRO_CENTRAL_SECURITY_MODE --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_CENTRAL_SECURITY_MODE_PROVISIONED'
+          else echo 'WEB_PRODUCTION_CENTRAL_SECURITY_MODE_RETAINED'; fi
+          if [[ "$REAL_FUNDS_ACK_PRESENT" != true ]]; then
+            printf '%s' 'I_ACCEPT_REAL_FUNDS_SECURITY_GATES' | npx -y wrangler@4.136.3 secret put GEOMACRO_REAL_FUNDS_SECURITY_ACK --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_REAL_FUNDS_ACK_PROVISIONED'
+          else echo 'WEB_PRODUCTION_REAL_FUNDS_ACK_RETAINED'; fi
+          if [[ "$API_CREDENTIAL_PEPPER_PRESENT" != true ]]; then
+            printf '%s' "$GEOMACRO_API_CREDENTIAL_PEPPER" | npx -y wrangler@4.136.3 secret put GEOMACRO_API_CREDENTIAL_PEPPER --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_API_CREDENTIAL_PEPPER_PROVISIONED'
+          else echo 'WEB_PRODUCTION_API_CREDENTIAL_PEPPER_RETAINED'; fi
           if [[ -n "$GROQ_API_KEY" && "$GROQ_API_KEY_PRESENT" != true ]]; then
             printf '%s' "$GROQ_API_KEY" | npx -y wrangler@4.136.3 secret put GROQ_API_KEY --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_GROQ_API_KEY_PROVISIONED'
