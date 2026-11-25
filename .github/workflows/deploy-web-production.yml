@@ -73,6 +73,7 @@ jobs:
           B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
           B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_CUSTOMER_SSR_TOKEN: ${{ secrets.GEOMACRO_CUSTOMER_SSR_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -81,6 +82,7 @@ jobs:
           test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo 'WEB_PRODUCTION_B2_READ_KEY_ID_SECRET_REQUIRED'; exit 2; }
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo 'WEB_PRODUCTION_B2_READ_APPLICATION_KEY_SECRET_REQUIRED'; exit 2; }
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_INVALID'; exit 2; }
+          test "${#GEOMACRO_CUSTOMER_SSR_TOKEN}" -ge 64 || { echo 'WEB_PRODUCTION_CUSTOMER_SSR_TOKEN_INVALID'; exit 2; }
           echo 'WEB_PRODUCTION_REQUIRED_CREDENTIALS_PRESENT'
 
       - name: Inspect existing production Worker bindings without exposing secret values
@@ -100,6 +102,9 @@ jobs:
             echo 'b2_application_key_present=false' >> "$GITHUB_OUTPUT"
             echo 'fingerprint_pepper_present=false' >> "$GITHUB_OUTPUT"
             echo 'commerce_ledger_token_present=false' >> "$GITHUB_OUTPUT"
+            echo 'customer_ssr_token_present=false' >> "$GITHUB_OUTPUT"
+            echo 'customer_worker_url_present=false' >> "$GITHUB_OUTPUT"
+            echo 'customer_trusted_edge_present=false' >> "$GITHUB_OUTPUT"
             echo 'groq_api_key_present=false' >> "$GITHUB_OUTPUT"
             echo 'WEB_PRODUCTION_WORKER_NOT_YET_DEPLOYED'
           elif [[ "$status" == 200 ]]; then
@@ -112,6 +117,9 @@ jobs:
                 B2_ARCHIVE_READ_APPLICATION_KEY) echo "b2_application_key_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GEOMACRO_SECURITY_FINGERPRINT_PEPPER) echo "fingerprint_pepper_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GEOMACRO_COMMERCE_LEDGER_TOKEN) echo "commerce_ledger_token_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_CUSTOMER_SSR_TOKEN) echo "customer_ssr_token_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_CUSTOMER_WORKER_URL) echo "customer_worker_url_present=$present" >> "$GITHUB_OUTPUT" ;;
+                GEOMACRO_CUSTOMER_TRUSTED_EDGE) echo "customer_trusted_edge_present=$present" >> "$GITHUB_OUTPUT" ;;
                 GROQ_API_KEY) echo "groq_api_key_present=$present" >> "$GITHUB_OUTPUT" ;;
               esac
             done
@@ -133,7 +141,11 @@ jobs:
           B2_KEY_ID_PRESENT: ${{ steps.production-bindings.outputs.b2_key_id_present }}
           B2_APPLICATION_KEY_PRESENT: ${{ steps.production-bindings.outputs.b2_application_key_present }}
           FINGERPRINT_PEPPER_PRESENT: ${{ steps.production-bindings.outputs.fingerprint_pepper_present }}
+          GEOMACRO_CUSTOMER_SSR_TOKEN: ${{ secrets.GEOMACRO_CUSTOMER_SSR_TOKEN }}
           COMMERCE_LEDGER_TOKEN_PRESENT: ${{ steps.production-bindings.outputs.commerce_ledger_token_present }}
+          CUSTOMER_SSR_TOKEN_PRESENT: ${{ steps.production-bindings.outputs.customer_ssr_token_present }}
+          CUSTOMER_WORKER_URL_PRESENT: ${{ steps.production-bindings.outputs.customer_worker_url_present }}
+          CUSTOMER_TRUSTED_EDGE_PRESENT: ${{ steps.production-bindings.outputs.customer_trusted_edge_present }}
           GROQ_API_KEY_PRESENT: ${{ steps.production-bindings.outputs.groq_api_key_present }}
         shell: bash
         run: |
@@ -156,6 +168,18 @@ jobs:
             printf '%s' "$GEOMACRO_COMMERCE_LEDGER_TOKEN" | npx -y wrangler@4.136.3 secret put GEOMACRO_COMMERCE_LEDGER_TOKEN --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_PROVISIONED'
           else echo 'WEB_PRODUCTION_COMMERCE_LEDGER_TOKEN_RETAINED'; fi
+          if [[ "$CUSTOMER_SSR_TOKEN_PRESENT" != true ]]; then
+            printf '%s' "$GEOMACRO_CUSTOMER_SSR_TOKEN" | npx -y wrangler@4.136.3 secret put GEOMACRO_CUSTOMER_SSR_TOKEN --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_CUSTOMER_SSR_TOKEN_PROVISIONED'
+          else echo 'WEB_PRODUCTION_CUSTOMER_SSR_TOKEN_RETAINED'; fi
+          if [[ "$CUSTOMER_WORKER_URL_PRESENT" != true ]]; then
+            printf '%s' 'https://geomacro-control-plane.daspallab202391.workers.dev/' | npx -y wrangler@4.136.3 secret put GEOMACRO_CUSTOMER_WORKER_URL --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_CUSTOMER_WORKER_URL_PROVISIONED'
+          else echo 'WEB_PRODUCTION_CUSTOMER_WORKER_URL_RETAINED'; fi
+          if [[ "$CUSTOMER_TRUSTED_EDGE_PRESENT" != true ]]; then
+            printf '%s' 'cloudflare' | npx -y wrangler@4.136.3 secret put GEOMACRO_CUSTOMER_TRUSTED_EDGE --config .output/server/production-wrangler.json >/dev/null
+            echo 'WEB_PRODUCTION_CUSTOMER_TRUSTED_EDGE_PROVISIONED'
+          else echo 'WEB_PRODUCTION_CUSTOMER_TRUSTED_EDGE_RETAINED'; fi
           if [[ -n "$GROQ_API_KEY" && "$GROQ_API_KEY_PRESENT" != true ]]; then
             printf '%s' "$GROQ_API_KEY" | npx -y wrangler@4.136.3 secret put GROQ_API_KEY --config .output/server/production-wrangler.json >/dev/null
             echo 'WEB_PRODUCTION_GROQ_API_KEY_PROVISIONED'
