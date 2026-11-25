@@ -41,6 +41,7 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
   const [txHash,setTxHash]=useState("");
   const [apiKey,setApiKey]=useState("");
   const [notice,setNotice]=useState("");
+  const [emailNotice,setEmailNotice]=useState("");
   const chain=RAILS[network];
   const connectedProvider=wallets[walletIndex]?.provider;
 
@@ -92,16 +93,18 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
     return value;
   }
   async function startEmailVerification(){
-    setBusy(true);setNotice("");
-    try{await customerAction({action:"start",email:email.trim().toLowerCase()});setNotice("Check your email for the six-digit verification code.");}
-    catch(error){setNotice(errorCode(error));}finally{setBusy(false);}
+    const target=email.trim().toLowerCase();
+    if(!target){const msg="Enter your email address first.";setEmailNotice(msg);setNotice(msg);return;}
+    setBusy(true);setNotice("");setEmailNotice("Sending verification code…");
+    try{await customerAction({action:"start",email:target});const msg="Check your email for the six-digit verification code.";setEmailNotice(msg);setNotice(msg);}
+    catch(error){const msg=errorCode(error);setEmailNotice(msg);setNotice(msg);}finally{setBusy(false);}
   }
   async function verifyEmail(){
-    setBusy(true);setNotice("");
+    setBusy(true);setNotice("");setEmailNotice("Verifying code…");
     try{const result=await customerAction({action:"verify",email:email.trim().toLowerCase(),otp:otp.trim()});
       const verifiedEmail=result.user?.email??email.trim().toLowerCase();setUser(verifiedEmail);setEmail(verifiedEmail);
-      setNotice("Email verified. Connect and sign with your self-custody wallet to bind it to this account.");}
-    catch(error){setNotice(errorCode(error));}finally{setBusy(false);}
+      const msg="Email verified. Connect and sign with your self-custody wallet to bind it to this account.";setEmailNotice(msg);setNotice(msg);}
+    catch(error){const msg=errorCode(error);setEmailNotice(msg);setNotice(msg);}finally{setBusy(false);}
   }
   async function switchToSelectedChain(provider:Eip1193Provider){
     const chainId="0x"+chain.chain_id.toString(16);
@@ -204,6 +207,7 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
                 <button type="button" disabled={busy||otp.length!==6} onClick={()=>void safely(verifyEmail)}
                   className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Verify email</button></div>
                 :<p className="text-sm text-emerald-700">Verified: {user}</p>}
+              {emailNotice&&<p role="status" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">{emailNotice}</p>}
             </div>
             <div className="rounded-lg border border-border p-4 space-y-3">
               <h3 className="font-semibold">Connect and bind your wallet</h3>
