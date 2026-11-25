@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-25T14:36:25.766Z",
+  "updated_at": "2026-11-25T19:21:03.787Z",
   "signals": [
     {
       "id": "macro-975d4052",
@@ -1702,6 +1702,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-85d079ab",
+      "category": "macro",
+      "title": "Geomacro finds Basel Committee: published more details on the 2026 assessment of global systemically important banks",
+      "why_it_matters": "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately.",
+      "what_changed": "Basel Committee published more details on the 2026 assessment of global systemically important banks.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "banking and capital regulation",
+      "published_at": "2026-11-25T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Bank for International Settlements"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
