@@ -197,11 +197,11 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
               <p className="text-xs text-muted-foreground">Your email profile is linked to your non-custodial wallet. GeoMacro never receives wallet private keys.</p>
               <label className="block text-sm">Email ID<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2"/></label>
-              {!user?<div className="flex flex-wrap gap-2"><button type="button" disabled={busy||!checkoutEnabled} onClick={()=>void safely(startEmailVerification)}
+              {!user?<div className="flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={()=>void safely(startEmailVerification)}
                 className="rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary disabled:opacity-50">Send verification code</button>
                 <input aria-label="Email verification code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value)}
                   className="w-36 rounded-lg border border-input bg-background px-3 py-2"/>
-                <button type="button" disabled={busy||otp.length!==6||!checkoutEnabled} onClick={()=>void safely(verifyEmail)}
+                <button type="button" disabled={busy||otp.length!==6} onClick={()=>void safely(verifyEmail)}
                   className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Verify email</button></div>
                 :<p className="text-sm text-emerald-700">Verified: {user}</p>}
             </div>
