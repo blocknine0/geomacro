@@ -51,3 +51,10 @@ test("missing zone, pending delegation, stale build, failed www, and no activati
     assert.equal(evaluateProductionDomainAuthority({ ...fixture, ...change }).production_hostname_cloudflare_serving_verified, false);
   }
 });
+
+test("allows Cloudflare runner WAF 403 on www when custom domain is bound to production worker", () => {
+  const wafBlocked = evaluateProductionDomainAuthority({
+    ...fixture, wwwHttpStatus: 403, wwwLocation: null,
+  });
+  assert.equal(wafBlocked.production_hostname_cloudflare_serving_verified, true);
+});
