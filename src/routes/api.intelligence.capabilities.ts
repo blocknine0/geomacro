@@ -65,7 +65,14 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
             capability_pricing:{
               version:GEOMACRO_CAPABILITY_PRICING_VERSION,
               currency:"USDC",decimals:6,
-              capabilities:publicCapabilityPricingCatalog(),
+              capabilities:publicCapabilityPricingCatalog().map((row) => {
+                const liveAuthorized =
+                  String(process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK ?? "").trim() === "I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH" &&
+                  String(process.env.GEOMACRO_API_CREDENTIAL_PEPPER ?? "").trim().length >= 32;
+                return liveAuthorized && row.capability === "risk_gate_bundle"
+                  ? { ...row, launch_status: "ELIGIBILITY_GATED" as const, new_sales_allowed: true }
+                  : row;
+              }),
               available_before_payment:false,
               fixed_tier_only:true,automatic_upgrade:false,
               risk_gate_includes_signed_object:true,
