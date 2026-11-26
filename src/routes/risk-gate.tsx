@@ -9,9 +9,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const TITLE = "Risk Gate Private Pilot · Geomacro";
+const TITLE = "Risk Gate · GeoMacro";
 const DESCRIPTION =
-  "Geomacro Risk Gate is a controlled Private Pilot decision-context layer for country and directional-corridor risk checks before treasury, payment and agent actions.";
+  "GeoMacro Risk Gate is a live decision-context layer for country and directional-corridor risk checks before treasury, payment and agent actions.";
 const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE"] as const;
 
 export const Route = createFileRoute("/risk-gate")({
@@ -41,8 +41,8 @@ function RiskGatePage() {
         <div className="relative mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-18 lg:grid-cols-[1.04fr_.96fr] lg:items-center lg:py-22">
           <div>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[10px] uppercase tracking-[0.14em] text-amber-300">PRIVATE PILOT</Badge>
-              <span className="self-center text-xs text-muted-foreground">Mainnet USDC access is live</span>
+              <Badge variant="outline" className="border-emerald-400/40 bg-emerald-400/5 font-mono text-[10px] uppercase tracking-[0.14em] text-emerald-300">MAINNET USDC LIVE</Badge>
+              <span className="self-center text-xs text-muted-foreground">Mainnet USDC access is live (Arc, Base & Polygon)</span>
             </div>
             <h1 className="mt-5 text-[clamp(2.8rem,6vw,5.6rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
               Put a risk check between context and action.
@@ -51,11 +51,11 @@ function RiskGatePage() {
               Risk Gate verifies a signed country or corridor Risk Object, evaluates the current external-risk context and returns a bounded pre-decision recommendation before the customer&apos;s own system acts.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button asChild size="lg" className="h-12 gap-2 px-6"><Link to="/contact">Discuss a Private Pilot <ArrowRight className="h-4 w-4" /></Link></Button>
+              <Button asChild size="lg" className="h-12 gap-2 px-6"><Link to="/pricing" hash="payment-checkout">Run Risk Gate or Buy Pack <ArrowRight className="h-4 w-4" /></Link></Button>
               <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/intelligence">See live intelligence</Link></Button>
             </div>
             <p className="mt-5 max-w-3xl text-xs leading-5 text-muted-foreground">
-              Direct pay-per-call is available without an account at <a href="https://geomacro.live/api/v1/payments/usdc-risk-gate" className="underline underline-offset-2">POST /api/v1/payments/usdc-risk-gate</a> on Arc, Base, and Polygon. See <Link to="/pricing" hash="payment-checkout" className="underline underline-offset-2">USDC packs</Link> for prepaid API access. Risk Gate provides decision support only; execution_authorized: false.
+              Pay-per-call ($0.15-$0.30 USDC on Arc, Base, and Polygon) and prepaid USDC packs ($15/$30/$60) are available on <Link to="/pricing" hash="payment-checkout" className="underline underline-offset-2">Pricing &amp; Checkout</Link>. API endpoint: <code className="font-mono">POST /api/v1/payments/usdc-risk-gate</code>. Decision support only; execution_authorized: false.
             </p>
           </div>
 
@@ -102,18 +102,18 @@ function RiskGatePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.82fr_1.18fr] lg:items-start">
           <div>
             <RouteIcon className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Private Pilot scope</p>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Coverage scope</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Country and directional-corridor context only.</h2>
           </div>
           <div className="space-y-4">
             <div className="rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
               <p className="text-sm leading-7 text-muted-foreground">
-                Current Private Pilot scope is country and directional corridor risk. Geomacro supports directional corridors composed from endpoints plus eligible bilateral evidence.
+                Current Risk Gate scope is country and directional corridor risk. Geomacro supports directional corridors composed from endpoints plus eligible bilateral evidence.
               </p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
               <p className="text-sm leading-7 text-muted-foreground">
-                Full physical-route and counterparty modelling are not claimed. Event-specific Risk Objects remain a broader product direction rather than part of the current pilot contract.
+                Full physical-route and counterparty modelling are not claimed. Event-specific Risk Objects remain a broader product direction rather than part of the current contract.
               </p>
             </div>
           </div>
@@ -160,9 +160,9 @@ function RiskGatePage() {
           <div className="max-w-3xl">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Design partners</p>
             <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Have a workflow that should stop, slow down or require review when external risk changes?</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">Bring the action, subject, required freshness and policy boundary. We will map it to the current pilot scope before any integration commitment.</p>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">Bring the action, subject, required freshness and policy boundary. We will map it to the current Risk Gate scope before any production integration.</p>
           </div>
-          <Button asChild size="lg" className="mt-7 shrink-0 gap-2 lg:mt-0"><Link to="/contact">Discuss a pilot <ArrowRight className="h-4 w-4" /></Link></Button>
+          <Button asChild size="lg" className="mt-7 shrink-0 gap-2 lg:mt-0"><Link to="/contact">Discuss enterprise access <ArrowRight className="h-4 w-4" /></Link></Button>
         </div>
       </section>
     </main>

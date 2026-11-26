@@ -37,7 +37,7 @@ describe("published pricing and current access status are truthful across commer
   });
 
   it("preserves pilot scope and shows live mainnet USDC access with the decision boundary", () => {
-    expect(riskGate).toContain(">PRIVATE PILOT</Badge>");
+    expect(riskGate).toContain(">MAINNET USDC LIVE</Badge>");
     expect(riskGate).toContain("Mainnet USDC access is live");
     expect(riskGate).toContain("POST /api/v1/payments/usdc-risk-gate");
     expect(shell).not.toContain('to: "/risk-gate"');

@@ -42,7 +42,7 @@ describe("commercial website source-of-truth contract", () => {
     expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(read("src/components/home/live-intelligence-showcase.tsx")).not.toContain("From 0.05 USDC");
     expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");
-    expect(read("src/routes/risk-gate.tsx")).toContain("PRIVATE PILOT");
+    expect(read("src/routes/risk-gate.tsx")).toContain("MAINNET USDC LIVE");
     expect(read("src/routes/risk-gate.tsx")).toContain("execution_authorized = false");
   });
 

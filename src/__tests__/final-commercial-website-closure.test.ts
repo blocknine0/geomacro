@@ -46,7 +46,7 @@ describe("final commercial website closure", () => {
     const riskGate = read("src/routes/risk-gate.tsx");
     const dataApi = read("src/routes/pricing.tsx");
     const status = read("src/components/agent-commerce-status.tsx");
-    expect(riskGate).toContain("PRIVATE PILOT");
+    expect(riskGate).toContain("MAINNET USDC LIVE");
     expect(riskGate).toContain("execution_authorized = false");
     expect(dataApi).toContain("Risk Gate returns decision support only.");
     expect(dataApi).toContain("execution_authorized: false");
