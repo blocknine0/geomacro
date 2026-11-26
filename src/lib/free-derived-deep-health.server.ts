@@ -138,8 +138,8 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       const credits=Array.isArray(row.sources_credited)?row.sources_credited:[];
       if(row.date_precision!=="exact"||
          row.development_type!=="unverified OSINT feed observation"||
-         row.geography!==null||credits.length!==1||
-         !safeOsintMonitoredHostCredit(credits[0]))
+         (row.geography!==null&&(typeof row.geography!=="string"||!row.geography.trim()||row.geography.length>120))||
+         (credits.length!==0&&(credits.length!==1||!safeOsintMonitoredHostCredit(credits[0]))))
         return result(false,"FREE_ARCHIVE_OSINT_ROW_INVALID");
       // Never count unverified feeds, regardless of expiry.
       continue;

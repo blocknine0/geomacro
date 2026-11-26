@@ -133,7 +133,7 @@ describe("authentic free-derived static archive deep-health",()=>{
     for(const bad of [
       {...observed,upstream_url:"https://publisher.example/article"},
       {...observed,what_changed:"www.publisher.example/raw"},
-      {...observed,geography:"Toronto"},
+      {...observed,geography:123},
       {...observed,status:"official_release_observed_unscored"},
     ])expect(classifyFreeDerivedFeed(feed([story(),bad]),time).statusCode).toBe(503);
   });
