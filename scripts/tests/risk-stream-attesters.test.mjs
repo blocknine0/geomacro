@@ -96,8 +96,10 @@ test("facts attester accepts independent regional candidates for macro and criti
  for(const category of ["MACRO_FX","CRITICAL_MINERALS"]){
   const candidate=fixture();candidate.category=category;
   candidate.source_role="INDEPENDENT_REGIONAL";
+  candidate.event_key="EVENT:"+(category==="MACRO_FX"?"CENTRAL_BANK_POLICY":
+   "CRITICAL_MINERAL_SUPPLY")+":20261114";
   candidate.event_fingerprint=createHash("sha256").update(JSON.stringify([
-   candidate.country_iso3,candidate.category,candidate.event_key,candidate.entities])).digest("hex");
+   candidate.country_iso3,candidate.category,candidate.event_key])).digest("hex");
   const response=await attestFacts(request(candidate),env,now);
   assert.equal(response.status,200,category);
   assert.equal((await result(response)).ok,true,category);
@@ -108,6 +110,10 @@ test("rights attester accepts independent regional candidates for macro and crit
  for(const category of ["MACRO_FX","CRITICAL_MINERALS"]){
   const candidate=fixture();candidate.category=category;
   candidate.source_role="INDEPENDENT_REGIONAL";
+  candidate.event_key="EVENT:"+(category==="MACRO_FX"?"CENTRAL_BANK_POLICY":
+   "CRITICAL_MINERAL_SUPPLY")+":20261114";
+  candidate.event_fingerprint=createHash("sha256").update(JSON.stringify([
+   candidate.country_iso3,candidate.category,candidate.event_key])).digest("hex");
   const registry={...registryRow,source_role:"INDEPENDENT_REGIONAL"};
   const response=await attestRights(request(candidate),rightsEnv(registry),now);
   assert.equal(response.status,200,category);

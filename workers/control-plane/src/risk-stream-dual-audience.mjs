@@ -149,11 +149,14 @@ const safeTrigger=value=>typeof value==="string"&&
 /** Build a source-free, deterministic audience view from already-scored facts. */
 export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
  score=0,confidence=0,horizonHours=24,ttlSeconds=10800,actionPosture,
- deltaVs7d=0,tier="BASIC",corroborationReady=false,contagionCorridors=[],
+ deltaVs7d=null,deltaBaselineVerified=false,tier="BASIC",
+ corroborationReady=false,contagionCorridors=[],
  strategicCorridors=[],affectedAssets=[]}={}){
  if(!CATEGORIES.has(category)||!Number.isFinite(score)||score<0||score>100||
     !Number.isFinite(confidence)||confidence<0||confidence>1||
-    !Number.isFinite(deltaVs7d)||deltaVs7d< -100||deltaVs7d>100||
+    !(deltaVs7d===null||Number.isFinite(deltaVs7d)&&deltaVs7d>=-100&&deltaVs7d<=100)||
+    typeof deltaBaselineVerified!=="boolean"||
+    (deltaVs7d!==null&&deltaBaselineVerified!==true)||
     !["BASIC","STANDARD","COMPLEX"].includes(tier)||
     typeof corroborationReady!=="boolean"||
     !Number.isInteger(horizonHours)||horizonHours<1||horizonHours>168||
@@ -190,10 +193,24 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
   assetNames.length?"Assets: "+enrichedAssets.slice(0,2).map(x=>x.replaceAll("_"," ")).join(", ")+
    (enrichedAssets.length>2?" +"+(enrichedAssets.length-2)+" more":""):null]
   .filter(Boolean).join("; ");
+ const actionThresholds={continue_below:45,reduce_limit_from:45,
+  require_approval_from:65,pause_from:80};
+ const watchTriggers=[
+  "Reassess when a new rights-approved observation changes the event classification or score band.",
+  ...(corridorNames.length?["Check for a verified corridor access or transit restriction at "+corridorFocus+"."]:[]),
+  ...(assetNames.length?["Check a dated market or official metric for "+assetNames.slice(0,2).join(" and ")+"."]:[])
+ ];
+ const invalidationConditions=[
+  "Withdraw this assessment if the underlying observation is corrected, retracted, or its rights approval expires.",
+  "Do not retain the signal if the event clock or country/category mapping fails verification."
+ ];
+ const deltaStatus=deltaBaselineVerified?"VERIFIED_7D_BASELINE":"UNAVAILABLE_NO_VERIFIED_7D_BASELINE";
  return {
   agent_decision:{action_posture:posture,gate_state:posture,
    risk_score_0_100:Number(score.toFixed(2)),value_0_100:Number(score.toFixed(2)),
-   delta_vs_7d:Number(deltaVs7d.toFixed(2)),
+   delta_vs_7d:deltaVs7d===null?null:Number(deltaVs7d.toFixed(2)),
+   delta_vs_7d_status:deltaStatus,action_thresholds:actionThresholds,
+   watch_triggers:watchTriggers,invalidation_conditions:invalidationConditions,
    confidence_0_1:Number(confidence.toFixed(3)),confidence:Number(confidence.toFixed(3)),
    horizon_hours:horizonHours,horizon:horizonName(horizonHours),
    affected_assets:enrichedAssets,price_direction_bias:bias,
@@ -214,6 +231,9 @@ export function buildRiskStreamDualAudience({category,eventClass="UNCLASSIFIED",
    trigger,transmission_mechanism:mechanism,direct_price_supply_impact:directImpact,
    causal_summary:"Trigger: "+trigger+". Transmission Mechanism: "+mechanism.slice(0,42)+
     (causalContext?". "+causalContext:"")+" Direct Price/Supply Impact: "+directImpact,
+   action_thresholds:actionThresholds,watch_triggers:watchTriggers,
+   invalidation_conditions:invalidationConditions,
+   delta_vs_7d_status:deltaStatus,
    raw_source_redacted:true,licensed_source_text_included:false,
    cross_category_outlook:"Assess linked geopolitical, macroeconomic, and critical-minerals conditions using separately verified evidence."},
   raw_source_redacted:true,licensed_source_text_included:false
@@ -226,9 +246,13 @@ export function validRiskStreamDualAudience(value){
   "horizon_hours","affected_assets","price_direction_bias","contagion_corridors","ttl_seconds"];
  const enhancedAgentKeys=[...legacyAgentKeys,"gate_state","value_0_100","delta_vs_7d",
   "confidence","horizon","tier","upgrade_available"];
- const corridorAgentKeys=[...enhancedAgentKeys,"strategic_corridors"];
+ const corridorAgentKeys=[...enhancedAgentKeys,"strategic_corridors",
+  "delta_vs_7d_status","action_thresholds","watch_triggers","invalidation_conditions"];
  const legacyBriefKeys=["risk_mechanism","downstream_effects","price_impact_summary","cross_category_outlook"];
  const enhancedBriefKeys=[...legacyBriefKeys,"trigger","transmission_mechanism",
+  "direct_price_supply_impact","causal_summary","raw_source_redacted","licensed_source_text_included",
+  "action_thresholds","watch_triggers","invalidation_conditions","delta_vs_7d_status"];
+ const priorEnhancedBriefKeys=[...legacyBriefKeys,"trigger","transmission_mechanism",
   "direct_price_supply_impact","causal_summary","raw_source_redacted","licensed_source_text_included"];
  const agentKeys=Object.keys(agent??{}).sort().join("|");
  const briefKeys=Object.keys(brief??{}).sort().join("|");
@@ -238,6 +262,8 @@ export function validRiskStreamDualAudience(value){
   briefKeys===enhancedBriefKeys.slice().sort().join("|");
  const current=agentKeys===corridorAgentKeys.slice().sort().join("|")&&
   briefKeys===enhancedBriefKeys.slice().sort().join("|");
+ const priorCurrent=agentKeys===[...enhancedAgentKeys,"strategic_corridors"].sort().join("|")&&
+  briefKeys===priorEnhancedBriefKeys.slice().sort().join("|");
  const common=value?.raw_source_redacted===true&&agent&&typeof agent==="object"&&
   ACTIONS.has(agent.action_posture)&&Number.isFinite(agent.risk_score_0_100)&&
   agent.risk_score_0_100>=0&&agent.risk_score_0_100<=100&&
@@ -252,9 +278,9 @@ export function validRiskStreamDualAudience(value){
   brief&&typeof brief==="object";
  const validBrief=[...legacyBriefKeys].every(key=>
   typeof brief?.[key]==="string"&&brief[key].length>=12&&brief[key].length<=360);
- const validEnhanced=(!current||Array.isArray(agent.strategic_corridors)&&agent.strategic_corridors.length<=12&&
+ const validEnhanced=(!current&&!priorCurrent||Array.isArray(agent.strategic_corridors)&&agent.strategic_corridors.length<=12&&
    agent.strategic_corridors.every(x=>CORRIDORS.has(x)))&&
-  (!enhancedLegacy&&!current||value.licensed_source_text_included===false&&
+  (!priorCurrent||value.licensed_source_text_included===false&&
    agent.gate_state===agent.action_posture&&
    Number.isFinite(agent.value_0_100)&&agent.value_0_100===agent.risk_score_0_100&&
    Number.isFinite(agent.delta_vs_7d)&&agent.delta_vs_7d>=-100&&agent.delta_vs_7d<=100&&
@@ -269,7 +295,38 @@ export function validRiskStreamDualAudience(value){
    typeof brief.direct_price_supply_impact==="string"&&brief.direct_price_supply_impact.length>=12&&
    typeof brief.causal_summary==="string"&&brief.causal_summary.length>=60&&
    brief.causal_summary.startsWith("Trigger: "+brief.trigger+". Transmission Mechanism: ")&&
-   brief.causal_summary.includes(" Direct Price/Supply Impact: "+brief.direct_price_supply_impact));
+   brief.causal_summary.includes(" Direct Price/Supply Impact: "+brief.direct_price_supply_impact))&&
+  (!enhancedLegacy&&!current||value.licensed_source_text_included===false&&
+   agent.gate_state===agent.action_posture&&
+   Number.isFinite(agent.value_0_100)&&agent.value_0_100===agent.risk_score_0_100&&
+   (agent.delta_vs_7d===null||Number.isFinite(agent.delta_vs_7d)&&
+    agent.delta_vs_7d>=-100&&agent.delta_vs_7d<=100)&&
+   ["VERIFIED_7D_BASELINE","UNAVAILABLE_NO_VERIFIED_7D_BASELINE"].includes(agent.delta_vs_7d_status)&&
+   agent.action_thresholds?.continue_below===45&&agent.action_thresholds?.reduce_limit_from===45&&
+   agent.action_thresholds?.require_approval_from===65&&agent.action_thresholds?.pause_from===80&&
+   Number.isFinite(agent.confidence)&&agent.confidence===agent.confidence_0_1&&
+   ["24h","72h","7d"].includes(agent.horizon)&&
+   ["BASIC","STANDARD","COMPLEX"].includes(agent.tier)&&
+   typeof agent.upgrade_available==="boolean"&&
+   (agent.tier==="BASIC"||agent.upgrade_available===false)&&
+   brief.raw_source_redacted===true&&brief.licensed_source_text_included===false&&
+   typeof brief.trigger==="string"&&brief.trigger.length>=6&&brief.trigger.length<=80&&
+   typeof brief.transmission_mechanism==="string"&&brief.transmission_mechanism.length>=12&&
+   typeof brief.direct_price_supply_impact==="string"&&brief.direct_price_supply_impact.length>=12&&
+   typeof brief.causal_summary==="string"&&brief.causal_summary.length>=60&&
+   brief.causal_summary.startsWith("Trigger: "+brief.trigger+". Transmission Mechanism: ")&&
+   brief.causal_summary.includes(" Direct Price/Supply Impact: "+brief.direct_price_supply_impact)&&
+   brief.action_thresholds?.continue_below===45&&brief.action_thresholds?.reduce_limit_from===45&&
+   brief.action_thresholds?.require_approval_from===65&&brief.action_thresholds?.pause_from===80&&
+   Array.isArray(brief.watch_triggers)&&brief.watch_triggers.length>=1&&brief.watch_triggers.length<=4&&
+   brief.watch_triggers.every(x=>typeof x==="string"&&x.length>=20&&x.length<=180)&&
+   Array.isArray(brief.invalidation_conditions)&&brief.invalidation_conditions.length===2&&
+   brief.invalidation_conditions.every(x=>typeof x==="string"&&x.length>=20&&x.length<=180)&&
+   Array.isArray(agent.watch_triggers)&&agent.watch_triggers.length>=1&&agent.watch_triggers.length<=4&&
+   agent.watch_triggers.every(x=>typeof x==="string"&&x.length>=20&&x.length<=180)&&
+   Array.isArray(agent.invalidation_conditions)&&agent.invalidation_conditions.length===2&&
+   agent.invalidation_conditions.every(x=>typeof x==="string"&&x.length>=20&&x.length<=180)&&
+   brief.delta_vs_7d_status===agent.delta_vs_7d_status);
  const clearText=!/(?:https?:[/][/]|www[.]|@|telegram|headline|publisher|channel_name)/iu.test(
   JSON.stringify({agent_decision:agent,analyst_brief:brief}));
  return Boolean(common&&(legacy||enhancedLegacy||current)&&validBrief&&clearText&&validEnhanced);

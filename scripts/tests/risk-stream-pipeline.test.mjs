@@ -58,8 +58,26 @@ test("dual-audience summaries specify the trigger, corridor, and priority assets
   assert.doesNotMatch(summary,/https?:\/\/|headline|publisher|telegram|@/iu);
  }
  assert.equal(value.agent_decision.strategic_corridors.length,3);
+ assert.equal(value.agent_decision.delta_vs_7d,null);
+ assert.equal(value.agent_decision.delta_vs_7d_status,"UNAVAILABLE_NO_VERIFIED_7D_BASELINE");
+ assert.deepEqual(value.agent_decision.action_thresholds,
+  {continue_below:45,reduce_limit_from:45,require_approval_from:65,pause_from:80});
+ assert.ok(value.agent_decision.watch_triggers.length>=1);
+ assert.equal(value.agent_decision.invalidation_conditions.length,2);
+ assert.ok(value.analyst_brief.watch_triggers.length>=1);
+ assert.equal(value.analyst_brief.invalidation_conditions.length,2);
  assert.equal(value.analyst_brief.raw_source_redacted,true);
  assert.equal(value.analyst_brief.licensed_source_text_included,false);
+});
+test("dual-audience preserves a measured 7-day delta and does not invent a zero baseline",()=>{
+ assert.throws(()=>buildRiskStreamDualAudience({category:"MACRO_FX",
+  score:52,confidence:0.7,deltaVs7d:-3.25}),/RISK_STREAM_DUAL_AUDIENCE_INVALID/u);
+ const value=buildRiskStreamDualAudience({category:"MACRO_FX",eventClass:"MONETARY_POLICY",
+  score:52,confidence:0.7,deltaVs7d:-3.25,deltaBaselineVerified:true});
+ assert.equal(value.agent_decision.delta_vs_7d,-3.25);
+ assert.equal(value.agent_decision.delta_vs_7d_status,"VERIFIED_7D_BASELINE");
+ assert.equal(value.analyst_brief.delta_vs_7d_status,"VERIFIED_7D_BASELINE");
+ assert.equal(validRiskStreamDualAudience(value),true);
 });
 test("dual-attested originals produce signed eligible_derived_score objects in all three categories",async()=>{
  const cases=[
@@ -168,7 +186,7 @@ test("two independent verified originals with a strategic corridor qualify Compl
  assert.equal(payload.eligible_derived_score.agent_decision.tier,"COMPLEX");
  assert.deepEqual(payload.eligible_derived_score.agent_decision.strategic_corridors,["RED_SEA"]);
 });
-test("different event keys corroborate by country and category within 48 hours",async()=>{
+test("matching canonical event scope corroborates independent sources",async()=>{
  for(const category of ["GEOPOLITICS","CRITICAL_MINERALS"]){
   const roles=category==="GEOPOLITICS"?
    ["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"]:
@@ -179,11 +197,11 @@ test("different event keys corroborate by country and category within 48 hours",
   };
   const two=ctx(),t=Date.now();setRoles(two);
   const twoItems=[candidate(two,2401,"gov",t,category),
-   candidate(two,2402,"region",t+60_000,category)];
+   candidate(two,2401,"region",t+60_000,category)];
   const twoResult=await processRiskStreamBatch(two.env,twoItems,{
    now:t+90_000,sleeper:async()=>{},random:()=>0
   });
-  assert.equal(twoResult.corroborated_and_signed,2,category);
+  assert.equal(twoResult.corroborated_and_signed,1,category);
   for(const row of two.db.gros.values()){
    const payload=JSON.parse(row.payload_json);
    assert.equal(payload.source_originals.length,2,category);
@@ -194,12 +212,12 @@ test("different event keys corroborate by country and category within 48 hours",
   const three=ctx(),t3=Date.now();setRoles(three);
   three.db.sources.get("market3").source_role="MARKET_PRICE";
   const threeItems=[candidate(three,2501,"gov",t3,category),
-   candidate(three,2502,"region",t3+60_000,category),
-   candidate(three,2503,"market3",t3+120_000,category,0,"MARKET_PRICE")];
+   candidate(three,2501,"region",t3+60_000,category),
+   candidate(three,2501,"market3",t3+120_000,category,0,"MARKET_PRICE")];
   const threeResult=await processRiskStreamBatch(three.env,threeItems,{
    now:t3+150_000,sleeper:async()=>{},random:()=>0
   });
-  assert.equal(threeResult.corroborated_and_signed,3,category);
+  assert.equal(threeResult.corroborated_and_signed,1,category);
   for(const row of three.db.gros.values()){
    const payload=JSON.parse(row.payload_json);
    assert.equal(payload.source_originals.length,3,category);
@@ -209,7 +227,7 @@ test("different event keys corroborate by country and category within 48 hours",
 
   const corridor=ctx(),tc=Date.now();setRoles(corridor);
   const corridorItems=[candidate(corridor,2601,"gov",tc,category),
-   candidate(corridor,2602,"region",tc+60_000,category)];
+   candidate(corridor,2601,"region",tc+60_000,category)];
   for(const item of corridorItems){
    item.derived.what=category==="GEOPOLITICS"?
     "Sanctions disrupt shipping through the Red Sea":
@@ -221,7 +239,7 @@ test("different event keys corroborate by country and category within 48 hours",
   const corridorResult=await processRiskStreamBatch(corridor.env,corridorItems,{
    now:tc+90_000,sleeper:async()=>{},random:()=>0
   });
-  assert.equal(corridorResult.corroborated_and_signed,2,category);
+  assert.equal(corridorResult.corroborated_and_signed,1,category);
   for(const row of corridor.db.gros.values()){
    const payload=JSON.parse(row.payload_json);
    assert.equal(payload.source_originals.length,2,category);
@@ -248,7 +266,7 @@ test("unclassified attested events receive fallback scores for all categories an
   c.db.sources.get("region").source_role=roles[1];
   c.db.sources.get("market3").source_role="MARKET_PRICE";
   const items=sources.map((source,offset)=>{
-   const item=candidate(c,2700+index*10+offset,source,now+offset*60_000,category,
+   const item=candidate(c,2700+index*10,source,now+offset*60_000,category,
     0,source==="market3"?"MARKET_PRICE":null);
    item.derived.what="An otherwise unclassified update was reported.";
    const claims=riskStreamOriginalClaims(item);
@@ -259,7 +277,7 @@ test("unclassified attested events receive fallback scores for all categories an
   const result=await processRiskStreamBatch(c.env,items,{
    now:now+5*60_000,sleeper:async()=>{},random:()=>0
   });
-  assert.equal(result.corroborated_and_signed,items.length,category+" "+tier);
+  assert.equal(result.corroborated_and_signed,1,category+" "+tier);
   for(const row of c.db.gros.values()){
    const payload=JSON.parse(row.payload_json),score=payload.eligible_derived_score;
    assert.ok(score,category+" "+tier);
@@ -495,8 +513,13 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
  const item={
   schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
   country_iso3:"USA",category,feed_origin:original?"OFFICIAL_API":"RSS",
-  event_key:"EVENT_"+String(i).padStart(6,"0"),entities,
-  event_fingerprint:digest(JSON.stringify(["USA",category,"EVENT_"+String(i).padStart(6,"0"),entities])),
+  event_key:"EVENT:"+(category==="MACRO_FX"?"CENTRAL_BANK_POLICY":
+   category==="CRITICAL_MINERALS"?"MINERAL_SUPPLY_CHANGE":"SANCTIONS_POLICY")+
+   "_"+String(i).padStart(6,"0")+":"+new Date(now-30000+clockOffsetMs).toISOString().slice(0,10).replaceAll("-",""),entities,
+  event_fingerprint:digest(JSON.stringify(["USA",category,
+   "EVENT:"+(category==="MACRO_FX"?"CENTRAL_BANK_POLICY":
+    category==="CRITICAL_MINERALS"?"MINERAL_SUPPLY_CHANGE":"SANCTIONS_POLICY")+
+    "_"+String(i).padStart(6,"0")+":"+new Date(now-30000+clockOffsetMs).toISOString().slice(0,10).replaceAll("-","")])),
   source_id:source,source_url:"https://"+publisher.root+"/events/"+i,
   publisher_root_domain:publisher.root,
   parent_media_entity:publisher.entity,
@@ -632,15 +655,15 @@ test("one independently dual-attested open-license observation signs Basic in ea
   assert.equal(gro.execution_authorized,false);
  }
 });
-test("52-hour separated originals remain separate Basic observations",async()=>{
+test("different UTC day buckets remain separate Basic observations",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,5,"gov",now,"GEOPOLITICS",-52*3600000);
  const b=candidate(c,5,"region",now);
  const result=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
- assert.equal(result.corroborated_and_signed,1);
- const payload=JSON.parse([...c.db.gros.values()][0].payload_json);
- assert.equal(payload.source_originals.length,1);
- assert.deepEqual(payload.eligible_derived_score.eligible_tiers,["basic_focused"]);
+ assert.equal(result.corroborated_and_signed,2);
+ const payloads=[...c.db.gros.values()].map(row=>JSON.parse(row.payload_json));
+ assert.ok(payloads.every(payload=>payload.source_originals.length===1&&
+  JSON.stringify(payload.eligible_derived_score.eligible_tiers)==='["basic_focused"]'));
 });
 test("unapproved publisher commercial rights HOLD before canonical write",async()=>{
  const c=ctx(),now=Date.now();
@@ -666,7 +689,7 @@ test("arbitrary three-letter country can route genuine original corroboration",a
   item.country_iso3="KEN";
   item.entities[0]="COUNTRY:KEN";
   item.event_fingerprint=digest(JSON.stringify([
-   "KEN",item.category,item.event_key,item.entities
+   "KEN",item.category,item.event_key
   ]));
   const claim=riskStreamOriginalClaims(item);
   item.proof.facts_signature_b64=prove(claim,c.facts,"geomacro.machine-original-facts.v1");
@@ -729,12 +752,12 @@ test("distinct original wording corroborates the same attested event key without
  assert.equal(result.corroborated_and_signed,1);
  assert.equal(c.db.gros.size,1);
 });
-test("independent originals with different attested event keys corroborate into Standard",async()=>{
+test("independent originals with different canonical event types remain separate",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,502,"gov",now),b=candidate(c,502,"region",now);
- b.event_key="EVENT_DIFFERENT_0502";
+ b.event_key="EVENT:TRADE_POLICY:20261114";
  b.event_fingerprint=digest(JSON.stringify([
-  b.country_iso3,b.category,b.event_key,b.entities
+  b.country_iso3,b.category,b.event_key
  ]));
  const claims=riskStreamOriginalClaims(b);
  b.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
@@ -746,9 +769,8 @@ test("independent originals with different attested event keys corroborate into 
  assert.equal(c.db.gros.size,2);
  assert.ok([...c.db.gros.values()].every(row=>{
   const payload=JSON.parse(row.payload_json);
-  return payload.source_originals.length===2&&
-   JSON.stringify(payload.eligible_derived_score.eligible_tiers)===
-    JSON.stringify(["basic_focused","standard"]);
+  return payload.source_originals.length===1&&
+   JSON.stringify(payload.eligible_derived_score.eligible_tiers)==='["basic_focused"]';
  }));
 });
 

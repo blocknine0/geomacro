@@ -9,6 +9,7 @@ import {licensedSha,canonicalLicensedJson,issueGeoMacroCommercialLicense}
 import {commercialDeliveryIsEnabled,stageLicensedCommercialDelivery}
  from "./risk-stream-commercial-outbox.mjs";
 import {approvedLegalAnchor,hasIndependentApprovedRolePair} from "./risk-stream-approved-role-pairs.mjs";
+import {resignExpiredRiskStreamGro} from "./risk-stream-gro-resigner.mjs";
 
 const HEX=/^[a-f0-9]{64}$/u;
 const PREDGE_PULL_CLIENT_ID="predge-paid-risk-gate-addendum-v2";
@@ -131,9 +132,11 @@ async function verifyInternalGro(db,groId,env,now){
     !categoryRoles[p.category]||
     !Array.isArray(p.source_originals)||p.source_originals.length<1||p.source_originals.length>3||
     new Set(p.source_originals).size!==p.source_originals.length||
-    !p.source_originals.every(x=>HEX.test(x))||
-    Date.parse(row.expires_at)<=now||Date.parse(p.expires_at)<=now)
+    !p.source_originals.every(x=>HEX.test(x)))
   deny("INTERNAL_GRO_NOT_ELIGIBLE");
+ if(!Number.isFinite(Date.parse(row.expires_at))||!Number.isFinite(Date.parse(p.expires_at))||
+    row.expires_at!==p.expires_at)deny("INTERNAL_GRO_NOT_ELIGIBLE");
+ if(Date.parse(row.expires_at)<=now)deny("INTERNAL_GRO_EXPIRED");
  const evidence=await db.prepare(
   "SELECT e.observation_id,e.original_verified,e.publisher_root_domain,"+
   "e.parent_media_entity,e.source_role,s.enabled,s.commercial_rights_approved,"+
@@ -167,7 +170,17 @@ export async function issueReviewedCommercialCandidate(env,sourceGroId,{
  now=Date.now(),requestReview
 }={}){
  if(!commercialIssuerEnabled(env))deny("PROTECTED_RELEASE_OR_REVIEWER_MISSING");
- const {row,p}=await verifyInternalGro(env.DB,sourceGroId,env,now);
+ let verified;
+ try{verified=await verifyInternalGro(env.DB,sourceGroId,env,now)}
+ catch(error){
+  if(!String(error?.message??"").endsWith("INTERNAL_GRO_EXPIRED"))throw error;
+  try{
+   const refreshed=await resignExpiredRiskStreamGro(env,sourceGroId,{now});
+   sourceGroId=refreshed.gro_id;
+   verified=await verifyInternalGro(env.DB,sourceGroId,env,now);
+  }catch{deny("SOURCE_GRO_EXPIRED_OR_EVIDENCE_REVOKED")}
+ }
+ const {row,p}=verified;
  // The authorized candidate is a separate immutable signed GRO. The original
  // no-funds GRO is never overwritten or silently upgraded.
  const candidatePayload={...p,customer_delivery_authorized:true,

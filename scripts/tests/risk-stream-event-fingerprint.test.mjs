@@ -21,9 +21,18 @@ test("private-review event shape is normalized to the same stream category",()=>
  assert.equal(eventFingerprint(uppercase),eventFingerprint(privateReview));
 });
 
-test("different structured events produce different fingerprints",()=>{
+test("same country, category, event type and UTC day share a pairing fingerprint",()=>{
  const a=claim(),b=claim({event_identity:{...claim().event_identity,target_id:"another_bank"}});
- assert.notEqual(eventFingerprint(a),eventFingerprint(b));
+ assert.notEqual(canonicalEventClaim(a),canonicalEventClaim(b));
+ assert.equal(eventFingerprint(a),eventFingerprint(b));
+});
+
+test("different event types or UTC day buckets do not share a fingerprint",()=>{
+ const a=claim();
+ const otherType=claim({event_identity:{...a.event_identity,event_type:"conflict_escalation"}});
+ const otherDay=claim({event_identity:{...a.event_identity,occurred_at:"2026-11-15T00:00:00.000Z"}});
+ assert.notEqual(eventFingerprint(a),eventFingerprint(otherType));
+ assert.notEqual(eventFingerprint(a),eventFingerprint(otherDay));
 });
 
 test("reject category mismatch and ISO3 outside the canonical 250 entity set",()=>{

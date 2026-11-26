@@ -39,28 +39,29 @@ export function canonicalEventClaim(original){
 
 function streamIdentity(original){
  const {identity}=identityOf(original);
- const claim=canonicalEventClaim(original);
+ const eventType=String(identity.event_type).toUpperCase();
+ const utcDay=identity.occurred_at.slice(0,10).replaceAll("-","");
  const entities=["ACTOR","TARGET","LOCATION"].map((kind,index)=>
   kind+":"+sha(identity[["actor_id","target_id","location_id"][index]]).slice(0,32).toUpperCase()
  ).sort();
- return {event_key:"CLAIM:"+claim.toUpperCase(),entities};
+ return {event_key:`EVENT:${eventType}:${utcDay}`,entities};
 }
 
 /**
- * Build the exact stream-worker identity digest. The canonical private claim
- * hash is carried in event_key; the endpoint then hashes its own established
- * [country, category, event_key, entities] tuple without an alternate rule.
+ * Group independent evidence on the canonical event scope. The day is UTC
+ * because occurred_at is required to be a canonical Z timestamp. Detailed
+ * entity hashes remain separate claims for corroboration and attestation.
  */
 export function eventFingerprint(original){
- const {identity}=identityOf(original),{event_key,entities}=streamIdentity(original);
+ const {identity}=identityOf(original),{event_key}=streamIdentity(original);
  return sha(JSON.stringify([identity.country_iso3,
-  canonicalRiskStreamCategory(original.category),event_key,entities]));
+  canonicalRiskStreamCategory(original.category),event_key]));
 }
 
 export function eventIdentityFields(original){
  const {identity}=identityOf(original);
  const {event_key,entities}=streamIdentity(original);
  return {event_key,entities,event_fingerprint:sha(JSON.stringify([
-  identity.country_iso3,canonicalRiskStreamCategory(original.category),event_key,entities
+  identity.country_iso3,canonicalRiskStreamCategory(original.category),event_key
  ]))};
 }

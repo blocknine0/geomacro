@@ -13,6 +13,7 @@ import {issueUnsignedDailyNewsBatch,pruneUnsignedDailyNewsGros} from "./risk-str
 import {parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {verifyGeoMacroSevenDayHistory} from "./risk-stream-seven-day-chain.mjs";
 import {isHot50RiskGateWatchCell} from "./hot50-telegram-watch-filter.mjs";
+import {resignExpiredRiskStreamGro} from "./risk-stream-gro-resigner.mjs";
 
 export const HOT50_STREAM_CATEGORIES=Object.freeze([
  "GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
@@ -73,6 +74,10 @@ export async function verifyHot50SignedGroReadbacks(rows,env,now=Date.now()){
   let p;
   try{p=JSON.parse(row.payload_json)}catch{continue}
   const originalIds=p.source_originals;
+  const standardGroId=Array.isArray(originalIds)?await hash(JSON.stringify(originalIds)):null;
+  const resignedGroId=HEX64.test(p.supersedes_gro_id??"")?
+   await hash("geomacro.risk-stream-resigned-gro.v1\n"+p.supersedes_gro_id+
+    "\n"+row.payload_sha256):null;
   if(p.schema!=="geomacro.event-stream-gro.v1"||
      p.subject?.type!=="COUNTRY"||p.subject.id!==row.country_iso3||
      p.category!==row.category||p.event_fingerprint!==row.event_fingerprint||
@@ -80,7 +85,7 @@ export async function verifyHot50SignedGroReadbacks(rows,env,now=Date.now()){
      !Array.isArray(originalIds)||originalIds.length!==2||
      originalIds.some(x=>!HEX64.test(x))||
      originalIds[0]>=originalIds[1]||
-     await hash(JSON.stringify(originalIds))!==row.gro_id||
+     (standardGroId!==row.gro_id&&resignedGroId!==row.gro_id)||
      p.customer_delivery_authorized!==false||p.charged!==false||
      p.execution_authorized!==false||p.certified_risk_index!==false||
      p.evidence_and_confidence?.corroborated_originals!==2||
@@ -242,9 +247,10 @@ async function loadPulse(db,targets,now,telegramTriggers=[]){
    "country_iso3 IN (SELECT value FROM json_each(?)) "+
    "AND published_at>=? AND published_at<=? LIMIT 401",[countries,cutoff,until]),
   boundedRead(db,"SELECT gro_id,country_iso3,category,event_fingerprint,expires_at,"+
-   "payload_json,payload_sha256,signature_b64 "+
+   "payload_json,payload_sha256,signature_b64,created_at "+
    "FROM risk_stream_signed_gro WHERE country_iso3 IN "+
-   "(SELECT value FROM json_each(?)) AND expires_at>? LIMIT 401",[countries,iso(now)]),
+   "(SELECT value FROM json_each(?)) AND (expires_at>? OR created_at>=?) "+
+   "ORDER BY expires_at DESC LIMIT 401",[countries,iso(now),iso(now-WINDOW)]),
   boundedRead(db,"SELECT country_iso3,category,next_search_at "+
    "FROM risk_stream_hot50_cell_snapshots WHERE country_iso3 IN "+
    "(SELECT value FROM json_each(?)) LIMIT 151",[countries])
@@ -464,6 +470,17 @@ export async function runHot50AutonomousStreamTick(env,{
   [regular[0],triggerTarget,...regular.slice(2)]:regular;
  const pool=await loadPulse(env.DB,targets,now,scopedTelegramTriggers);
  const storedGroRows=pool.signed.length;
+ const refreshedGroIds=new Set(),refreshedRows=[];
+ for(const row of pool.signed.filter(x=>Date.parse(x.expires_at)<=now)){
+  try{
+   const refreshed=await resignExpiredRiskStreamGro(env,row.gro_id,{now,row});
+   if(refreshed.status==="GRO_RESIGNED_WITH_CURRENT_EVIDENCE"||
+      refreshed.status==="GRO_ALREADY_RESIGNED"){
+    refreshedGroIds.add(row.gro_id);refreshedRows.push(refreshed.row);
+   }
+  }catch{/* expired evidence stays rejected by the normal signature/freshness verifier */}
+ }
+ pool.signed=[...pool.signed.filter(x=>!refreshedGroIds.has(x.gro_id)),...refreshedRows];
  pool.signed=await verifyHot50SignedGroReadbacks(pool.signed,env,now);
  let basic=0,internalStandard=0,searches=0,leads=0,held=0,complexReady=0;
  let dailyNewsSigned=0,dailyNewsState="GRO_SIGNING_PENDING";
@@ -528,6 +545,7 @@ export async function runHot50AutonomousStreamTick(env,{
   basic_research_cells:basic,internal_signed_standard_cells:internalStandard,
   standard_hold_cells:held,complex_verified_cells:complexReady,
   rejected_unsigned_or_tampered_gro_rows:storedGroRows-pool.signed.length,
+  internal_gros_resigned:refreshedRows.length,
   global_search_probes:searches,index_leads_saved:leads,
   unsigned_news_gro_created:unsignedNewsCreated,
   unsigned_news_gro_idempotent:unsignedNewsIdempotent,

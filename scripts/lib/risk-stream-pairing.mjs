@@ -1,4 +1,4 @@
-import {canonicalRiskStreamCategory,eventFingerprint,eventIdentityFields,normalizedEventIdentity}
+import {canonicalRiskStreamCategory,eventFingerprint,normalizedEventIdentity}
  from "./risk-stream-event-fingerprint.mjs";
 import {RISK_STREAM_CATEGORY_ROLES} from "./risk-stream-source-rights-manifest.mjs";
 import {createHash} from "node:crypto";
@@ -10,7 +10,7 @@ const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
 const PARENT=/^[a-z0-9_.:-]{1,100}$/u;
 const HEX=/^[a-f0-9]{64}$/u;
 
-/** Pair only independent, exact-claim originals; disputes/retractions veto a group. */
+/** Pair independent originals on the canonical country/category/type/day scope. */
 export function pairRiskStreamOriginals(originals,now=Date.now()){
  const current=now instanceof Date?now.getTime():typeof now==="number"?now:Date.parse(now);
  if(!Number.isFinite(current)||!Array.isArray(originals))fail("INPUT_INVALID");
@@ -49,8 +49,6 @@ export function pairRiskStreamOriginals(originals,now=Date.now()){
        (y.country_iso3??normalizedEventIdentity(y).country_iso3)||
       x.source_id===y.source_id||x.publisher_root_domain===y.publisher_root_domain||
       x.parent_media_entity===y.parent_media_entity||
-      !eventIdentityFields(x).entities.some(entity=>
-       eventIdentityFields(y).entities.includes(entity))||
       Math.abs(a.at-b.at)>WINDOW_48H||
       !required.every(role=>[x.source_role,y.source_role].includes(role)))continue;
    if(typeof x.raw_payload!=="string"||x.raw_payload.length<16||x.raw_payload.length>8000||

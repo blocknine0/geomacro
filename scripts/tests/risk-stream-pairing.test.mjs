@@ -27,6 +27,15 @@ test("pairs two independent required-role publishers for the same claim",()=>{
  assert.equal(result.pairs[0].items.length,2);
 });
 
+test("pairs independent reports on canonical country/category/type/UTC-day scope despite entity-label drift",()=>{
+ const [a,b]=pair();
+ b.event_identity={...b.event_identity,actor_id:"central_bank",target_id:"policy_rate",
+  location_id:"national_capital"};
+ const result=pairRiskStreamOriginals([a,b],now);
+ assert.equal(result.pairs.length,1);
+ assert.equal(result.pairs[0].state,"QUALIFIED_PAIR");
+});
+
 test("same parent media entity (syndicated copies) is never paired",()=>{
  const [a,b]=pair();b.parent_media_entity=a.parent_media_entity;
  assert.equal(pairRiskStreamOriginals([a,b],now).pairs.length,0);

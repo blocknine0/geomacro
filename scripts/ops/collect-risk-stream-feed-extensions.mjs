@@ -67,7 +67,7 @@ const SIGNAL_THEMES=[
 ];
 const COUNTRY_ASSETS={AUS:"AUD rates, iron ore and LNG",COD:"cobalt, copper and refined-metal flows",
  KAZ:"uranium, copper and KZT funding",ZMB:"copper, cobalt and ZMW funding"};
-function buildDerivedSignal({theme,country,corridor,corpus,category,eventType}){
+export function buildDerivedSignal({theme,country,corridor,corpus,category,eventType}){
  const place=country+(corridor?` via ${corridor}`:"");
  const assets=Object.entries({cobalt:/cobalt/iu,copper:/copper/iu,lithium:/lithium/iu,
   nickel:/nickel/iu,"rare-earth oxides":/rare earth/iu,uranium:/uranium/iu,
@@ -106,10 +106,10 @@ function buildDerivedSignal({theme,country,corridor,corpus,category,eventType}){
   market:`Track ${assets}, mine/refinery utilization, export volumes and benchmark-to-spot premiums.`,
   watch:`Over 24–72h, verify facility status, production guidance, port dispatches and measurable premium or futures moves.`};
  else signal={
-  what:`${place}: ${eventType.replaceAll("_"," ")} may change operating and policy exposure.`,
-  why:`The channel runs through ${assets}, cross-border access and counterparties; confirm implementation before repricing.`,
-  market:`Monitor ${assets}, trade volumes, local FX and sovereign funding spreads.`,
-  watch:`Over 24–72h, check dated official notices, confirmed volume changes, price spreads and settlement delays.`};
+  what:`${place}: ${eventType.replaceAll("_"," ")} is linked to ${assets}; exposure remains conditional on a verified operating or policy change.`,
+  why:`The identified transmission runs through ${assets}, cross-border access and counterparties; confirm an effective notice or measured flow change before repricing.`,
+  market:`Track dated changes in ${assets}, relevant trade volumes, local FX and sovereign funding spreads against their published reference periods.`,
+  watch:`Over 24–72h, verify the effective date, a measured volume or price delta, and any settlement restriction; invalidate if the notice is withdrawn or the reference data is revised.`};
  return signal;
 }
 export const COUNTRY_TERMS={USA:["united states","united states of america","u.s.","u.s.a.","usa","american"],GBR:["united kingdom","great britain","britain","british","english","uk"],

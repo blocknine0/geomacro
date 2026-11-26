@@ -47,9 +47,9 @@ function canonicalStreamIdentity(candidate){
  ].sort();
  if(entities.length>12||new Set(entities).size!==entities.length||
     entities.some(x=>!/^[A-Z0-9:_-]{2,64}$/u.test(x)))fail();
- const eventKey="CLAIM_"+claim.toUpperCase();
+ const eventKey=`EVENT:${event.event_type.toUpperCase()}:${event.occurred_at.slice(0,10).replaceAll("-","")}`;
  const eventFingerprint=sha(canonical([
-  event.country_iso3,category,eventKey,entities
+  event.country_iso3,category,eventKey
  ]));
  return {claim,category,eventKey,entities,eventFingerprint};
 }

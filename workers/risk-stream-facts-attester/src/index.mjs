@@ -77,7 +77,7 @@ async function validateOriginal(event,now){
     event.kind!=="VERIFIED_ORIGINAL"||event.proof!==null||
     !/^[A-Z]{3}$/u.test(event.country_iso3??"")||!CATEGORIES.has(event.category)||
     !["RSS","WEBSITE_INTELLIGENCE","OFFICIAL_API"].includes(event.feed_origin)||
-    !/^[A-Z0-9][A-Z0-9:_-]{6,119}$/u.test(event.event_key??"")||
+    !/^EVENT:[A-Z][A-Z0-9_]{1,63}:\d{8}$/u.test(event.event_key??"")||
     !HEX.test(event.event_fingerprint??"")||!SOURCE.test(event.source_id??"")||
     !DOMAIN.test(event.publisher_root_domain??"")||
     typeof event.parent_media_entity!=="string"||!PARENT.test(event.parent_media_entity)||
@@ -128,7 +128,7 @@ async function validateOriginal(event,now){
  if(await sha(event.raw_payload)!==event.original_page_sha256)
   fail("ORIGINAL_PAGE_HASH_MISMATCH");
  const fingerprint=await sha(JSON.stringify([
-  event.country_iso3,event.category,event.event_key,event.entities
+  event.country_iso3,event.category,event.event_key
  ]));
  if(fingerprint!==event.event_fingerprint)fail("EVENT_FINGERPRINT_MISMATCH");
 }
