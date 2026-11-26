@@ -5,8 +5,8 @@
   "registered_sources": 453,
   "new_http_requests": 18,
   "statuses": {
-    "WORKING": 184,
-    "NO_NEW_EVENT": 33,
+    "WORKING": 185,
+    "NO_NEW_EVENT": 32,
     "SOURCE_UNAVAILABLE": 4,
     "UNSUPPORTED_FORMAT": 18,
     "RIGHTS_PENDING": 0,
