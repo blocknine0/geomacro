@@ -251,7 +251,7 @@ async function websiteIntelligenceBriefAnswer(question: string): Promise<HybridA
     source_identity_exposed: false,
     durable_live_storage_write: false,
     real_time_message: "Grounded in live website intelligence archive.",
-    intelligence_tier: "website_intelligence_brief",
+    intelligence_tier: "official_observation_unscored",
     signed_gro_generated: false,
     independent_same_event_verification: false,
     execution_authorized: false,
@@ -365,7 +365,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     const officialAns = (await boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500)
       .catch(()=>null));
     if (officialAns && !officialAns.insufficient_evidence) return officialAns;
-    const briefAns = await boundedAskAdapter("website_briefs",()=>websiteIntelligenceBriefAnswer(question),4_000).catch(()=>null);
+    const briefAns = await boundedAskAdapter("official_news",()=>websiteIntelligenceBriefAnswer(question),4_000).catch(()=>null);
     if (briefAns) return briefAns;
     return officialAns ?? noCurrentPublisherNewsAnswer(newsRequest.scopeLabel);
   }
@@ -391,7 +391,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     b.evidence.length-a.evidence.length||
     Number(a.low_confidence)-Number(b.low_confidence));
   if (candidates[0] && !candidates[0].insufficient_evidence) return candidates[0];
-  const briefFallback = await boundedAskAdapter("website_briefs",()=>websiteIntelligenceBriefAnswer(question),4_000).catch(()=>null);
+  const briefFallback = await boundedAskAdapter("official_news",()=>websiteIntelligenceBriefAnswer(question),4_000).catch(()=>null);
   if (briefFallback) return briefFallback;
   return candidates[0]??noCurrentPublisherNewsAnswer();
 }
