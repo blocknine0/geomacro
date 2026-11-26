@@ -17,8 +17,8 @@ describe("Store, pricing API and D1 paid-credit parity: NO FUNDS",()=>{
   expect(m.customer_paid_api_activation_authorized).toBe(false);
   expect(m.payment_authorized).toBe(false);
   expect(m.prepaid_vs_direct_usdc).toBe("SEPARATE_BILLING_MODES_NO_IMPLIED_USDC_PER_CREDIT");
-  expect(m.one_time_credit_packs.map(x=>[x.price_usd,x.credits])).toEqual([[15,1500],[30,3000],[60,6000]]);
-  expect(m.subscriptions).toEqual([]);
+  expect(m.one_time_credit_packs).toEqual(GEOMACRO_ONE_TIME_PACKS);
+  expect(m.subscriptions).toEqual(GEOMACRO_SUBSCRIPTIONS);
   expect(GEOMACRO_SUBSCRIPTIONS.map(x=>[x.price_usd,x.credits_per_30_days]))
    .toEqual([[9,900],[29,2900],[99,9900]]);
   expect(GEOMACRO_ONE_TIME_PACKS.map(x=>[x.price_usd,x.credits]))
