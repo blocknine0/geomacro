@@ -24,11 +24,23 @@ import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,GEOMAC
 export const GEOMACRO_PAID_PRICING_PATH="/api/v1/pricing" as const;
 export const GEOMACRO_PAID_PRICING_SCHEMA="geomacro.public-capability-price-catalog.v2" as const;
 
-export function publicGeomacroPaidPricingManifest(){
+const LIVE_USDC_CREDIT_PACKS = [
+  {id:"risk-gate-small",name:"Small",price_usd:15,credits:1500,amount_atomic:"15000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+  {id:"risk-gate-standard",name:"Standard",price_usd:30,credits:3000,amount_atomic:"30000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+  {id:"risk-gate-best",name:"Best",price_usd:60,credits:6000,amount_atomic:"60000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
+] as const;
+
+export function publicGeomacroPaidPricingManifest(
+  env: Record<string, string | undefined> = process.env,
+){
+  const paidApiActivationAuthorized =
+    String(env.GEOMACRO_COMMERCIAL_LAUNCH_ACK ?? "").trim() === "I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH" &&
+    String(env.GEOMACRO_API_CREDENTIAL_PEPPER ?? "").trim().length >= 32;
   const rails=Object.values(GEOMACRO_USDC_NETWORKS);
   const catalog=publicCapabilityPricingCatalog();
   const capabilities=catalog.map(({capability,variants,launch_status,new_sales_allowed})=>({
-    launch_status,new_sales_allowed,
+    launch_status: paidApiActivationAuthorized && capability === "risk_gate_bundle" ? ("ELIGIBILITY_GATED" as const) : launch_status,
+    new_sales_allowed: paidApiActivationAuthorized && capability === "risk_gate_bundle" ? true : new_sales_allowed,
     capability,
     variants:variants.map(price=>({
       variant:price.variant,
@@ -59,7 +71,7 @@ export function publicGeomacroPaidPricingManifest(){
     pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
     pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_SCHEDULE" as const,
     launch_pricing_version:GEOMACRO_LOW_BARRIER_VERSION,
-    subscriptions:GEOMACRO_SUBSCRIPTIONS,
+    subscriptions:[],
     prepaid_credit_contract_version:GEOMACRO_CREDIT_CONTRACT_VERSION,
     prepaid_credit_costs:GEOMACRO_CREDIT_COSTS,
     prepaid_risk_gate_credit_costs:GEOMACRO_RISK_GATE_CREDIT_COSTS,
@@ -67,9 +79,9 @@ export function publicGeomacroPaidPricingManifest(){
     prepaid_customer_meterable_capabilities:GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES,
     prepaid_credit_billing_unit:"PER_QUALIFIED_DELIVERY" as const,
     prepaid_vs_direct_usdc:"SEPARATE_BILLING_MODES_NO_IMPLIED_USDC_PER_CREDIT" as const,
-    customer_paid_api_activation_authorized:false as const,
+    customer_paid_api_activation_authorized:paidApiActivationAuthorized,
     corridor_enterprise_discovery:corridorEnterprisePricingDiscovery(),
-    one_time_credit_packs:GEOMACRO_ONE_TIME_PACKS,
+    one_time_credit_packs:LIVE_USDC_CREDIT_PACKS,
     usdc_credit_packs:[
       {id:"risk-gate-small",name:"Small",price_usd:15,credits:1500,amount_atomic:"15000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
       {id:"risk-gate-standard",name:"Standard",price_usd:30,credits:3000,amount_atomic:"30000000",checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const},
@@ -80,8 +92,8 @@ export function publicGeomacroPaidPricingManifest(){
     card_to_usdc_products:GEOMACRO_CARD_TO_USDC_PRODUCTS,
     paypal_fiat_checkout:GEOMACRO_PAYPAL_READINESS,
     paypal_product_catalog:GEOMACRO_PAYPAL_PRODUCT_CATALOG,
-    subscription_checkout_status:GEOMACRO_SUBSCRIPTION_CHECKOUT_STATUS,
-    credit_pack_checkout_status:GEOMACRO_CREDIT_PACK_CHECKOUT_STATUS,
+    subscription_checkout_status:"RETIRED_NO_SUBSCRIPTION_REQUIRED" as const,
+    credit_pack_checkout_status:"DIRECT_USDC_MAINNET_LIVE" as const,
     currency:"USDC" as const,
     usdc_decimals:6 as const,
     pricing_model:"MONTHLY_CREDITS_ONE_TIME_PACKS_AND_CAPABILITY_X402" as const,
@@ -136,7 +148,7 @@ export function publicGeomacroPaidPricingManifest(){
     no_extra_signed_object_fee_with_risk_gate_bundle:true as const,
     raw_upstream_data_delivered:false as const,
     source_names_and_urls_delivered:false as const,
-    live_commercial_product_available_by_price_listing:false as const,
+    live_commercial_product_available_by_price_listing:paidApiActivationAuthorized,
     x402_payment_requirement_issued:false as const,
     payment_authorized:false as const,
     money_transferred:false as const,
