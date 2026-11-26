@@ -21,7 +21,7 @@ describe("Risk Gate commercial control ordering", () => {
     expect(INSTITUTIONAL).not.toContain("Risk Gate returns bounded decision context");
     expect(INSTITUTIONAL).not.toContain("CONTINUE");
     expect(RISK_GATE).toContain("execution_authorized = false");
-    expect(RISK_GATE).toContain("Risk Gate provides decision support only; execution_authorized: false.");
+    expect(RISK_GATE).toContain("Decision support only; execution_authorized: false.");
     expect(RISK_GATE).toContain("The customer keeps identity, permissions, policy enforcement and final execution.");
   });
 });
