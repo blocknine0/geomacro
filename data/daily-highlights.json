@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-26T10:30:01.856Z",
+  "generated_at": "2026-11-26T14:31:03.348Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "macro-6e1ab892",
+      "category": "macro",
+      "title": "Geomacro finds Tariffs: cut to give breathing space to families with the food shop",
+      "why_it_matters": "Official releases concerning currency reserves, external balances, market rates, trade measures and industrial conditions can inform macro context. Actual figures, implementation and market direction require separate verification.",
+      "what_changed": "Tariffs cut to give breathing space to families with the food shop.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "global FX, trade and industrial conditions",
+      "published_at": "2026-11-26T10:58:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-85d079ab",
       "category": "macro",

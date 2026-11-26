@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-26T10:30:01.856Z",
+  "checked_at": "2026-11-26T14:31:03.348Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -15,10 +15,10 @@
   "item_count": 600,
   "counts": {
     "geopolitics": 300,
-    "macro": 231,
-    "rare_earth": 69
+    "macro": 232,
+    "rare_earth": 68
   },
-  "source_native_ids_sha256": "cd338d4b2212ba369911b885b9de3c0a978cea8c0bd8e614a2c4411ae7cf5c7d",
+  "source_native_ids_sha256": "271c0a78da15be3b21eef3ce534127de3f16c7bcd7cf5ca9c4dcbe77a6c9e8ed",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-d76520de",
+      "category": "geopolitics",
+      "title": "Geomacro finds Foreign Secretary: welcomed next British Council Chair · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Foreign Secretary welcomed next British Council Chair. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-26T13:30:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6e1ab892",
+      "category": "macro",
+      "title": "Geomacro finds Tariffs: cut to give breathing space to families with the food shop",
+      "why_it_matters": "Official releases concerning currency reserves, external balances, market rates, trade measures and industrial conditions can inform macro context. Actual figures, implementation and market direction require separate verification.",
+      "what_changed": "Tariffs cut to give breathing space to families with the food shop.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "global FX, trade and industrial conditions",
+      "published_at": "2026-11-26T10:58:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-359dbd00",
       "category": "rare_earth",
@@ -12578,48 +12616,6 @@
       "event_action": "Reported Exposure to Supply Constraints",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-24T19:45:52.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-357232ce",
-      "category": "geopolitics",
-      "title": "GeoMacro Geopolitics Brief · Sanctions And Trade Restrictions — Germany (DEU)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported exposure to supply constraints by public authorities and security actors, affecting sanctions and trade restrictions in Germany; direction is tightening (tightening or disruption pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: tightening sanctions and trade restrictions pressure in Germany → Downstream effect: routing, transit continuity and insurance costs may shift → Price impact channel: regional freight and war-risk insurance rates. Action Posture: REDUCE_LIMIT.",
-      "topic": "sanctions and trade restrictions",
-      "geography": "Germany",
-      "country_iso3": "DEU",
-      "corridor": null,
-      "event_direction": "tightening",
-      "event_action": "Reported Exposure to Supply Constraints",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-24T19:43:55.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-a82c8d37",
-      "category": "rare_earth",
-      "title": "GeoMacro Critical Minerals Brief · Rare-Earth Supply — France (FRA)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported update by mineral regulators and supply-chain operators, affecting rare-earth supply in France; direction is uncertain (a watchpoint with direction not yet established).",
-      "why_it_matters": "WHY IT MATTERS — Risk: uncertain rare-earth supply pressure in France → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REQUIRE_APPROVAL.",
-      "topic": "rare-earth supply",
-      "geography": "France",
-      "country_iso3": "FRA",
-      "corridor": null,
-      "event_direction": "uncertain",
-      "event_action": "Reported Update",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-24T19:43:32.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
