@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-26T20:01:19.161Z",
+  "checked_at": "2026-11-26T23:19:56.343Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -15,10 +15,10 @@
   "item_count": 600,
   "counts": {
     "geopolitics": 298,
-    "macro": 232,
-    "rare_earth": 70
+    "macro": 231,
+    "rare_earth": 71
   },
-  "source_native_ids_sha256": "f085ec74c3444fdddb852a30f1bb450b918878a693945465cd49bfcdb47c0135",
+  "source_native_ids_sha256": "da4c7fc7df4b8dcb32ee1d1fcce90392f967910e8b0515bfd44bf277f3b09dfd",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,27 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-4d1bbc66",
+      "category": "rare_earth",
+      "title": "GeoMacro Critical Minerals Brief · Critical-Mineral Supply & Processing — Canada (CAN)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported review or discussion by mineral processors and refining operators, affecting Critical-Mineral Supply & Processing in Canada; direction is uncertain (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: uncertain Critical-Mineral Supply & Processing pressure in Canada → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REQUIRE_APPROVAL.",
+      "topic": "Critical-Mineral Supply & Processing",
+      "geography": "Canada",
+      "country_iso3": "CAN",
+      "corridor": null,
+      "event_direction": "uncertain",
+      "event_action": "Reported Review or Discussion",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-26T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-38b9c86b",
       "category": "rare_earth",
@@ -12595,27 +12616,6 @@
       "event_action": "Reported Update",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-24T19:52:21.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-fc4cca20",
-      "category": "macro",
-      "title": "GeoMacro Macro/FX Brief · Monetary Policy — Canada (CAN)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported increase by central-bank, treasury or currency-policy actors, affecting monetary policy in Canada; direction is easing (easing or restoration pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: easing monetary policy pressure in Canada → Downstream effect: local funding, settlement and import costs may shift → Price impact channel: CAD/USD and Canada sovereign spreads. Action Posture: CONTINUE.",
-      "topic": "monetary policy",
-      "geography": "Canada",
-      "country_iso3": "CAN",
-      "corridor": null,
-      "event_direction": "easing",
-      "event_action": "Reported Increase",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-24T19:50:42.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
