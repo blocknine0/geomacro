@@ -200,10 +200,16 @@ test("anonymous bundle served from source-native-time-validated R2 without any D
  assert.deepEqual(decoded.first_ingest,[]);
  assert.deepEqual(decoded.signals,[]);
  assert.equal(r2Reads,1);assert.equal(reads,0);
+ // A last-known (90-minute-old) snapshot is explicitly NOT an acceptable
+ // canonical bundle: route processing must fall through to fresh D1.
  const old=await readPublicNewsR2Snapshot(req,env,now+90*60_000);
- assert.equal(old.status,200);
- assert.equal(old.headers.get("X-GeoMacro-Canonical-Status"),"last-known-snapshot");
- assert.equal(old.headers.get("X-GeoMacro-Snapshot-At"),time);
+ assert.equal(old,null);
+ // The separate degraded/latest alias still advertises last-known staleness.
+ const degraded=await readPublicNewsR2Snapshot(
+   new Request(base+"/v1/public/latest-feed.json"),env,now+90*60_000);
+ assert.equal(degraded.status,200);
+ assert.equal(degraded.headers.get("X-GeoMacro-Canonical-Status"),"last-known-snapshot");
+ assert.equal(degraded.headers.get("X-GeoMacro-Snapshot-At"),time);
  const invalid=await readPublicNewsR2Snapshot(req,{
   ...env,GEOMACRO_SOURCE_SHA:"b".repeat(40)},now);
  assert.equal(invalid,null,"mismatched worker SHA must not serve old snapshots");

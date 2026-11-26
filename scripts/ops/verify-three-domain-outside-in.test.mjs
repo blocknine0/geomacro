@@ -46,6 +46,32 @@ test("reject public D1 original date conflict or missing category proof",()=>{
  const y=fixture();delete y.htmlByCategory.macro;
  assert.throws(()=>verifyThreeDomainLivePublication(y),/THREE_DOMAIN_LIVE_WEBSITE_HTML_macro/);
 });
+test("mismatched public D1 journal logs counts-only original ID/date/status classes",()=>{
+ const x=fixture();
+ x.journal.signals[0].published_at="2026-11-01T21:00:00.000Z";
+ x.journal.signals[1].status="official_release_observed_unscored";
+ x.journal.signals.splice(2,1);
+ x.journal.returned_rows=2;
+ const logs=[];
+ const original=console.error;
+ console.error=(msg)=>logs.push(String(msg));
+ try{
+  assert.throws(()=>verifyThreeDomainLivePublication(x),
+    /THREE_DOMAIN_LIVE_D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_geopolitics/);
+ }finally{console.error=original;}
+ assert.equal(logs.length,1);
+ const result=JSON.parse(logs[0]);
+ assert.equal(result.schema,"geomacro.public-journal-static-parity-diagnostic.v1");
+ assert.equal(result.category,"geopolitics");
+ assert.equal(result.static_active_rows,1);
+ assert.equal(result.original_date_conflicts,1);
+ assert.equal(result.missing_original_ids,0);
+ assert.equal(result.original_ids_logged,0);
+ assert.equal(result.extra_d1_reads,0);
+ assert.equal(result.private_source_data_logged,false);
+ assert.equal(logs[0].includes("geopolitics-00000001"),false);
+ assert.equal(logs[0].includes("2026-11-01T21"),false);
+});
 test("reject mismatched static cohort and 72h-expired proof",()=>{
  const x=fixture();x.coverage.checked_at="2026-11-01T22:00:00.000Z";
  assert.throws(()=>verifyThreeDomainLivePublication(x),/THREE_DOMAIN_LIVE_STATIC_COHORT_CLOCK_MISMATCH/);
