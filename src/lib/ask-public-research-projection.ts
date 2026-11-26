@@ -24,11 +24,13 @@ export function publicAskResearchProjection<T extends {
 }>(answer:T):T & {execution_authorized:false;decision_support_boundary:string}{
   const {intelligence_tier:_internalStatus,...safe}=answer;
   const cleanView=publicText(answer.geomacro_view);
-  const visibleBoundary=/decision support only/iu.test(cleanView)
-    ? /not execution authorization/iu.test(cleanView)
-      ? cleanView.replace(/not execution authorization/iu,"not execution authorization or a signed Risk Gate")
-      : cleanView+" "+DECISION_BOUNDARY
-    : (cleanView+" "+DECISION_BOUNDARY).trim();
+  const visibleBoundary=/not execution authorization or a signed Risk Gate/iu.test(cleanView)
+    ? cleanView
+    : /decision support only/iu.test(cleanView)
+      ? /not execution authorization/iu.test(cleanView)
+        ? cleanView.replace(/not execution authorization/iu,"not execution authorization or a signed Risk Gate")
+        : cleanView+" "+DECISION_BOUNDARY
+      : (cleanView+" "+DECISION_BOUNDARY).trim();
   return {
     ...safe,
     summary:publicText(answer.summary),
