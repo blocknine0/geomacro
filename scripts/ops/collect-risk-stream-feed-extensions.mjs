@@ -23,6 +23,8 @@ const GDELT_FIPS_COUNTRY={UK:"GBR",TU:"TUR",KS:"KOR",IZ:"IRQ",AE:"ARE",CH:"CHN",
  RP:"PHL",BG:"BGD",MG:"MNG",BM:"MMR"};
 const CATEGORY_BY_FEED={conflict:"GEOPOLITICS",macro_economics:"MACRO_FX",
  commodities:"CRITICAL_MINERALS"};
+const RISK_CATEGORY_BY_RIGHTS={GEOPOLITICS:"conflict",MACRO_FX:"macro_economics",
+ CRITICAL_MINERALS:"commodities"};
 export const CRITICAL_MINERAL_SUPPLY_TERMS=/rare earth|ndpr|dysprosium|terbium|lithium|cobalt|nickel|copper|graphite|gallium|germanium|antimony|tungsten|manganese|vanadium|titanium|uranium|potash|phosphate|polysilicon|silicon|zinc|alumin(?:um|ium)|bauxite|alumina|indium|tellurium|bismuth|chromium|molybdenum|niobium|tantalum|zirconium|beryllium|scandium|platinum|palladium|rhodium|pgm|battery supply chain|semiconductor mineral|critical raw(?: material)?|smelter|smelting|refining capacity|mining royalty|critical mineral|mining|\bmine\b|refining|refinery|ore|metal|battery|supply chain|export control/iu;
 const MACRO_FX_TERMS=/central bank|interest rate|fx reserve|currency|sovereign debt|bond yield|inflation|capital controls|crypto|cryptocurrency|bitcoin|\bbtc\b|ethereum|\beth\b|stablecoin|\busdc\b|\busdt\b|cbdc|digital asset|digital currency|\bdefi\b|tokenization|\bvasp\b|crypto exchange|etf flow/iu;
 const CATEGORY_TERMS={
@@ -624,22 +626,58 @@ function normalizedEntryCandidates(entry,feed,rights,page,feedOrigin="RSS"){
 function load(){
  const rights=JSON.parse(readFileSync(RIGHTS_PATH,"utf8"));
  const feeds=JSON.parse(readFileSync(FEEDS_PATH,"utf8"));
+ const officialAtom=JSON.parse(readFileSync("config/official-ogl-atom-sources.json","utf8"));
  if(rights.schema!=="geomacro.risk-stream-source-rights-reviewed.v1"||
     !Array.isArray(rights.entries)||feeds.schema!=="geomacro.unified-rss-feed-registry.v1"||
-    !Array.isArray(feeds.sources))fail("REGISTRY_INVALID");
- return {rights,feeds};
+    !Array.isArray(feeds.sources)||officialAtom.schema!=="geomacro.official-free-atom-license-registry.v1"||
+    !Array.isArray(officialAtom.sources))fail("REGISTRY_INVALID");
+ return {rights,feeds,officialAtom};
+}
+
+/**
+ * Keep the reviewed rights manifest as the only source-approval authority.
+ * The dedicated official OGL inventory is a fallback endpoint catalog for
+ * approved UK Atom feeds when a feed is absent from the broader RSS catalog.
+ * Its license and terms references must match the reviewed row exactly.
+ */
+export function reviewedFeedSources({rightsManifest,feeds,officialAtomSources=[]}={}){
+ if(!Array.isArray(rightsManifest?.entries)||!Array.isArray(feeds?.sources)||
+    !Array.isArray(officialAtomSources))fail("REGISTRY_INVALID");
+ const approved=new Map(rightsManifest.entries.filter(row=>row.status==="APPROVED")
+  .map(row=>[row.source_id,row]));
+ const byId=new Map(feeds.sources.filter(row=>typeof row?.name==="string")
+  .map(row=>[row.name,row]));
+ for(const row of officialAtomSources){
+  const sourceId=row?.source_id,rights=approved.get(sourceId);
+  if(!rights||byId.has(sourceId)||row.ingest_transport!=="DIRECT_OFFICIAL_ATOM"||
+     row.telegram_content_license!==false||row.license!==rights.rights_evidence?.licence_url||
+     row.rights_reference!==rights.rights_evidence?.terms_url||
+     !Array.isArray(rights.categories)||!rights.categories.includes(row.category))continue;
+  let url;try{url=new URL(row.feed_url)}catch{continue}
+  if(url.protocol!=="https:"||!(url.hostname===rights.publisher_root_domain||
+     url.hostname.endsWith("."+rights.publisher_root_domain)))continue;
+  const category=RISK_CATEGORY_BY_RIGHTS[row.category];if(!category)continue;
+  byId.set(sourceId,{name:sourceId,url:url.href,source_type:"official",risk_category:category,
+   risk_stream_item_licensed:true,risk_stream_standard_item_license_candidate:true});
+ }
+ return [...byId.values()];
 }
 
 /** Read only approved, opt-in feeds; discard metadata-only entries before emitting JSONL. */
 export async function collectRiskStreamFeedExtensions({collector="direct",now=Date.now(),
- fetchImpl=fetch,rightsManifest,feeds,sourceRegistry,radarSignals=[]}={}){
+ fetchImpl=fetch,rightsManifest,feeds,officialAtomSources,sourceRegistry,radarSignals=[]}={}){
  if(!["direct","private","render"].includes(collector))fail("COLLECTOR_INVALID");
- const loaded=rightsManifest&&feeds?{rights:rightsManifest,feeds}:{...load()};
+ const disk=rightsManifest&&feeds?null:load();
+ const loaded={rights:rightsManifest??disk.rights,feeds:feeds??disk.feeds,
+  officialAtom:officialAtomSources??disk?.officialAtom};
  const manifest=loaded.rights,registry=loaded.feeds;
+ const reviewedSources=reviewedFeedSources({rightsManifest:manifest,feeds:registry,
+  officialAtomSources:Array.isArray(loaded.officialAtom)?loaded.officialAtom:
+   loaded.officialAtom?.sources??[]});
  const approved=new Map(manifest.entries.filter(row=>row.status==="APPROVED")
   .map(row=>[row.source_id,row]));
  const sources=sourceRegistry??manifest.entries.map(row=>({...row,enabled:1,commercial_rights_approved:1}));
- const priority=prioritizeApprovedAnchorSources(radarSignals,registry.sources.map(feed=>{
+ const priority=prioritizeApprovedAnchorSources(radarSignals,reviewedSources.map(feed=>{
   const rights=approved.get(feed.name);
   const sourceRow=sources.find(row=>(row.source_id??row.name)===feed.name);
   const country_iso3=SOURCE_COUNTRY[feed.name]??null;
