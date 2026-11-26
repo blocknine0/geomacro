@@ -479,7 +479,7 @@ export const Route = createFileRoute("/api/health")({
             production_data_authority: "backblaze-b2",
             production_data_runtime_configured: publicProduction.b2_runtime_configured,
             public_production: publicProduction,
-            commerce_control_plane: "cloudflare-durable-objects",
+            commerce_control_plane: "cloudflare-d1-control-plane",
             supabase_role: "ingestion-recovery-standby",
             supabase_recovery_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
             supabase_runtime_mode: geomacroSupabaseRuntimeMode(),
