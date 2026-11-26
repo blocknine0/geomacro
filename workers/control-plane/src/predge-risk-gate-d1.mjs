@@ -621,12 +621,14 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
        const ttl=Math.max(60,Math.min(604800,Math.floor(
         (Date.parse(paidCommercialLicense.envelope.payload.expires_at)-now)/1000)));
        const audienceTier=lockedTier==="complex_full"?"COMPLEX":lockedTier==="standard"?"STANDARD":"BASIC";
-       const rawDelta=Number(score.delta_vs_7d??0);
-       const deltaVs7d=Number.isFinite(rawDelta)?Math.max(-100,Math.min(100,rawDelta)):0;
+       const rawDelta=score.delta_vs_7d;
+       const deltaBaselineVerified=score.delta_vs_7d_status==="VERIFIED_7D_BASELINE"&&
+        Number.isFinite(rawDelta);
+       const deltaVs7d=deltaBaselineVerified?Math.max(-100,Math.min(100,rawDelta)):null;
        const audience=buildRiskStreamDualAudience({category:score.category,
         eventClass:score.event_class??"UNCLASSIFIED",score:result.risk.score,
         confidence:result.risk.confidence,horizonHours:24,ttlSeconds:ttl,
-        actionPosture:posture,tier:audienceTier,deltaVs7d,
+        actionPosture:posture,tier:audienceTier,deltaVs7d,deltaBaselineVerified,
         corroborationReady:Boolean(score.corroboration_ready),
         contagionCorridors:score.agent_decision?.contagion_corridors??[]});
        return {eligible_derived_score:score,agent_decision:audience.agent_decision,

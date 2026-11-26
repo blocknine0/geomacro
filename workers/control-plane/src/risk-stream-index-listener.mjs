@@ -40,10 +40,10 @@ export async function canonicalUntrustedIndexLead(e,{now=Date.now()}={}){
     !["RSS","GDELT_INDEX","PRIVATE_OSINT","AUTOMATED_SEARCH"].includes(e.source))
   error("LEAD_COUNTRY_CATEGORY_OR_SOURCE_INVALID");
  const recordHash=await hash(e.source+"\n"+e.source_record_id+"\n"+country);
- const eventKey="INDEX_"+recordHash.slice(0,40).toUpperCase();
+ const eventKey=`EVENT:${eventType.toUpperCase()}:${native.slice(0,10).replaceAll("-","")}`;
  const entities=["COUNTRY:"+country,"EVENT:"+recordHash.slice(0,12).toUpperCase()].sort();
  const id="untrusted_"+(await hash(e.source+"\n"+direct.host+"\n"+category)).slice(0,48);
- const fingerprint=await hash(JSON.stringify([country,category,eventKey,entities]));
+ const fingerprint=await hash(JSON.stringify([country,category,eventKey]));
  const role=ROLES[category];
  const label=eventType.replaceAll("_"," ").toLowerCase();
  return {

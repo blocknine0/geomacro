@@ -2,6 +2,8 @@ import {generateProgressiveRiskGateDecision,readProgressiveFacts,
  signProgressiveDecision,sevenDayRollupIsReady} from "./progressive-risk-gate.mjs";
 import {parseRequest,verifyHotGRO} from "./predge-risk-gate-d1.mjs";
 import {STORE_RISK_GATE_PRICE_CENTS} from "./store-risk-gate.mjs";
+import {resignExpiredRiskStreamGro} from "./risk-stream-gro-resigner.mjs";
+import {verifyHot50SignedGroReadbacks} from "./risk-stream-autonomous-hot50.mjs";
 
 const headers={"Cache-Control":"private,no-store","X-Content-Type-Options":"nosniff",
  "Vary":"Authorization"};
@@ -24,6 +26,23 @@ async function signedGroForStoreUsdc(db,env,subject,now){
  const row=await db.prepare(sql).bind(subject.id,at,at).first();
  return row?verifyHotGRO(row,env,subject,now):null;
 }
+const STREAM_CATEGORY=Object.freeze({geopolitics:"GEOPOLITICS",macro:"MACRO_FX",
+ critical_minerals:"CRITICAL_MINERALS"});
+async function reissuedStreamGroForStoreUsdc(db,env,subject,category,now){
+ if(subject.type!=="country"||!STREAM_CATEGORY[category])return null;
+ const row=await db.prepare("SELECT gro_id,country_iso3,category,event_fingerprint,"+
+  "expires_at,payload_json,payload_sha256,signature_b64,created_at "+
+  "FROM risk_stream_signed_gro WHERE country_iso3=? AND category=? "+
+  "AND expires_at<=? AND created_at>=? ORDER BY created_at DESC LIMIT 1")
+  .bind(subject.id,STREAM_CATEGORY[category],new Date(now).toISOString(),
+   new Date(now-72*3600000).toISOString()).first();
+ if(!row)return null;
+ try{
+  const refreshed=await resignExpiredRiskStreamGro(env,row.gro_id,{now,row});
+  const verified=await verifyHot50SignedGroReadbacks([refreshed.row],env,now);
+  return verified[0]??null;
+ }catch{return null;}
+}
 
 export async function storeRiskGateUsdcD1(request,env,now=Date.now()){
  if(request.method!=="POST")return json({ok:false,error:"METHOD_NOT_ALLOWED"},405);
@@ -41,17 +60,20 @@ export async function storeRiskGateUsdcD1(request,env,now=Date.now()){
  if(!VALID_NETWORKS.has(network)||!TX_RE.test(txHash)||!/^[1-9][0-9]*$/.test(amountAtomic))
   return json({ok:false,error:"INVALID_USDC_RECEIPT_BINDING"},400);
 
- let facts,decision;
+let facts,decision,streamGro=null,legacyGro=null;
  try{
   facts=await readProgressiveFacts(env.DB,parsed.subject,now,parsed.category);
-  let gro=null,history=false;
+  let history=false;
   if(parsed.tier==="complex_full"){
-   [gro,history]=await Promise.all([
+   [legacyGro,history]=await Promise.all([
     signedGroForStoreUsdc(env.DB,env,parsed.subject,now),
     sevenDayRollupIsReady(env,parsed.subject,now)
    ]);
+   if(!legacyGro)streamGro=await reissuedStreamGroForStoreUsdc(
+    env.DB,env,parsed.subject,parsed.category,now);
   }
-  decision=generateProgressiveRiskGateDecision(parsed,facts,parsed.tier,Boolean(gro),history,now);
+  decision=generateProgressiveRiskGateDecision(parsed,facts,parsed.tier,
+   Boolean(legacyGro||streamGro),history,now);
  }catch{return json({ok:false,error:"RISK_GATE_FACTS_UNAVAILABLE"},503);}
 
  const chargeable=decision.tierReady===true;
@@ -59,6 +81,7 @@ export async function storeRiskGateUsdcD1(request,env,now=Date.now()){
  const payload={schema:"geomacro.progressive-risk-gate-decision.v1",
   issuer:"Geomacro",commercial_signatory:"Geomacro",
   source_origin_agnostic_commercial_seal:true,request_id:parsed.request_id,
+  source_gro_id:streamGro?.gro_id??legacyGro?.object_id??null,
   risk_gate:decision.result,tier:parsed.tier,billing_mode:"GEOMACRO_DIRECT_USDC_PAY_PER_CALL",
   charge_usdc:(chargeCents/100).toFixed(2),charge_cents:chargeCents,
   credit_equivalent:chargeable?chargeCents:0,

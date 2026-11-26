@@ -192,7 +192,7 @@ async function boundedD1(action,{tries=4,sleeper=sleep,random=Math.random}={}){
 }
 function originalSources(group,policy){
  const candidates=[...group];
- // Same-country/category corroboration is valid even when event entities differ.
+ // Rows are already partitioned by the canonical country/category/type/day fingerprint.
  const independent=(sources)=>new Set(sources.map(x=>x.source_id)).size===sources.length&&
   new Set(sources.map(x=>x.publisher_root_domain)).size===sources.length&&
   new Set(sources.map(x=>x.parent_media_entity)).size===sources.length&&
@@ -226,9 +226,10 @@ export async function inspectRiskStreamCandidates(items,now=Date.now()){
  if(!Array.isArray(items)||items.length<1||items.length>10)fail("QUEUE_BATCH_INVALID");
  const out=[];for(const item of items){
   const e=validateCandidate(item,now);
-  // The fingerprint is a canonical entity+event identity, not merely the
-  // headline/GDELT article ID. Attesters sign this identity independently.
-  if(await sha(JSON.stringify([e.country_iso3,e.category,e.event_key,e.entities]))!==
+  // Pair independent evidence by country/category/event type and UTC day.
+  // Actor, target, and location hashes remain signed as separate source claims.
+  if(!/^EVENT:[A-Z][A-Z0-9_]{1,63}:\d{8}$/u.test(e.event_key)||
+     await sha(JSON.stringify([e.country_iso3,e.category,e.event_key]))!==
      e.event_fingerprint)fail("EVENT_FINGERPRINT_MISMATCH");
   out.push(e);
  }
@@ -348,8 +349,6 @@ async function appendCanonical(db,rows,archive,now,options){
 }
 async function loadCorroborated(db,items,now,options){
  const fingerprints=[...new Set(items.map(x=>x.event_fingerprint))];
- const pairs=[...new Map(items.map(x=>[x.country_iso3+"|"+x.category,
-  {country_iso3:x.country_iso3,category:x.category}])).values()];
  const select="SELECT e.observation_id,e.country_iso3,e.category,e.event_fingerprint,e.source_id,"+
   "e.publisher_root_domain,e.parent_media_entity,e.source_role,e.published_at,e.entities_json,"+
   "e.derived_json,e.original_page_sha256,e.original_verified,e.private_r2_object_key "+
@@ -381,34 +380,6 @@ async function loadCorroborated(db,items,now,options){
   return row;
  };
  for(const x of r.results)append(x);
- const related=await boundedD1(()=>db.prepare(select+
-  "WHERE EXISTS (SELECT 1 FROM json_each(?) pair "+
-  "WHERE json_extract(pair.value,'$.country_iso3')=e.country_iso3 "+
-  "AND json_extract(pair.value,'$.category')=e.category) "+
-  "AND e.original_verified=1 AND e.published_at>=? AND e.published_at<=? "+
-  "ORDER BY e.published_at LIMIT 500")
-  .bind(new Date(now).toISOString(),JSON.stringify(pairs),
-   new Date(now-HOURS48).toISOString(),new Date(now).toISOString()).all(),options);
- if(!Array.isArray(related?.results)||related.results.length>500)
-  fail("CORROBORATION_READBACK_LIMIT");
- const relatedByPair=new Map();
- for(const x of related.results){
-  const row=parseRow(x),key=x.country_iso3+"|"+x.category;
-  if(!relatedByPair.has(key))relatedByPair.set(key,[]);
-  relatedByPair.get(key).push(row);
- }
- for(const [key,group] of grouped){
-  if((originalSources(group)?.length??0)>=3)continue;
-  const [country,category,fingerprint]=key.split("|");
-  const existing=new Set(group.map(x=>x.observation_id));
-  for(const row of relatedByPair.get(country+"|"+category)??[]){
-   if(row.event_fingerprint===fingerprint||existing.has(row.observation_id))continue;
-   const before=originalSources(group)?.length??0;
-   const after=originalSources([...group,row])?.length??0;
-   if(after>before){group.push(row);existing.add(row.observation_id)}
-   if(after>=3)break;
-  }
- }
  return grouped;
 }
 // Read the EXISTING cached secondary news discovery index in one bounded

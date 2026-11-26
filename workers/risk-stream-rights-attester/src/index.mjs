@@ -107,6 +107,10 @@ export async function attestRights(request,env,now=Date.now()){
   event=await bodyJson(request);
   if(!event||event.schema!=="geomacro.risk-stream-candidate.v1"||
      event.kind!=="VERIFIED_ORIGINAL"||event.proof!==null||
+     !/^EVENT:[A-Z][A-Z0-9_]{1,63}:\d{8}$/u.test(event.event_key??"")||
+     !/^[a-f0-9]{64}$/u.test(event.event_fingerprint??"")||
+     await sha(JSON.stringify([event.country_iso3,event.category,event.event_key]))!==
+      event.event_fingerprint||
      typeof event.source_id!=="string"||typeof event.publisher_root_domain!=="string"||
      typeof event.parent_media_entity!=="string"||typeof event.source_role!=="string"||
      !APPROVED_ROLE_PAIRS[event.category]?.includes(event.source_role))

@@ -94,7 +94,8 @@ test("dual-audience mold emits deterministic institutional signals for all risk 
  ];
  for(const [category,eventClass,expectedAssets] of cases){
   const product=buildRiskStreamDualAudience({category,eventClass,score:68.25,
-   confidence:.82,deltaVs7d:-4.5,horizonHours:48,tier:"BASIC",corroborationReady:true,
+   confidence:.82,deltaVs7d:-4.5,deltaBaselineVerified:true,horizonHours:48,
+   tier:"BASIC",corroborationReady:true,
    contagionCorridors:["USA>IND"]});
   assert.equal(validRiskStreamDualAudience(product),true);
   assert.equal(product.agent_decision.gate_state,product.agent_decision.action_posture);

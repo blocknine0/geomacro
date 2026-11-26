@@ -9,7 +9,7 @@ import {buildSourceRegistrationPlan,runSourceRegistration}
  from "../ops/register-risk-stream-source.mjs";
 
 const ROOT=fileURLToPath(new URL("../..",import.meta.url));
-const now=Date.parse("2026-11-15T12:00:00.000Z");
+const now=Date.parse("2026-11-20T09:00:00.000Z");
 const readJson=path=>JSON.parse(readFileSync(join(ROOT,path),"utf8"));
 const evidence={licence_url:"https://rights.example.invalid/licence",
  terms_url:"https://rights.example.invalid/terms",
@@ -54,7 +54,7 @@ test("production registry workflow accepts Cloudflare D1 uuid or id with strict 
 test("shipped manifest approves documented OGL and item-guarded CC-BY sources, retaining pending examples",()=>{
  const manifest=readJson("config/risk-stream-source-rights-reviewed.v1.json");
  const result=validateSourceRightsManifest(manifest,now);
- assert.equal(result.approvedEntries.length,17);
+ assert.equal(result.approvedEntries.length,20);
  assert.equal(result.pendingEntries.length,3);
  assert.ok(result.pendingEntries.every(x=>x.rights_evidence.notes.includes("EXAMPLE - NOT REVIEWED")));
  const oglSources=result.approvedEntries.filter(x=>x.source_id.startsWith("uk_")).map(x=>x.source_id).sort();
@@ -79,9 +79,10 @@ test("shipped manifest approves documented OGL and item-guarded CC-BY sources, r
   x.rights_evidence.notes.includes("not represented as a legal expiry")));
  const ccBy=new Map(result.approvedEntries.filter(x=>!x.source_id.startsWith("uk_")).map(x=>[x.source_id,x]));
  assert.deepEqual([...ccBy.keys()].sort(),[
-  "ecb_fx_reference_rates","eu_jrc_rmis_ccby","gdelt_v2_factual_events",
+  "bank_of_canada_fx_ogl","ecb_fx_reference_rates","eu_jrc_rmis_ccby",
+  "gdelt_v2_factual_events",
   "geoscience_australia_ccby","global_voices_original_cc_by_3",
-  "un_reliefweb_api_ccby","us_fed_h10_public_domain",
+  "rba_fx_ccby","un_news_org_rss","un_reliefweb_api_ccby","us_fed_h10_public_domain",
   "usgs_minerals_public_domain","worldbank_commodity_prices_cc_by_4"]);
  assert.equal(ccBy.get("global_voices_original_cc_by_3").rights_evidence.licence_url,
   "https://creativecommons.org/licenses/by/3.0/");
@@ -116,7 +117,7 @@ test("expired rights evidence cannot be approved",()=>{
 });
 test("future rights review timestamp cannot be approved",()=>{
  const manifest=validManifest([approved("future_review_source")]);
- manifest.entries[0].rights_evidence.reviewed_at="2026-11-15T12:01:00.000Z";
+ manifest.entries[0].rights_evidence.reviewed_at=new Date(now+60_000).toISOString();
  assert.throws(()=>validateSourceRightsManifest(manifest,now),
   /APPROVED_EVIDENCE_INCOMPLETE/u);
 });
@@ -171,9 +172,9 @@ test("dry-run and apply never write PENDING entries",()=>{
 test("shipped approvals plan cleanly for provider preflight and apply",()=>{
  const manifest=readJson("config/risk-stream-source-rights-reviewed.v1.json");
  const plan=buildSourceRegistrationPlan(manifest,now);
- assert.equal(plan.approvedEntries.length,17);
+ assert.equal(plan.approvedEntries.length,20);
  assert.equal(plan.pendingEntries.length,3);
- assert.equal(plan.statements.length,17);
+ assert.equal(plan.statements.length,20);
  const schemas=[
   {type:"table",name:"risk_stream_sources",sql:"CREATE TABLE risk_stream_sources (commercial_rights_approved INTEGER,parent_media_entity TEXT,rights_expire_at TEXT)"},
   {type:"table",name:"risk_stream_category_policy",sql:"CREATE TABLE risk_stream_category_policy (required_role_a TEXT,required_role_b TEXT)"},
@@ -185,7 +186,7 @@ test("shipped approvals plan cleanly for provider preflight and apply",()=>{
   env:{D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc"},
   runWrangler:()=>JSON.stringify([{results:schemas}]),root:ROOT,now});
  assert.deepEqual(preflight,{mode:"preflight",provider_schema_verified:true,
-  approved_sources_planned:17,pending_sources_ignored:3});
+  approved_sources_planned:20,pending_sources_ignored:3});
  const runWrangler=args=>{
   const sql=args.at(-1);
   if(sql.startsWith("SELECT "))return JSON.stringify([{results:
@@ -199,7 +200,7 @@ test("shipped approvals plan cleanly for provider preflight and apply",()=>{
  const applied=runSourceRegistration({manifest,apply:true,
   env:{CONFIRM:"APPLY_RISK_STREAM_SOURCE_REGISTRY_PRODUCTION",
    D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc"},runWrangler,root:ROOT,now});
- assert.deepEqual(applied,{mode:"apply",written:17,readback_verified:true,pending_ignored:3});
+ assert.deepEqual(applied,{mode:"apply",written:20,readback_verified:true,pending_ignored:3});
 });
 
 test("approved apply upserts approved rows and verifies every readback column",()=>{

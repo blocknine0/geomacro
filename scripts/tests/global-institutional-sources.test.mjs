@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {buildInstitutionalSourceReport,probeInstitutionalCandidate} from "../ops/discover-global-institutional-sources.mjs";
 import {buildRiskStreamDualAudience,validRiskStreamDualAudience} from "../../workers/control-plane/src/risk-stream-dual-audience.mjs";
 import {deriveRiskStreamEligibleScore} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
+import {buildDerivedSignal} from "../ops/collect-risk-stream-feed-extensions.mjs";
 
 const now=new Date("2026-11-18T12:00:00.000Z");
 function entry(source_id,domain,parent,role,category){
@@ -22,6 +23,15 @@ const regional={source_id:"regional_wire",url:"https://regional.example/feed",fo
 const timestamp="2026-11-18T11:00:00.000Z";
 const healthy=(source_id)=>({source_id,health_status:"WORKING",http_status:200,
  last_successful_http_fetch_at:timestamp,last_source_native_publication_at:timestamp,failure_reason:null});
+
+test("generic feed-derived signals name the corridor, asset channel, and invalidation checks",()=>{
+ const signal=buildDerivedSignal({theme:null,country:"ZMB",corridor:"Red Sea",
+  corpus:"official notice",category:"GEOPOLITICS",eventType:"trade_disruption"});
+ assert.match(signal.what,/ZMB via Red Sea.*copper, cobalt and ZMW funding/u);
+ assert.match(signal.why,/cross-border access and counterparties/u);
+ assert.match(signal.watch,/measured volume or price delta.*withdrawn or the reference data is revised/u);
+ assert.doesNotMatch(JSON.stringify(signal),/may change operating and policy exposure/u);
+});
 
 test("protected source registry apply consumes only the live rights-filtered manifest",()=>{
  const workflow=readFileSync(".github/workflows/apply-risk-stream-source-registry.yml","utf8");
