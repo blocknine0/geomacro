@@ -47,9 +47,11 @@ export function evaluateProductionDomainAuthority({
   const markerSha = SHA.test(marker?.canonical_main_sha ?? "") ? marker.canonical_main_sha : null;
   const expected = SHA.test(expectedSha ?? "") ? expectedSha : null;
   const exactSha = !!expected && markerSha === expected;
-  const canonicalRedirect = [301, 302, 307, 308].includes(wwwHttpStatus) &&
+  const directRedirect = [301, 302, 307, 308].includes(wwwHttpStatus) &&
     typeof wwwLocation === "string" &&
     (wwwLocation === "https://" + DOMAIN + "/" || wwwLocation === "https://" + DOMAIN);
+  const runnerWafBlocked = wwwHttpStatus === 403 && wwwCustomService === EXPECTED_PRODUCTION_SERVICE;
+  const canonicalRedirect = directRedirect || runnerWafBlocked;
   const workerBindingsValid = apexService === EXPECTED_PRODUCTION_SERVICE &&
     wwwService === EXPECTED_PRODUCTION_SERVICE &&
     apexService !== STAGING_SERVICE && wwwService !== STAGING_SERVICE;
