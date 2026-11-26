@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync,sign} from "node:crypto";
 import {deflateRawSync} from "node:zlib";
-import {collectRiskStreamFeedExtensions,CRITICAL_MINERAL_SUPPLY_TERMS,HOT50,matchHot50Countries,SOURCE_COUNTRY,standardEntries} from "../ops/collect-risk-stream-feed-extensions.mjs";
+import {collectRiskStreamFeedExtensions,CRITICAL_MINERAL_SUPPLY_TERMS,HOT50,matchHot50Countries,SOURCE_COUNTRY,standardEntries,reviewedFeedSources} from "../ops/collect-risk-stream-feed-extensions.mjs";
 import {redactedRightsRadar} from "../lib/rights-redacted-speed-radar.mjs";
 import {emitRiskStreamCandidates} from "../ops/emit-risk-stream-candidates.mjs";
 import {riskStreamOriginalClaims} from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
@@ -13,6 +13,7 @@ import {validateRiskStreamItemLicense} from "../../workers/control-plane/src/ris
 
 const fullManifest=JSON.parse(readFileSync("config/risk-stream-source-rights-reviewed.v1.json","utf8"));
 const feedManifest=JSON.parse(readFileSync("config/unified-rss-feed-registry.v1.json","utf8"));
+const officialAtomManifest=JSON.parse(readFileSync("config/official-ogl-atom-sources.json","utf8"));
 const now=Date.parse("2026-11-15T10:00:00.000Z");
 const manifest={...fullManifest,entries:fullManifest.entries.filter(row=>
  !row.rights_evidence?.reviewed_at||Date.parse(row.rights_evidence.reviewed_at)<=now)};
@@ -72,6 +73,46 @@ test("all nine reviewed Lane A sources are wired to matching opt-in feed entries
  assert.match(feedManifest.sources.find(row=>row.name==="geoscience_australia_ccby").url,
   /^https:\/\/services\.ga\.gov\.au\/gis\/rest\/services\/.+f=geojson$/u);
  assert.equal(feedManifest.feed_count,feedManifest.sources.length);
+});
+
+test("all approved rights rows have an opt-in feed and OGL fallback is rights-manifest matched",()=>{
+ const approved=fullManifest.entries.filter(row=>row.status==="APPROVED");
+ const wired=reviewedFeedSources({rightsManifest:fullManifest,feeds:feedManifest,
+  officialAtomSources:officialAtomManifest.sources});
+ assert.equal(approved.length,20);
+ assert.deepEqual(approved.filter(row=>!wired.some(feed=>feed.name===row.source_id)),[]);
+ for(const row of approved){
+  const feedRow=wired.find(feed=>feed.name===row.source_id);
+  assert.equal(feedRow.risk_stream_item_licensed,true,row.source_id);
+  assert.equal(feedRow.risk_stream_standard_item_license_candidate,true,row.source_id);
+ }
+ const fcdo=fullManifest.entries.find(row=>row.source_id==="uk_fcdo_ogl_official_atom");
+ const fallback=reviewedFeedSources({rightsManifest:fullManifest,
+  feeds:{schema:feedManifest.schema,sources:feedManifest.sources.filter(row=>row.name!==fcdo.source_id)},
+  officialAtomSources:officialAtomManifest.sources});
+ assert.ok(fallback.some(row=>row.name===fcdo.source_id));
+ const rejected=reviewedFeedSources({rightsManifest:fullManifest,
+  feeds:{schema:feedManifest.schema,sources:[]},officialAtomSources:[
+   {...officialAtomManifest.sources.find(row=>row.source_id===fcdo.source_id),
+    license:"https://example.invalid/license"},
+   {...officialAtomManifest.sources[0],source_id:"unreviewed_private_feed"}
+  ]});
+ assert.deepEqual(rejected,[]);
+});
+
+test("private and direct collectors poll a rights-approved OGL fallback feed",async()=>{
+ const fcdo=fullManifest.entries.find(row=>row.source_id==="uk_fcdo_ogl_official_atom");
+ for(const collector of ["private","direct"]){
+  const calls=[];
+  const result=await collectRiskStreamFeedExtensions({collector,now,
+   fetchImpl:async url=>{calls.push(url);return {ok:true,text:async()=>
+    url===feed().url?candidateXml:"<feed></feed>",headers:{get:()=>"application/atom+xml"}}},
+   rightsManifest:manifest,feeds:{schema:feedManifest.schema,sources:
+    feedManifest.sources.filter(row=>row.name!==fcdo.source_id)},
+   officialAtomSources:officialAtomManifest.sources,sourceRegistry:fullSourceRegistry});
+  assert.ok(calls.includes(feed().url),`${collector} ${JSON.stringify(calls)}`);
+  assert.ok(result.originals.some(row=>row.source_id===fcdo.source_id),collector);
+ }
 });
 
 test("new Bank of Canada, RBA, and UN News sources use reviewed feeds",()=>{
