@@ -39,6 +39,8 @@ export const COUNTRY_MACRO_DISCOVERY_TERMS=Object.freeze([
  '"economic growth"','employment','payrolls','"retail sales"','"industrial production"',
  '"fiscal budget"','"sovereign debt"','"foreign reserves"','"exchange rate"',
  '"bank liquidity"','"bank deposits"','"financial stability"','trade','tariffs',
+ 'crypto','cryptocurrency','"crypto assets"','"digital assets"','bitcoin','ethereum',
+ 'stablecoin','CBDC','cryptomonnaie','criptomoneda','criptomoeda','加密货币','暗号資産','암호화폐',
 ]);
 // Material anchors keep lifecycle searches out of unrelated industrial news.
 // Bullion remains in Macro; country queries are discovery, never event evidence.
