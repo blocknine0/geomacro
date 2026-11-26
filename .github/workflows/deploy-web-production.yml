@@ -277,3 +277,7 @@ jobs:
           printf '%s\n' "$report"
           printf '%s' "$report" | jq -e '.production_hostname_cloudflare_serving_verified == true' >/dev/null || { echo 'WEB_PRODUCTION_DOMAIN_AUDIT_FAILED'; exit 2; }
           echo 'WEB_PRODUCTION_CUSTOM_DOMAINS_AND_PUBLIC_SHA_VERIFIED'
+      - name: Ping IndexNow for instant Bing/Yandex indexing
+        continue-on-error: true
+        run: |
+          curl -sS -X POST "https://api.indexnow.org/indexnow"             -H "Content-Type: application/json"             -d '{"host":"geomacro.live","key":"e8a4f2c9b1d7403e8f6a5c2d9b4e1a70","keyLocation":"https://geomacro.live/e8a4f2c9b1d7403e8f6a5c2d9b4e1a70.txt","urlList":["https://geomacro.live/","https://geomacro.live/intelligence","https://geomacro.live/risk-gate","https://geomacro.live/ask-geomacro","https://geomacro.live/pricing","https://geomacro.live/docs"]} ' || true
