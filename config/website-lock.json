@@ -1623,5 +1623,15 @@
     "website_lock_remains_active": true,
     "global_risk_final_lock_unmodified": true,
     "approved_source_commit": "5463f78c14f4fba489701dbd0e9eb6a75bc506ff"
+  },
+  "approved_seo_indexnow_20261126": {
+    "approval": "Founder added static Bing IndexNow verification key file on 2026-11-26.",
+    "approved_source_commit": "886c0f035893edd5211cc123955db90fc622d0d2",
+    "approved_paths": [
+      "public/e8a4f2c9b1d7403e8f6a5c2d9b4e1a70.txt"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   }
 }
