@@ -362,12 +362,8 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   // Country, corridor and scored questions keep the governed path below.
   const newsRequest=selectOfficialNewsRequest(question);
   if (newsRequest) {
-    const officialAns = (await boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500)
-      .catch(()=>null));
-    if (officialAns && !officialAns.insufficient_evidence) return officialAns;
-    const briefAns = await boundedAskAdapter("official_news",()=>websiteIntelligenceBriefAnswer(question),4_000).catch(()=>null);
-    if (briefAns) return briefAns;
-    return officialAns ?? noCurrentPublisherNewsAnswer(newsRequest.scopeLabel);
+    return (await boundedAskAdapter("official_news",()=>officialUnscoredReleaseAnswer(question),5_500)
+      .catch(()=>null))??noCurrentPublisherNewsAnswer(newsRequest.scopeLabel);
   }
 
   // These readers are independent. Start them together and bound each one so
