@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-26T05:31:33.601Z",
+  "generated_at": "2026-11-26T07:40:45.523Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
