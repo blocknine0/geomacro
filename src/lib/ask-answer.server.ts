@@ -9,6 +9,7 @@ import { answerFromCurrentOriginals } from "./ask-on-demand-original.server";
 import { COUNTRIES_195, type Country195 } from "./canonical-country-registry-195";
 import { answerOfficialNumeric, planAskOfficialNumeric } from "./ask-official-numeric.server";
 import {collectSharedOfficialNews} from "./ask-shared-derived-journal.server";
+import {fetchHomeDerivedNews} from "./home-derived-news-client";
 
 /**
  * Canonical Ask Geomacro answer orchestration.
@@ -173,6 +174,91 @@ function noCurrentPublisherNewsAnswer(scopeLabel=""): HybridAskAnswer {
   };
 }
 
+
+const ASK_STOP_WORDS = new Set([
+  "what","whats","how","why","when","where","who","which","the","and","for","are","was","were",
+  "will","would","could","should","can","with","from","that","this","these","those","about",
+  "into","over","last","past","recent","latest","current","today","now","tell","show","give",
+  "please","any","there","have","has","been","they","their","our","your","affect","impact",
+  "effect","mean","means","explain","describe","observation","observations","date","dates",
+  "evidence","basis","concrete","hour","hours","24h","news","update","updates","development",
+  "developments","risk","risks","happened","happening","changed","changing","right","globally","global"
+]);
+
+async function websiteIntelligenceBriefAnswer(question: string): Promise<HybridAskAnswer | null> {
+  const homeSignals = await fetchHomeDerivedNews().catch(() => []);
+  if (!homeSignals.length) return null;
+
+  const q = question.trim();
+  const countries = countryMentions(q);
+  const countryTerms = countries.flatMap(c => [c.name, ...c.aliases, c.iso3]).map(t => t.toLowerCase());
+  const corridorTerms = ASK_CORRIDORS
+    .filter(row => row.terms.some(t => phraseOccurs(q, t)))
+    .flatMap(row => row.terms)
+    .map(t => t.toLowerCase());
+
+  const wantCats: OfficialNewsCategory[] = [];
+  if (/\b(geopolitic|diplomac|foreign policy|conflict|war|sanction|tariff|security|election|border|shipping|maritime|strait|canal)\b/i.test(q)) wantCats.push("geopolitics");
+  if (/\b(macro|fx|foreign exchange|inflation|rate|rates|interest|central bank|gdp|cpi|currency|usd|bond|yield|fiscal|trade)\b/i.test(q)) wantCats.push("macro");
+  if (/\b(critical mineral|rare earth|lithium|cobalt|nickel|graphite|copper|uranium|tungsten|gallium|germanium|mining|mineral|battery)\b/i.test(q)) wantCats.push("rare_earth");
+
+  const tokens = q.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/)
+    .filter(t => t.length >= 3 && !ASK_STOP_WORDS.has(t));
+
+  const hasFilters = countryTerms.length > 0 || corridorTerms.length > 0 || wantCats.length > 0 || tokens.length > 0;
+  const scored = homeSignals.map(sig => {
+    const geo = String(sig.geography ?? "").toLowerCase();
+    const iso3 = String((sig as Record<string, unknown>).country_iso3 ?? "").toLowerCase();
+    const hay = [geo, iso3, sig.title, sig.what_changed, sig.why_it_matters].join(" ").toLowerCase();
+    let score = 0;
+    if (countryTerms.some(t => t === iso3 || geo === t || hay.includes(t))) score += 12;
+    if (corridorTerms.some(t => hay.includes(t))) score += 10;
+    if (wantCats.includes(sig.category)) score += 6;
+    for (const tok of tokens) {
+      if (hay.includes(tok)) score += 4;
+    }
+    return { sig, score };
+  });
+
+  const filtered = (hasFilters ? scored.filter(x => x.score > 0) : scored)
+    .sort((a, b) => b.score - a.score || String(b.sig.published_at).localeCompare(String(a.sig.published_at)))
+    .slice(0, 5);
+
+  if (!filtered.length) return null;
+  const top = filtered.map(x => x.sig);
+  const latestAt = top.map(x => String(x.published_at)).sort().at(-1) ?? new Date().toISOString();
+  const scopeLabel = countries.map(c => c.name).join(" and ");
+  const scopeCopy = scopeLabel ? " for " + scopeLabel : "";
+
+  return {
+    summary: "Based on " + top.length + " recent GeoMacro intelligence brief" + (top.length === 1 ? "" : "s") + scopeCopy + " (latest: " + latestAt + "): " + top[0].title + ".",
+    what_changed: top.map(x => "[" + String(x.published_at).slice(0, 16).replace("T", " ") + " UTC] " + x.what_changed).join(" "),
+    why_it_matters: top.slice(0, 3).map(x => x.why_it_matters).join(" "),
+    geomacro_view: "Grounded in GeoMacro live website intelligence briefs. These observations are not independently corroborated or signed as a Risk Gate. Decision support only. This answer is not execution authorization.",
+    evidence: filtered.map(({ sig, score }) => ({
+      eventId: "live:intelligence:" + sig.id,
+      title: sig.title + " (" + sig.published_at + ")",
+      relevance: Math.min(100, 60 + score * 3),
+    })),
+    insufficient_evidence: false,
+    mean_relevance: null,
+    low_confidence: true,
+    gri: null,
+    generatedAt: new Date().toISOString(),
+    latest_original_published_at: latestAt,
+    data_mode: "ephemeral_live",
+    cache_status: "hit",
+    source_identity_exposed: false,
+    durable_live_storage_write: false,
+    real_time_message: "Grounded in live website intelligence archive.",
+    intelligence_tier: "official_observation_unscored",
+    signed_gro_generated: false,
+    independent_same_event_verification: false,
+    execution_authorized: false,
+    decision_support_boundary: "Decision support only. This answer is not execution authorization or a signed Risk Gate.",
+  };
+}
+
 // Only the three exact scored-index queries. Other risk questions retain the
 // governed intelligence engine. No new score, fake source or paid entitlement.
 function canonicalScoredIndexQuestion(question: string): string | null {
@@ -300,5 +386,8 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     Number(a.insufficient_evidence)-Number(b.insufficient_evidence)||
     b.evidence.length-a.evidence.length||
     Number(a.low_confidence)-Number(b.low_confidence));
+  if (candidates[0] && !candidates[0].insufficient_evidence) return candidates[0];
+  const briefFallback = await boundedAskAdapter("official_news",()=>websiteIntelligenceBriefAnswer(question),4_000).catch(()=>null);
+  if (briefFallback) return briefFallback;
   return candidates[0]??noCurrentPublisherNewsAnswer();
 }
