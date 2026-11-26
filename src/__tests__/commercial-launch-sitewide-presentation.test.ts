@@ -50,7 +50,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(api).toContain("API & Agents");
     expect(api).toContain("Use one Risk Gate API across GEOPOLITICS");
     expect(api).not.toContain("Runtime truth, not marketing copy");
-    expect((riskGate.match(/>PRIVATE PILOT<\/Badge>/gu) ?? []).length).toBe(1);
+    expect((riskGate.match(/>MAINNET USDC LIVE<\/Badge>/gu) ?? []).length).toBe(1);
     expect(about).toContain("The customer remains responsible for any decision or action");
   });
 

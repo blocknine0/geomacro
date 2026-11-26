@@ -211,6 +211,7 @@ const approvedPricing = [
   config.approved_main_presentation_carryforward_20261125,
   config.approved_transparent_customer_dashboard_20261125,
   config.approved_seo_indexnow_20261126,
+  config.approved_risk_gate_live_copy_20261126,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a

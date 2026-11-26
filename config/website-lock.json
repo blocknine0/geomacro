@@ -1633,5 +1633,15 @@
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
     "global_risk_final_lock_unmodified": true
+  },
+  "approved_risk_gate_live_copy_20261126": {
+    "approval": "Founder removed PRIVATE PILOT label from /risk-gate and linked checkout to /pricing#payment-checkout on 2026-11-26.",
+    "approved_source_commit": "56c912c8e1c1fc38649d13c93e56fd8f01b5ac94",
+    "approved_paths": [
+      "src/routes/risk-gate.tsx"
+    ],
+    "exact_blob_lock": true,
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true
   }
 }
