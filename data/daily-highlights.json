@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-26T23:46:11.767Z",
+  "generated_at": "2026-11-27T00:06:33.697Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -513,25 +513,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Federal Reserve Board"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-e168f30f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Canada: invested to unlock lithium potential and improve connectivity and industry in northern Quebec · Canada",
-      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
-      "what_changed": "Canada invested to unlock lithium potential and improve connectivity and industry in northern Quebec. Country or region mentioned: Canada.",
-      "geography": "Canada",
-      "development_type": "funding",
-      "topic": "critical-mineral inputs",
-      "published_at": "2026-10-28",
-      "date_precision": "day",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Natural Resources Canada"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
