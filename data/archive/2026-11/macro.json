@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-27T13:19:10.880Z",
+  "updated_at": "2026-11-27T15:28:49.332Z",
   "signals": [
     {
       "id": "macro-2b0e6d6e",
@@ -4808,6 +4808,44 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7c59a46c",
+      "category": "macro",
+      "title": "Geomacro finds Monthly estimated of business openings and closures, August 2026",
+      "why_it_matters": "An original-dated first-party economic statistical release may inform macroeconomic context; no metric direction, materiality or risk score is inferred from its headline.",
+      "what_changed": "Monthly estimated of business openings and closures, August 2026.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-11-26",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f8c39d78",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for September 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for September 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-11-26",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
