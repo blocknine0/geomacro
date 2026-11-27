@@ -1795,8 +1795,20 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/risk-stream/commercial-public-key") {
       let keys = [];
       try {
-        const parsed = JSON.parse(String(env.RISK_OBJECT_VERIFY_KEYS_JSON || "[]"));
-        if (Array.isArray(parsed)) keys = parsed;
+        const raw = env.RISK_OBJECT_VERIFY_KEYS_JSON || env.RISK_GATE_VERIFY_KEYS_JSON || "[]";
+        const parsed = JSON.parse(String(raw));
+        if (Array.isArray(parsed)) {
+          keys = parsed;
+        } else if (parsed && typeof parsed === "object") {
+          keys = Object.entries(parsed)
+            .filter(([, pub]) => typeof pub === "string" && pub.length > 0)
+            .map(([key_id, public_key_spki_b64]) => ({
+              key_id,
+              algorithm: "Ed25519",
+              public_key_spki_b64,
+              status: "active",
+            }));
+        }
       } catch {}
       if (keys.length === 0 && env.RISK_OBJECT_SIGNING_KEY_ID && env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
         keys = [{
