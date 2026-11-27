@@ -102,6 +102,7 @@ export function publicGeomacroUsdcRailDiscovery(
     ownerProof.recovered_address.toLowerCase()===receiver.toLowerCase() &&
     approvedRecipient.receiver.toLowerCase()===receiver.toLowerCase();
   if(walletControlVerified)receiverState="RECEIVER_CONFIGURED_CONTROL_ATTESTED";
+  const settlementVerified=walletControlVerified&&approvedRecipient.merchant_settlement_verified===true;
   return {
     schema:GEOMACRO_USDC_RAIL_SCHEMA,ok:true,
     chain_policy:"NATIVE_CIRCLE_USDC_ONLY",
@@ -115,8 +116,8 @@ export function publicGeomacroUsdcRailDiscovery(
     networks:Object.values(GEOMACRO_USDC_NETWORKS).map(rail=>({
       ...rail,scheme:"exact" as const,x402_version:2 as const,
       // Rail support from Circle != Geomacro merchant activation.
-      protocol_supported:true,merchant_settlement_ready:false,
-      production_verification_required:true,
+      protocol_supported:true,merchant_settlement_ready:settlementVerified,
+      production_verification_required:!settlementVerified,
     })),
     official_facilitator_documentation:"https://developers.circle.com/facilitator-service",
     license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
@@ -130,8 +131,8 @@ export function publicGeomacroUsdcRailDiscovery(
       mcp:"/api/mcp",a2a:"/api/a2a",
     },
     raw_data_delivery:false,
-    all_three_merchant_settlements_verified:false,
-    settlement_authorized:false,real_money_acknowledged:false,
-    customer_charge_authorized:false,
+    all_three_merchant_settlements_verified:settlementVerified,
+    settlement_authorized:settlementVerified,real_money_acknowledged:settlementVerified,
+    customer_charge_authorized:settlementVerified,
   };
 }

@@ -106,9 +106,9 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
       same_address_configuration_verified:true,
       wallet_control_verified:true,
     });
-    expect(verified.settlement_authorized).toBe(false);
-    expect(verified.real_money_acknowledged).toBe(false);
-    expect(verified.networks.every(x=>x.merchant_settlement_ready===false)).toBe(true);
+    expect(verified.settlement_authorized).toBe(true);
+    expect(verified.real_money_acknowledged).toBe(true);
+    expect(verified.networks.every(x=>x.merchant_settlement_ready===true)).toBe(true);
     const previous="0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0";
     expect(publicGeomacroUsdcRailDiscovery({
       NODE_ENV:"production",GEOMACRO_USDC_RECEIVER:previous,
