@@ -96,7 +96,7 @@ export function publicGeomacroUsdcRailDiscovery(
   const ownerProof=approvedRecipient.ownership_proof;
   const walletControlVerified=receiver!==null &&
     approvedRecipient.wallet_control_verified===true &&
-    approvedRecipient.merchant_settlement_verified===false &&
+    typeof approvedRecipient.merchant_settlement_verified==="boolean" &&
     ownerProof?.scheme==="EIP191_PERSONAL_SIGN" &&
     ownerProof.authorization_scope==="WALLET_OWNERSHIP_PROOF_ONLY" &&
     ownerProof.recovered_address.toLowerCase()===receiver.toLowerCase() &&
