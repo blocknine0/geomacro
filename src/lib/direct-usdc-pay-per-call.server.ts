@@ -30,7 +30,8 @@ export const MAINNET_USDC_PAY_PER_CALL_CHAINS = Object.freeze({
     chainId: 5042,
     caip2: "eip155:5042" as const,
     asset: "0x3600000000000000000000000000000000000000" as const,
-    rpcUrl: "https://rpc.mainnet.arc.io",
+    rpcUrl: "https://rpc.drpc.mainnet.arc.io",
+    fallbackRpcUrls: ["https://rpc.blockdaemon.mainnet.arc.io", "https://rpc.mainnet.arc.io"],
     freeFacilitator: null,
   }),
 } as const);
@@ -78,13 +79,28 @@ export async function verifyMainnetUsdcTransferReceipt(input: {
   if (!chain || !TX_RE.test(input.txHash) || !/^[1-9][0-9]*$/u.test(input.minAmountAtomic)) {
     throw new Error("INVALID_USDC_PROOF_INPUT");
   }
-  const rpcUrl = input.rpcUrlOverride || chain.rpcUrl;
+  const rpcUrls = input.rpcUrlOverride
+    ? [input.rpcUrlOverride]
+    : [chain.rpcUrl, ...((chain as { fallbackRpcUrls?: readonly string[] }).fallbackRpcUrls ?? [])];
   const fetcher = input.fetcher ?? fetch;
-  const [reportedChainId, receipt, latestBlock] = await Promise.all([
-    jsonRpc<string>(rpcUrl, "eth_chainId", [], fetcher),
-    jsonRpc<RpcReceipt | null>(rpcUrl, "eth_getTransactionReceipt", [input.txHash], fetcher),
-    jsonRpc<string>(rpcUrl, "eth_blockNumber", [], fetcher),
-  ]);
+  let reportedChainId = "";
+  let receipt: RpcReceipt | null = null;
+  let latestBlock = "";
+  let lastRpcError: unknown = null;
+  for (const url of rpcUrls) {
+    try {
+      [reportedChainId, receipt, latestBlock] = await Promise.all([
+        jsonRpc<string>(url, "eth_chainId", [], fetcher),
+        jsonRpc<RpcReceipt | null>(url, "eth_getTransactionReceipt", [input.txHash], fetcher),
+        jsonRpc<string>(url, "eth_blockNumber", [], fetcher),
+      ]);
+      lastRpcError = null;
+      break;
+    } catch (err) {
+      lastRpcError = err;
+    }
+  }
+  if (lastRpcError) throw lastRpcError;
   if (reportedChainId.toLowerCase() !== "0x" + chain.chainId.toString(16)) {
     throw new Error("USDC_RPC_WRONG_CHAIN");
   }
