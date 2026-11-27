@@ -53,11 +53,12 @@ async function jsonRpc<T>(
 ): Promise<T> {
   const res = await fetcher(rpcUrl, {
     method: "POST",
-    redirect: "error",
+    redirect: "manual",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     signal: AbortSignal.timeout(7000),
   });
+  if ((res.status >= 300 && res.status < 400) || res.type === "opaqueredirect" || res.redirected) throw new Error("UPSTREAM_REDIRECT_REJECTED");
   if (!res.ok) throw new Error(`RPC_HTTP_${res.status}`);
   const data = (await res.json()) as { result?: T; error?: { message?: string } };
   if (data.error || data.result === undefined) {
