@@ -50,7 +50,8 @@ export async function storeRiskGateUsdcD1(request,env,now=Date.now()){
  if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
   return json({ok:false,error:"UNSUPPORTED_MEDIA_TYPE"},415);
  let body;try{body=await request.json()}catch{return json({ok:false,error:"INVALID_JSON"},400);}
- const parsed=parseRequest(body,now);
+ const {network:_n,tx_hash:_t,amount_atomic:_a,payer:_p,...gateBody}=body&&typeof body==="object"&&!Array.isArray(body)?body:{};
+ const parsed=parseRequest(gateBody,now);
  if(!parsed)return json({ok:false,error:"INVALID_RISK_GATE_REQUEST"},400);
  if(!parsed.category)return json({ok:false,error:"STORE_CATEGORY_REQUIRED"},400);
  const network=String(body?.network??"").trim().toLowerCase();
