@@ -119,17 +119,27 @@ export async function verifyMainnetUsdcTransferReceipt(input: {
   const toTopic =
     "0x" + GEOMACRO_MAINNET_USDC_RECIPIENT.slice(2).toLowerCase().padStart(64, "0");
   const minAtomic = BigInt(input.minAmountAtomic);
-  const matched = (receipt.logs ?? []).filter(
-    (log) =>
-      log.address?.toLowerCase() === chain.asset.toLowerCase() &&
-      Array.isArray(log.topics) &&
-      log.topics.length === 3 &&
-      log.topics[0]?.toLowerCase() === TRANSFER_TOPIC &&
-      log.topics[2]?.toLowerCase() === toTopic &&
-      typeof log.data === "string" &&
-      /^0x[0-9a-fA-F]+$/u.test(log.data) &&
-      BigInt(log.data) >= minAtomic,
-  );
+  const ARC_NATIVE_LOG = "0xfffffffffffffffffffffffffffffffffffffffe";
+  const matched = (receipt.logs ?? []).filter((log) => {
+    const addr = log.address?.toLowerCase();
+    if (
+      !Array.isArray(log.topics) ||
+      log.topics.length !== 3 ||
+      log.topics[0]?.toLowerCase() !== TRANSFER_TOPIC ||
+      log.topics[2]?.toLowerCase() !== toTopic ||
+      typeof log.data !== "string" ||
+      !/^0x[0-9a-fA-F]+$/u.test(log.data)
+    ) {
+      return false;
+    }
+    if (addr === chain.asset.toLowerCase()) {
+      return BigInt(log.data) >= minAtomic;
+    }
+    if (input.network === "arc" && addr === ARC_NATIVE_LOG) {
+      return BigInt(log.data) >= minAtomic * 10n ** 12n;
+    }
+    return false;
+  });
   if (matched.length === 0) {
     throw new Error("USDC_TRANSFER_TO_RECEIVER_NOT_FOUND");
   }
