@@ -120,7 +120,7 @@ if(HOT50_STREAM_TARGETS.length!==150||HOT50_STREAM_TARGETS.some(x=>!x.name))
 
 /** Consecutive cron-minute rotation: each slot visited within 75 minutes at
  * default 2 cells/min, with no long-running timer or manual dispatch. */
-export function planHot50StreamCells(now=Date.now(),perTick=2){
+export function planHot50StreamCells(now=Date.now(),perTick=5){
  if(!Number.isFinite(now)||!Number.isInteger(perTick)||perTick<1||perTick>5)
   fail("SCAN_PACE_INVALID");
  const start=((Math.floor(now/60000)*perTick)%150+150)%150;
@@ -141,7 +141,7 @@ function sameEventOriginalPair(rows,category,now,signed=[]){
      a.source_id===b.source_id||a.publisher_root_domain===b.publisher_root_domain||
      a.parent_media_entity===b.parent_media_entity||
      !validRoot(a.publisher_root_domain)||!validRoot(b.publisher_root_domain)||
-     !ROLES[category].every(role=>[a.source_role,b.source_role].includes(role)))
+     !ROLES[category].includes(a.source_role)||!ROLES[category].includes(b.source_role))
     continue;
   const candidate={event_fingerprint:a.event_fingerprint,domains:2,
    observation_ids:[a.observation_id,b.observation_id].sort()};

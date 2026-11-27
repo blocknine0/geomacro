@@ -50,7 +50,7 @@ export function pairRiskStreamOriginals(originals,now=Date.now()){
       x.source_id===y.source_id||x.publisher_root_domain===y.publisher_root_domain||
       x.parent_media_entity===y.parent_media_entity||
       Math.abs(a.at-b.at)>WINDOW_48H||
-      !required.every(role=>[x.source_role,y.source_role].includes(role)))continue;
+      !required.includes(x.source_role)||!required.includes(y.source_role))continue;
    if(typeof x.raw_payload!=="string"||x.raw_payload.length<16||x.raw_payload.length>8000||
       typeof y.raw_payload!=="string"||y.raw_payload.length<16||y.raw_payload.length>8000)continue;
    const hashA=createHash("sha256").update(x.raw_payload).digest("hex");

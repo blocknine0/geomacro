@@ -54,7 +54,7 @@ test("a dispute or retraction vetoes otherwise qualifying confirmations",()=>{
 });
 
 test("both required roles and distinct article bytes are required",()=>{
- const [a,b]=pair();b.source_role="GOVERNMENT_WIRE";
+ const [a,b]=pair();b.source_role="MARKET_PRICE";
  assert.equal(pairRiskStreamOriginals([a,b],now).pairs.length,0);
  const [c,d]=pair();d.raw_payload=c.raw_payload;d.original_page_sha256=c.original_page_sha256;
  assert.equal(pairRiskStreamOriginals([c,d],now).pairs.length,0);
