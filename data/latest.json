@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-27T12:27:11.139Z",
+  "checked_at": "2026-11-27T12:44:38.264Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -6920,6 +6920,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-d76520de",
+      "category": "geopolitics",
+      "title": "Geomacro finds Foreign Secretary: welcomed next British Council Chair · United Kingdom",
+      "why_it_matters": "Risk mechanism: policy can shift jurisdictional or diplomatic assumptions. Downstream effect: monitor formal implementation and exposed cross-border activity. Price impact: no market direction is inferred without observed FX, commodity or corridor evidence.",
+      "what_changed": "Foreign Secretary welcomed next British Council Chair. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-26T13:30:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-3d8ab99a",
       "category": "macro",
       "title": "GeoMacro Macro/FX Brief · Monetary Policy — Russia (RUS)",
@@ -9955,27 +9974,6 @@
       "event_action": "Reported Indicator Update",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-24T12:53:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-b763c36b",
-      "category": "rare_earth",
-      "title": "GeoMacro Critical Minerals Brief · Critical-Mineral Supply & Processing — China (CHN)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported supply or operations disruption by mineral processors and refining operators, affecting Critical-Mineral Supply & Processing in China; direction is tightening (tightening or disruption pressure).",
-      "why_it_matters": "WHY IT MATTERS — Risk: tightening Critical-Mineral Supply & Processing pressure in China → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REDUCE_LIMIT.",
-      "topic": "Critical-Mineral Supply & Processing",
-      "geography": "China",
-      "country_iso3": "CHN",
-      "corridor": null,
-      "event_direction": "tightening",
-      "event_action": "Reported Supply or Operations Disruption",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-24T12:41:10.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
