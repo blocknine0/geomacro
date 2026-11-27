@@ -28,6 +28,21 @@ async function signedGroForStoreUsdc(db,env,subject,now){
 }
 const STREAM_CATEGORY=Object.freeze({geopolitics:"GEOPOLITICS",macro:"MACRO_FX",
  critical_minerals:"CRITICAL_MINERALS"});
+async function currentStreamGroForStoreUsdc(db,env,subject,category,now){
+ if(subject.type!=="country"||!STREAM_CATEGORY[category])return null;
+ const active=await db.prepare("SELECT gro_id,country_iso3,category,event_fingerprint,"+
+  "expires_at,payload_json,payload_sha256,signature_b64,created_at "+
+  "FROM risk_stream_signed_gro WHERE country_iso3=? AND category=? "+
+  "AND expires_at>? ORDER BY created_at DESC LIMIT 1")
+  .bind(subject.id,STREAM_CATEGORY[category],new Date(now).toISOString()).first();
+ if(active){
+  try{
+   const verified=await verifyHot50SignedGroReadbacks([active],env,now);
+   if(verified[0])return verified[0];
+  }catch{}
+ }
+ return reissuedStreamGroForStoreUsdc(db,env,subject,category,now);
+}
 async function reissuedStreamGroForStoreUsdc(db,env,subject,category,now){
  if(subject.type!=="country"||!STREAM_CATEGORY[category])return null;
  const row=await db.prepare("SELECT gro_id,country_iso3,category,event_fingerprint,"+
@@ -64,26 +79,42 @@ export async function storeRiskGateUsdcD1(request,env,now=Date.now()){
 let facts,decision,streamGro=null,legacyGro=null;
  try{
   facts=await readProgressiveFacts(env.DB,parsed.subject,now,parsed.category);
-  let history=false;
-  if(parsed.tier==="complex_full"){
-   [legacyGro,history]=await Promise.all([
-    signedGroForStoreUsdc(env.DB,env,parsed.subject,now),
-    sevenDayRollupIsReady(env,parsed.subject,now)
-   ]);
-   if(!legacyGro)streamGro=await reissuedStreamGroForStoreUsdc(
-    env.DB,env,parsed.subject,parsed.category,now);
-  }
-  decision=generateProgressiveRiskGateDecision(parsed,facts,parsed.tier,
-   Boolean(legacyGro||streamGro),history,now);
+  const [foundStreamGro,foundLegacyGro,history]=await Promise.all([
+   currentStreamGroForStoreUsdc(env.DB,env,parsed.subject,parsed.category,now),
+   parsed.tier==="complex_full"?signedGroForStoreUsdc(env.DB,env,parsed.subject,now):Promise.resolve(null),
+   parsed.tier==="complex_full"?sevenDayRollupIsReady(env,parsed.subject,now):Promise.resolve(false)
+  ]);
+  streamGro=foundStreamGro;
+  legacyGro=foundLegacyGro;
+  const streamCorroborated=Number(streamGro?.payload?.evidence_and_confidence?.corroborated_originals??0)>=2;
+  const effectiveFacts=streamCorroborated&&!facts.standard_ready
+   ?{...facts,standard_ready:true,corroboration_sources_count:Math.max(2,Number(facts.corroboration_sources_count??0))}
+   :facts;
+  decision=generateProgressiveRiskGateDecision(parsed,effectiveFacts,parsed.tier,
+   Boolean(legacyGro||streamGro),history,now,Boolean(streamGro));
  }catch{return json({ok:false,error:"RISK_GATE_FACTS_UNAVAILABLE"},503);}
 
  const chargeable=decision.tierReady===true;
  const chargeCents=chargeable?STORE_RISK_GATE_PRICE_CENTS[parsed.tier]:0;
+ const groScore=streamGro?.payload?.eligible_derived_score;
+ const analystBrief=groScore?.analyst_brief??{
+  risk_mechanism:"Elevated "+parsed.category+" event density in "+parsed.subject.id+" ("+decision.result.observation_count+" recent observations; primary driver: "+decision.result.primary_driver+").",
+  watch_triggers:["Monitor official central bank, customs, and sanctions notices for "+parsed.subject.id,"Re-check if score crosses 55 (REDUCE_LIMIT) or 75 (PAUSE)"],
+  raw_source_redacted:true,
+  licensed_source_text_included:false
+ };
+ const decisionGuidance={
+  summary:decision.result.recommended_action+" | score "+decision.result.severity_score+"/100 ("+decision.result.risk.label+") | driver: "+decision.result.primary_driver,
+  exposure_cap_ratio:decision.result.suggested_mitigation.exposure_cap_ratio,
+  settlement_delay_hours:decision.result.suggested_mitigation.settlement_delay_hours,
+  verified_gro_attached:Boolean(streamGro?.gro_id??legacyGro?.object_id)
+ };
  const payload={schema:"geomacro.progressive-risk-gate-decision.v1",
   issuer:"Geomacro",commercial_signatory:"Geomacro",
   source_origin_agnostic_commercial_seal:true,request_id:parsed.request_id,
   source_gro_id:streamGro?.gro_id??legacyGro?.object_id??null,
-  risk_gate:decision.result,tier:parsed.tier,billing_mode:"GEOMACRO_DIRECT_USDC_PAY_PER_CALL",
+  risk_gate:decision.result,analyst_brief:analystBrief,decision_guidance:decisionGuidance,
+  tier:parsed.tier,billing_mode:"GEOMACRO_DIRECT_USDC_PAY_PER_CALL",
   charge_usdc:(chargeCents/100).toFixed(2),charge_cents:chargeCents,
   credit_equivalent:chargeable?chargeCents:0,
   billable:chargeable,resale_permitted:false,execution_authorized:false,
