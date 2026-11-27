@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-27T16:46:23.179Z",
+  "generated_at": "2026-11-27T18:30:26.234Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -513,25 +513,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Statistics Canada"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-18e81505",
-      "category": "macro",
-      "title": "Geomacro finds Federal Reserve issued FOMC statement",
-      "why_it_matters": "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal.",
-      "what_changed": "Federal Reserve issued FOMC statement.",
-      "geography": null,
-      "development_type": "announcement",
-      "topic": "monetary policy",
-      "published_at": "2026-10-28T18:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Federal Reserve Board"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
