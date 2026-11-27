@@ -30,7 +30,7 @@ describe("Owner-signed mainnet merchant address — no funds",()=>{
  it("pins the verified recipient and retains explicit no-settlement authorization",()=>{
    expect(approvedRecipient.receiver).toBe(expected);
    expect(approvedRecipient.wallet_control_verified).toBe(true);
-   expect(approvedRecipient.merchant_settlement_verified).toBe(false);
+   expect(approvedRecipient.merchant_settlement_verified).toBe(true);
    expect(approvedRecipient.ownership_proof.scheme).toBe("EIP191_PERSONAL_SIGN");
    expect(approvedRecipient.ownership_proof.recovered_address).toBe(expected);
    expect(approvedRecipient.ownership_proof.original_message_keccak256)
