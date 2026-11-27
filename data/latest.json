@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-27T14:44:20.605Z",
+  "checked_at": "2026-11-27T15:09:15.097Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
