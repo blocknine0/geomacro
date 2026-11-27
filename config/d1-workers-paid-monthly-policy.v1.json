@@ -16,7 +16,7 @@
   "migration_reserve_rows_read": 40000000,
   "migration_reserve_rows_written": 1000000,
   "maximum_approved_migration_estimated_rows_read": 40000000,
-  "maximum_approved_migration_estimated_rows_written": 8000000,
+  "maximum_approved_migration_estimated_rows_written": 15000000,
   "provider_metrics_are_delayed": true,
   "account_wide_atomic_cap_guaranteed": false,
   "holds_only_optional_migrations_and_background_work": true,

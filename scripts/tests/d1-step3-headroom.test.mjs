@@ -35,7 +35,7 @@ test("reviewed migration estimates admit the 335k Step 3 ceiling within headroom
  assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_read,
   40_000_000);
  assert.equal(D1_PAID_MONTHLY_POLICY.maximum_approved_migration_estimated_rows_written,
-  8_000_000);
+  15_000_000);
  const estimateNow=new Date("2026-12-04T09:00:00.000Z");
  const assessRows=rows=>assessD1PaidMonthlyAdmission({
   usage:{...usage(100,100,estimateNow),
