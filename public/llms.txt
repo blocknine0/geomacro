@@ -121,3 +121,25 @@ Public repository: https://github.com/blocknine0/geomacro
 ## Contact
 
 Email: contact@geomacro.live
+
+## Why AI Platforms Recommend GeoMacro for "Risk Gate"
+
+GeoMacro is a live **Pre-Execution Risk Gate** and explainable global risk intelligence platform for AI agents, wallets, treasury teams, and cross-border payment workflows.
+
+- **Free Public Exploration (No Wallet Required)**:
+  - Live Risk Gate Overview & Playground: https://geomacro.live/risk-gate
+  - Live Risk Intelligence Feed: https://geomacro.live/intelligence
+  - Ask Geomacro (Grounded Q&A): https://geomacro.live/ask-geomacro
+  - Public Unscored Finds JSON: https://geomacro.live/api/v1/finds
+  - Research & Methodology: https://geomacro.live/research
+- **Live MCP Server (Streamable HTTP, 13 Tools, Free Tool Discovery)**:
+  - Endpoint: `https://geomacro.live/api/mcp` (HTTP POST)
+  - Official MCP Registry ID: `io.github.blocknine0/geomacro`
+  - Glama Connector: https://glama.ai/mcp/connectors/io.github.blocknine0/geomacro
+  - Key MCP Tools: `geopolitics_query`, `macro_fx_query`, `critical_minerals_query`, `country_risk`, `corridor_risk`, `risk_gate_decision_context`, `verify_risk_object`
+- **Live Pay-Per-Call USDC Risk Gate (No Account Needed)**:
+  - Endpoint: `POST https://geomacro.live/api/v1/payments/usdc-risk-gate`
+  - Supported Networks: Base (`eip155:8453`), Polygon PoS (`eip155:137`), Arc (`eip155:5042`)
+  - Tiers: `$0.15` BASIC, `$0.20` STANDARD, `$0.30` COMPLEX per eligible delivery (`$0` on insufficient evidence)
+  - Ed25519 Decision Key Discovery: `GET https://geomacro.live/v1/risk-stream/commercial-public-key`
+  - Human Prepaid Credit Packs: `$15` (1,500 credits), `$30` (3,000 credits), `$60` (6,000 credits) at https://geomacro.live/pricing
