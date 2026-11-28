@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-28T10:31:38.075Z",
+  "checked_at": "2026-11-28T11:51:31.723Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -15,10 +15,10 @@
   "item_count": 600,
   "counts": {
     "geopolitics": 313,
-    "macro": 232,
-    "rare_earth": 55
+    "macro": 233,
+    "rare_earth": 54
   },
-  "source_native_ids_sha256": "65229a16d83e8c694ce41ccf2905e55e154ec9f28c94e85417711ec62ac1beab",
+  "source_native_ids_sha256": "5ea02dba4fd5417c63674e804f11879e1bce33101ec31d3f7c4d83d346b492cc",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,27 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-1fad25cc",
+      "category": "macro",
+      "title": "GeoMacro Macro/FX Brief · Currency & External Balances — India (IND)",
+      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported indicator update by national statistical and fiscal authorities, affecting Currency & External Balances in India; direction is falling (a watchpoint with direction not yet established).",
+      "why_it_matters": "WHY IT MATTERS — Risk: falling Currency & External Balances pressure in India → Downstream effect: local funding, settlement and import costs may shift → Price impact channel: INR/USD and India sovereign spreads. Action Posture: CONTINUE.",
+      "topic": "Currency & External Balances",
+      "geography": "India",
+      "country_iso3": "IND",
+      "corridor": null,
+      "event_direction": "falling",
+      "event_action": "Reported Indicator Update",
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-28T08:40:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-c5506094",
       "category": "macro",
@@ -12599,27 +12620,6 @@
       "corridor": null,
       "event_direction": "uncertain",
       "event_action": "Reported Update",
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-26T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-4d1bbc66",
-      "category": "rare_earth",
-      "title": "GeoMacro Critical Minerals Brief · Critical-Mineral Supply & Processing — Canada (CAN)",
-      "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported review or discussion by mineral processors and refining operators, affecting Critical-Mineral Supply & Processing in Canada; direction is uncertain (a watchpoint with direction not yet established).",
-      "why_it_matters": "WHY IT MATTERS — Risk: uncertain Critical-Mineral Supply & Processing pressure in Canada → Downstream effect: processor access, conversion capacity and industrial input availability may shift → Price impact channel: critical-mineral benchmark and regional concentrate premiums. Action Posture: REQUIRE_APPROVAL.",
-      "topic": "Critical-Mineral Supply & Processing",
-      "geography": "Canada",
-      "country_iso3": "CAN",
-      "corridor": null,
-      "event_direction": "uncertain",
-      "event_action": "Reported Review or Discussion",
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-26T22:00:00.000Z",
       "date_precision": "exact",
