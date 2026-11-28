@@ -1794,27 +1794,50 @@ export default {
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (request.method === "GET" && url.pathname === "/v1/risk-stream/commercial-public-key") {
       let keys = [];
-      try {
-        const raw = env.RISK_OBJECT_VERIFY_KEYS_JSON || env.RISK_GATE_VERIFY_KEYS_JSON || "[]";
-        const parsed = JSON.parse(String(raw));
-        if (Array.isArray(parsed)) {
-          keys = parsed;
-        } else if (parsed && typeof parsed === "object") {
-          keys = Object.entries(parsed)
-            .filter(([, pub]) => typeof pub === "string" && pub.length > 0)
-            .map(([key_id, public_key_spki_b64]) => ({
-              key_id,
-              algorithm: "Ed25519",
-              public_key_spki_b64,
-              status: "active",
-            }));
-        }
-      } catch {}
+      for (const raw of [env.RISK_OBJECT_VERIFY_KEYS_JSON, env.RISK_GATE_VERIFY_KEYS_JSON]) {
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(String(raw));
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            keys = parsed;
+            break;
+          } else if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            const mapped = Object.entries(parsed)
+              .filter(([, pub]) => typeof pub === "string" && pub.length > 0)
+              .map(([key_id, public_key_spki_b64]) => ({
+                key_id,
+                algorithm: "Ed25519",
+                public_key_spki_b64,
+                status: "active",
+              }));
+            if (mapped.length > 0) {
+              keys = mapped;
+              break;
+            }
+          }
+        } catch {}
+      }
       if (keys.length === 0 && env.RISK_OBJECT_SIGNING_KEY_ID && env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
         keys = [{
           key_id: env.RISK_OBJECT_SIGNING_KEY_ID,
           algorithm: "Ed25519",
           public_key_spki_b64: env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64,
+          status: "active",
+        }];
+      }
+      if (keys.length === 0 && env.RISK_GATE_DECISION_ED25519_KEY_ID && env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64) {
+        keys = [{
+          key_id: env.RISK_GATE_DECISION_ED25519_KEY_ID,
+          algorithm: "Ed25519",
+          public_key_spki_b64: env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64,
+          status: "active",
+        }];
+      }
+      if (keys.length === 0 && env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64) {
+        keys = [{
+          key_id: env.GEOMACRO_LICENSE_ED25519_KEY_ID || "geomacro-license-v1",
+          algorithm: "Ed25519",
+          public_key_spki_b64: env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64,
           status: "active",
         }];
       }
