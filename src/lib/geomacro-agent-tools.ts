@@ -346,7 +346,11 @@ export function geomacroAgentToolToCanonicalQuery(
   throw new Error(`UNSUPPORTED_GEOMACRO_AGENT_TOOL:${unreachable}`);
 }
 
-const iso3Json = { type: "string", pattern: "^[A-Z]{3}$", description: "ISO 3166-1 alpha-3 country code." };
+const iso3Json = {
+  type: "string",
+  pattern: "^[A-Z]{3}$",
+  description: "Uppercase 3-letter ISO 3166-1 alpha-3 country code (for example, USA, IND, CHN, DEU).",
+};
 const domainsJson = {
   type: "array",
   minItems: 1,
@@ -354,27 +358,47 @@ const domainsJson = {
   uniqueItems: true,
   items: { type: "string", enum: [...GEOMACRO_AGENT_DOMAINS] },
   default: [...GEOMACRO_AGENT_DOMAINS],
+  description: "Risk domains to include: geopolitics, macro, and/or critical_minerals.",
 };
 const commonProperties = {
   domains: domainsJson,
-  max_age_seconds: { type: "integer", minimum: 1, maximum: 94_608_000 },
-  detail: { type: "string", enum: ["compact", "standard", "full"], default: "standard" },
-  client_request_id: { type: "string", minLength: 4, maxLength: 128 },
+  max_age_seconds: {
+    type: "integer",
+    minimum: 1,
+    maximum: 94_608_000,
+    description: "Optional maximum acceptable intelligence age in seconds before rejecting stale state.",
+  },
+  detail: {
+    type: "string",
+    enum: ["compact", "standard", "full"],
+    default: "standard",
+    description: "Response verbosity level: compact (summary), standard (default), or full (detailed drivers).",
+  },
+  client_request_id: {
+    type: "string",
+    minLength: 4,
+    maxLength: 128,
+    description: "Optional caller-supplied idempotency key (4 to 128 characters) for tracking or retries.",
+  },
 };
 const genericSubjectJson = {
+  description: "Target entity: either a single country (type=country + country_iso3) or a directional corridor (type=corridor + origin/destination ISO3).",
   oneOf: [
     {
       type: "object",
-      properties: { type: { const: "country" }, country_iso3: iso3Json },
+      properties: {
+        type: { const: "country", description: "Selects single-country analysis." },
+        country_iso3: iso3Json,
+      },
       required: ["type", "country_iso3"],
       additionalProperties: false,
     },
     {
       type: "object",
       properties: {
-        type: { const: "corridor" },
-        origin_country_iso3: iso3Json,
-        destination_country_iso3: iso3Json,
+        type: { const: "corridor", description: "Selects directional cross-border corridor analysis." },
+        origin_country_iso3: { ...iso3Json, description: "Origin ISO 3166-1 alpha-3 country code." },
+        destination_country_iso3: { ...iso3Json, description: "Destination ISO 3166-1 alpha-3 country code (must differ from origin)." },
       },
       required: ["type", "origin_country_iso3", "destination_country_iso3"],
       additionalProperties: false,
@@ -405,7 +429,7 @@ const intelligenceOutputSchema = {
 export const GEOMACRO_AGENT_TOOLS = [
   {
     name: "store_product_query",
-    description: "Request an exact active Geomacro Store product and price variant through the canonical evidence-qualified x402 engine. Never supplies rights, signatures or payment authorization.",
+    description: "Use when you already know the exact Geomacro Store SKU (capability + variant) and structured subjects. Do not use for free-form natural-language questions (use answer_question or paid_structured_answer instead). Paid via x402 USDC; read-only and never authorizes execution.",
     paid: true,
     inputSchema: { ...publicQueryOpenApiSchema(), required: ["subjects", "product"] },
     outputSchema: intelligenceOutputSchema,
@@ -413,19 +437,19 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "paid_structured_answer",
-    description: "One question to a founder-priced GeoMacro structured intelligence product: deterministic multilingual SKU selection, qualified OSINT/news-derived market watch, canonical USDC x402 payment challenge and exact immutable JSON delivery. Signed Risk Objects require authentic GeoMacro Ed25519 proof. Risk Gate is Coming Soon; no raw news, direct execution or unsupported paid charge.",
+    description: "Use when you have a free-form multilingual question and want deterministic Store SKU selection with x402 USDC delivery. Do not use for free cryptographic signature verification (use verify_risk_object) or domain-locked single-country queries (use geopolitics_query, macro_fx_query, or critical_minerals_query). Read-only; never authorizes execution.",
     paid:true,
     inputSchema:objectSchema({
-      question:{type:"string",minLength:3,maxLength:2000},
-      language:{type:"string",description:"Optional response query language BCP47 code."},
-      subjects:{type:"array",items:{oneOf:[
-        objectSchema({type:{const:"country"},country_iso3:iso3Json},["type","country_iso3"]),
-        objectSchema({type:{const:"corridor"},origin_country_iso3:iso3Json,destination_country_iso3:iso3Json},["type","origin_country_iso3","destination_country_iso3"]),
+      question:{type:"string",minLength:3,maxLength:2000,description:"Natural-language risk intelligence question (3 to 2000 characters) in any supported language."},
+      language:{type:"string",description:"Optional response query language BCP47 code (for example, en, es, fr)."},
+      subjects:{type:"array",description:"Optional explicit country or corridor subjects; inferred from question when omitted.",items:{oneOf:[
+        objectSchema({type:{const:"country",description:"Single-country subject type."},country_iso3:iso3Json},["type","country_iso3"]),
+        objectSchema({type:{const:"corridor",description:"Directional corridor subject type."},origin_country_iso3:{...iso3Json,description:"Origin country ISO3 code."},destination_country_iso3:{...iso3Json,description:"Destination country ISO3 code."}},["type","origin_country_iso3","destination_country_iso3"]),
       ]}},
-      topics:{type:"array",items:{type:"string",enum:[...AGENT_QUERY_TOPICS]}},
-      product:{type:"object",additionalProperties:false,description:"Optional exact chosen Store SKU; otherwise infer from question.",properties:{
-        capability:{type:"string"},variant:{type:"string"},
-        issued_after:{type:"string",format:"date-time"},
+      topics:{type:"array",description:"Optional risk topic filters; inferred from question when omitted.",items:{type:"string",enum:[...AGENT_QUERY_TOPICS]}},
+      product:{type:"object",additionalProperties:false,description:"Optional exact chosen Store SKU; otherwise inferred from question.",properties:{
+        capability:{type:"string",description:"Target Geomacro capability identifier."},variant:{type:"string",description:"Target product variant (e.g. standard, complex)."},
+        issued_after:{type:"string",format:"date-time",description:"Optional ISO 8601 lower bound timestamp for source freshness."},
       },required:["capability","variant"]},
       client_request_id:commonProperties.client_request_id,
       max_age_seconds:commonProperties.max_age_seconds,
@@ -435,10 +459,10 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "answer_question",
-    description: "Turn a natural-language question mentioning one or more unambiguous countries into an exact priced Intelligence Query. Uses the canonical source, freshness, commercial-rights, signed-proof and x402 settlement gates; never accepts a client price and never charges when unavailable.",
+    description: "Use when asking a concise English natural-language question (up to 1000 chars) naming one or more unambiguous countries without choosing a specific SKU. Do not use for directional trade corridors (use corridor_risk) or decision-gate checks (use risk_gate_decision_context). Paid via x402 USDC; never charges when unavailable.",
     paid: true,
     inputSchema: objectSchema({
-      question: { type: "string", minLength: 3, maxLength: 1_000 },
+      question: { type: "string", minLength: 3, maxLength: 1_000, description: "Natural-language question naming one or more countries (3 to 1000 characters)." },
       max_age_seconds: commonProperties.max_age_seconds,
       client_request_id: commonProperties.client_request_id,
     }, ["question"]),
@@ -447,12 +471,12 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   ...GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile => ({
     name: profile.tool,
-    description: `${profile.name}: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.`,
+    description: `${profile.name}: use when asking a focused ${profile.id} question for a single country (ISO3). Do not use for cross-domain country summaries (use country_risk or three_domain_state) or cross-border corridors (use corridor_risk). Live retrieval is no-charge until commercially verified; published_only uses x402 USDC.`,
     paid: true,
     inputSchema: objectSchema({
       country_iso3: iso3Json,
-      question: { type: "string", minLength: 3, maxLength: 2_000 },
-      fulfillment_mode: { type: "string", enum: ["live_on_demand", "published_only"], default: "live_on_demand" },
+      question: { type: "string", minLength: 3, maxLength: 2_000, description: `Focused ${profile.id} question for the specified country (3 to 2000 characters).` },
+      fulfillment_mode: { type: "string", enum: ["live_on_demand", "published_only"], default: "live_on_demand", description: "Use live_on_demand (default) for fresh verified retrieval or published_only for cached signed intelligence." },
       max_age_seconds: commonProperties.max_age_seconds,
       detail: commonProperties.detail,
       client_request_id: commonProperties.client_request_id,
@@ -462,7 +486,7 @@ export const GEOMACRO_AGENT_TOOLS = [
   })),
   {
     name: "country_risk",
-    description: "Return current derived Geomacro country risk across selected commercial domains. Never returns raw upstream data or source identity.",
+    description: "Use when you need the current derived risk state for a single country across selected domains without writing a free-form question. Do not use for bilateral corridors (use corridor_risk) or change attribution (use change_since_last_verified or why_changed). Paid via x402 USDC; never returns raw upstream data.",
     paid: true,
     inputSchema: objectSchema(
       { country_iso3: iso3Json, ...commonProperties },
@@ -473,12 +497,12 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "corridor_risk",
-    description: "Return directional derived corridor risk using the canonical Geomacro intelligence layer.",
+    description: "Use when assessing directional cross-border risk from an origin country to a destination country (trade, supply chain, or settlement corridor). Do not use for single-country queries (use country_risk). Paid via x402 USDC; read-only.",
     paid: true,
     inputSchema: objectSchema(
       {
-        origin_country_iso3: iso3Json,
-        destination_country_iso3: iso3Json,
+        origin_country_iso3: { ...iso3Json, description: "Origin ISO 3166-1 alpha-3 country code." },
+        destination_country_iso3: { ...iso3Json, description: "Destination ISO 3166-1 alpha-3 country code (must differ from origin)." },
         ...commonProperties,
       },
       ["origin_country_iso3", "destination_country_iso3"],
@@ -488,7 +512,7 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "change_since_last_verified",
-    description: "Explain material change since the previous published verified Geomacro state for a country or directional corridor.",
+    description: "Use when checking what materially changed since the previous published verified state for a country or corridor. Do not use if you only need the current baseline snapshot (use country_risk or three_domain_state) or causal drivers (use why_changed). Paid via x402 USDC.",
     paid: true,
     inputSchema: objectSchema({ subject: genericSubjectJson, ...commonProperties }, ["subject"]),
     outputSchema: intelligenceOutputSchema,
@@ -496,7 +520,7 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "why_changed",
-    description: "Return the derived Geomacro cause and drivers behind the latest verified risk-state change.",
+    description: "Use when investigating the specific drivers and causes behind the latest verified risk-state change for a country or corridor. Do not use for current static risk levels (use country_risk) or pre-payment policy gates (use risk_gate_decision_context). Paid via x402 USDC.",
     paid: true,
     inputSchema: objectSchema({ subject: genericSubjectJson, ...commonProperties }, ["subject"]),
     outputSchema: intelligenceOutputSchema,
@@ -504,7 +528,7 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "three_domain_state",
-    description: "Return current geopolitical, macro/FX and critical-minerals state from one canonical Geomacro truth.",
+    description: "Use when you want a unified snapshot across all three Geomacro domains (geopolitics, macro/FX, and critical minerals) for a country or corridor. Do not use when filtering to a single domain (use country_risk or a category *_query tool). Paid via x402 USDC.",
     paid: true,
     inputSchema: objectSchema({ subject: genericSubjectJson, ...commonProperties }, ["subject"]),
     outputSchema: intelligenceOutputSchema,
@@ -512,15 +536,15 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "risk_gate_decision_context",
-    description: "Return non-executing Risk Gate decision context grounded in current verified Geomacro intelligence.",
+    description: "Use before a treasury, vendor, or agent payment or exposure review to obtain a policy-aware, non-executing Risk Gate decision context (CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, or PAUSE). Do not use for general news summaries. Paid via x402 USDC; execution_authorized is always false.",
     paid: true,
     inputSchema: objectSchema(
       {
         subject: genericSubjectJson,
         ...commonProperties,
-        policy_preset: { type: "string", enum: ["balanced", "cautious", "strict"], default: "balanced" },
-        action_type: { type: "string", enum: ["treasury_payment", "vendor_payment", "agent_payment", "exposure_review"] },
-        amount_usdc: { type: "number", exclusiveMinimum: 0, maximum: 1_000_000_000 },
+        policy_preset: { type: "string", enum: ["balanced", "cautious", "strict"], default: "balanced", description: "Risk tolerance preset: balanced (default), cautious, or strict." },
+        action_type: { type: "string", enum: ["treasury_payment", "vendor_payment", "agent_payment", "exposure_review"], description: "Intended downstream action type being evaluated by the Risk Gate." },
+        amount_usdc: { type: "number", exclusiveMinimum: 0, maximum: 1_000_000_000, description: "Optional transaction exposure amount in USDC (positive number) for sizing context." },
       },
       ["subject", "action_type"],
     ),
@@ -533,10 +557,10 @@ export const GEOMACRO_AGENT_TOOLS = [
   },
   {
     name: "verify_risk_object",
-    description: "Verify a caller-supplied signed Geomacro Risk Object against the current public trust/key lifecycle. This verifies integrity only and does not authorize execution.",
+    description: "Use when verifying the Ed25519 signature and integrity of a signed Geomacro Risk Object already in your possession. Free (no payment required) and read-only; verifies cryptographic authenticity only and never authorizes execution.",
     paid: false,
     inputSchema: objectSchema(
-      { risk_object: { type: "object", description: "Complete signed Geomacro Risk Object supplied by the caller." } },
+      { risk_object: { type: "object", description: "Complete signed Geomacro Risk Object JSON payload supplied by the caller." } },
       ["risk_object"],
     ),
     outputSchema: {
