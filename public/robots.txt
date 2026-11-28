@@ -3,4 +3,34 @@ Allow: /
 Disallow: /api/
 Disallow: /internal/
 
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
 Sitemap: https://geomacro.live/sitemap.xml

@@ -1643,5 +1643,14 @@
     "exact_blob_lock": true,
     "website_lock_remains_active": true,
     "global_risk_final_lock_unmodified": true
+  },
+  "approved_aeo_llms_robots_20261128": {
+    "approval": "Founder approved AI crawler robots.txt allow rules and live Risk Gate / MCP discovery in public/llms.txt on 2026-11-28.",
+    "approved_source_commit": "9b04f9f8efd67bbb62324ffa857ec7340ca96f29",
+    "approved_paths": [
+      "public/llms.txt",
+      "public/robots.txt"
+    ],
+    "exact_blob_lock": true
   }
 }
