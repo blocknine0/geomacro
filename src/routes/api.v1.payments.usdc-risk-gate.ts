@@ -15,7 +15,8 @@ const HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
 };
 const CATEGORIES = {
   GEOPOLITICS: "geopolitics",
@@ -192,7 +193,29 @@ export async function handleUsdcPayPerCall(
 
   const txHash = typeof body.tx_hash === "string" ? body.tx_hash.trim() : "";
   if (!txHash) {
-    return bad("PAYMENT_REQUIRED", 402, {
+    const accepts = [
+      {
+        scheme: "exact",
+        network: chain.caip2,
+        maxAmountRequired: price.atomic,
+        amount: price.atomic,
+        resource: "https://geomacro.live/api/v1/payments/usdc-risk-gate",
+        description: `GeoMacro ${tier} Risk Gate for ${countryIso3} (${category})`,
+        mimeType: "application/json",
+        payTo: GEOMACRO_MAINNET_USDC_RECIPIENT,
+        maxTimeoutSeconds: 300,
+        asset: chain.asset,
+        extra: { name: "USD Coin", version: "2" },
+      },
+    ];
+    const x402Body = {
+      ok: false,
+      error: "PAYMENT_REQUIRED",
+      x402Version: 1,
+      accepts,
+      execution_authorized: false,
+      chargeable: false,
+      decision_support_notice: DECISION_SUPPORT_NOTICE,
       payment_instructions: {
         network: chain.id,
         caip2: chain.caip2,
@@ -202,6 +225,13 @@ export async function handleUsdcPayPerCall(
         amount_usdc: price.usdc,
         amount_atomic: price.atomic,
         free_facilitator: chain.freeFacilitator,
+      },
+    };
+    return Response.json(x402Body, {
+      status: 402,
+      headers: {
+        ...HEADERS,
+        "PAYMENT-REQUIRED": Buffer.from(JSON.stringify(x402Body), "utf8").toString("base64"),
       },
     });
   }
