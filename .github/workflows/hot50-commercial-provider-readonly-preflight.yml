@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Verify live PayPal merchant API and webhook registration (NO FUNDS)
@@ -41,7 +41,7 @@ jobs:
           GEOMACRO_PAYPAL_WEBHOOK_ID: ${{ secrets.GEOMACRO_PAYPAL_WEBHOOK_ID }}
           GEOMACRO_PAYPAL_ENVIRONMENT: live
         run: node scripts/ops/check-paypal-live-webhook.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: paypal-live-readonly-configuration
@@ -53,10 +53,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Read exact provider D1 canonical/Step3 and commercial schema
@@ -69,7 +69,7 @@ jobs:
           GEOMACRO_COMMERCIAL_READBACK_PHASE: ${{ inputs.schema_phase }}
           GEOMACRO_COMMERCIAL_READBACK_APPROVED: READ_ONLY_SCHEMA_PROOF
         run: node scripts/ops/readback-commercial-d1-schema.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: d1-${{ inputs.db_target }}-${{ inputs.schema_phase }}-readonly-schema
