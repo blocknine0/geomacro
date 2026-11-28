@@ -142,6 +142,7 @@ function requestId(value: unknown): JsonRpcId {
 
 const SUPPORTED_PROTOCOL_VERSIONS = new Set([
   GEOMACRO_MCP_PROTOCOL_VERSION,
+  "2025-11-25",
   "2025-06-18",
   "2025-03-26",
   "2024-11-05",
@@ -564,6 +565,7 @@ export const geomacroMcpHandlers = {
 
     if (raw.method === "tools/list") {
       return rpcResult(id, {
+        resultType: "complete",
         tools: publicTools(),
         ttlMs: 3_600_000,
         cacheScope: "public",
