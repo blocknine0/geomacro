@@ -140,22 +140,66 @@ function requestId(value: unknown): JsonRpcId {
     : null;
 }
 
-function validateModernHeaders(request: Request, body: Record<string, unknown>) {
-  const version = request.headers.get("mcp-protocol-version");
-  if (version !== GEOMACRO_MCP_PROTOCOL_VERSION) {
+const SUPPORTED_PROTOCOL_VERSIONS = new Set([
+  GEOMACRO_MCP_PROTOCOL_VERSION,
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+]);
+
+function validateOriginAndAccept(request: Request, id: JsonRpcId) {
+  const origin = request.headers.get("origin");
+  if (origin !== null) {
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      parsed = null;
+    }
+    if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:")) {
+      return rpcError(id, -32020, "Invalid Origin header", undefined, 403);
+    }
+  }
+  const accept = request.headers.get("accept")?.toLowerCase() ?? "";
+  if (
+    accept.length > 0 &&
+    !accept.includes("application/json") &&
+    !accept.includes("text/event-stream") &&
+    !accept.includes("*/*") &&
+    !accept.includes("application/*")
+  ) {
     return rpcError(
-      requestId(body),
+      id,
+      -32020,
+      "Accept header must allow application/json or text/event-stream",
+      undefined,
+      406,
+    );
+  }
+  return null;
+}
+
+function validateModernHeaders(request: Request, body: Record<string, unknown>) {
+  const id = requestId(body);
+  const originOrAcceptErr = validateOriginAndAccept(request, id);
+  if (originOrAcceptErr) return originOrAcceptErr;
+
+  const version = request.headers.get("mcp-protocol-version");
+  if (version !== null && version !== "" && !SUPPORTED_PROTOCOL_VERSIONS.has(version)) {
+    return rpcError(
+      id,
       -32022,
       "Unsupported MCP protocol version",
-      { supported: [GEOMACRO_MCP_PROTOCOL_VERSION] },
+      { supported: [...SUPPORTED_PROTOCOL_VERSIONS] },
       400,
     );
   }
 
   const method = typeof body.method === "string" ? body.method : "";
-  if (request.headers.get("mcp-method") !== method) {
+  const headerMethod = request.headers.get("mcp-method");
+  if (headerMethod !== null && headerMethod !== method) {
     return rpcError(
-      requestId(body),
+      id,
       -32020,
       "Mcp-Method header does not match JSON-RPC method",
       undefined,
@@ -168,10 +212,10 @@ function validateModernHeaders(request: Request, body: Record<string, unknown>) 
   const envelopeVersion = meta[PROTOCOL_VERSION_META_KEY];
   if (
     envelopeVersion !== undefined &&
-    envelopeVersion !== GEOMACRO_MCP_PROTOCOL_VERSION
+    (typeof envelopeVersion !== "string" || !SUPPORTED_PROTOCOL_VERSIONS.has(envelopeVersion))
   ) {
     return rpcError(
-      requestId(body),
+      id,
       -32020,
       "MCP protocol version envelope does not match transport header",
       undefined,
@@ -181,9 +225,10 @@ function validateModernHeaders(request: Request, body: Record<string, unknown>) 
 
   if (method === "tools/call") {
     const name = typeof params.name === "string" ? params.name : "";
-    if (!name || request.headers.get("mcp-name") !== name) {
+    const headerName = request.headers.get("mcp-name");
+    if (!name || (headerName !== null && headerName !== name)) {
       return rpcError(
-        requestId(body),
+        id,
         -32020,
         "Mcp-Name header does not match tools/call params.name",
         undefined,
@@ -479,6 +524,32 @@ export const geomacroMcpHandlers = {
 
     const id = requestId(raw);
     const params = isRecord(raw.params) ? raw.params : {};
+
+    if (raw.method === "initialize") {
+      const requestedVersion =
+        typeof params.protocolVersion === "string" &&
+        SUPPORTED_PROTOCOL_VERSIONS.has(params.protocolVersion)
+          ? params.protocolVersion
+          : GEOMACRO_MCP_PROTOCOL_VERSION;
+      return rpcResult(id, {
+        protocolVersion: requestedVersion,
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: {
+          name: "geomacro",
+          version: GEOMACRO_MCP_SERVER_VERSION,
+        },
+        instructions:
+          "Geomacro is a read-only geopolitical, macro/FX and critical-minerals intelligence agent. Paid intelligence tools route through the canonical x402 intelligence API. No tool authorizes trading, payments or financial execution.",
+      });
+    }
+
+    if (raw.method === "notifications/initialized" || raw.method.startsWith("notifications/")) {
+      return new Response(null, { status: 202, headers: corsHeaders });
+    }
+
+    if (raw.method === "ping") {
+      return rpcResult(id, {});
+    }
 
     if (raw.method === "server/discover") {
       return rpcResult(id, {
