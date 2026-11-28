@@ -315,8 +315,8 @@ function publicTools() {
       .split("_")
       .map((part) => part[0]?.toUpperCase() + part.slice(1))
       .join(" "),
-    description: tool.description,
-    inputSchema: tool.inputSchema,
+    description: MCP_TOOL_USAGE_GUIDANCE[tool.name] ?? tool.description,
+    inputSchema: enrichSchemaDescriptions(tool.inputSchema),
     outputSchema: tool.outputSchema,
     annotations: {
       readOnlyHint: true,
