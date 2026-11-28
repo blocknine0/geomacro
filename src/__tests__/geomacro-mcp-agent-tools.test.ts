@@ -229,4 +229,57 @@ describe("Geomacro MCP + thin agent contract", () => {
     const body = await response.json() as any;
     expect(body.error.code).toBe(-32020);
   });
+
+  it("supports standard MCP initialize, notifications/initialized, ping, and headerless tools/list", async () => {
+    const initRes = await geomacroMcpHandlers.POST({
+      request: new Request("https://geomacro.live/api/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          origin: "https://glama.ai",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "glama", version: "1.0" } },
+        }),
+      }),
+    });
+    expect(initRes.status).toBe(200);
+    const initBody = await initRes.json() as any;
+    expect(initBody.result.protocolVersion).toBe("2025-03-26");
+    expect(initBody.result.serverInfo.name).toBe("geomacro");
+
+    const notifRes = await geomacroMcpHandlers.POST({
+      request: new Request("https://geomacro.live/api/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+      }),
+    });
+    expect(notifRes.status).toBe(202);
+
+    const listRes = await geomacroMcpHandlers.POST({
+      request: new Request("https://geomacro.live/api/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
+      }),
+    });
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json() as any;
+    expect(Array.isArray(listBody.result.tools)).toBe(true);
+    expect(listBody.result.tools.length).toBe(13);
+
+    const badOriginRes = await geomacroMcpHandlers.POST({
+      request: new Request("https://geomacro.live/api/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "null" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "ping" }),
+      }),
+    });
+    expect(badOriginRes.status).toBe(403);
+  });
 });
