@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-28T03:20:39.346Z",
+  "checked_at": "2026-11-28T03:24:05.308Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -557,7 +557,7 @@
       "severity": null
     },
     {
-      "id": "rare_earth-d7a67ed0",
+      "id": "rare_earth-23ab750b",
       "category": "rare_earth",
       "title": "GeoMacro Critical Minerals Brief · Rare-Earth Supply — China (CHN)",
       "what_changed": "WHAT CHANGED: GeoMacro's dated observation records a reported update by mineral regulators and supply-chain operators, affecting rare-earth supply in China; direction is uncertain (a watchpoint with direction not yet established).",
@@ -569,7 +569,7 @@
       "event_direction": "uncertain",
       "event_action": "Reported Update",
       "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-27T21:33:03.000Z",
+      "published_at": "2026-11-27T21:33:45.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [],
