@@ -241,6 +241,73 @@ function validateModernHeaders(request: Request, body: Record<string, unknown>) 
   return null;
 }
 
+const MCP_TOOL_USAGE_GUIDANCE: Record<string, string> = {
+  store_product_query: "Use when you already know the exact Geomacro Store SKU (capability and variant) and structured subjects. Do not use for free-form natural-language questions (use answer_question or paid_structured_answer instead). Paid via x402 USDC; read-only and never authorizes execution.",
+  paid_structured_answer: "Use when you have a free-form multilingual question and want deterministic Store SKU selection with x402 USDC delivery. Do not use for free signature verification (use verify_risk_object) or domain-locked single-country queries (use geopolitics_query, macro_fx_query, or critical_minerals_query). Read-only; never authorizes execution.",
+  answer_question: "Use when asking a concise English natural-language question (up to 1000 chars) naming one or more unambiguous countries without choosing a SKU. Do not use for directional trade corridors (use corridor_risk) or pre-payment policy gates (use risk_gate_decision_context). Paid via x402 USDC; never charges when unavailable.",
+  geopolitics_query: "Geomacro Geopolitics Agent: use when asking a focused geopolitics or conflict question for a single country (ISO3). Do not use for cross-domain summaries (use country_risk or three_domain_state) or cross-border corridors (use corridor_risk). Live retrieval is no-charge until commercially verified; published_only uses x402 USDC.",
+  macro_fx_query: "Geomacro Macro / FX Agent: use when asking a focused macroeconomic, inflation, or currency question for a single country (ISO3). Do not use for cross-domain summaries (use country_risk or three_domain_state) or cross-border corridors (use corridor_risk). Live retrieval is no-charge until commercially verified; published_only uses x402 USDC.",
+  critical_minerals_query: "Geomacro Critical Minerals Agent: use when asking a focused critical-minerals or supply-chain question for a single country (ISO3). Do not use for cross-domain summaries (use country_risk or three_domain_state) or cross-border corridors (use corridor_risk). Live retrieval is no-charge until commercially verified; published_only uses x402 USDC.",
+  country_risk: "Use when you need the current derived risk state for a single country across selected domains without writing a free-form question. Do not use for bilateral corridors (use corridor_risk) or change attribution (use change_since_last_verified or why_changed). Paid via x402 USDC; never returns raw upstream data.",
+  corridor_risk: "Use when assessing directional cross-border risk from an origin country to a destination country (trade, supply chain, or settlement corridor). Do not use for single-country queries (use country_risk). Paid via x402 USDC; read-only.",
+  change_since_last_verified: "Use when checking what materially changed since the previous published verified state for a country or corridor. Do not use if you only need the current baseline snapshot (use country_risk or three_domain_state) or causal drivers (use why_changed). Paid via x402 USDC.",
+  why_changed: "Use when investigating the specific drivers and causes behind the latest verified risk-state change for a country or corridor. Do not use for current static risk levels (use country_risk) or pre-payment policy gates (use risk_gate_decision_context). Paid via x402 USDC.",
+  three_domain_state: "Use when you want a unified snapshot across all three Geomacro domains (geopolitics, macro/FX, and critical minerals) for a country or corridor. Do not use when filtering to a single domain (use country_risk or a category *_query tool). Paid via x402 USDC.",
+  risk_gate_decision_context: "Use before a treasury, vendor, or agent payment or exposure review to obtain a policy-aware, non-executing Risk Gate decision context (CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, or PAUSE). Do not use for general news summaries. Paid via x402 USDC; execution_authorized is always false.",
+  verify_risk_object: "Use when verifying the Ed25519 signature and integrity of a signed Geomacro Risk Object already in your possession. Free (no payment required) and read-only; verifies cryptographic authenticity only and never authorizes execution.",
+};
+
+const MCP_PARAM_DESCRIPTIONS: Record<string, string> = {
+  question: "Natural-language risk intelligence question naming the target country, corridor, or topic.",
+  language: "Optional BCP47 response language code (for example, en, es, fr).",
+  country_iso3: "Uppercase 3-letter ISO 3166-1 alpha-3 country code (for example, USA, IND, CHN, DEU).",
+  origin_country_iso3: "Origin uppercase 3-letter ISO 3166-1 alpha-3 country code.",
+  destination_country_iso3: "Destination uppercase 3-letter ISO 3166-1 alpha-3 country code (must differ from origin).",
+  domains: "Risk domains to include: geopolitics, macro, and/or critical_minerals.",
+  topics: "Risk topic filters to narrow analysis scope.",
+  subjects: "Target countries or directional corridors for analysis.",
+  subject: "Target entity: either a single country (type=country) or a directional corridor (type=corridor).",
+  type: "Subject selector type (country or corridor).",
+  max_age_seconds: "Optional maximum acceptable intelligence age in seconds before rejecting stale state.",
+  detail: "Response verbosity level: compact (summary), standard (default), or full (detailed drivers).",
+  client_request_id: "Optional caller-supplied idempotency key (4 to 128 characters) for tracking or retries.",
+  fulfillment_mode: "Use live_on_demand (default) for fresh verified retrieval or published_only for cached signed intelligence.",
+  product: "Selected Geomacro Store SKU (capability and variant).",
+  capability: "Target Geomacro Store capability identifier.",
+  variant: "Target product variant (for example, standard or complex).",
+  issued_after: "Optional ISO 8601 lower-bound timestamp for source freshness.",
+  policy_preset: "Risk tolerance preset: balanced (default), cautious, or strict.",
+  action_type: "Intended downstream action type being evaluated by the Risk Gate.",
+  amount_usdc: "Optional transaction exposure amount in USDC (positive number) for sizing context.",
+  risk_object: "Complete signed Geomacro Risk Object JSON payload supplied by the caller.",
+  schema_version: "Schema version identifier for the query payload.",
+  intent: "Structured query intent (single_subject, corridor, change_since, or risk_gate).",
+  evidence: "Evidence requirement mode.",
+  delivery_tier: "Target signed delivery tier.",
+  change: "Change-comparison baseline configuration.",
+  risk_gate_context: "Policy preset and action context for Risk Gate evaluation.",
+};
+
+function enrichSchemaDescriptions(node: unknown, propName?: string): unknown {
+  if (Array.isArray(node)) return node.map((item) => enrichSchemaDescriptions(item));
+  if (!isRecord(node)) return node;
+  const out: Record<string, unknown> = { ...node };
+  if (propName && typeof out.description !== "string" && MCP_PARAM_DESCRIPTIONS[propName]) {
+    out.description = MCP_PARAM_DESCRIPTIONS[propName];
+  }
+  if (isRecord(out.properties)) {
+    const nextProps: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(out.properties)) {
+      nextProps[k] = enrichSchemaDescriptions(v, k);
+    }
+    out.properties = nextProps;
+  }
+  if (out.items) out.items = enrichSchemaDescriptions(out.items);
+  if (Array.isArray(out.oneOf)) out.oneOf = out.oneOf.map((x) => enrichSchemaDescriptions(x));
+  if (Array.isArray(out.anyOf)) out.anyOf = out.anyOf.map((x) => enrichSchemaDescriptions(x));
+  return out;
+}
+
 function publicTools() {
   return GEOMACRO_AGENT_TOOLS.map((tool) => ({
     name: tool.name,
