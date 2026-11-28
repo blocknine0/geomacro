@@ -15,7 +15,7 @@ const HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
+  "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature, X-PAYMENT, x-payment",
   "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
 };
 const CATEGORIES = {
@@ -191,8 +191,26 @@ export async function handleUsdcPayPerCall(
     );
   }
 
+  const paymentHeader = (
+    request.headers.get("payment-signature") ??
+    request.headers.get("x-payment") ??
+    ""
+  ).trim();
   const txHash = typeof body.tx_hash === "string" ? body.tx_hash.trim() : "";
-  if (!txHash) {
+  const paymentRequirements = {
+    scheme: "exact" as const,
+    network: chain.caip2,
+    maxAmountRequired: price.atomic,
+    amount: price.atomic,
+    resource: "https://geomacro.live/api/v1/payments/usdc-risk-gate",
+    description: `GeoMacro ${tier} Risk Gate for ${countryIso3} (${category})`,
+    mimeType: "application/json",
+    payTo: GEOMACRO_MAINNET_USDC_RECIPIENT,
+    maxTimeoutSeconds: 300,
+    asset: chain.asset,
+    extra: { name: "USD Coin", version: "2" },
+  };
+  if (!txHash && !paymentHeader) {
     const accepts = [
       {
         scheme: "exact",
@@ -238,17 +256,60 @@ export async function handleUsdcPayPerCall(
   const requestId =
     typeof body.request_id === "string" && body.request_id.trim().length > 0
       ? body.request_id.trim()
-      : `${network}:${txHash.toLowerCase()}`;
+      : `${network}:${(txHash || "x402:" + paymentHeader.slice(0, 32)).toLowerCase()}`;
 
   let proof;
-  try {
-    proof = await verifyMainnetUsdcTransferReceipt({
-      network,
-      txHash,
-      minAmountAtomic: price.atomic,
-    });
-  } catch (err) {
-    return bad(err instanceof Error ? err.message : "USDC_PROOF_FAILED", 402);
+  let settlementHeader: string | null = null;
+  if (txHash) {
+    try {
+      proof = await verifyMainnetUsdcTransferReceipt({
+        network,
+        txHash,
+        minAmountAtomic: price.atomic,
+      });
+    } catch (err) {
+      return bad(err instanceof Error ? err.message : "USDC_PROOF_FAILED", 402);
+    }
+  } else {
+    if (!chain.freeFacilitator) {
+      return bad("FACILITATOR_NOT_SUPPORTED_ON_NETWORK", 402);
+    }
+    try {
+      const paymentPayload = JSON.parse(Buffer.from(paymentHeader, "base64").toString("utf8"));
+      const verifyRes = await fetcher(chain.freeFacilitator + "/verify", {
+        method: "POST",
+        redirect: "manual",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const verifyJson = (await verifyRes.json()) as { isValid?: boolean; invalidReason?: string; payer?: string };
+      if (!verifyRes.ok || !verifyJson.isValid) {
+        return bad(verifyJson.invalidReason || "X402_VERIFY_FAILED", 402);
+      }
+      const settleRes = await fetcher(chain.freeFacilitator + "/settle", {
+        method: "POST",
+        redirect: "manual",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const settleJson = (await settleRes.json()) as { success?: boolean; transaction?: string; payer?: string; errorReason?: string };
+      if (!settleRes.ok || !settleJson.success || !settleJson.transaction) {
+        return bad(settleJson.errorReason || "X402_SETTLE_FAILED", 402);
+      }
+      settlementHeader = Buffer.from(JSON.stringify(settleJson), "utf8").toString("base64");
+      proof = {
+        network,
+        tx_hash: settleJson.transaction,
+        payer: settleJson.payer || verifyJson.payer || "0x0000000000000000000000000000000000000000",
+        amount_atomic: price.atomic,
+        amount_usdc: price.usdc,
+        settled_via: chain.freeFacilitator,
+      };
+    } catch (err) {
+      return bad(err instanceof Error ? err.message : "X402_SETTLEMENT_ERROR", 402);
+    }
   }
 
   const token = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
@@ -284,7 +345,7 @@ export async function handleUsdcPayPerCall(
     }
     return Response.json(
       { ...value, usdc_payment_proof: proof, decision_support_notice: DECISION_SUPPORT_NOTICE },
-      { status: upstream.status, headers: HEADERS },
+      { status: upstream.status, headers: settlementHeader ? { ...HEADERS, "PAYMENT-RESPONSE": settlementHeader } : HEADERS },
     );
   } catch {
     return bad("RISK_GATE_D1_TRANSPORT_UNAVAILABLE", 503);
