@@ -275,12 +275,17 @@ export async function handleUsdcPayPerCall(
       return bad("FACILITATOR_NOT_SUPPORTED_ON_NETWORK", 402);
     }
     try {
-      const paymentPayload = JSON.parse(Buffer.from(paymentHeader, "base64").toString("utf8"));
+      const paymentPayload = JSON.parse(Buffer.from(paymentHeader, "base64").toString("utf8")) as { x402Version?: number };
+      const reqVer = paymentPayload?.x402Version === 1 ? 1 : 2;
+      const reqForFacilitator = {
+        ...paymentRequirements,
+        network: reqVer === 1 && chain.id === "base" ? "base" : chain.caip2,
+      };
       const verifyRes = await fetcher(chain.freeFacilitator + "/verify", {
         method: "POST",
         redirect: "manual",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements }),
+        body: JSON.stringify({ x402Version: reqVer, paymentPayload, paymentRequirements: reqForFacilitator }),
         signal: AbortSignal.timeout(8000),
       });
       const verifyJson = (await verifyRes.json()) as { isValid?: boolean; invalidReason?: string; payer?: string };
@@ -291,7 +296,7 @@ export async function handleUsdcPayPerCall(
         method: "POST",
         redirect: "manual",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements }),
+        body: JSON.stringify({ x402Version: reqVer, paymentPayload, paymentRequirements: reqForFacilitator }),
         signal: AbortSignal.timeout(12000),
       });
       const settleJson = (await settleRes.json()) as { success?: boolean; transaction?: string; payer?: string; errorReason?: string };
