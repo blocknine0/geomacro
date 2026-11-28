@@ -699,6 +699,7 @@ export async function collectRiskStreamFeedExtensions({collector="direct",now=Da
   const rights=approved.get(feed.name);
   if(!rights)continue;
   let url;try{url=new URL(feed.url)}catch{continue}
+  if(feed.name==="un_reliefweb_api_ccby"){const rwApp=String(process.env.RELIEFWEB_APPROVED_APPNAME??"").trim();if(rwApp)url.searchParams.set("appname",rwApp);}
   if(url.protocol!=="https:"||!(url.hostname===rights.publisher_root_domain||
      url.hostname.endsWith("."+rights.publisher_root_domain)))continue;
   counts.feeds_checked++;
